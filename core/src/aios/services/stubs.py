@@ -5,7 +5,7 @@ from aios.services.context import ContextService, WorkspaceContext
 from aios.services.event_bus import Event, EventBusService
 from aios.services.intent import Intent, IntentResolverService, IntentType
 from aios.services.memory import Memory, MemoryMetadata, MemoryService, MemoryType
-from aios.services.model import ModelService
+from aios.services.model import LLMRequest, LLMResponse, ModelService
 from aios.services.session import Session, SessionService
 from aios.services.tool import Tool, ToolMetadata, ToolResult, ToolService
 
@@ -196,6 +196,13 @@ class StubModelService(ModelService):
 
     def execute_prompt(self, prompt: str, system_instruction: str | None = None) -> str:
         return "stub-response"
+
+    def execute_request(self, request: LLMRequest) -> LLMResponse:
+        return LLMResponse(
+            content="stub-response",
+            model_name=request.model_name or "stub-model",
+            provider_name="stub",
+        )
 
 
 class StubToolService(ToolService):

@@ -21,6 +21,7 @@ from aios.services.intent_impl import LocalIntentResolver
 from aios.services.memory import MemoryService
 from aios.services.memory_impl import LocalMemoryService
 from aios.services.model import ModelService
+from aios.services.model_impl import LocalModelService
 from aios.services.session import (
     SessionEndedEvent,
     SessionService,
@@ -29,9 +30,6 @@ from aios.services.session import (
 from aios.services.session_impl import LocalSessionService
 
 # Import stubs for bootstrap registration
-from aios.services.stubs import (
-    StubModelService,
-)
 from aios.services.tool import (
     ToolCompletedEvent,
     ToolFailedEvent,
@@ -248,7 +246,7 @@ class Kernel:
         self.registry.register(ContextService, context_service)
         self.registry.register(MemoryService, memory_service)
         self.registry.register(IntentResolverService, LocalIntentResolver())
-        self.registry.register(ModelService, StubModelService())
+        self.registry.register(ModelService, LocalModelService())
         self.registry.register(ToolService, tool_service)
         self.registry.register(
             AgentRuntimeService,
