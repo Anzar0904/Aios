@@ -11,6 +11,7 @@ class IntentType(Enum):
     CONTEXT = auto()
     SESSION = auto()
     SYSTEM = auto()
+    DEVELOPER = auto()
     UNKNOWN = auto()
 
 

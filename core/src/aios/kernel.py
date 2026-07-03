@@ -246,11 +246,14 @@ class Kernel:
         self.registry.register(ContextService, context_service)
         self.registry.register(MemoryService, memory_service)
         self.registry.register(IntentResolverService, LocalIntentResolver())
-        self.registry.register(ModelService, LocalModelService())
+        model_service = LocalModelService()
+        self.registry.register(ModelService, model_service)
         self.registry.register(ToolService, tool_service)
         self.registry.register(
             AgentRuntimeService,
-            LocalAgentRuntime(event_bus, memory_service, context_service, tool_service),
+            LocalAgentRuntime(
+                event_bus, memory_service, context_service, tool_service, model_service
+            ),
         )
 
     def _initialize_services(self) -> None:

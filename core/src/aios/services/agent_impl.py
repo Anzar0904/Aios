@@ -13,6 +13,7 @@ from aios.services.agent import (
 from aios.services.event_bus import EventBusService
 from aios.services.intent import Intent, IntentType
 from aios.services.memory import MemoryType
+from aios.services.model import LLMRequest
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,172 @@ class MockAgent(Agent):
             return AgentResult(success=False, response=f"Agent execution exception: {e}")
 
 
+class DeveloperAgent(Agent):
+    """Developer Agent that helps develop software by orchestrating context,
+
+    memories, tools (git, filesystem, terminal), and querying the LLM adapter.
+    """
+
+    def __init__(self, memory_service, context_service, tool_service, model_service) -> None:
+        self._memory_service = memory_service
+        self._context_service = context_service
+        self._tool_service = tool_service
+        self._model_service = model_service
+
+    @property
+    def name(self) -> str:
+        return "developer_agent"
+
+    @property
+    def description(self) -> str:
+        return "Developer Agent for analyzing repositories, files, git status, and architecture."
+
+    def execute(self, agent_context: AgentContext) -> AgentResult:
+        intent = agent_context.intent
+        action = intent.action
+        logger.info(f"DeveloperAgent executing action: {action}")
+
+        context = agent_context.context
+        context_str = (
+            f"Workspace: {context.working_directory}\n"
+            f"Project Name: {context.project_name}\n"
+            f"Git Branch: {context.git_branch or 'non-git'}"
+            if context
+            else "No active workspace context."
+        )
+
+        memories_str = (
+            "\n".join([f"- [{m.memory_type.value}] {m.content}" for m in agent_context.memories])
+            or "No relevant memories retrieved."
+        )
+
+        base_system_instruction = (
+            "You are the Lead Software Engineer Developer Agent for this Personal AI OS.\n"
+            "Analyze and reason about the codebase based on context and tool outputs provided.\n"
+            "Focus on high-quality technical analysis, architectural structure, and code design.\n"
+            "Do not execute automatic file modifications or perform autonomous actions."
+        )
+
+        try:
+            if action == "AnalyzeRepository":
+                list_res = self._tool_service.execute_tool(
+                    "filesystem", {"action": "list", "path": "."}
+                )
+                files_list = list_res.output if list_res.success else "Failed to list files."
+
+                prompt = (
+                    f"Perform a repository analysis for the current workspace.\n\n"
+                    f"Context Info:\n{context_str}\n\n"
+                    f"Relevant Memories:\n{memories_str}\n\n"
+                    f"Files in workspace root:\n{files_list}\n\n"
+                    f"Please provide an overview of the workspace structure, its primary files, "
+                    f"and main capabilities."
+                )
+
+                llm_res = self._model_service.execute_request(
+                    LLMRequest(
+                        prompt=prompt,
+                        system_instruction=base_system_instruction,
+                        model_name="claude-3-5-sonnet",
+                    )
+                )
+                return AgentResult(
+                    success=True, response=llm_res.content, data={"llm_response": llm_res}
+                )
+
+            elif action == "ExplainFile":
+                path = intent.parameters.get("path", "core/src/aios/kernel.py")
+
+                read_res = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": path}
+                )
+                if not read_res.success:
+                    return AgentResult(
+                        success=False,
+                        response=f"Failed to read file '{path}': {read_res.error}",
+                    )
+
+                prompt = (
+                    f"Explain the following file in the codebase.\n\n"
+                    f"File Path: {path}\n\n"
+                    f"File Contents:\n```python\n{read_res.output}\n```\n\n"
+                    f"Please explain its purpose, key classes/functions, and role in the system."
+                )
+
+                llm_res = self._model_service.execute_request(
+                    LLMRequest(
+                        prompt=prompt,
+                        system_instruction=base_system_instruction,
+                        model_name="claude-3-5-sonnet",
+                    )
+                )
+                return AgentResult(
+                    success=True, response=llm_res.content, data={"llm_response": llm_res}
+                )
+
+            elif action == "SummarizeArchitecture":
+                list_res = self._tool_service.execute_tool(
+                    "filesystem", {"action": "list", "path": "."}
+                )
+                files_list = list_res.output if list_res.success else "Failed to list files."
+
+                prompt = (
+                    f"Summarize the system architecture.\n\n"
+                    f"Workspace Context:\n{context_str}\n\n"
+                    f"Relevant memories:\n{memories_str}\n\n"
+                    f"Files in project root:\n{files_list}\n\n"
+                    f"Describe the system architecture, component relationships, "
+                    f"and service organization."
+                )
+
+                llm_res = self._model_service.execute_request(
+                    LLMRequest(
+                        prompt=prompt,
+                        system_instruction=base_system_instruction,
+                        model_name="claude-3-5-sonnet",
+                    )
+                )
+                return AgentResult(
+                    success=True, response=llm_res.content, data={"llm_response": llm_res}
+                )
+
+            elif action == "GitReview":
+                status_res = self._tool_service.execute_tool("git", {"action": "status"})
+                git_status = (
+                    status_res.output if status_res.success else "Failed to get git status."
+                )
+
+                log_res = self._tool_service.execute_tool("git", {"action": "log"})
+                git_log = log_res.output if log_res.success else "Failed to get git log."
+
+                prompt = (
+                    f"Perform a review of current git changes and recent history.\n\n"
+                    f"Git Status:\n{git_status}\n\n"
+                    f"Git Log (recent commits):\n{git_log}\n\n"
+                    f"Please review the uncommitted changes, explain their purpose, "
+                    f"and summarize progress."
+                )
+
+                llm_res = self._model_service.execute_request(
+                    LLMRequest(
+                        prompt=prompt,
+                        system_instruction=base_system_instruction,
+                        model_name="claude-3-5-sonnet",
+                    )
+                )
+                return AgentResult(
+                    success=True, response=llm_res.content, data={"llm_response": llm_res}
+                )
+
+            return AgentResult(
+                success=False,
+                response=f"DeveloperAgent action '{action}' is not supported.",
+            )
+
+        except Exception as e:
+            return AgentResult(success=False, response=f"DeveloperAgent execution exception: {e}")
+
+
 class LocalAgentRuntime(AgentRuntimeService):
     """Agent Runtime coordinating memory retrieval, context loading,
 
@@ -139,11 +306,13 @@ class LocalAgentRuntime(AgentRuntimeService):
         memory_service,
         context_service,
         tool_service,
+        model_service,
     ) -> None:
         self._event_bus = event_bus
         self._memory_service = memory_service
         self._context_service = context_service
         self._tool_service = tool_service
+        self._model_service = model_service
         self._agents: Dict[str, Agent] = {}
         self._interrupted = False
 
@@ -155,6 +324,14 @@ class LocalAgentRuntime(AgentRuntimeService):
 
         self.register_agent(
             MockAgent(self._memory_service, self._context_service, self._tool_service)
+        )
+        self.register_agent(
+            DeveloperAgent(
+                self._memory_service,
+                self._context_service,
+                self._tool_service,
+                self._model_service,
+            )
         )
 
     def register_agent(self, agent: Agent) -> None:
@@ -190,7 +367,12 @@ class LocalAgentRuntime(AgentRuntimeService):
                 tools=tools,
             )
 
-            agent = self._agents.get("mock_agent")
+            # Route developer intents to developer_agent
+            if intent.intent_type == IntentType.DEVELOPER:
+                agent = self._agents.get("developer_agent")
+            else:
+                agent = self._agents.get("mock_agent")
+
             if not agent and self._agents:
                 agent = next(iter(self._agents.values()))
 

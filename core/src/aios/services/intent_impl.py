@@ -37,6 +37,28 @@ class LocalIntentResolver(IntentResolverService):
         if cleaned in ("end session", "exit session", "quit session", "end", "exit", "quit"):
             return IntentType.SESSION
 
+        # Developer rules
+        if cleaned in ("analyze repository", "analyze repo", "repository analysis"):
+            return IntentType.DEVELOPER
+
+        if (
+            cleaned == "explain this file"
+            or cleaned.startswith("explain file ")
+            or cleaned.startswith("explain ")
+        ):
+            return IntentType.DEVELOPER
+
+        if cleaned in (
+            "summarize architecture",
+            "architecture summary",
+            "summarize arch",
+            "summarize",
+        ):
+            return IntentType.DEVELOPER
+
+        if cleaned in ("git review", "git status review", "review git"):
+            return IntentType.DEVELOPER
+
         # System rules
         if cleaned in ("status", "system status", "uptime", "kernel status"):
             return IntentType.SYSTEM
@@ -104,6 +126,57 @@ class LocalIntentResolver(IntentResolverService):
                 parameters={},
                 confidence=1.0,
             )
+
+        elif intent_type == IntentType.DEVELOPER:
+            lower_text = cleaned.lower()
+            if lower_text in ("analyze repository", "analyze repo", "repository analysis"):
+                return Intent(
+                    intent_type=IntentType.DEVELOPER,
+                    target_service="AgentRuntimeService",
+                    action="AnalyzeRepository",
+                    parameters={},
+                    confidence=1.0,
+                )
+            elif (
+                lower_text == "explain this file"
+                or lower_text.startswith("explain file ")
+                or lower_text.startswith("explain ")
+            ):
+                path = "core/src/aios/kernel.py"
+                if lower_text.startswith("explain file "):
+                    path = cleaned[len("explain file ") :].strip()
+                elif lower_text.startswith("explain "):
+                    extracted = cleaned[len("explain ") :].strip()
+                    if extracted != "this file" and extracted != "file":
+                        path = extracted
+                return Intent(
+                    intent_type=IntentType.DEVELOPER,
+                    target_service="AgentRuntimeService",
+                    action="ExplainFile",
+                    parameters={"path": path},
+                    confidence=1.0,
+                )
+            elif lower_text in (
+                "summarize architecture",
+                "architecture summary",
+                "summarize arch",
+                "summarize",
+            ):
+                return Intent(
+                    intent_type=IntentType.DEVELOPER,
+                    target_service="AgentRuntimeService",
+                    action="SummarizeArchitecture",
+                    parameters={},
+                    confidence=1.0,
+                )
+            elif lower_text in ("git review", "git status review", "review git"):
+                return Intent(
+                    intent_type=IntentType.DEVELOPER,
+                    target_service="AgentRuntimeService",
+                    action="GitReview",
+                    parameters={},
+                    confidence=1.0,
+                )
 
         elif intent_type == IntentType.SYSTEM:
             lower_text = cleaned.lower()

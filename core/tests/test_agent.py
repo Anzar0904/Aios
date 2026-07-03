@@ -18,7 +18,9 @@ def test_agent_registration():
     context_service = MagicMock()
     tool_service = MagicMock()
 
-    runtime = LocalAgentRuntime(event_bus, memory_service, context_service, tool_service)
+    runtime = LocalAgentRuntime(
+        event_bus, memory_service, context_service, tool_service, MagicMock()
+    )
     runtime.initialize()
 
     # Verify MockAgent is registered by default
@@ -73,7 +75,9 @@ def test_mock_agent_execution_pipeline():
     tool_service = MagicMock()
     tool_service.list_tools.return_value = []
 
-    runtime = LocalAgentRuntime(event_bus, memory_service, context_service, tool_service)
+    runtime = LocalAgentRuntime(
+        event_bus, memory_service, context_service, tool_service, MagicMock()
+    )
     runtime.initialize()
 
     # Track events
@@ -116,7 +120,9 @@ def test_agent_runtime_failure_handling():
     # Force context_service to raise exception to trigger failure path
     context_service.get_current_context.side_effect = Exception("Database crash")
 
-    runtime = LocalAgentRuntime(event_bus, memory_service, context_service, tool_service)
+    runtime = LocalAgentRuntime(
+        event_bus, memory_service, context_service, tool_service, MagicMock()
+    )
     runtime.initialize()
 
     failed_events = []
