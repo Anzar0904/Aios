@@ -1,0 +1,4 @@
+[runtime]
+name = "Personal AI OS"
+version = "0.1.0"
+debug = false

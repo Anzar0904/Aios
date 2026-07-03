@@ -1,0 +1,14 @@
+[project]
+name = "aios-core"
+version = "0.1.0"
+description = "Core runtime engine and orchestration layer for the Personal AI OS"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+aios = "aios.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
