@@ -2,3 +2,11 @@
 name = "Personal AI OS"
 version = "0.1.0"
 debug = false
+
+[llm]
+provider = "openrouter"
+default_model = "qwen/qwen3-coder"
+
+[llm.openrouter]
+base_url = "https://openrouter.ai/api/v1"
+timeout = 30

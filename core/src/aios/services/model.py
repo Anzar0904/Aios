@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 from aios.services.base import ServiceLifecycle
 
@@ -24,6 +24,8 @@ class LLMResponse:
     model_name: str
     provider_name: str
     usage: Dict[str, int] = field(default_factory=dict)
+    finish_reason: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class LLMProvider(abc.ABC):
@@ -43,6 +45,11 @@ class LLMProvider(abc.ABC):
     @abc.abstractmethod
     def validate_request(self, request: LLMRequest) -> bool:
         """Validates if the request is supported by the provider."""
+        pass
+
+    @abc.abstractmethod
+    def generate_stream(self, request: LLMRequest) -> Iterator[LLMResponse]:
+        """Generates a stream of responses (to be implemented in future sprints)."""
         pass
 
 
@@ -103,4 +110,9 @@ class ModelService(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def execute_request(self, request: LLMRequest) -> LLMResponse:
         """Executes a unified LLMRequest against the matched provider."""
+        pass
+
+    @abc.abstractmethod
+    def execute_stream(self, request: LLMRequest) -> Iterator[LLMResponse]:
+        """Executes a stream of LLMResponses (to be implemented in future sprints)."""
         pass

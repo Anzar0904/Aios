@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Type, TypeVar
+from typing import Callable, Iterator, Optional, Type, TypeVar
 
 from aios.services.agent import Agent, AgentResult, AgentRuntimeService
 from aios.services.context import ContextService, WorkspaceContext
@@ -203,6 +203,9 @@ class StubModelService(ModelService):
             model_name=request.model_name or "stub-model",
             provider_name="stub",
         )
+
+    def execute_stream(self, request: LLMRequest) -> Iterator[LLMResponse]:
+        yield self.execute_request(request)
 
 
 class StubToolService(ToolService):
