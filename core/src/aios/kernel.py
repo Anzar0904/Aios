@@ -5,22 +5,40 @@ from pathlib import Path
 
 from aios.config import OSConfig, load_config
 from aios.registry import ServiceRegistry
+from aios.services.agent import (
+    AgentCompletedEvent,
+    AgentFailedEvent,
+    AgentRuntimeService,
+    AgentStartedEvent,
+)
+from aios.services.agent_impl import LocalAgentRuntime
 from aios.services.context import ContextLoadedEvent, ContextService
 from aios.services.context_impl import LocalContextService
 from aios.services.event_bus import EventBusService, KernelStartedEvent
 from aios.services.event_bus_impl import LocalEventBus
+from aios.services.intent import Intent, IntentResolverService, IntentResult, IntentType
+from aios.services.intent_impl import LocalIntentResolver
 from aios.services.memory import MemoryService
+from aios.services.memory_impl import LocalMemoryService
 from aios.services.model import ModelService
-from aios.services.session import SessionService
+from aios.services.session import (
+    SessionEndedEvent,
+    SessionService,
+    SessionStartedEvent,
+)
+from aios.services.session_impl import LocalSessionService
 
 # Import stubs for bootstrap registration
 from aios.services.stubs import (
-    StubMemoryService,
     StubModelService,
-    StubSessionService,
-    StubToolService,
 )
-from aios.services.tool import ToolService
+from aios.services.tool import (
+    ToolCompletedEvent,
+    ToolFailedEvent,
+    ToolService,
+    ToolStartedEvent,
+)
+from aios.services.tool_impl import LocalToolManager
 
 
 class RuntimeState(Enum):
@@ -99,12 +117,61 @@ class Kernel:
                     f"{event.context.project_name} ({branch_str})"
                 )
 
+            def log_session_started(event: SessionStartedEvent) -> None:
+                print(
+                    "[EventBus] Handled SessionStartedEvent for session: "
+                    f"{event.session_id} (workspace: {event.session.workspace_id})"
+                )
+
+            def log_session_ended(event: SessionEndedEvent) -> None:
+                print(f"[EventBus] Handled SessionEndedEvent for session: {event.session_id}")
+
+            def log_tool_started(event: ToolStartedEvent) -> None:
+                print(f"[EventBus] Handled ToolStartedEvent for tool: {event.tool_name}")
+
+            def log_tool_completed(event: ToolCompletedEvent) -> None:
+                print(
+                    f"[EventBus] Handled ToolCompletedEvent for tool: {event.tool_name} "
+                    f"(Success: {event.result.success})"
+                )
+
+            def log_tool_failed(event: ToolFailedEvent) -> None:
+                print(
+                    f"[EventBus] Handled ToolFailedEvent for tool: {event.tool_name} "
+                    f"(Error: {event.error})"
+                )
+
+            def log_agent_started(event: AgentStartedEvent) -> None:
+                print(
+                    f"[EventBus] Handled AgentStartedEvent for intent: "
+                    f"{event.intent.intent_type.name}.{event.intent.action}"
+                )
+
+            def log_agent_completed(event: AgentCompletedEvent) -> None:
+                print(f"[EventBus] Handled AgentCompletedEvent (Success: {event.result.success})")
+
+            def log_agent_failed(event: AgentFailedEvent) -> None:
+                print(f"[EventBus] Handled AgentFailedEvent (Error: {event.error})")
+
             event_bus.subscribe(KernelStartedEvent, log_startup)
             event_bus.subscribe(ContextLoadedEvent, log_context)
+            event_bus.subscribe(SessionStartedEvent, log_session_started)
+            event_bus.subscribe(SessionEndedEvent, log_session_ended)
+            event_bus.subscribe(ToolStartedEvent, log_tool_started)
+            event_bus.subscribe(ToolCompletedEvent, log_tool_completed)
+            event_bus.subscribe(ToolFailedEvent, log_tool_failed)
+            event_bus.subscribe(AgentStartedEvent, log_agent_started)
+            event_bus.subscribe(AgentCompletedEvent, log_agent_completed)
+            event_bus.subscribe(AgentFailedEvent, log_agent_failed)
 
             # Automatically detect workspace context
             context_service = self.registry.get(ContextService)
-            context_service.detect_context()
+            context = context_service.detect_context()
+
+            # Start a new session
+            session_service = self.registry.get(SessionService)
+            session = session_service.start_session(context.project_root)
+            self._active_session_id = session.session_id
 
             self._transition_to_ready()
 
@@ -120,9 +187,46 @@ class Kernel:
             raise RuntimeError(f"Cannot start session when Kernel state is {self._state.name}")
         self._active_session_id = session_id
 
+        # Sync with SessionService
+        session_service = self.registry.get(SessionService)
+        context_service = self.registry.get(ContextService)
+        context = context_service.get_current_context()
+        workspace_path = context.project_root if context else str(Path.cwd().resolve())
+
+        curr = session_service.get_current_session()
+        if curr is None or curr.session_id != session_id:
+            session_service.start_session(workspace_path, session_id=session_id)
+
     def end_session(self) -> None:
         """Disassociates the active session from the runtime."""
         self._active_session_id = None
+
+        # Sync with SessionService
+        session_service = self.registry.get(SessionService)
+        if session_service.get_current_session() is not None:
+            session_service.end_session()
+
+    def execute_intent(self, intent: Intent) -> IntentResult:
+        """Executes a structured Intent by delegating to the Agent Runtime."""
+        if not self.registry.get(IntentResolverService).validate(intent):
+            return IntentResult(success=False, message="Invalid intent: validation failed.")
+
+        try:
+            # Kernel handles session lifecycle transitions directly
+            if intent.intent_type == IntentType.SESSION and intent.action == "End":
+                self.end_session()
+
+            agent_runtime = self.registry.get(AgentRuntimeService)
+            agent_res = agent_runtime.execute(intent)
+
+            return IntentResult(
+                success=agent_res.success,
+                message=agent_res.response,
+                data=agent_res.data,
+            )
+
+        except Exception as e:
+            return IntentResult(success=False, message=f"Failed to execute intent: {str(e)}")
 
     def mark_busy(self, busy: bool) -> None:
         """Transitions the runtime state between READY and BUSY."""
@@ -135,11 +239,21 @@ class Kernel:
         event_bus = LocalEventBus()
         self.registry.register(EventBusService, event_bus)
 
-        self.registry.register(ContextService, LocalContextService(event_bus))
-        self.registry.register(MemoryService, StubMemoryService())
-        self.registry.register(SessionService, StubSessionService())
+        session_service = LocalSessionService(event_bus)
+        context_service = LocalContextService(event_bus)
+        memory_service = LocalMemoryService(event_bus)
+        tool_service = LocalToolManager(event_bus)
+
+        self.registry.register(SessionService, session_service)
+        self.registry.register(ContextService, context_service)
+        self.registry.register(MemoryService, memory_service)
+        self.registry.register(IntentResolverService, LocalIntentResolver())
         self.registry.register(ModelService, StubModelService())
-        self.registry.register(ToolService, StubToolService())
+        self.registry.register(ToolService, tool_service)
+        self.registry.register(
+            AgentRuntimeService,
+            LocalAgentRuntime(event_bus, memory_service, context_service, tool_service),
+        )
 
     def _initialize_services(self) -> None:
         """Invokes the initialize stage on all registered services."""
@@ -163,6 +277,11 @@ class Kernel:
         self._state = RuntimeState.SHUTTING_DOWN
 
         try:
+            # End the active session if one exists
+            session_service = self.registry.get(SessionService)
+            if session_service.get_current_session() is not None:
+                session_service.end_session()
+
             self._active_session_id = None
 
             # Teardown in reverse order of registration
