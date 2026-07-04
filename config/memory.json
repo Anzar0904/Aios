@@ -2703,5 +2703,33 @@
             "importance": 1,
             "additional": {}
         }
+    },
+    {
+        "memory_id": "0a1164ba-2dca-46b1-a546-7be50d0a3c39",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783180294.197115,
+        "updated_at": 1783180294.197115,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "11c72c91-c377-4357-84a3-642c6f562e27",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "204f012d-9c20-4edd-b496-04aa551d8914",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783180308.0355892,
+        "updated_at": 1783180308.0355892,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "928ffd05-6adf-495b-939e-6a102760dae7",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
     }
 ]

@@ -444,6 +444,23 @@ This section maps the essential runtime components of the operating system:
   * `APIReport`: Discrepancies report tracking undocumented endpoints list.
 * **Current Status**: Current.
 
+### 3.27 Architecture Documentation Data Models
+* **Purpose**: Analyses codebase decoupling layer bounds, checks imports patterns to prevent circular dependencies, and formats Mermaid flowcharts depicting components.
+* **Data Models & Components**:
+  * `ArchitectureDocumentationService`: Coordinating service generating Mermaid flowchart layouts and architecture reports.
+  * `ArchitectureAnalyzer`: Inspects codebase dependencies list to find layer violations or cycles.
+  * `ArchitectureDocumentPlanner`: Selects subsystems components requiring structural descriptions.
+  * `ArchitectureValidator`: Checks that Mermaid diagram connections references match active components.
+  * `ArchitectureRegistry`: Catalogues resolved subsystems components, relationships, and decisions.
+  * `ArchitectureComponent`: Single structural node type block details.
+  * `ArchitectureLayer`: Structural layering divisions tracking member components.
+  * `ArchitectureRelationship`: Coupling links connecting two systems blocks.
+  * `ArchitectureDiagram`: Formatted diagram output data (Mermaid code blocks).
+  * `ArchitectureDecision`: Decision records reference mapping status context.
+  * `ArchitectureSummary`: Summary counts metrics detailing discovered elements.
+  * `ArchitectureReport`: Health reports identifying circular imports.
+* **Current Status**: Current.
+
 ---
 
 
