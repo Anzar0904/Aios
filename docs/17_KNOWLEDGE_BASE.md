@@ -296,6 +296,23 @@ This section maps the essential runtime components of the operating system:
   * `ImpactAnalysisResult`: Assembled result combining graphs, candidates list, and coverage goals.
 * **Current Status**: Current.
 
+### 3.18 Intelligent Test Generation Data Models
+* **Purpose**: Discovers repository test patterns, formats boilerplate setups, parses execution test steps, validates python syntax compilability, and outputs test artifacts strictly within the sandbox workspace.
+* **Data Models & Components**:
+  * `TestGenerationService`: Coordinates test planning, workspace generation pipeline, memory reports caching, and Notion report publishing.
+  * `TestGenerator`: Assembles test snippets into full test suites files.
+  * `TestTemplateEngine`: Formats structural Python test skeletons.
+  * `TestPatternAnalyzer`: Discovers layout, mock, fixture, and naming conventions.
+  * `TestCaseBuilder`: Maps step-by-step target execution cases.
+  * `AssertionGenerator`: Formulates assertions assertions checks.
+  * `FixtureGenerator`: Creates Pytest fixture setup functions.
+  * `MockGenerator`: Generates MagicMock setups.
+  * `EdgeCaseGenerator`: Identifies exception boundaries test blocks.
+  * `RegressionTestGenerator`: Generates regression checks.
+  * `GeneratedTestArtifact`: Details file paths, compiled python code, and SHA-256 hashes.
+  * `TestGenerationReport`: Aggregates warnings count, strategies, confidence, and generated artifacts lists.
+* **Current Status**: Current.
+
 ---
 
 

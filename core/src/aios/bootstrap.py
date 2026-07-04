@@ -362,6 +362,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     impact_analyzer.initialize()
     registry.register(ChangeImpactAnalyzer, impact_analyzer)
 
+    from aios.services.test_generation import TestGenerationService
+    from aios.services.test_generation_impl import LocalTestGenerationService
+
+    test_gen_service = LocalTestGenerationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    test_gen_service.initialize()
+    registry.register(TestGenerationService, test_gen_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel
