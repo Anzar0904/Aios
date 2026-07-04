@@ -303,6 +303,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     workspace_service.initialize()
     registry.register(AIWorkspaceService, workspace_service)
 
+    from aios.services.file_planner import FilePlanner
+    from aios.services.file_planner_impl import LocalFilePlanner
+
+    file_planner_service = LocalFilePlanner(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    file_planner_service.initialize()
+    registry.register(FilePlanner, file_planner_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

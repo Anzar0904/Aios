@@ -216,6 +216,20 @@ This section maps the essential runtime components of the operating system:
   * `WorkspaceSandbox`: Tracks disk space allocation constraints.
 * **Current Status**: Current.
 
+### 3.13 Intelligent File Planner Data Models
+* **Purpose**: Coordinates changes by evaluating exactly which files/folders must be created, modified, or deleted for an engineering objective, analyzing direct/indirect imports dependencies and estimating coupling risks.
+* **Data Models & Components**:
+  * `FilePlanner`: Central coordinating service providing planning results generation, storage, and publishing.
+  * `FileImpactAnalyzer`: Identifies affected source files, modification types, target directories, and impact scopes.
+  * `FileDependencyResolver`: Resolves import dependencies and transitively computes indirect imports and high-risk modules.
+  * `ChangePlanner`: Sequences modifications, maps circular dependency risks, and establishes validation/testing checkpoints.
+  * `ModificationType`: Enum mapping file modification actions (CREATE, MODIFY, DELETE, RENAME, MOVE, TEST, DOCUMENT).
+  * `AffectedFile`: Models a single affected file featuring modification types, risk levels, and direct dependency lists.
+  * `AffectedDirectory`: Models an affected directory mapping count of modified files.
+  * `ImplementationScope`: Packs lists of affected files and directories within specific sandbox bounds.
+  * `PlanningResult`: Unified outcome document capturing sequences, risk levels, and quality checkpoints.
+* **Current Status**: Current.
+
 ---
 
 
