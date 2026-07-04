@@ -845,6 +845,53 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     workflow_version_service.initialize()
     registry.register(WorkflowVersionService, workflow_version_service)
 
+    # Wire and register the Persistence Platform components
+    from aios.services.persistence import (
+        PersistenceConfigurationService,
+        PersistenceRegistry,
+        RepositoryRegistry,
+        PersistenceService,
+    )
+    from aios.services.persistence_impl import (
+        PostgreSQLProvider,
+        PersistenceServiceImpl,
+        PersistenceHealthMonitor,
+        PersistenceDiagnostics,
+        PersistenceValidator,
+        PersistenceReportGenerator,
+    )
+
+    p_config = PersistenceConfigurationService()
+    p_registry = PersistenceRegistry()
+    p_repos = RepositoryRegistry()
+    
+    # Register postgreSQL provider class in registry
+    p_registry.register_provider("postgresql", PostgreSQLProvider)
+
+    p_service = PersistenceServiceImpl(p_config, p_registry, p_repos)
+    p_health = PersistenceHealthMonitor(p_service)
+    p_diagnostics = PersistenceDiagnostics(p_config, p_service)
+    p_validator = PersistenceValidator()
+    p_report = PersistenceReportGenerator(os.getcwd(), p_health, p_diagnostics)
+
+    p_config.initialize()
+    p_registry.initialize()
+    p_repos.initialize()
+    p_service.initialize()
+    p_health.initialize()
+    p_diagnostics.initialize()
+    p_validator.initialize()
+    p_report.initialize()
+
+    registry.register(PersistenceConfigurationService, p_config)
+    registry.register(PersistenceRegistry, p_registry)
+    registry.register(RepositoryRegistry, p_repos)
+    registry.register(PersistenceService, p_service)
+    registry.register(PersistenceHealthMonitor, p_health)
+    registry.register(PersistenceDiagnostics, p_diagnostics)
+    registry.register(PersistenceValidator, p_validator)
+    registry.register(PersistenceReportGenerator, p_report)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

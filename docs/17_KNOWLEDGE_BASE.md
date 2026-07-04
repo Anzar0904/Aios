@@ -725,10 +725,24 @@ This section maps the essential runtime components of the operating system:
   * `SourceControlReportGenerator`: Outputs markdown status documents (`SOURCE_CONTROL_STATUS.md`, `REPOSITORY_REPORT.md`, `BRANCH_REPORT.md`, `PULL_REQUEST_REPORT.md`, `RELEASE_REPORT.md`, `WORKFLOW_REPORT.md`, `DIAGNOSTICS.md`) to `docs/source_control/`.
 * **Current Status**: Current (Sprint Complete).
 
+### 3.42 Persistence Platform Data Models
+* **Purpose**: Coordinates all database operations, manages connection pooling and health metrics, handles transaction savepoint rollbacks, executes database migrations, and exposes a repository registration system.
+* **Data Models & Components**:
+  * `PersistenceConfigurationService`: Loads database configuration properties (host, port, credentials, pool limits).
+  * `PersistenceRegistry`: Registry cataloging and resolving registered pluggable PersistenceProviders.
+  * `RepositoryRegistry`: Centralized container registering data repositories.
+  * `PersistenceService`: Core unified service orchestrating database operations.
+  * `PersistenceProvider`: Interface implemented by database drivers (e.g. `PostgreSQLProvider`).
+  * `ConnectionPool`: Pools connections and executes validation checks (`SELECT 1`).
+  * `TransactionManager`: Manages flat and nested transaction scopes (savepoints).
+  * `MigrationManager`: Discovers, validates, and executes version migrations.
+  * `PersistenceHealthMonitor`: Audits latency averages, P95 metrics, and pool utilization.
+  * `PersistenceDiagnostics`: Scans connections, credentials, and migration status to return remediation suggestions.
+  * `PersistenceValidator`: Validates configuration parameters.
+  * `PersistenceReportGenerator`: Compiles status and health information into markdown reports inside `docs/persistence/`.
+* **Current Status**: Current (Milestone 1 Complete).
+
 ---
-
-
-
 
 ## 4. Planned & Future Subsystems
 
