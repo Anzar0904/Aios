@@ -616,6 +616,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     workflow_monitoring_service.initialize()
     registry.register(WorkflowMonitoringService, workflow_monitoring_service)
 
+    from aios.services.workflow_optimization import WorkflowOptimizationService
+    from aios.services.workflow_optimization_impl import LocalWorkflowOptimizationService
+
+    workflow_optimization_service = LocalWorkflowOptimizationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    workflow_optimization_service.initialize()
+    registry.register(WorkflowOptimizationService, workflow_optimization_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

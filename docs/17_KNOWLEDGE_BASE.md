@@ -657,6 +657,24 @@ This section maps the essential runtime components of the operating system:
   * `WorkflowMonitoringValidator`: Trace validator checking sequences and timing ordering logic.
 * **Current Status**: Current.
 
+### 3.39 Workflow Optimization Engine Data Models
+* **Purpose**: Analyzes execution telemetries and graph structures to generate performance, latency, caching, parallelization, cost, and reliability optimization recommendations.
+* **Data Models & Components**:
+  * `WorkflowOptimizationService`: Conductor initiating workspace optimizations, exporting reports, caching summaries, and publishing Notion records.
+  * `WorkflowOptimizationAnalyzer`: Coordinates cost, latency, parallelization, redundancy, and resource analyzers to construct optimization plans.
+  * `WorkflowOptimizationPlan`: Detailed plans carrying recommendations lists, expected score gains, time and cost savings.
+  * `WorkflowOptimizationRecommendation`: Concrete recommendations detailing categories, confidence metrics, reasoning, supporting evidence, and implementation difficulty.
+  * `WorkflowOptimizationCategory`: Enums mapping optimization scopes (PERFORMANCE, COST, RELIABILITY, CACHING, parallelization).
+  * `WorkflowOptimizationImpact`: Enums mapping impact levels (HIGH, MEDIUM, LOW).
+  * `WorkflowCostAnalyzer`: Scans for expensive nodes to suggest token cache and request reduction optimizations.
+  * `WorkflowLatencyAnalyzer`: Tracks slow steps to suggest branch timeouts.
+  * `WorkflowParallelizationAnalyzer`: Identifies independent sequential tasks to parallelize.
+  * `WorkflowRedundancyAnalyzer`: Scans for duplicate nodes to merge actions.
+  * `WorkflowResourceAnalyzer`: Monitors excessive CPU or memory usage.
+  * `WorkflowOptimizationValidator`: Validates recommendation unique IDs, evidence completeness, and confidence limits.
+  * `WorkflowOptimizationReport`: Consolidated report payload.
+* **Current Status**: Current.
+
 ---
 
 
