@@ -680,6 +680,25 @@ This section maps the essential runtime components of the operating system:
   * `WorkflowOptimizationReport`: Consolidated report payload.
 * **Current Status**: Current.
 
+### 3.40 Workflow Versioning & Evolution Data Models
+* **Purpose**: Manages immutable workflow version nodes, tracks history timelines, compares differences, validates semver rules, and outlines migration or rollback plans.
+* **Data Models & Components**:
+  * `WorkflowVersionService`: Central conductor registering version snapshots, diffing states, writing reports, and updating Notion pages.
+  * `WorkflowVersion`: Dataclass containing references to IR schemas, translations, optimizations, approvals, and previous parent pointers.
+  * `WorkflowVersionGraph`: DAG structure mapping parent-child version branches.
+  * `WorkflowVersionHistory`: Chronological ordering of a workflow's versions.
+  * `WorkflowVersionMetadata`: Metadata containing author details, tags, semantic versions, and status.
+  * `WorkflowVersionDiff`: Immutable difference object mapping added, removed, and modified nodes or parameters.
+  * `WorkflowSnapshot`: Full backup snapshot of workflow IR content.
+  * `WorkflowEvolutionPlan`: Outline of steps required to upgrade to a target semantic version.
+  * `WorkflowRollbackPlan`: Outline of steps, checklist, and downtime estimated to safely roll back to a prior version.
+  * `WorkflowCompatibilityAnalyzer`: Evaluates compatibility (e.g. checking major version breaking bump rules).
+  * `WorkflowMigrationPlanner`: Compiles upgrading steps and rollback targets checklists.
+  * `WorkflowVersionValidator`: Checks version semver formatting and author completeness.
+  * `WorkflowVersionReport`: Workspace-wide versioning summary payload.
+  * `WorkflowVersionRegistry`: Registry containing version models and timelines.
+* **Current Status**: Current.
+
 ---
 
 
