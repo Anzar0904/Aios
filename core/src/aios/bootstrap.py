@@ -556,6 +556,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     history_service.initialize()
     registry.register(ApprovalHistoryService, history_service)
 
+    from aios.services.automation import AutomationService
+    from aios.services.automation_impl import LocalAutomationService
+
+    automation_service = LocalAutomationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    automation_service.initialize()
+    registry.register(AutomationService, automation_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

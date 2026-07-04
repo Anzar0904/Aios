@@ -565,6 +565,28 @@ This section maps the essential runtime components of the operating system:
   * `ApprovalHistoryAnalyzer`: Compiler calculating averages, metrics slopes, and patterns.
 * **Current Status**: Current.
 
+### 3.34 Automation Foundation Data Models
+* **Purpose**: Abstract layer between the AI OS and various third-party automation platforms, managing topological graph flows independent of specific provider execution details.
+* **Data Models & Components**:
+  * `AutomationService`: Central conductor service coordinating provider registries, execution runs, memory caching, and Notion report publishing.
+  * `AutomationManager`: Internal coordinator creating sessions and routing workflows executions to matching runners.
+  * `AutomationRegistry`: catalog repository saving platform-independent workflow definitions.
+  * `WorkflowDefinition`: Container organizing graphs, triggers, actions, conditions, variables, credential references, and execution policies.
+  * `WorkflowGraph`: Node-edge structure modeling the workflow's topological dependency.
+  * `WorkflowNode` & `WorkflowEdge`: Element components defining execution points and directions.
+  * `WorkflowTrigger`, `WorkflowAction`, `WorkflowCondition`: Sub-elements defining execution starters, operations, and branches.
+  * `WorkflowVariable`: State parameters carrying schema types and defaults.
+  * `WorkflowCredentialReference`: Secure index pointer linking actions to specific vault keys.
+  * `WorkflowExecutionPolicy`: Retry boundaries, delays, timeouts, and concurrency constraints.
+  * `WorkflowMetadata` & `WorkflowArtifact`: Descriptive tag properties and generated output files list.
+  * `AutomationSession`: Active workflow session lifecycle tracker.
+  * `AutomationResult`: Consolidated execution result status, diagnostics output, and times.
+  * `AutomationValidator`: Validator checking cycles, disconnected nodes, duplicate IDs, and policy constraints.
+  * `AutomationProvider`: Abstract provider interface subclassed by platform stubs (`N8NProvider`, `GitHubActionsProvider`, `TemporalProvider`).
+  * `AutomationProviderRegistry`: Registry holding active executor provider objects.
+  * `AutomationReport`: Execution report payload formatted for Knowledge Hub updates.
+* **Current Status**: Current.
+
 ---
 
 
