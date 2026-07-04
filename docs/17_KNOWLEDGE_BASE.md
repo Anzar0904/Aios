@@ -394,6 +394,23 @@ This section maps the essential runtime components of the operating system:
   * `ProfileRegistry`: In-memory thread-safe profile store registry.
 * **Current Status**: Current.
 
+### 3.24 Documentation Intelligence Foundation Data Models
+* **Purpose**: Manages global template structures and layout plans for generating code specifications, API registries, and release validation documentation.
+* **Data Models & Components**:
+  * `DocumentationService`: Coordinating service managing documentation planning sessions and indexes.
+  * `DocumentationPlanner`: Assembles lists of recommended document templates.
+  * `DocumentationRegistry`: In-memory index caching registered templates and documents.
+  * `DocumentationProfileAdapter`: Adapts general style rules to document-specific layouts.
+  * `DocumentTemplate`: Layout settings containing target headings lists.
+  * `DocumentArtifact`: Generated/registered documentation file record.
+  * `DocumentMetadata`: Tag fields detailing document category and source.
+  * `DocumentCategory`: Enum for document types (README, API_DOC, RELEASE_NOTES).
+  * `DocumentSource`: Enum denoting originating system component sources.
+  * `DocumentationWorkspace`: Context directory targets configurations.
+  * `DocumentationSession`: Session tracking state metrics.
+  * `DocumentationResult`: Summary of generated/registered documents lists.
+* **Current Status**: Current.
+
 ---
 
 
