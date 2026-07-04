@@ -265,6 +265,22 @@ This section maps the essential runtime components of the operating system:
   * `GenerationSession`: Lifecycle tracker for active workspace sessions.
 * **Current Status**: Current.
 
+### 3.16 AI Test Engineer Phase 1 Milestone 1: Test Planning Foundation
+* **Purpose**: Performs test planning before tests are generated or executed. Analyzes objectives, strategies, scopes, and target files, ordering execution suites based on coupling values and dependencies risks.
+* **Data Models & Components**:
+  * `AITestEngineerService`: Central service managing test plans generation, memory caching, and report syncing.
+  * `TestPlanner`: Core planning logic mapping goals and file impact scopes to test strategies.
+  * `TestCategory`: Enum mapping test disciplines (UNIT, INTEGRATION, REGRESSION, API, DATABASE, SECURITY, PERFORMANCE, END_TO_END, SMOKE, SANITY, STATIC_ANALYSIS, STYLE_VALIDATION).
+  * `TestPriority`: Enum ranking sequence priority weights (LOW, MEDIUM, HIGH, CRITICAL).
+  * `TestStrategy`: Enum setting validation levels (MINIMAL, STANDARD, STRICT, MISSION_CRITICAL).
+  * `TestRequirement`: Requirements criteria specifying validation targets.
+  * `TestTarget`: Specific target files or classes/methods symbols.
+  * `TestScope`: Outlines test targets, exclusions, and target coverage percentages.
+  * `TestSuite`: Packaged test run definitions grouping targets.
+  * `TestPlan`: Consolidated test execution plan specification.
+  * `TestPlanningResult`: Execution sequence result mapping prioritized suites and checks.
+* **Current Status**: Current.
+
 ---
 
 

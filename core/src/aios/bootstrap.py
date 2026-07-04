@@ -338,6 +338,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     codegen_service.initialize()
     registry.register(CodeGenerationService, codegen_service)
 
+    from aios.services.test_engineer import AITestEngineerService
+    from aios.services.test_engineer_impl import LocalAITestEngineerService
+
+    test_eng_service = LocalAITestEngineerService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    test_eng_service.initialize()
+    registry.register(AITestEngineerService, test_eng_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel
