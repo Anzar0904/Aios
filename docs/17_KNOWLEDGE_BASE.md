@@ -47,6 +47,9 @@ This section maps the essential runtime components of the operating system:
 | Knowledge   | External synchronization| KnowledgeDocument  | KnowledgeSyncResult| PersonalService,   |                    | Current    |
 | Hub         | with Notion.         | models.            | details.           | NotionProvider.    |                    |            |
 +-------------+----------------------+--------------------+--------------------+--------------------+--------------------+------------+
+| Source      | Unified Git and      | Repository name,   | Local status,      | LocalGitExecutor,  | docs/source_control| Current    |
+| Control     | GitHub integrations. | action commands.   | report documents.  | GitHubProvider.    | /                  |            |
++-------------+----------------------+--------------------+--------------------+--------------------+--------------------+------------+
 ```
 
 ---
@@ -702,6 +705,24 @@ This section maps the essential runtime components of the operating system:
   * `WorkflowVersionReport`: Workspace-wide versioning summary payload.
   * `WorkflowVersionRegistry`: Registry containing version models and timelines.
 * **Current Status**: Current.
+
+### 3.41 Source Control Intelligence Platform Data Models
+* **Purpose**: Coordinates local Git operations, manages remote provider integrations (e.g. GitHub REST and CLI), records telemetry metrics, and generates comprehensive markdown status reports inside the workspace.
+* **Data Models & Components**:
+  * `SourceControlRegistry`: Dynamic container saving registered repository host providers.
+  * `ProviderDiscovery`: Environment scanner discovering active providers (e.g. GitHub) and registering them.
+  * `ProviderConfigurationService`: Manages configuration properties, strategies (e.g. branch, commit, merge strategies), and credentials.
+  * `ProviderHealthMonitor`: Polls host latencies, rate limits, and failure statistics.
+  * `ProviderDiagnostics`: Runs local audits verifying git installations, gh CLI credentials, and token availability.
+  * `ProviderValidator`: Validates repository name naming conventions and URLs.
+  * `SourceControlService`: Central orchestrator delegating commands to active providers.
+  * `LocalGitExecutor`: Low-level wrapper executing native shell commands within the workspace (checkout, stage, commit, reset, log, etc.).
+  * `RepositoryManager`, `BranchManager`, `CommitManager`, `TagManager`, `MergeManager`, `DiffManager`, `WorkspaceRepositoryManager`: Managers coordinating local Git operations.
+  * `PullRequestManager`, `IssueManager`, `ReleaseManager`, `WorkflowManager`, `WebhookManager`: Managers coordinating remote host operations.
+  * `SourceControlTelemetry`: Compiles execution times, counts, and success rates.
+  * `SourceControlStatistics`: Aggregates repository, branch, PR, issue, release, and workflow totals.
+  * `SourceControlReportGenerator`: Outputs markdown status documents (`SOURCE_CONTROL_STATUS.md`, `REPOSITORY_REPORT.md`, `BRANCH_REPORT.md`, `PULL_REQUEST_REPORT.md`, `RELEASE_REPORT.md`, `WORKFLOW_REPORT.md`, `DIAGNOSTICS.md`) to `docs/source_control/`.
+* **Current Status**: Current (Sprint Complete).
 
 ---
 

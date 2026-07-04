@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 from aios.kernel import Kernel
@@ -126,6 +127,99 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         offline_mode=github_cfg.offline_mode if github_cfg else False,
     )
     github_service.initialize()
+    github_service._registry = registry
+
+    # Source Control Intelligence Platform instantiations
+    from aios.source_control import (
+        SourceControlRegistry,
+        ProviderDiscovery,
+        ProviderConfigurationService,
+        ProviderHealthMonitor,
+        ProviderDiagnostics,
+        ProviderValidator,
+        SourceControlService,
+        LocalGitExecutor,
+        RepositoryManager,
+        BranchManager,
+        CommitManager,
+        TagManager,
+        MergeManager,
+        DiffManager,
+        WorkspaceRepositoryManager,
+        PullRequestManager,
+        IssueManager,
+        ReleaseManager,
+        WorkflowManager,
+        WebhookManager,
+        SourceControlTelemetry,
+        SourceControlStatistics,
+        SourceControlReportGenerator,
+    )
+
+    sc_registry = SourceControlRegistry()
+    sc_discovery = ProviderDiscovery(sc_registry)
+    sc_discovery.discover_and_register()
+
+    sc_config = ProviderConfigurationService()
+    sc_health = ProviderHealthMonitor(sc_registry)
+    sc_diagnostics = ProviderDiagnostics()
+    sc_validator = ProviderValidator()
+
+    source_control_service = SourceControlService(
+        registry=sc_registry,
+        config_service=sc_config,
+        health_monitor=sc_health,
+        diagnostics=sc_diagnostics,
+        validator=sc_validator
+    )
+
+    local_git = LocalGitExecutor()
+    repo_mgr = RepositoryManager(source_control_service)
+    branch_mgr = BranchManager(local_git)
+    commit_mgr = CommitManager(local_git)
+    tag_mgr = TagManager(local_git)
+    merge_mgr = MergeManager(local_git)
+    diff_mgr = DiffManager(local_git)
+    workspace_repo_mgr = WorkspaceRepositoryManager(local_git)
+    pr_mgr = PullRequestManager(source_control_service)
+    issue_mgr = IssueManager(source_control_service)
+    release_mgr = ReleaseManager(source_control_service)
+    workflow_mgr = WorkflowManager(source_control_service)
+    webhook_mgr = WebhookManager(source_control_service)
+
+    sc_telemetry = SourceControlTelemetry()
+    sc_statistics = SourceControlStatistics()
+    sc_report = SourceControlReportGenerator(
+        workspace_root=os.getcwd(),
+        diagnostics=sc_diagnostics,
+        health_monitor=sc_health,
+        statistics=sc_statistics
+    )
+
+    # Initialize all MIXIN classes
+    sc_registry.initialize()
+    sc_discovery.initialize()
+    sc_config.initialize()
+    sc_health.initialize()
+    sc_diagnostics.initialize()
+    sc_validator.initialize()
+    source_control_service.initialize()
+    local_git.initialize()
+    repo_mgr.initialize()
+    branch_mgr.initialize()
+    commit_mgr.initialize()
+    tag_mgr.initialize()
+    merge_mgr.initialize()
+    diff_mgr.initialize()
+    workspace_repo_mgr.initialize()
+    pr_mgr.initialize()
+    issue_mgr.initialize()
+    release_mgr.initialize()
+    workflow_mgr.initialize()
+    webhook_mgr.initialize()
+    sc_telemetry.initialize()
+    sc_statistics.initialize()
+    sc_report.initialize()
 
     from aios.services.career import CareerOSService
     from aios.services.career_impl import LocalCareerOSService
@@ -204,6 +298,32 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(ToolService, tool_service)
     registry.register(AgentRuntimeService, agent_runtime)
     registry.register(GitHubService, github_service)
+
+    # Register Source Control Intelligence Platform components
+    registry.register(SourceControlRegistry, sc_registry)
+    registry.register(ProviderDiscovery, sc_discovery)
+    registry.register(ProviderConfigurationService, sc_config)
+    registry.register(ProviderHealthMonitor, sc_health)
+    registry.register(ProviderDiagnostics, sc_diagnostics)
+    registry.register(ProviderValidator, sc_validator)
+    registry.register(SourceControlService, source_control_service)
+    registry.register(LocalGitExecutor, local_git)
+    registry.register(RepositoryManager, repo_mgr)
+    registry.register(BranchManager, branch_mgr)
+    registry.register(CommitManager, commit_mgr)
+    registry.register(TagManager, tag_mgr)
+    registry.register(MergeManager, merge_mgr)
+    registry.register(DiffManager, diff_mgr)
+    registry.register(WorkspaceRepositoryManager, workspace_repo_mgr)
+    registry.register(PullRequestManager, pr_mgr)
+    registry.register(IssueManager, issue_mgr)
+    registry.register(ReleaseManager, release_mgr)
+    registry.register(WorkflowManager, workflow_mgr)
+    registry.register(WebhookManager, webhook_mgr)
+    registry.register(SourceControlTelemetry, sc_telemetry)
+    registry.register(SourceControlStatistics, sc_statistics)
+    registry.register(SourceControlReportGenerator, sc_report)
+
     registry.register(ProjectIntelligenceService, project_intelligence)
 
     registry.register(DeveloperWorkspaceService, developer_workspace)
@@ -605,7 +725,6 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(N8NIntegrationService, n8n_integration_service)
 
     # Register Production self-hosted n8n components
-    import os
     from aios.n8n import (
         N8NConfigurationService,
         N8NAuthenticationManager,

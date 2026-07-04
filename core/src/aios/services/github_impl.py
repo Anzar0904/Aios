@@ -47,6 +47,7 @@ class LocalGitHubService(GitHubService):
         self._model_service = model_service
         self._project_intel = project_intel
         self._dev_workspace = dev_workspace
+        self._registry = None
 
         # Load token prioritizing explicit parameter, then GITHUB_TOKEN / GITHUB_PAT env vars
         self._token = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_PAT")
@@ -91,6 +92,19 @@ class LocalGitHubService(GitHubService):
         params: Optional[dict] = None,
         json_data: Optional[dict] = None,
     ) -> Any:
+        if hasattr(self, "_registry") and self._registry:
+            try:
+                from aios.source_control import SourceControlService
+                sc_service = self._registry.get(SourceControlService)
+                gh_provider = sc_service.registry.get_provider("github")
+                res = gh_provider._request(method, f"/{path.lstrip('/')}", params=params, json=json_data)
+                content_type = res.headers.get("Content-Type", "")
+                if "application/json" in content_type:
+                    return res.json()
+                return res.text
+            except Exception as e:
+                logger.warning(f"SourceControlService delegation failed, falling back to legacy request: {e}")
+
         cache_key = f"{method}:{path}:{json.dumps(params or {})}:{json.dumps(json_data or {})}"
 
         # Caching check for GET
