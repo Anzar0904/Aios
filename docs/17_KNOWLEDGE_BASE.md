@@ -281,6 +281,21 @@ This section maps the essential runtime components of the operating system:
   * `TestPlanningResult`: Execution sequence result mapping prioritized suites and checks.
 * **Current Status**: Current.
 
+### 3.17 Change Impact Analysis Data Models
+* **Purpose**: Evaluates propagation paths for files edits, identifying directly/indirectly affected components, mapping testing prioritizations, identifying regression candidates, and calculating target coverages.
+* **Data Models & Components**:
+  * `ChangeImpactAnalyzer`: Central coordinating service managing change impact analysis, memory summaries, and reports publishing.
+  * `ImpactGraph`: Propagation graph containing nodes and edges.
+  * `ImpactNode`: Node element mapping file type and modified status.
+  * `ImpactEdge`: Directed relation mapping import, call, or inheritance references.
+  * `AffectedComponent`: Component directly or indirectly impacted by changes.
+  * `AffectedTestSuite`: Priority testing target suite details.
+  * `RegressionCandidate`: Module prone to indirect regressions due to inbound import dependencies.
+  * `RiskAssessment`: Consolidates overall risk, api break risk, shared lib risk, dep chain risk, config risk, and data model risk.
+  * `CoverageTarget`: Recommended statement and branch coverage targets.
+  * `ImpactAnalysisResult`: Assembled result combining graphs, candidates list, and coverage goals.
+* **Current Status**: Current.
+
 ---
 
 
