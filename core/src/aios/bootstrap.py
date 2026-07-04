@@ -315,6 +315,17 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     file_planner_service.initialize()
     registry.register(FilePlanner, file_planner_service)
 
+    from aios.services.patch_generation import PatchGenerationService
+    from aios.services.patch_generation_impl import LocalPatchGenerationService
+
+    patch_service = LocalPatchGenerationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        registry=registry
+    )
+    patch_service.initialize()
+    registry.register(PatchGenerationService, patch_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

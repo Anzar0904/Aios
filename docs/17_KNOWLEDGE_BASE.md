@@ -230,6 +230,22 @@ This section maps the essential runtime components of the operating system:
   * `PlanningResult`: Unified outcome document capturing sequences, risk levels, and quality checkpoints.
 * **Current Status**: Current.
 
+### 3.14 Patch Generation Engine Data Models
+* **Purpose**: Generates standard unified diff patches comparing isolated sandbox workspaces against origin repository roots, checking checksum compatibility, detecting file-level merge conflicts, and formatting review packages for developers.
+* **Data Models & Components**:
+  * `PatchGenerationService`: Central coordinating service providing review packages generation, memory summaries persistence, and report publishing.
+  * `DiffGenerator`: Generates standard unified diff format strings comparing string line differences.
+  * `PatchGenerator`: Creates patch bundles tracking lines modifications (added, removed) across files.
+  * `PatchValidator`: Verifies header configurations and computes SHA-256 patch checksums validation.
+  * `ConflictDetector`: Identifies merge collisions and planning inconsistencies.
+  * `PatchSerializer`: Converts patch bundles to and from JSON format string representation.
+  * `PatchMetadata`: Details patch size, checksum verification hash, timestamp, and author attributes.
+  * `PatchStatistics`: Summarizes lines added/removed, files modified, and chunks count metrics.
+  * `PatchPreview`: Represents human-readable previews of file changes.
+  * `PatchBundle`: Packs mapping of file paths to unified diff contents.
+  * `ReviewPackage`: Consolidates previews, statistics, conflict logs, and validation status.
+* **Current Status**: Current.
+
 ---
 
 
