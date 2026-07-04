@@ -427,6 +427,23 @@ This section maps the essential runtime components of the operating system:
   * `READMEReport`: Analysis outcome report outlining recommendations.
 * **Current Status**: Current.
 
+### 3.26 API Documentation Data Models
+* **Purpose**: Discovers project REST/GraphQL endpoint structures via AST parses, plans missing reference docs, validates schemas parameters formatting, and saves API references markdown files.
+* **Data Models & Components**:
+  * `APIDocumentationService`: Coordinating service managing API specs generation and registries.
+  * `APIAnalyzer`: Scans AST code layouts to check missing parameters and routes.
+  * `APIDocumentationPlanner`: Configures endpoints mock schemas matching formatting conventions.
+  * `APIDocumentValidator`: Flags OpenAPI format structural mismatches or duplicate endpoints.
+  * `APIRegistry`: Thread-safe registry cataloging registered endpoints.
+  * `APIEndpoint`: Details REST coordinates (path, method, deprecated state).
+  * `APISchema`: Defines request/response structure fields mappings.
+  * `APIParameter`: Details path or query parameters constraints.
+  * `APIResponse`: Details status codes specs, request models, and examples.
+  * `APIExample`: Mock request/response payload examples.
+  * `APIDocumentArtifact`: Generated API specs markdown file.
+  * `APIReport`: Discrepancies report tracking undocumented endpoints list.
+* **Current Status**: Current.
+
 ---
 
 

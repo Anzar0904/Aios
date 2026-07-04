@@ -459,6 +459,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     readme_service.initialize()
     registry.register(READMEIntelligenceService, readme_service)
 
+    from aios.services.api_documentation import APIDocumentationService
+    from aios.services.api_documentation_impl import LocalAPIDocumentationService
+
+    api_doc_service = LocalAPIDocumentationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    api_doc_service.initialize()
+    registry.register(APIDocumentationService, api_doc_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel
