@@ -220,6 +220,17 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(RuntimeService, runtime_service)
     registry.register(ReasoningService, reasoning_service)
 
+    from aios.services.intent_engine import IntentEngine
+    from aios.services.intent_engine_impl import LocalIntentEngine
+
+    intent_engine = LocalIntentEngine(
+        memory_service=memory_service,
+        reasoning_service=reasoning_service,
+        model_service=model_service
+    )
+    intent_engine.initialize()
+    registry.register(IntentEngine, intent_engine)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

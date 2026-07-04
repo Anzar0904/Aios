@@ -123,7 +123,20 @@ This section maps the essential runtime components of the operating system:
   * `KnowledgeSyncResult`: Captures success/skip/failure sync status logs.
 * **Current Status**: Current.
 
+### 3.6 Intent Engine Data Models
+* **Purpose**: Determine participating services and dependencies dynamically to achieve objectives.
+* **Data Models & Components**:
+  * `IntentEngine`: Conductor service managing classification, dependency analysis, planning, and evaluation.
+  * `IntentClassifier`: Classifies queries into matched categories (Career, Project, Research, Learning, Automation, Planning, Coding, GitHub, Knowledge, Mission, Daily, Conversation, Hybrid).
+  * `IntentAnalyzer`: Maps categories to registered service names and expected outputs.
+  * `IntentResolver`: Resolves user objectives and context into structured `IntentPlan` execution graphs.
+  * `IntentPlan`: Structured execution graph details (participating services, dependencies, expected outputs, context requirements).
+  * `IntentContext`: Tracks contextual variables and retrieved memory snippets.
+  * `IntentResult`: Contains process outcomes and resolved plans.
+* **Current Status**: Current.
+
 ---
+
 
 
 ## 4. Planned & Future Subsystems
