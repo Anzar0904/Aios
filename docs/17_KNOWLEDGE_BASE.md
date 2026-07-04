@@ -625,18 +625,22 @@ This section maps the essential runtime components of the operating system:
 * **Purpose**: Coordinates communication, REST API integrations, auth configurations, uploads, and health audits with self-hosted n8n servers.
 * **Data Models & Components**:
   * `N8NIntegrationService`: Central conductor service coordinating client uploads, metadata tracking, status reports, and notion database publishing.
-  * `N8NClient`: Wrapper client executing REST queries (workflows uploads, executions triggering, activations status).
-  * `N8NConnectionManager`: Connection profile header generator.
-  * `N8NAuthenticationProvider`: Abstract authentication header generator subclassed by `APIKeyAuthenticationProvider` and `BearerTokenAuthenticationProvider`.
-  * `N8NWorkflowRepository` & `N8NExecutionRepository`: Catalogs tracking uploaded workflows and status executions metadata.
-  * `N8NCredentialRepository`: Index register catalog matching credential names to vault keys.
-  * `N8NHealthMonitor`: Diagnostics server availability, latency, version details, and OAuth capability mappings.
-  * `N8NWorkspaceMapper`: Map catalog mapping workflows owners to workspaces.
-  * `N8NServerInformation`: Struct carrying n8n instance version, ID, and capability parameters.
-  * `N8NConnectionProfile`: Server target URL, auth config types, and timeout limits.
-  * `N8NIntegrationReport`: Report summary containing connectivity status, latencies, uploaded counts, and versions.
-  * `N8NValidator`: Server config and request integrity validator.
-* **Current Status**: Current.
+  * `N8NClient`: Concrete REST API client executing HTTP requests to `http://localhost:5678` with linear retry backoffs.
+  * `N8NConnectionManager`: Builds configured HTTP clients and attaches authorization headers.
+  * `N8NAuthenticationManager`: Resolves API keys or Bearer tokens from configuration and environment variables.
+  * `N8NWorkflowManager`: Coordinates workflow uploads (`POST /api/v1/workflows`), updates, deletions, and activation patches.
+  * `N8NExecutionManager`: Triggers workflow executions (`POST /api/v1/workflows/{id}/run`) and polls execution logs and cancellation.
+  * `N8NCredentialManager`: Manages creation and registration of external credential vault pointers.
+  * `N8NWorkspaceManager`: Maps workflows ownership to active user workspace sessions.
+  * `N8NHealthMonitor`: Polls `/healthz` endpoints and records latency averages and P95 latency profiles.
+  * `N8NVersionManager`: Detects the running version of the self-hosted n8n instance.
+  * `N8NCapabilityManager`: Registers discoverable n8n capability lists (e.g. webhooks, variables, sticky-notes).
+  * `N8NTelemetryCollector`: Compiles failure rates, execution latencies, and transaction metrics.
+  * `N8NEventMonitor`: Records real-time workflow activation and run events.
+  * `N8NValidator`: Validates URL patterns and connection profile parameters.
+  * `N8NDiagnostics`: Runs credential and network connection diagnostic checks.
+  * `N8NReportGenerator`: Outputs markdown status reports (`N8N_STATUS.md`, `N8N_HEALTH.md`, etc.) inside the workspace `docs/n8n/` folder.
+* **Current Status**: Production Integrated (Sprint 2 Complete).
 
 ### 3.38 Workflow Monitoring & Telemetry Data Models
 * **Purpose**: Records, tracks, validates, and analyzes workflow execution telemetry traces and performance aggregates.

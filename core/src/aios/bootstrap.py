@@ -604,6 +604,81 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     n8n_integration_service.initialize()
     registry.register(N8NIntegrationService, n8n_integration_service)
 
+    # Register Production self-hosted n8n components
+    import os
+    from aios.n8n import (
+        N8NConfigurationService,
+        N8NAuthenticationManager,
+        N8NConnectionManager,
+        N8NClient,
+        N8NWorkflowManager,
+        N8NExecutionManager,
+        N8NCredentialManager,
+        N8NWorkspaceManager,
+        N8NHealthMonitor,
+        N8NVersionManager,
+        N8NCapabilityManager,
+        N8NTelemetryCollector,
+        N8NEventMonitor,
+        N8NValidator,
+        N8NDiagnostics,
+        N8NReportGenerator,
+    )
+
+    n8n_config = N8NConfigurationService()
+    n8n_auth = N8NAuthenticationManager(n8n_config)
+    n8n_conn = N8NConnectionManager(n8n_config, n8n_auth)
+    n8n_client = N8NClient(n8n_conn)
+    n8n_workflow = N8NWorkflowManager(n8n_client)
+    n8n_execution = N8NExecutionManager(n8n_client)
+    n8n_credential = N8NCredentialManager(n8n_client)
+    n8n_workspace = N8NWorkspaceManager()
+    n8n_health = N8NHealthMonitor(n8n_client, n8n_auth, n8n_workflow)
+    n8n_version = N8NVersionManager(n8n_client)
+    n8n_capability = N8NCapabilityManager()
+    n8n_telemetry = N8NTelemetryCollector(n8n_health)
+    n8n_event = N8NEventMonitor()
+    n8n_validator = N8NValidator()
+    n8n_diagnostics = N8NDiagnostics(n8n_auth)
+    n8n_report = N8NReportGenerator(os.getcwd(), n8n_health)
+
+    n8n_config.initialize()
+    n8n_auth.initialize()
+    n8n_conn.initialize()
+    n8n_client.initialize()
+    n8n_workflow.initialize()
+    n8n_execution.initialize()
+    n8n_credential.initialize()
+    n8n_workspace.initialize()
+    n8n_health.initialize()
+    n8n_version.initialize()
+    n8n_capability.initialize()
+    n8n_telemetry.initialize()
+    n8n_event.initialize()
+    n8n_validator.initialize()
+    n8n_diagnostics.initialize()
+    n8n_report.initialize()
+
+    registry.register(N8NConfigurationService, n8n_config)
+    registry.register(N8NAuthenticationManager, n8n_auth)
+    registry.register(N8NConnectionManager, n8n_conn)
+    registry.register(N8NClient, n8n_client)
+    registry.register(N8NWorkflowManager, n8n_workflow)
+    registry.register(N8NExecutionManager, n8n_execution)
+    registry.register(N8NCredentialManager, n8n_credential)
+    registry.register(N8NWorkspaceManager, n8n_workspace)
+    registry.register(N8NHealthMonitor, n8n_health)
+    registry.register(N8NVersionManager, n8n_version)
+    registry.register(N8NCapabilityManager, n8n_capability)
+    registry.register(N8NTelemetryCollector, n8n_telemetry)
+    registry.register(N8NEventMonitor, n8n_event)
+    registry.register(N8NValidator, n8n_validator)
+    registry.register(N8NDiagnostics, n8n_diagnostics)
+    registry.register(N8NReportGenerator, n8n_report)
+
+    # Wire to n8n integration health monitor
+    n8n_integration_service._health_monitor._prod_health = n8n_health
+
     from aios.services.workflow_monitoring import WorkflowMonitoringService
     from aios.services.workflow_monitoring_impl import LocalWorkflowMonitoringService
 

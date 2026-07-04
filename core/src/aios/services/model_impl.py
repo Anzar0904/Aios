@@ -60,22 +60,74 @@ class MockProvider(LLMProvider):
 
 
 class OpenAIProvider(LLMProvider):
+    def __init__(self, api_key: Optional[str] = None, timeout: int = 30) -> None:
+        self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        self._timeout = timeout
+
     @property
     def name(self) -> str:
         return "openai"
 
     def generate(self, request: LLMRequest) -> LLMResponse:
-        content = f"[OpenAIProvider] Mock response to prompt: '{request.prompt}'"
+        if not self._api_key:
+            content = f"[OpenAIProvider] Mock response to prompt: '{request.prompt}'"
+            if request.system_instruction:
+                content = f"System: {request.system_instruction}\n{content}"
+            return LLMResponse(
+                content=content,
+                model_name=request.model_name or "gpt-4o",
+                provider_name=self.name,
+                usage={"prompt_tokens": 12, "completion_tokens": 25},
+                finish_reason="stop",
+                metadata={},
+            )
+
+        endpoint = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json"
+        }
+        messages = []
         if request.system_instruction:
-            content = f"System: {request.system_instruction}\n{content}"
-        return LLMResponse(
-            content=content,
-            model_name=request.model_name or "gpt-4o",
-            provider_name=self.name,
-            usage={"prompt_tokens": 12, "completion_tokens": 25},
-            finish_reason="stop",
-            metadata={},
-        )
+            messages.append({"role": "system", "content": request.system_instruction})
+        messages.append({"role": "user", "content": request.prompt})
+
+        payload = {
+            "model": request.model_name or "gpt-4o",
+            "messages": messages,
+            "temperature": request.temperature,
+        }
+        if request.max_tokens:
+            payload["max_tokens"] = request.max_tokens
+
+        try:
+            with httpx.Client(timeout=float(self._timeout)) as client:
+                res = client.post(endpoint, json=payload, headers=headers)
+
+            if res.status_code == 429:
+                raise LLMProviderError("Rate limit exceeded", status_code=429)
+            if res.status_code == 401:
+                raise LLMProviderError("Authentication failure", status_code=401)
+            if res.status_code != 200:
+                raise LLMProviderError(f"OpenAI error: {res.text}", status_code=res.status_code)
+
+            data = res.json()
+            choice = data["choices"][0]
+            usage = data.get("usage", {})
+            return LLMResponse(
+                content=choice["message"]["content"],
+                model_name=data.get("model", request.model_name or "gpt-4o"),
+                provider_name=self.name,
+                usage={
+                    "prompt_tokens": usage.get("prompt_tokens", 0),
+                    "completion_tokens": usage.get("completion_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0)
+                },
+                finish_reason=choice.get("finish_reason", "stop"),
+                metadata=data
+            )
+        except httpx.RequestError as e:
+            raise LLMProviderError(f"Connection error: {e}", status_code=503)
 
     def validate_request(self, request: LLMRequest) -> bool:
         return True
@@ -85,22 +137,73 @@ class OpenAIProvider(LLMProvider):
 
 
 class ClaudeProvider(LLMProvider):
+    def __init__(self, api_key: Optional[str] = None, timeout: int = 30) -> None:
+        self._api_key = api_key or os.environ.get("CLAUDE_CODE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+        self._timeout = timeout
+
     @property
     def name(self) -> str:
         return "claude"
 
     def generate(self, request: LLMRequest) -> LLMResponse:
-        content = f"[ClaudeProvider] Mock response to prompt: '{request.prompt}'"
+        if not self._api_key:
+            content = f"[ClaudeProvider] Mock response to prompt: '{request.prompt}'"
+            if request.system_instruction:
+                content = f"System: {request.system_instruction}\n{content}"
+            return LLMResponse(
+                content=content,
+                model_name=request.model_name or "claude-3-5-sonnet",
+                provider_name=self.name,
+                usage={"prompt_tokens": 15, "completion_tokens": 30},
+                finish_reason="stop",
+                metadata={},
+            )
+
+        endpoint = "https://api.anthropic.com/v1/messages"
+        headers = {
+            "x-api-key": self._api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json"
+        }
+        messages = [{"role": "user", "content": request.prompt}]
+
+        payload = {
+            "model": request.model_name or "claude-3-5-sonnet",
+            "messages": messages,
+            "max_tokens": request.max_tokens or 1024,
+            "temperature": request.temperature,
+        }
         if request.system_instruction:
-            content = f"System: {request.system_instruction}\n{content}"
-        return LLMResponse(
-            content=content,
-            model_name=request.model_name or "claude-3-5-sonnet",
-            provider_name=self.name,
-            usage={"prompt_tokens": 15, "completion_tokens": 30},
-            finish_reason="stop",
-            metadata={},
-        )
+            payload["system"] = request.system_instruction
+
+        try:
+            with httpx.Client(timeout=float(self._timeout)) as client:
+                res = client.post(endpoint, json=payload, headers=headers)
+
+            if res.status_code == 429:
+                raise LLMProviderError("Rate limit exceeded", status_code=429)
+            if res.status_code == 401:
+                raise LLMProviderError("Authentication failure", status_code=401)
+            if res.status_code != 200:
+                raise LLMProviderError(f"Claude error: {res.text}", status_code=res.status_code)
+
+            data = res.json()
+            choice = data["content"][0]
+            usage = data.get("usage", {})
+            return LLMResponse(
+                content=choice["text"],
+                model_name=data.get("model", request.model_name or "claude-3-5-sonnet"),
+                provider_name=self.name,
+                usage={
+                    "prompt_tokens": usage.get("input_tokens", 0),
+                    "completion_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+                },
+                finish_reason="stop",
+                metadata=data
+            )
+        except httpx.RequestError as e:
+            raise LLMProviderError(f"Connection error: {e}", status_code=503)
 
     def validate_request(self, request: LLMRequest) -> bool:
         return True
@@ -110,22 +213,48 @@ class ClaudeProvider(LLMProvider):
 
 
 class GeminiProvider(LLMProvider):
+    def __init__(self, api_key: Optional[str] = None, timeout: int = 30) -> None:
+        self._api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self._timeout = timeout
+
     @property
     def name(self) -> str:
         return "gemini"
 
     def generate(self, request: LLMRequest) -> LLMResponse:
-        content = f"[GeminiProvider] Mock response to prompt: '{request.prompt}'"
-        if request.system_instruction:
-            content = f"System: {request.system_instruction}\n{content}"
-        return LLMResponse(
-            content=content,
-            model_name=request.model_name or "gemini-1.5-pro",
-            provider_name=self.name,
-            usage={"prompt_tokens": 8, "completion_tokens": 18},
-            finish_reason="stop",
-            metadata={},
-        )
+        import shutil
+        import subprocess
+        if not shutil.which("gemini-cli") and self._api_key != "cli_active":
+            content = f"[GeminiProvider] Mock response to prompt: '{request.prompt}'"
+            if request.system_instruction:
+                content = f"System: {request.system_instruction}\n{content}"
+            return LLMResponse(
+                content=content,
+                model_name=request.model_name or "gemini-1.5-pro",
+                provider_name=self.name,
+                usage={"prompt_tokens": 8, "completion_tokens": 18},
+                finish_reason="stop",
+                metadata={},
+            )
+
+        cmd = ["gemini-cli", "--prompt", request.prompt, "--model", request.model_name or "gemini-1.5-pro"]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=self._timeout)
+            if res.returncode != 0:
+                raise LLMProviderError(f"Gemini CLI failed: {res.stderr}", status_code=500)
+
+            return LLMResponse(
+                content=res.stdout.strip(),
+                model_name=request.model_name or "gemini-1.5-pro",
+                provider_name=self.name,
+                usage={"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+                finish_reason="stop",
+                metadata={"stdout": res.stdout, "stderr": res.stderr}
+            )
+        except subprocess.TimeoutExpired as e:
+            raise LLMProviderError(f"Gemini CLI timeout: {e}", status_code=408)
+        except FileNotFoundError:
+            raise LLMProviderError("gemini-cli binary not found in PATH", status_code=503)
 
     def validate_request(self, request: LLMRequest) -> bool:
         return True
@@ -739,6 +868,26 @@ class LocalModelService(ModelService):
         self._default_model = default_model
         self._config_path = config_path
 
+        from aios.providers import (
+            ProviderConfig,
+            ProviderHealthMonitor,
+            ProviderMetricsCollector,
+            ProviderRegistry,
+            ProviderRouter,
+        )
+
+        self.provider_config = ProviderConfig()
+        self.provider_registry = ProviderRegistry()
+        self.provider_health = ProviderHealthMonitor(registry=self.provider_registry)
+        self.provider_metrics = ProviderMetricsCollector()
+        self.provider_router = ProviderRouter(
+            self.provider_config,
+            self.provider_registry,
+            self.provider_health,
+            self.provider_metrics,
+            self.factory,
+        )
+
     def initialize(self) -> None:
         logger.info("Initializing LocalModelService")
         from pathlib import Path
@@ -780,35 +929,15 @@ class LocalModelService(ModelService):
         else:
             self.factory.register_provider(OmniRouteProvider())
 
-        # Initialize Provider Manager components
-        from aios.providers import (
-            ProviderConfig,
-            ProviderHealthMonitor,
-            ProviderMetricsCollector,
-            ProviderRegistry,
-            ProviderRouter,
-        )
-
-        self.provider_config = ProviderConfig(
-            preferred_provider=config.llm.provider,
-            offline_mode=omniroute_cfg.offline_mode if omniroute_cfg else False,
-            omniroute_base_url=omniroute_cfg.base_url if omniroute_cfg else "http://localhost:20128/v1",
-            omniroute_api_key=omniroute_cfg.api_key if omniroute_cfg else None,
-            omniroute_routing_policy=omniroute_cfg.routing_policy if omniroute_cfg else "FREE_ONLY",
-            omniroute_timeout=omniroute_cfg.timeout if omniroute_cfg else 30,
-            omniroute_retry_count=omniroute_cfg.retry_count if omniroute_cfg else 3,
-            omniroute_streaming_enabled=omniroute_cfg.streaming_enabled if omniroute_cfg else True,
-        )
-        self.provider_registry = ProviderRegistry()
-        self.provider_health = ProviderHealthMonitor()
-        self.provider_metrics = ProviderMetricsCollector()
-        self.provider_router = ProviderRouter(
-            self.provider_config,
-            self.provider_registry,
-            self.provider_health,
-            self.provider_metrics,
-            self.factory,
-        )
+        # Configure provider properties loaded from file config
+        self.provider_config.preferred_provider = config.llm.provider
+        self.provider_config.offline_mode = omniroute_cfg.offline_mode if omniroute_cfg else False
+        self.provider_config.omniroute_base_url = omniroute_cfg.base_url if omniroute_cfg else "http://localhost:20128/v1"
+        self.provider_config.omniroute_api_key = omniroute_cfg.api_key if omniroute_cfg else None
+        self.provider_config.omniroute_routing_policy = omniroute_cfg.routing_policy if omniroute_cfg else "FREE_ONLY"
+        self.provider_config.omniroute_timeout = omniroute_cfg.timeout if omniroute_cfg else 30
+        self.provider_config.omniroute_retry_count = omniroute_cfg.retry_count if omniroute_cfg else 3
+        self.provider_config.omniroute_streaming_enabled = omniroute_cfg.streaming_enabled if omniroute_cfg else True
 
 
         # Register default model dynamically
