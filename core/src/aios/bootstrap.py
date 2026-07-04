@@ -326,6 +326,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     patch_service.initialize()
     registry.register(PatchGenerationService, patch_service)
 
+    from aios.services.code_generation import CodeGenerationService
+    from aios.services.code_generation_impl import LocalCodeGenerationService
+
+    codegen_service = LocalCodeGenerationService(
+        memory_service=memory_service,
+        model_service=model_service,
+        knowledge_hub=knowledge_hub,
+        registry=registry
+    )
+    codegen_service.initialize()
+    registry.register(CodeGenerationService, codegen_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

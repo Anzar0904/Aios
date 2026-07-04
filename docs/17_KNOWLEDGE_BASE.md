@@ -246,6 +246,25 @@ This section maps the essential runtime components of the operating system:
   * `ReviewPackage`: Consolidates previews, statistics, conflict logs, and validation status.
 * **Current Status**: Current.
 
+### 3.15 AI Code Generation Engine Data Models
+* **Purpose**: Manages code generation inside isolated workspace sandboxes using structured prompts and model routing options without modifying host project repositories, running syntactic/styling validations before patch generation.
+* **Data Models & Components**:
+  * `CodeGenerationService`: Primary coordinating service providing session state tracking, code generation execution, and reports synchronization.
+  * `CodePlanner`: Evaluates development plans to schedule sequential file edits.
+  * `ContextAssembler`: Formulates minimal codebase context including imports and interface indexes to avoid bloated prompt limits.
+  * `PromptBuilder`: Structures LLM instructions mapping task metadata and policy modifiers.
+  * `FileGenerator`: Handles sandbox file creation.
+  * `FileEditor`: Handles sandbox file editing.
+  * `SyntaxValidator`: Validates python syntax using compilers.
+  * `StyleValidator`: Enforces formatting and layout constraints.
+  * `ImportValidator`: Verifies target modules and package imports existence.
+  * `GenerationValidator`: Aggregates syntactic/style/import checkers outcomes.
+  * `GenerationPolicy`: Enum containing generation constraint modes (CONSERVATIVE, BALANCED, AGGRESSIVE).
+  * `GeneratedArtifact`: Packages path details and SHA-256 hash checksums.
+  * `GenerationReport`: Tracks artifacts list, verification logs, and confidence scoring.
+  * `GenerationSession`: Lifecycle tracker for active workspace sessions.
+* **Current Status**: Current.
+
 ---
 
 
