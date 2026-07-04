@@ -547,6 +547,24 @@ This section maps the essential runtime components of the operating system:
   * `ReviewCollaborationReport`: Report container encapsulating threads, timelines, and audit logs.
 * **Current Status**: Current.
 
+### 3.33 History Engine Data Models
+* **Purpose**: Manages decision history logs, state machine transitions, statistical aggregations, trend slope tracking, and historical recommendations audits.
+* **Data Models & Components**:
+  * `ApprovalHistoryService`: Core coordinator managing transitions, recording decisions, running historical audits, and notion reporting.
+  * `ApprovalHistoryManager`: Internal coordinator managing state machines transitions and decision queries.
+  * `ApprovalHistoryEntry`: Immutable log containing state transitions for an individual session.
+  * `ApprovalDecisionRecord`: Summary record containing validation scores, coverage values, and final states.
+  * `ApprovalState`: Enum mapping state machine states (`DRAFT`, `SUBMITTED`, `UNDER_REVIEW`, `CHANGES_REQUESTED`, `UPDATED`, `APPROVED`, `APPROVED_WITH_CONDITIONS`, `PARTIALLY_APPROVED`, `REJECTED`, `EXPIRED`, `ARCHIVED`).
+  * `ApprovalStateTransition`: Immutable transition trace recording source state, destination state, actor, and rationale.
+  * `ApprovalStatistics`: Statistical summaries detailing averages (validation, coverage, confidence) and count ratios.
+  * `ApprovalTrend`: Chronological metric trend lines (`improving`, `declining`, `stable`).
+  * `ApprovalPattern`: Identified recurring blockers or quality gaps (`repeated_blocker`, `frequent_changes_requested`, `documentation_gap`).
+  * `ApprovalRecommendationHistory`: Actionable recommendation compiled from historical patterns audits.
+  * `ApprovalHistoryReport`: Compilation report containing stats, trends, patterns, and recommendations.
+  * `ApprovalHistoryValidator`: Gating class checking state transitions validity and report schemas.
+  * `ApprovalHistoryAnalyzer`: Compiler calculating averages, metrics slopes, and patterns.
+* **Current Status**: Current.
+
 ---
 
 
