@@ -603,6 +603,24 @@ This section maps the essential runtime components of the operating system:
   * `WorkflowPlanningReport`: Output report payload containing resolved dependencies, suggestion IDs, and optimizations compiled.
 * **Current Status**: Current.
 
+### 3.36 n8n Translation Engine Data Models
+* **Purpose**: Compiles provider-independent Workflow IR schemas into native JSON structures compatible with self-hosted n8n instances.
+* **Data Models & Components**:
+  * `WorkflowTranslator`: Central coordinating service driving translation runs, logging report markdown files, caching summaries, and publishing notion database pages.
+  * `WorkflowIR`: Canonical Intermediate Representation containing schemas for variables, nodes, and policies.
+  * `WorkflowCompiler`: Translator compiling high-level workflow definitions to IR.
+  * `WorkflowSerializer`: Serializer printing output structures as pretty JSON files.
+  * `N8NTranslationEngine`: Engine driving translation runs by coordinating mappers.
+  * `N8NWorkflowBuilder`: Final builder organizing connection blocks, default settings, and metadata tags.
+  * `N8NNodeMapper`: Abstract mapper interface subclassed by `LocalN8NNodeMapper` (mapping triggers, actions, HTTP calls, scripts, and Slack notifies).
+  * `N8NConnectionMapper`: Connection builder formatting DAG edges into n8n's connection routing map.
+  * `N8NExpressionBuilder`: Logic expressions translator converting evaluation logic into JS expression blocks.
+  * `N8NCredentialMapper`: Credential parser referencing named vault tags to secure API nodes.
+  * `TranslationContext`: Class tracking local error lists and variables mappings.
+  * `TranslationReport`: Translation summary containing connection counts, node counts, errors, and output JSON paths.
+  * `TranslationValidator`: Schema and broken edges validator.
+* **Current Status**: Current.
+
 ---
 
 
