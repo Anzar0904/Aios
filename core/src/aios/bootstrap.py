@@ -532,6 +532,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     review_service.initialize()
     registry.register(ReviewEngine, review_service)
 
+    from aios.services.collaboration import ReviewCollaborationService
+    from aios.services.collaboration_impl import LocalReviewCollaborationService
+
+    collab_service = LocalReviewCollaborationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    collab_service.initialize()
+    registry.register(ReviewCollaborationService, collab_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

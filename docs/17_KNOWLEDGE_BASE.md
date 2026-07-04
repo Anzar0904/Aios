@@ -529,6 +529,24 @@ This section maps the essential runtime components of the operating system:
   * `ReviewReport`: Review payload packaged for Knowledge Hub syncs.
 * **Current Status**: Current.
 
+### 3.32 Collaboration Engine Data Models
+* **Purpose**: Manages structured reviewer discussions, file/artifact comments, threads resolving/reopening workflows, immutable timeline logs, and reviewer votes for approval package gates.
+* **Data Models & Components**:
+  * `ReviewCollaborationService`: Main coordinator managing comments, threads, timeline tracing, voting, and Notion sync.
+  * `Reviewer`: Profile data representing human code reviewers.
+  * `ReviewerRole`: Enum mapping configurable reviewer roles (`OWNER`, `MAINTAINER`, `REVIEWER`, `ARCHITECT`, `SECURITY`, `QA`, `OBSERVER`).
+  * `ReviewComment`: Individual reviewer comment containing replies, statuses, and linked engineering artifacts.
+  * `ReviewThread`: Discussion thread nesting comment replies.
+  * `ReviewVote`: Reviewer gate vote decision (`approve`, `approve_with_conditions`, `request_changes`, `reject`).
+  * `ReviewAction`: Enum mapping timeline logs action categories (`CREATE`, `COMMENT`, `REPLY`, `RESOLVE`, `REOPEN`, `VOTE`, `STATUS_CHANGE`).
+  * `ReviewAuditLog`: Struct representing append-only, immutable logs entries.
+  * `ReviewTimeline`: Immutable chronological log of review session events.
+  * `ReviewCheckpoint`: Summary snapshot tracking active votes and thread statuses.
+  * `ReviewResolution`: Final gate resolution summary details.
+  * `ReviewFeedback`: Reviewer satisfaction feedback rating notes.
+  * `ReviewCollaborationReport`: Report container encapsulating threads, timelines, and audit logs.
+* **Current Status**: Current.
+
 ---
 
 
