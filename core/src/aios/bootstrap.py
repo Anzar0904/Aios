@@ -495,6 +495,19 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     eng_doc_service.initialize()
     registry.register(EngineeringDocumentationService, eng_doc_service)
 
+    from aios.services.release_documentation import ReleaseDocumentationService
+    from aios.services.release_documentation_impl import LocalReleaseDocumentationService
+
+    release_doc_service = LocalReleaseDocumentationService(
+        memory_service=memory_service,
+        profile_service=profile_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    release_doc_service.initialize()
+    registry.register(ReleaseDocumentationService, release_doc_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

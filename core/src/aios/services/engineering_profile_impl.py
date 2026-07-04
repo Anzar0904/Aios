@@ -58,7 +58,12 @@ class LocalProfileSerializer(ProfileSerializer):
             },
             "documentation": {
                 "format": profile.documentation.format,
-                "generate_api_docs": profile.documentation.generate_api_docs
+                "generate_api_docs": profile.documentation.generate_api_docs,
+                "release_formatting_rules": profile.documentation.release_formatting_rules,
+                "markdown_preferences": profile.documentation.markdown_preferences,
+                "section_ordering": profile.documentation.section_ordering,
+                "naming_conventions": profile.documentation.naming_conventions,
+                "versioning_preferences": profile.documentation.versioning_preferences
             },
             "github": {
                 "org_name": profile.github.org_name,
@@ -111,7 +116,12 @@ class LocalProfileSerializer(ProfileSerializer):
         doc_data = data.get("documentation", {})
         documentation = DocumentationProfile(
             format=doc_data.get("format", "markdown"),
-            generate_api_docs=bool(doc_data.get("generate_api_docs", True))
+            generate_api_docs=bool(doc_data.get("generate_api_docs", True)),
+            release_formatting_rules=doc_data.get("release_formatting_rules", {}),
+            markdown_preferences=doc_data.get("markdown_preferences", {}),
+            section_ordering=doc_data.get("section_ordering", []),
+            naming_conventions=doc_data.get("naming_conventions", {}),
+            versioning_preferences=doc_data.get("versioning_preferences", {})
         )
         
         git_data = data.get("github", {})
@@ -241,7 +251,37 @@ class LocalEngineeringProfileService(EngineeringProfileService):
             },
             "documentation": {
                 "format": "markdown",
-                "generate_api_docs": True
+                "generate_api_docs": True,
+                "release_formatting_rules": {
+                    "include_header_metadata": True,
+                    "use_code_blocks_for_versions": True
+                },
+                "markdown_preferences": {
+                    "list_style": "-",
+                    "bold_headers": True
+                },
+                "section_ordering": [
+                    "Feature Summary",
+                    "Bug Fix Summary",
+                    "Breaking Changes",
+                    "Validation Summary",
+                    "Known Issues",
+                    "Compatibility Notes",
+                    "Future Improvements",
+                    "Release Checklist",
+                    "Deployment Notes",
+                    "Rollback Notes"
+                ],
+                "naming_conventions": {
+                    "release_notes": "RELEASE_NOTES_{version}.md",
+                    "changelog": "CHANGELOG.md",
+                    "migration_guide": "MIGRATION_GUIDE_{from}_TO_{to}.md",
+                    "upgrade_guide": "UPGRADE_GUIDE_{version}.md"
+                },
+                "versioning_preferences": {
+                    "supported_channels": ["alpha", "beta", "rc", "stable"],
+                    "strict_semver": True
+                }
             },
             "github": {
                 "org_name": "Anzar0904",

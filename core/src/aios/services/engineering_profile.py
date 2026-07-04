@@ -45,6 +45,12 @@ class DocumentationProfile:
     __test__ = False
     format: str
     generate_api_docs: bool
+    release_formatting_rules: Dict[str, Any] = field(default_factory=dict)
+    markdown_preferences: Dict[str, Any] = field(default_factory=dict)
+    section_ordering: List[str] = field(default_factory=list)
+    naming_conventions: Dict[str, str] = field(default_factory=dict)
+    versioning_preferences: Dict[str, Any] = field(default_factory=dict)
+
 
 
 @dataclass

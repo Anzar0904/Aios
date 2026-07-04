@@ -479,6 +479,21 @@ This section maps the essential runtime components of the operating system:
   * `EngineeringDocumentationReport`: Executive summary report tracking recommendations.
 * **Current Status**: Current.
 
+### 3.29 Release Documentation Intelligence Data Models
+* **Purpose**: Compiles, plans, validates, and generates release notes, changelogs, migration guides, and upgrade guides for version releases inside isolated workspace environments.
+* **Data Models & Components**:
+  * `ReleaseDocumentationService`: Central coordinating service implementing notes, changelogs, migration, and upgrade guides creation pipelines.
+  * `ReleaseNotesGenerator`: Formats ReleaseSummary details and facets into standard Markdown Release Notes.
+  * `ChangelogGenerator`: Parses lists of commits into Keep a Changelog standard format.
+  * `MigrationGuideGenerator`: Formats breaking changes instructions into step-by-step migration checklists.
+  * `UpgradeGuideGenerator`: Compiles deployment steps checklists into standard upgrade guides.
+  * `ReleaseSummary`: Consolidated metrics summary of features, fixes, and breaking changes.
+  * `ReleaseArtifact`: Output artifact containing the generated documentation content.
+  * `ReleaseValidator`: Validates semantic versioning consistency, broken references, duplicate release entries, and markdown structures.
+  * `ReleaseDocumentPlanner`: Compiles release scope metrics and plans the required documentation based on workspace metadata.
+  * `ReleaseDocumentationReport`: Validation check report output detailing validation errors or warnings.
+* **Current Status**: Current.
+
 ---
 
 
