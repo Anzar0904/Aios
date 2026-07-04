@@ -329,6 +329,20 @@ This section maps the essential runtime components of the operating system:
   * `PytestAdapter`: Adapter wrapping subprocess runs.
 * **Current Status**: Current.
 
+### 3.20 Coverage & Regression Intelligence Data Models
+* **Purpose**: Compares test execution outcomes against target coverage policies, flags code validation gaps, and calculates regression probability parameters based on import dependency density.
+* **Data Models & Components**:
+  * `AITestCoverageService`: Coordinating service triggering validation checks, caching report summaries in Memory, and publishing reports.
+  * `CoverageAnalyzer`: Calculates simulated statement and branch coverages.
+  * `RegressionAnalyzer`: Checks dependency charts to compute regression risks levels.
+  * `CoverageMetrics`: Struct encapsulating statement, branch, class, and interface coverage totals.
+  * `CoveragePolicy`: Threshold settings specifying minimum statement/branch coverage goals.
+  * `CoverageSummary`: Overall calculated coverage metrics summary.
+  * `CoverageReport`: Formulated coverage metrics evaluation record.
+  * `RegressionRisk`: Risk ratings (Low, Medium, High, Critical) and probability indices.
+  * `ValidationGap`: Actionable descriptions indicating missing suites or low test coverages.
+* **Current Status**: Current.
+
 ---
 
 
