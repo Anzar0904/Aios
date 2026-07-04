@@ -587,6 +587,22 @@ This section maps the essential runtime components of the operating system:
   * `AutomationReport`: Execution report payload formatted for Knowledge Hub updates.
 * **Current Status**: Current.
 
+### 3.35 Workflow Intelligence Data Models
+* **Purpose**: Transforms engineering intents (e.g., deployments, tests runs, notifications) into provider-independent, optimized workflow graphs and schedules.
+* **Data Models & Components**:
+  * `WorkflowPlanner`: Central coordinator service creating sessions, generating plans, compiling reports, and caching summaries.
+  * `WorkflowIntentAnalyzer`: Analysis engine mapping text expressions to templates and tags.
+  * `WorkflowTemplateRegistry`: Registry hosting parameterized templates (CI/CD, Backups, Reviews).
+  * `WorkflowTemplate`: Structural prototype holding nodes, edges, parameters, and descriptions.
+  * `WorkflowComposer`: Hydration logic composing WorkflowDefinitions from templates and configs.
+  * `WorkflowDependencyResolver`: Topological sorting engine ordering nodes based on graph edges.
+  * `WorkflowOptimizer`: Graph optimizer merging duplicates, removing unreachable nodes, and pruning cycles.
+  * `WorkflowSuggestionEngine`: Template selection helper matching intents to registry IDs.
+  * `WorkflowConstraint`: Gate rule detailing conditions and validation severity thresholds.
+  * `WorkflowPlanningSession`: Planning session lifecycle tracker.
+  * `WorkflowPlanningReport`: Output report payload containing resolved dependencies, suggestion IDs, and optimizations compiled.
+* **Current Status**: Current.
+
 ---
 
 

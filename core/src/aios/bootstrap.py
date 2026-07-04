@@ -568,6 +568,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     automation_service.initialize()
     registry.register(AutomationService, automation_service)
 
+    from aios.services.workflow_planning import WorkflowPlanner
+    from aios.services.workflow_planning_impl import LocalWorkflowPlanner
+
+    workflow_planner = LocalWorkflowPlanner(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    workflow_planner.initialize()
+    registry.register(WorkflowPlanner, workflow_planner)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel
