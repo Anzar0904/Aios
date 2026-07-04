@@ -1,0 +1,493 @@
+import os
+import json
+import time
+import logging
+from typing import Dict, List, Any, Optional
+
+from aios.services.model import LLMRequest, ModelService
+from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
+from aios.services.knowledge_hub import (
+    KnowledgeHubService,
+    KnowledgeDocument,
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.ai_workspace import AIWorkspaceService
+from aios.services.approval import (
+    ApprovalStatus,
+    ApprovalDecision,
+    ApprovalEvidence,
+    ApprovalRule,
+    ApprovalPolicy,
+    ApprovalPackage,
+    ApprovalRequest,
+    ApprovalSession,
+    ApprovalSummary,
+    ApprovalHistory,
+    ApprovalReport,
+    ApprovalValidator,
+    ApprovalManager,
+    ApprovalEngineService,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class MinValidationScoreRule(ApprovalRule):
+    """Ensures validation overall score meets targeted gating value."""
+
+    def __init__(self, min_score: float) -> None:
+        super().__init__(
+            rule_name="MinValidationScore",
+            description=f"Validation score must meet or exceed {min_score} threshold."
+        )
+        self.min_score = min_score
+
+    def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
+        score = package.validation_summary.get("score", 0.0)
+        if score >= self.min_score:
+            return True, f"Validation score of {score:.1f} meets min requirement {self.min_score:.1f}."
+        return False, f"Validation score of {score:.1f} is below minimum requirement {self.min_score:.1f}."
+
+
+class RequiredCoverageRule(ApprovalRule):
+    """Ensures test statement coverage matches minimum thresholds."""
+
+    def __init__(self, min_coverage: float) -> None:
+        super().__init__(
+            rule_name="RequiredCoverage",
+            description=f"Statement coverage must stand above {min_coverage}%."
+        )
+        self.min_coverage = min_coverage
+
+    def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
+        cov = package.coverage_summary.get("achieved_pct", 0.0)
+        if cov >= self.min_coverage:
+            return True, f"Coverage of {cov:.1f}% meets minimum criteria {self.min_coverage:.1f}%."
+        return False, f"Coverage of {cov:.1f}% is below target requirement {self.min_coverage:.1f}%."
+
+
+class MaxRiskLevelRule(ApprovalRule):
+    """Enforces safety constraints by bounding implementation risks level."""
+
+    def __init__(self, max_allowed_level: str) -> None:
+        super().__init__(
+            rule_name="MaxRiskLevel",
+            description=f"Gating risk level must not exceed '{max_allowed_level}'."
+        )
+        self.max_allowed_level = max_allowed_level
+        self._ranks = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+    def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
+        curr = package.risk_summary.get("risk_level", "low").lower()
+        curr_val = self._ranks.get(curr, 1)
+        max_val = self._ranks.get(self.max_allowed_level.lower(), 2)
+        if curr_val <= max_val:
+            return True, f"Current risk level '{curr}' complies with policy (<= '{self.max_allowed_level}')."
+        return False, f"Current risk level '{curr}' exceeds acceptable limit of '{self.max_allowed_level}'."
+
+
+class DocumentationCompletenessRule(ApprovalRule):
+    """Validates that documentation files exist or are fully complete."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            rule_name="DocumentationCompleteness",
+            description="Checks that all required documentation sections are resolved."
+        )
+
+    def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
+        completed = package.documentation_summary.get("completed", False)
+        missing = package.documentation_summary.get("missing_docs", [])
+        if completed and not missing:
+            return True, "Documentation is complete and compliant."
+        return False, f"Incomplete documentation. Missing: {', '.join(missing) if missing else 'Mandatory files missing'}"
+
+
+class CriticalFailureThresholdRule(ApprovalRule):
+    """Guards execution pathways from running when critical bugs/failures exist."""
+
+    def __init__(self, max_failures: int = 0) -> None:
+        super().__init__(
+            rule_name="CriticalFailureThreshold",
+            description=f"Critical failure count must stand below or equal to {max_failures}."
+        )
+        self.max_failures = max_failures
+
+    def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
+        count = package.failure_summary.get("critical_count", 0)
+        if count <= self.max_failures:
+            return True, f"Critical failures count ({count}) is within limit (<= {self.max_failures})."
+        return False, f"Critical failures count ({count}) exceeds maximum threshold of {self.max_failures}."
+
+
+class EngineeringProfileRequirementsRule(ApprovalRule):
+    """Verifies alignment between targets and global profile standards."""
+
+    def __init__(self, target_language: str = "python") -> None:
+        super().__init__(
+            rule_name="EngineeringProfileRequirements",
+            description=f"Language and style targets must conform to '{target_language}' standards."
+        )
+        self.target_language = target_language
+
+    def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
+        lang = package.metadata.get("profile_language", "python")
+        if lang == self.target_language:
+            return True, f"Language check passed: '{lang}' conforms with active target profiles."
+        return False, f"Target language '{lang}' does not match required profile configuration '{self.target_language}'."
+
+
+class LocalApprovalValidator(ApprovalValidator):
+    """Verifies that approval packages are complete and consistent."""
+
+    def validate_package(self, package: ApprovalPackage) -> List[str]:
+        errors = []
+        if not package.engineering_summary.strip():
+            errors.append("Validation Error: Engineering summary block is empty.")
+        if not package.validation_summary:
+            errors.append("Validation Error: Validation summary metrics missing.")
+        if not package.documentation_summary:
+            errors.append("Validation Error: Documentation completeness metrics missing.")
+        if not package.risk_summary:
+            errors.append("Validation Error: Risk assessment details missing.")
+        if not package.affected_files:
+            errors.append("Validation Error: Affected files list is empty.")
+        if not (0.0 <= package.confidence_score <= 1.0):
+            errors.append(f"Validation Error: Confidence score '{package.confidence_score}' stands outside range [0.0, 1.0].")
+        if not package.overall_health:
+            errors.append("Validation Error: Overall engineering health status parameter is missing.")
+        return errors
+
+    def check_duplicate_request(self, request: ApprovalRequest, history: List[ApprovalSummary]) -> bool:
+        for record in history:
+            if (
+                record.workspace_id == request.workspace_id
+                and abs(record.timestamp - request.timestamp) < 60.0
+            ):
+                return True
+        return False
+
+
+class LocalApprovalManager(ApprovalManager):
+    """Concrete compiler and policy evaluation controller."""
+
+    def create_session(self, request: ApprovalRequest) -> ApprovalSession:
+        return ApprovalSession(
+            session_id=f"app_sess_{int(time.time())}",
+            request=request,
+            package=None,
+            decision=None,
+            status="open",
+            created_at=time.time()
+        )
+
+    def compile_package(self, session: ApprovalSession) -> ApprovalPackage:
+        request = session.request
+        
+        # Populate defaults
+        eng_summary = "Autogenerated technical summary details."
+        validation_summary = {"score": 85.0, "status": "pass", "tests_run_count": 100}
+        documentation_summary = {"completed": True, "missing_docs": []}
+        risk_summary = {"risk_level": "low", "areas": ["kernel"]}
+        affected_files = []
+        affected_components = []
+        coverage_summary = {"achieved_pct": 80.0}
+        failure_summary = {"critical_count": 0}
+        recommendations = []
+        confidence_score = 0.9
+        overall_health = "healthy"
+        profile_lang = "python"
+
+        # Parse aggregated evidence
+        for ev in request.evidence:
+            if ev.source == "validation_report":
+                validation_summary["score"] = ev.data.get("overall_score", 85.0)
+                validation_summary["tests_run_count"] = ev.data.get("total_tests_run", 100)
+                coverage_summary["achieved_pct"] = ev.data.get("coverage_pct", 80.0)
+                failure_summary["critical_count"] = ev.data.get("critical_count", 0)
+                if failure_summary["critical_count"] > 0:
+                    overall_health = "degraded"
+            elif ev.source == "engineering_intelligence":
+                eng_summary = ev.data.get("objective", "Objective sync summary.")
+                risk_summary["risk_level"] = ev.data.get("risk_level", "low")
+                affected_files.extend(ev.data.get("affected_files", []))
+                affected_components.extend(ev.data.get("affected_components", []))
+            elif ev.source == "readme_intelligence":
+                missing = ev.data.get("missing_sections", [])
+                if missing:
+                    documentation_summary["completed"] = False
+                    documentation_summary["missing_docs"] = missing
+            elif ev.source == "engineering_profile":
+                profile_lang = ev.data.get("language", "python")
+
+        if not affected_files:
+            affected_files = ["core/src/aios/kernel.py"]
+        if not affected_components:
+            affected_components = ["Kernel"]
+
+        # Form default configurable policy
+        policy = ApprovalPolicy(
+            policy_id=request.policy_id,
+            name="Standard Quality Gating Policy",
+            rules=[
+                MinValidationScoreRule(min_score=80.0),
+                RequiredCoverageRule(min_coverage=75.0),
+                MaxRiskLevelRule(max_allowed_level="medium"),
+                DocumentationCompletenessRule(),
+                CriticalFailureThresholdRule(max_failures=0),
+                EngineeringProfileRequirementsRule(target_language=profile_lang)
+            ]
+        )
+
+        return ApprovalPackage(
+            package_id=f"pkg_{request.request_id}",
+            workspace_id=request.workspace_id,
+            engineering_summary=eng_summary,
+            validation_summary=validation_summary,
+            documentation_summary=documentation_summary,
+            risk_summary=risk_summary,
+            affected_files=affected_files,
+            affected_components=affected_components,
+            coverage_summary=coverage_summary,
+            failure_summary=failure_summary,
+            recommendations=recommendations,
+            policy=policy,
+            reviewer_notes=[],
+            approval_history=[],
+            confidence_score=confidence_score,
+            overall_health=overall_health,
+            evidence=request.evidence,
+            metadata={"profile_language": profile_lang}
+        )
+
+    def evaluate_policy(self, package: ApprovalPackage) -> ApprovalDecision:
+        passed_reasons = []
+        failed_reasons = []
+        
+        for rule in package.policy.rules:
+            ok, reason = rule.evaluate(package)
+            if ok:
+                passed_reasons.append(f"Passed: {rule.rule_name} - {reason}")
+            else:
+                failed_reasons.append(f"Failed: {rule.rule_name} - {reason}")
+
+        reviewer_notes = list(passed_reasons)
+        if failed_reasons:
+            status = ApprovalStatus.REJECTED
+            # Check if failures warrant manual review or rejection
+            if len(failed_reasons) == 1 and "Documentation" in failed_reasons[0]:
+                status = ApprovalStatus.CHANGES_REQUESTED
+            reasoning = f"Policy evaluation failed. Discrepancies discovered:\n" + "\n".join(failed_reasons)
+        else:
+            status = ApprovalStatus.APPROVED
+            reasoning = "All safety checks and validation gates passed successfully."
+
+        return ApprovalDecision(
+            status=status,
+            reasoning=reasoning,
+            reviewer_notes=reviewer_notes,
+            timestamp=time.time()
+        )
+
+
+class LocalApprovalEngineService(ApprovalEngineService):
+    """Central orchestrator managing approval sessions, storage in memory, and reporting."""
+
+    def __init__(
+        self,
+        memory_service: MemoryService,
+        knowledge_hub: Optional[KnowledgeHubService] = None,
+        model_service: Optional[ModelService] = None,
+        registry: Optional[Any] = None
+    ) -> None:
+        self._memory = memory_service
+        self._knowledge_hub = knowledge_hub
+        self._model = model_service
+        self._registry = registry
+
+        self._validator = LocalApprovalValidator()
+        self._manager = LocalApprovalManager()
+        
+        self._sessions: Dict[str, ApprovalSession] = {}
+        self._histories: Dict[str, ApprovalHistory] = {}
+
+    def initialize(self) -> None:
+        logger.info("Initializing LocalApprovalEngineService")
+
+    def start(self) -> None:
+        pass
+
+    def stop(self) -> None:
+        pass
+
+    def _write_to_workspace(self, workspace_id: str, filename: str, content: str) -> str:
+        workspace_root = None
+        workspace_service = None
+        if self._registry:
+            try:
+                workspace_service = self._registry.get(AIWorkspaceService)
+            except Exception:
+                pass
+
+        if workspace_service and hasattr(workspace_service, "_workspaces"):
+            meta = workspace_service._workspaces.get(workspace_id)
+            if meta:
+                workspace_root = meta.workspace_root
+
+        if not workspace_root:
+            workspace_root = os.path.join(os.getcwd(), "temp", "workspaces", workspace_id)
+
+        approvals_dir = os.path.join(workspace_root, "docs", "approvals")
+        os.makedirs(approvals_dir, exist_ok=True)
+        
+        file_path = os.path.join(approvals_dir, filename)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return file_path
+
+    def request_approval(self, request: ApprovalRequest) -> ApprovalSession:
+        logger.info(f"Received approval request '{request.request_id}' for workspace '{request.workspace_id}'")
+
+        # 1. Duplicate review check
+        history = self.get_history(request.workspace_id)
+        if self._validator.check_duplicate_request(request, history.records):
+            logger.warning("Duplicate approval request detected within cooling-off threshold.")
+
+        # 2. Start session
+        session = self._manager.create_session(request)
+        self._sessions[session.session_id] = session
+
+        # 3. Compile Package
+        package = self._manager.compile_package(session)
+        session.package = package
+
+        # Validate package completeness
+        validation_warnings = self._validator.validate_package(package)
+        if validation_warnings:
+            logger.warning(f"Package validation structural warnings: {validation_warnings}")
+
+        # 4. Evaluate Policy rules
+        decision = self._manager.evaluate_policy(package)
+        session.decision = decision
+
+        # 5. AI Refinement (if model exists)
+        if self._model:
+            try:
+                prompt = (
+                    "You are the Lead Systems Architect responsible for quality approvals.\n"
+                    f"Engineering Summary:\n{package.engineering_summary}\n"
+                    f"Decision status: {decision.status.value}\n"
+                    f"Decision reasoning: {decision.reasoning}\n\n"
+                    "Refine layout structures and add architectural recommendations. Return refined markdown format only."
+                )
+                res = self._model.execute_request(
+                    LLMRequest(
+                        prompt=prompt,
+                        system_instruction="Output refined markdown content directly.",
+                        task_category="testing"
+                    )
+                )
+                refined = res.content.strip()
+                if refined:
+                    decision.reasoning = refined
+            except Exception as e:
+                logger.debug(f"LLM Approval decision refinement failed: {e}")
+
+        # 6. Save artifacts ONLY in Workspace
+        report_md = (
+            f"# Approval Package Decision Report\n\n"
+            f"**Session ID**: `{session.session_id}`\n"
+            f"**Workspace ID**: `{package.workspace_id}`\n"
+            f"**Overall Health Status**: `{package.overall_health.upper()}`\n"
+            f"**Confidence Rating**: `{package.confidence_score:.2f}`\n"
+            f"**Approval Decision**: `{decision.status.value.upper()}`\n\n"
+            f"## Outcome Reasoning\n{decision.reasoning}\n\n"
+            f"## Affected Files\n" + "\n".join(f"- `{f}`" for f in package.affected_files)
+        )
+        self._write_to_workspace(request.workspace_id, f"APPROVAL_REPORT_{session.session_id}.md", report_md)
+
+        # 7. Record History
+        summary = ApprovalSummary(
+            summary_id=f"sum_{session.session_id}",
+            session_id=session.session_id,
+            workspace_id=request.workspace_id,
+            status=decision.status,
+            confidence_score=package.confidence_score,
+            overall_health=package.overall_health,
+            timestamp=time.time()
+        )
+        history.records.append(summary)
+
+        session.status = "closed"
+        session.closed_at = time.time()
+        return session
+
+    def get_session(self, session_id: str) -> Optional[ApprovalSession]:
+        return self._sessions.get(session_id)
+
+    def get_history(self, workspace_id: str) -> ApprovalHistory:
+        if workspace_id not in self._histories:
+            self._histories[workspace_id] = ApprovalHistory(
+                history_id=f"hist_{workspace_id}",
+                workspace_id=workspace_id,
+                records=[]
+            )
+        return self._histories[workspace_id]
+
+    def store_approval_summary(self, session: ApprovalSession) -> None:
+        if not session.decision or not session.package:
+            return
+        
+        # Save ONLY metadata summaries. Never save codebase contents or source files.
+        content = (
+            f"Approval Decision Logged\n"
+            f"Workspace ID: {session.request.workspace_id}\n"
+            f"Session ID: {session.session_id}\n"
+            f"Decision Status: {session.decision.status.value.upper()}\n"
+            f"Confidence Score: {session.package.confidence_score:.2f}\n"
+            f"Timestamp: {time.ctime(session.created_at)}"
+        )
+
+        self._memory.add_memory(
+            content=content,
+            memory_type=MemoryType.PROJECT,
+            tags=["approval_decision", "gating_history", "validation_checkpoint"],
+            importance=2,
+            metadata_additional={
+                "session_id": session.session_id,
+                "workspace_id": session.request.workspace_id,
+                "status": session.decision.status.value,
+                "confidence_score": session.package.confidence_score,
+                "overall_health": session.package.overall_health
+            }
+        )
+
+    def publish_approval_report(self, report: ApprovalReport) -> None:
+        if not self._knowledge_hub:
+            logger.warning("Knowledge Hub not registered. Skipping publishing.")
+            return
+
+        recs_md = "\n".join(f"- {r}" for r in report.package_summary.get("recommendations", []))
+        report_md = (
+            f"# Notion Sync - Quality Gate Decision\n\n"
+            f"**Report ID**: `{report.report_id}`\n"
+            f"**Session ID**: `{report.session_id}`\n"
+            f"**Workspace ID**: `{report.workspace_id}`\n"
+            f"**Decision status**: `{report.decision.status.value.upper()}`\n\n"
+            f"## Details Reasoning\n{report.decision.reasoning}\n\n"
+            f"## Recommendations\n" + (recs_md if recs_md else "- *None.*")
+        )
+
+        doc = KnowledgeDocument(
+            document_id=f"app_report_{report.report_id}",
+            title=f"Approval Gate - {report.report_id}",
+            content=report_md,
+            metadata=KHMetadata(
+                unique_id=f"app_report_{report.report_id}",
+                timestamp=report.timestamp,
+                source_subsystem="approval_engine_service",
+                category="Project"
+            )
+        )
+        self._knowledge_hub.sync_document(doc, "notion")

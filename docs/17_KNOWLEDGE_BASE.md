@@ -494,6 +494,25 @@ This section maps the essential runtime components of the operating system:
   * `ReleaseDocumentationReport`: Validation check report output detailing validation errors or warnings.
 * **Current Status**: Current.
 
+### 3.30 Approval Engine Data Models
+* **Purpose**: Serves as the central decision layer evaluating aggregated engineering, validation, and documentation evidence to produce structured approval decisions without modifying files or running commands.
+* **Data Models & Components**:
+  * `ApprovalEngineService`: Conductor service managing approval requests, evaluations, history records, and Notion reporting.
+  * `ApprovalManager`: Orchestrates session instantiation, evidence compilation, and policy evaluation.
+  * `ApprovalSession`: Lifecycle tracker for active evaluation processes.
+  * `ApprovalRequest`: Intake request containing target versions, policy selections, and collected evidence.
+  * `ApprovalDecision`: Result status carrying reasoning parameters and reviewer notes.
+  * `ApprovalStatus`: Enum mapping gate states (`PENDING`, `APPROVED`, `APPROVED_WITH_CONDITIONS`, `PARTIALLY_APPROVED`, `MANUAL_REVIEW`, `CHANGES_REQUESTED`, `REJECTED`).
+  * `ApprovalPolicy`: Configurable parameters grouping custom evaluation rules.
+  * `ApprovalRule`: Extensible gating check class evaluating coverage ratios, validation scores, risk thresholds, and documentation states.
+  * `ApprovalEvidence`: Input telemetries aggregated from validation, testing, readme, or architectural analyzers.
+  * `ApprovalSummary`: Memory-only metadata record saved to the Project Memory store.
+  * `ApprovalHistory`: Collection list of all previous validation runs per workspace.
+  * `ApprovalReport`: Report payload structured for external Notion databases syncs.
+  * `ApprovalValidator`: Package checker verifying structural completeness, duplicate requests, and decision consistency.
+  * `AutomationIntelligenceService`, `GitHubAutomationService`, `ExecutionPlanService`, `ApplyEngineService`, `ReleaseIntelligenceService`: Exposed future subsystem integration points.
+* **Current Status**: Current.
+
 ---
 
 
