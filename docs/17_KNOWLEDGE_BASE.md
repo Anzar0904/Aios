@@ -144,6 +144,78 @@ This section maps the essential runtime components of the operating system:
   * `RepositoryAnalyzer`, `ArchitectureAnalyzer`, `DependencyAnalyzer`, `TechnologyAnalyzer`, `DocumentationAnalyzer`: Modular subcomponents.
 * **Current Status**: Current.
 
+### 3.8 Code Intelligence Data Models
+* **Purpose**: Provide code-level structural understanding, AST-level symbol extraction, inheritance mapping, and call/dependency graph construction.
+* **Data Models & Components**:
+  * `CodeIntelligenceService`: Unified service managing codebase-level structural analysis, metadata persistence, and Knowledge Hub publishing.
+  * `ASTAnalyzer`: Component responsible for parsing source files into syntax symbols.
+  * `LanguageASTParser`: Extensible abstract parser interface supporting Python and TypeScript, designed to easily register Go, Rust, Java, C#, and C++ in the future.
+  * `SymbolReference`: Models an extracted symbol (class, dataclass, function, method, interface, enum, module, import) featuring decorators, visibility, line ranges, and metadata.
+  * `CodeStructureSummary`: Unifies the indexed symbols, module dependency graph, function call graph, inheritance map, and public API lists.
+  * `SymbolIndexer`, `DependencyGraphBuilder`, `CallGraphBuilder`: Specialized subcomponents for querying, linking, and analyzing code relationships.
+* **Current Status**: Current.
+
+### 3.9 Engineering Intelligence Data Models
+* **Purpose**: Provide structured code-change planning, architectural impact analysis, risk assessment, and complexity/effort estimation.
+* **Data Models & Components**:
+  * `EngineeringIntelligenceService`: Unified service managing engineering analyses, memory persistence, and report publishing.
+  * `EngineeringAnalyzer`: Coordinated orchestrator managing change impact, complexity, risk, and implementation planning.
+  * `ChangeImpactAnalyzer`: Identifies files and modules affected by a change objective.
+  * `ComplexityEstimator`: Estimates effort and classifies task complexity (Low, Medium, High, Very High).
+  * `RiskAnalyzer`: Analyzes safety risks (e.g. API breakages, circular dependencies, violations).
+  * `ImplementationPlanner`: Generates ordered implementation steps, required services, execution orders, and validation strategies.
+  * `AffectedFile`, `AffectedComponent`, `ChangeRecommendation`: Subcomponents representing change targets and suggestions.
+  * `EngineeringPlan`: Captures the structured plan steps, dependencies, risks, and validation methods.
+  * `EngineeringReport`: Unified final output document containing impact, complexity, risks, and plan.
+* **Current Status**: Current.
+
+### 3.10 AI Software Engineer Data Models
+* **Purpose**: Converts engineering plans into detailed, dependency-ordered, validation-gated executable development plans without writing code.
+* **Data Models & Components**:
+  * `SoftwareEngineerService`: Unified service providing development plan creation, storage, and publishing.
+  * `ImplementationPlanner`: Orchestrator that aggregates features, tasks, execution orders, testing, and docs into a unified plan.
+  * `FeaturePlanner`: Formulates high-level implementation phases and validation steps.
+  * `TaskDecomposer`: Breaks down objectives into prioritized tasks with criteria and effort estimates.
+  * `ExecutionPlanner`: Calculates safest execution order, task dependencies, and rollback strategies.
+  * `FilePlanner`: Identifies required files and setup/migration requirements.
+  * `TestingPlanner`: Maps required tests, verification methods, and testing strategy.
+  * `DocumentationPlanner`: Maps documentation and architectural guide updates.
+  * `ImplementationTask`: Represents a development task (title, description, priority, effort, completion criteria).
+  * `DevelopmentPhase`: Packages tasks and validation steps into logical release stages.
+  * `ValidationStep`: Describes step name, terminal commands, and expected results.
+  * `SoftwareEngineeringPlan`: Unified development plan containing phases, files, tests, documentation, and strategies.
+* **Current Status**: Current.
+
+### 3.11 Execution Engine Data Models
+* **Purpose**: Manages execution lifetimes, pre-flight task validation, checkpoint recording, and rollback instructions generation for approved software engineering plans.
+* **Data Models & Components**:
+  * `ExecutionEngine`: Central engine orchestrating execution lifetimes, sessions, checkpoints, validations, and rollbacks.
+  * `TaskExecutor`: Runs single tasks, prompting for explicit user permission gates.
+  * `ExecutionValidator`: Validates repository status, dependencies, and execution sequences.
+  * `ExecutionReporter`: Generates Markdown progress reports for publishing.
+  * `ExecutionSession`: Tracks current, completed, failed, and skipped tasks.
+  * `ExecutionStep`: Represents individual execution step results.
+  * `ExecutionCheckpoint`: Captures modified files, validation status, and completion summary after each task.
+  * `RollbackPlan`: Prepares git rollback instructions for reverting changes.
+  * `ExecutionResult`: Represents the result payload for execution loop completions.
+  * `ExecutionState`: Enum representing Lifecycle states (PENDING, RUNNING, PAUSED, COMPLETED, FAILED, CANCELLED).
+* **Current Status**: Current.
+
+### 3.12 AI Workspace Foundation Data Models
+* **Purpose**: Creates and manages the isolated temporary filesystem environments (sandboxes) where development tasks run, tracking metadata-only snapshots and session states without modifying the main repository.
+* **Data Models & Components**:
+  * `AIWorkspaceService`: Central service managing workspace session states, sandboxes, and recovery operations.
+  * `WorkspaceValidator`: Validates structural layouts, directory paths, and snapshot list compatibility.
+  * `WorkspaceCleaner`: Deletes temporary build logs and purges workspaces recursively.
+  * `WorkspaceMetadata`: Tracks sandbox configurations, original repo roots, and lifetime statuses.
+  * `WorkspaceSession`: Lifecycle tracker for active workspace engineering sessions.
+  * `WorkspaceSnapshot`: Captures file creation, modification, and deletion metadata.
+  * `WorkspaceFile`: Models workspace file sizing and classification details.
+  * `WorkspaceChange`: Logs a file change event history trace.
+  * `WorkspaceRecovery`: Logs recovery metrics when restoring snapshot configurations.
+  * `WorkspaceSandbox`: Tracks disk space allocation constraints.
+* **Current Status**: Current.
+
 ---
 
 

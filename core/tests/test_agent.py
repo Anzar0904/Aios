@@ -23,8 +23,13 @@ def test_agent_registration():
     )
     runtime.initialize()
 
-    # Verify MockAgent is registered by default
+    # Verify agents start empty under DIP
     agents = runtime._agents
+    assert "mock_agent" not in agents
+
+    # Register MockAgent explicitly
+    mock_agent = MockAgent(memory_service, context_service, tool_service)
+    runtime.register_agent(mock_agent)
     assert "mock_agent" in agents
     assert isinstance(agents["mock_agent"], MockAgent)
 
@@ -79,6 +84,7 @@ def test_mock_agent_execution_pipeline():
         event_bus, memory_service, context_service, tool_service, MagicMock()
     )
     runtime.initialize()
+    runtime.register_agent(MockAgent(memory_service, context_service, tool_service))
 
     # Track events
     started_events = []
@@ -124,6 +130,7 @@ def test_agent_runtime_failure_handling():
         event_bus, memory_service, context_service, tool_service, MagicMock()
     )
     runtime.initialize()
+    runtime.register_agent(MockAgent(memory_service, context_service, tool_service))
 
     failed_events = []
     event_bus.subscribe(AgentFailedEvent, lambda e: failed_events.append(e))

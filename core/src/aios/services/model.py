@@ -14,6 +14,9 @@ class LLMRequest:
     temperature: float = 0.7
     max_tokens: Optional[int] = None
     model_name: Optional[str] = None
+    task_category: Optional[str] = None
+    preferences: Dict[str, Any] = field(default_factory=dict)
+
 
 
 @dataclass

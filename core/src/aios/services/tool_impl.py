@@ -55,26 +55,42 @@ class FilesystemTool(Tool):
             },
         )
 
+    def __init__(self, workspace_root_provider=None) -> None:
+        self._workspace_root_provider = workspace_root_provider
+
     def execute(self, arguments: Dict[str, Any]) -> ToolResult:
+        from aios.services.security import validate_workspace_path
+
         action = arguments.get("action")
         path_str = arguments.get("path", ".")
 
+        if self._workspace_root_provider:
+            workspace_root = self._workspace_root_provider()
+        else:
+            workspace_root = str(Path.cwd().resolve())
+
         try:
-            path = Path(path_str).resolve()
-        except Exception as e:
-            return ToolResult(success=False, output="", error=f"Invalid path: {e}")
+            path = validate_workspace_path(path_str, workspace_root)
+        except PermissionError:
+            return ToolResult(
+                success=False,
+                output="",
+                error="Access denied: path escapes workspace.",
+            )
+        except Exception:
+            return ToolResult(success=False, output="", error="Invalid path format.")
 
         if action == "read":
             if not path.is_file():
                 return ToolResult(
-                    success=False, output="", error=f"Path '{path_str}' is not a file."
+                    success=False, output="", error="Path is not a file."
                 )
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
                 return ToolResult(success=True, output=content)
-            except Exception as e:
-                return ToolResult(success=False, output="", error=f"Failed to read file: {e}")
+            except Exception:
+                return ToolResult(success=False, output="", error="Failed to read file.")
 
         elif action == "write":
             content = arguments.get("content")
@@ -88,27 +104,27 @@ class FilesystemTool(Tool):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 with open(path, "w", encoding="utf-8") as f:
                     f.write(content)
-                return ToolResult(success=True, output=f"Successfully wrote to '{path_str}'.")
-            except Exception as e:
-                return ToolResult(success=False, output="", error=f"Failed to write file: {e}")
+                return ToolResult(success=True, output="Successfully wrote to file.")
+            except Exception:
+                return ToolResult(success=False, output="", error="Failed to write file.")
 
         elif action == "list":
             if not path.exists():
                 return ToolResult(
-                    success=False, output="", error=f"Path '{path_str}' does not exist."
+                    success=False, output="", error="Path does not exist."
                 )
             if not path.is_dir():
                 return ToolResult(
-                    success=False, output="", error=f"Path '{path_str}' is not a directory."
+                    success=False, output="", error="Path is not a directory."
                 )
             try:
                 items = sorted(os.listdir(path))
                 output = "\n".join(items)
                 return ToolResult(success=True, output=output)
-            except Exception as e:
-                return ToolResult(success=False, output="", error=f"Failed to list directory: {e}")
-
+            except Exception:
+                return ToolResult(success=False, output="", error="Failed to list directory.")
         return ToolResult(success=False, output="", error=f"Unknown filesystem action: {action}")
+
 
 
 class GitTool(Tool):
@@ -190,9 +206,21 @@ class TerminalTool(Tool):
         )
 
     def execute(self, arguments: Dict[str, Any]) -> ToolResult:
+        import shlex
+
         command = arguments.get("command", "").strip()
         if not command:
             return ToolResult(success=False, output="", error="Empty command.")
+
+        # Reject chained commands, pipes, redirects, command substitution, and shell metacharacters.
+        forbidden_metachars = [";", "&", "|", "<", ">", "$", "(", ")", "`", "\\", "*", "?", "[", "]", "!", "{", "}", "\n", "\r"]
+        for char in forbidden_metachars:
+            if char in command:
+                return ToolResult(
+                    success=False,
+                    output="",
+                    error=f"Command execution rejected: command contains forbidden shell metacharacter '{char}'.",
+                )
 
         dangerous = ["sudo", "rm -rf", "chmod", "chown", "dd", "mkfs", "shred"]
         for keyword in dangerous:
@@ -204,9 +232,43 @@ class TerminalTool(Tool):
                 )
 
         try:
+            cmd_parts = shlex.split(command)
+        except Exception as e:
+            return ToolResult(success=False, output="", error=f"Command parsing failed: {e}")
+
+        if not cmd_parts:
+            return ToolResult(success=False, output="", error="Empty command.")
+
+        whitelist = {"echo", "pwd", "whoami", "git"}
+        executable = cmd_parts[0]
+        if executable not in whitelist:
+            return ToolResult(
+                success=False,
+                output="",
+                error=f"Command execution rejected: executable '{executable}' is not in the whitelist.",
+            )
+
+        if executable == "pwd":
+            if len(cmd_parts) > 1:
+                return ToolResult(success=False, output="", error="pwd command does not accept arguments.")
+        elif executable == "whoami":
+            if len(cmd_parts) > 1:
+                return ToolResult(success=False, output="", error="whoami command does not accept arguments.")
+        elif executable == "git":
+            if len(cmd_parts) > 1:
+                subcommand = cmd_parts[1]
+                allowed_git_subcommands = {"status", "branch", "log", "diff", "show", "rev-parse", "version", "help"}
+                if subcommand not in allowed_git_subcommands:
+                    return ToolResult(
+                        success=False,
+                        output="",
+                        error=f"Command execution rejected: git subcommand '{subcommand}' is not allowed.",
+                    )
+
+        try:
             result = subprocess.run(
-                command,
-                shell=True,
+                cmd_parts,
+                shell=False,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -226,6 +288,7 @@ class TerminalTool(Tool):
             return ToolResult(success=False, output="", error=f"Failed to run command: {e}")
 
 
+
 class LocalToolManager(ToolService):
     """Concrete implementation of ToolService.
 
@@ -236,6 +299,7 @@ class LocalToolManager(ToolService):
     def __init__(self, event_bus: EventBusService) -> None:
         self._event_bus = event_bus
         self._tools: Dict[str, Tool] = {}
+        self._workspace_root = str(Path.cwd().resolve())
 
     def initialize(self) -> None:
         logger.info("Initializing LocalToolManager")
@@ -243,9 +307,23 @@ class LocalToolManager(ToolService):
         self._event_bus.register_event_type(ToolCompletedEvent)
         self._event_bus.register_event_type(ToolFailedEvent)
 
-        self.register_tool(FilesystemTool())
+        from aios.services.context import ContextLoadedEvent
+        from aios.services.session import SessionStartedEvent
+        self._event_bus.register_event_type(ContextLoadedEvent)
+        self._event_bus.register_event_type(SessionStartedEvent)
+        self._event_bus.subscribe(ContextLoadedEvent, self._on_context_loaded)
+        self._event_bus.subscribe(SessionStartedEvent, self._on_session_started)
+
+        self.register_tool(FilesystemTool(workspace_root_provider=lambda: self._workspace_root))
         self.register_tool(GitTool())
         self.register_tool(TerminalTool())
+
+    def _on_context_loaded(self, event) -> None:
+        self._workspace_root = event.context.project_root
+
+    def _on_session_started(self, event) -> None:
+        self._workspace_root = event.session.workspace_id
+
 
     def register_tool(self, tool: Tool) -> None:
         """Registers a tool with the engine."""

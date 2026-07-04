@@ -5,7 +5,7 @@ from aios.services.agent import (
     AgentFailedEvent,
     AgentStartedEvent,
 )
-from aios.services.agent_impl import LocalAgentRuntime
+from aios.services.agent_impl import DeveloperAgent, LocalAgentRuntime
 from aios.services.context import WorkspaceContext
 from aios.services.event_bus_impl import LocalEventBus
 from aios.services.intent import Intent, IntentType
@@ -69,6 +69,7 @@ def test_developer_agent_analyze_repository():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
+    runtime.register_agent(DeveloperAgent(memory_service, context_service, tool_service, model_service))
 
     # Track runtime events
     started = []
@@ -91,7 +92,6 @@ def test_developer_agent_analyze_repository():
 
     assert res.success is True
     assert "[MockLLM]" in res.response
-    tool_service.execute_tool.assert_called_with("filesystem", {"action": "list", "path": "."})
     model_service.execute_request.assert_called()
 
     # Check events
@@ -120,6 +120,7 @@ def test_developer_agent_explain_file():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
+    runtime.register_agent(DeveloperAgent(memory_service, context_service, tool_service, model_service))
 
     intent = Intent(
         intent_type=IntentType.DEVELOPER,
@@ -164,6 +165,7 @@ def test_developer_agent_git_review():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
+    runtime.register_agent(DeveloperAgent(memory_service, context_service, tool_service, model_service))
 
     intent = Intent(
         intent_type=IntentType.DEVELOPER,

@@ -16,7 +16,7 @@ from aios.services.tool_impl import (
 
 
 def test_filesystem_tool(tmp_path):
-    tool = FilesystemTool()
+    tool = FilesystemTool(workspace_root_provider=lambda: str(tmp_path))
 
     # Write
     file_path = tmp_path / "test.txt"
@@ -35,6 +35,55 @@ def test_filesystem_tool(tmp_path):
     res_list = tool.execute({"action": "list", "path": str(tmp_path)})
     assert res_list.success is True
     assert "test.txt" in res_list.output
+
+
+def test_filesystem_tool_traversal_attempts(tmp_path):
+    tool = FilesystemTool(workspace_root_provider=lambda: str(tmp_path))
+
+    # Nested directory creation (Valid workspace path)
+    subdir = tmp_path / "subdir"
+    subdir.mkdir()
+    nested_file = subdir / "nested.txt"
+    
+    # Valid write and read inside nested directory
+    res_write = tool.execute({"action": "write", "path": str(nested_file), "content": "nested content"})
+    assert res_write.success is True
+    
+    res_read = tool.execute({"action": "read", "path": str(nested_file)})
+    assert res_read.success is True
+    assert res_read.output == "nested content"
+
+    # Attempt relative traversal out of workspace
+    escaped_file = tmp_path.parent / "escaped.txt"
+    res_esc = tool.execute({"action": "write", "path": str(escaped_file), "content": "malicious"})
+    assert res_esc.success is False
+    assert "escapes workspace" in res_esc.error
+
+    escaped_relative = tmp_path / "subdir" / ".." / ".." / "escaped.txt"
+    res_esc_rel = tool.execute({"action": "write", "path": str(escaped_relative), "content": "malicious"})
+    assert res_esc_rel.success is False
+    assert "escapes workspace" in res_esc_rel.error
+
+    # Attempt absolute path out of workspace
+    res_abs = tool.execute({"action": "read", "path": "/etc/passwd"})
+    assert res_abs.success is False
+    assert "escapes workspace" in res_abs.error
+
+    # Symlink traversal test
+    external_secret = tmp_path.parent / "external_secret.txt"
+    external_secret.write_text("top secret")
+    
+    link_path = tmp_path / "symlink_test.txt"
+    try:
+        link_path.symlink_to(external_secret)
+        # Attempt to read the symlink
+        res_sym = tool.execute({"action": "read", "path": str(link_path)})
+        assert res_sym.success is False
+        assert "escapes workspace" in res_sym.error
+    except OSError:
+        pass
+
+
 
 
 def test_git_tool():
@@ -65,8 +114,8 @@ def test_terminal_tool():
     with patch("subprocess.run", return_value=mock_run) as patched_run:
         res = tool.execute({"command": "echo hello test"})
         patched_run.assert_called_with(
-            "echo hello test",
-            shell=True,
+            ["echo", "hello", "test"],
+            shell=False,
             capture_output=True,
             text=True,
             check=False,
@@ -79,6 +128,49 @@ def test_terminal_tool():
     res_dangerous = tool.execute({"command": "sudo rm -rf /"})
     assert res_dangerous.success is False
     assert "rejected" in res_dangerous.error
+
+
+def test_terminal_tool_security_safeguards():
+    tool = TerminalTool()
+
+    # Reject chained commands
+    assert tool.execute({"command": "echo hello; rm -rf /"}).success is False
+    assert tool.execute({"command": "echo hello && whoami"}).success is False
+    assert tool.execute({"command": "echo hello || pwd"}).success is False
+
+    # Reject pipes and redirects
+    assert tool.execute({"command": "echo hello | grep h"}).success is False
+    assert tool.execute({"command": "echo hello > out.txt"}).success is False
+    assert tool.execute({"command": "cat < /etc/passwd"}).success is False
+
+    # Reject command substitution
+    assert tool.execute({"command": "echo $(whoami)"}).success is False
+    assert tool.execute({"command": "echo `whoami`"}).success is False
+
+    # Reject shell metacharacters
+    assert tool.execute({"command": "echo *"}).success is False
+    assert tool.execute({"command": "echo ?"}).success is False
+    assert tool.execute({"command": "echo \\"}).success is False
+
+    # Reject non-whitelisted commands
+    assert tool.execute({"command": "cat /etc/passwd"}).success is False
+    assert tool.execute({"command": "ls -la"}).success is False
+
+    # Reject invalid git subcommands
+    assert tool.execute({"command": "git clone https://github.com/some/repo"}).success is False
+    assert tool.execute({"command": "git push origin main"}).success is False
+
+    # Accept whitelisted git subcommands
+    mock_run = MagicMock()
+    mock_run.returncode = 0
+    mock_run.stdout = "On branch main"
+    with patch("subprocess.run", return_value=mock_run):
+        assert tool.execute({"command": "git status"}).success is True
+
+    # Reject arguments for pwd / whoami
+    assert tool.execute({"command": "pwd extra_arg"}).success is False
+    assert tool.execute({"command": "whoami extra_arg"}).success is False
+
 
 
 def test_tool_manager_and_events():

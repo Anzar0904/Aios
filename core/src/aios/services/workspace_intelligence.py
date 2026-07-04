@@ -99,3 +99,111 @@ class WorkspaceIntelligenceService(ServiceLifecycle, abc.ABC):
     def publish_to_knowledge_hub(self, summary: RepositorySummary) -> None:
         """Publishes the repository summary report to the Knowledge Hub."""
         pass
+
+
+@dataclass
+class SymbolReference:
+    """Represents a code symbol (class, function, method, interface, enum) extracted via AST."""
+    symbol_id: str
+    name: str
+    symbol_type: str  # class, function, method, interface, enum, module
+    file_path: str
+    start_line: int
+    end_line: int
+    dependencies: List[str] = field(default_factory=list)
+    decorators: List[str] = field(default_factory=list)
+    is_public: bool = True
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class CodeStructureSummary:
+    """Unified code structure representation containing symbol indexes and call/dependency graphs."""
+    summary_id: str
+    timestamp: float
+    symbols: Dict[str, SymbolReference]
+    call_graph: Dict[str, List[str]]
+    dependency_graph: Dict[str, List[str]]
+    inheritance_map: Dict[str, List[str]]
+    public_apis: List[str]
+
+
+class LanguageASTParser(abc.ABC):
+    """Interface for language-specific AST parsers."""
+
+    @abc.abstractmethod
+    def can_parse(self, file_extension: str) -> bool:
+        """Returns True if this parser can handle the given file extension."""
+        pass
+
+    @abc.abstractmethod
+    def parse(self, file_path: str, content: str) -> List[SymbolReference]:
+        """Parses the content of a source file and returns extracted symbols."""
+        pass
+
+
+class ASTAnalyzer(abc.ABC):
+    """Component responsible for parsing source code into syntax symbols."""
+
+    @abc.abstractmethod
+    def parse_file(self, file_path: str, content: str) -> List[SymbolReference]:
+        """Parses source file content into a list of syntax symbols."""
+        pass
+
+
+
+class SymbolIndexer(abc.ABC):
+    """Component maintaining code symbols lookup maps."""
+
+    @abc.abstractmethod
+    def index_symbols(self, symbols: List[SymbolReference]) -> None:
+        """Indexes symbols for fast lookup."""
+        pass
+
+    @abc.abstractmethod
+    def lookup_symbol(self, name: str) -> Optional[SymbolReference]:
+        """Looks up a symbol by its name."""
+        pass
+
+    @abc.abstractmethod
+    def list_symbols(self) -> List[SymbolReference]:
+        """Returns all indexed symbols."""
+        pass
+
+
+class DependencyGraphBuilder(abc.ABC):
+    """Component constructing module import and inheritance graphs."""
+
+    @abc.abstractmethod
+    def build_graph(self, file_paths: List[str], symbols: List[SymbolReference]) -> Dict[str, List[str]]:
+        """Maps imports and module-level dependency relationships."""
+        pass
+
+
+class CallGraphBuilder(abc.ABC):
+    """Component constructing function call dependency graphs."""
+
+    @abc.abstractmethod
+    def build_call_graph(self, symbols: List[SymbolReference]) -> Dict[str, List[str]]:
+        """Builds a map representing function call references."""
+        pass
+
+
+class CodeIntelligenceService(ServiceLifecycle, abc.ABC):
+    """Unified service representing code-level understanding and AST analyses."""
+
+    @abc.abstractmethod
+    def analyze_codebase(self, workspace_root: str) -> CodeStructureSummary:
+        """Triggers complete source files AST parsing and graph builders."""
+        pass
+
+    @abc.abstractmethod
+    def store_code_summary(self, summary: CodeStructureSummary) -> None:
+        """Stores structural summaries inside Memory Intelligence without saving source content."""
+        pass
+
+    @abc.abstractmethod
+    def publish_code_report(self, summary: CodeStructureSummary) -> None:
+        """Publishes the code structure summary report to the Knowledge Hub."""
+        pass
+

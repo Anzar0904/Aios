@@ -10,10 +10,12 @@ from aios.services.agent import (
     AgentRuntimeService,
     AgentStartedEvent,
 )
+from aios.services.context import ContextService
 from aios.services.event_bus import EventBusService
 from aios.services.intent import Intent, IntentType
-from aios.services.memory import MemoryType
-from aios.services.model import LLMRequest
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.tool import ToolService
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,12 @@ class MockAgent(Agent):
     execution, and returns structured responses.
     """
 
-    def __init__(self, memory_service, context_service, tool_service) -> None:
+    def __init__(
+        self,
+        memory_service: MemoryService,
+        context_service: ContextService,
+        tool_service: ToolService,
+    ) -> None:
         self._memory_service = memory_service
         self._context_service = context_service
         self._tool_service = tool_service
@@ -134,7 +141,13 @@ class DeveloperAgent(Agent):
     memories, tools (git, filesystem, terminal), and querying the LLM adapter.
     """
 
-    def __init__(self, memory_service, context_service, tool_service, model_service) -> None:
+    def __init__(
+        self,
+        memory_service: MemoryService,
+        context_service: ContextService,
+        tool_service: ToolService,
+        model_service: ModelService,
+    ) -> None:
         self._memory_service = memory_service
         self._context_service = context_service
         self._tool_service = tool_service
@@ -149,23 +162,52 @@ class DeveloperAgent(Agent):
         return "Developer Agent for analyzing repositories, files, git status, and architecture."
 
     def execute(self, agent_context: AgentContext) -> AgentResult:
+        from pathlib import Path
+
+        from aios.services.conversation.manager import ConversationManager
+        from aios.services.conversation.store import ConversationStore
+        from aios.services.developer.builder import PromptBuilder
+        from aios.services.developer.index import CodeIndex
+        from aios.services.developer.scanner import RepositoryScanner
+        from aios.services.developer.summary import WorkspaceSummary
+
         intent = agent_context.intent
         action = intent.action
-        logger.info(f"DeveloperAgent executing action: {action}")
+        logger.info(f"DeveloperAgent v2 executing action: {action}")
 
+        # Determine workspace root
         context = agent_context.context
-        context_str = (
-            f"Workspace: {context.working_directory}\n"
-            f"Project Name: {context.project_name}\n"
-            f"Git Branch: {context.git_branch or 'non-git'}"
-            if context
-            else "No active workspace context."
-        )
+        workspace_root = context.project_root if context else str(Path.cwd().resolve())
 
-        memories_str = (
-            "\n".join([f"- [{m.memory_type.value}] {m.content}" for m in agent_context.memories])
-            or "No relevant memories retrieved."
-        )
+        # Initialize Scanner, Indexer, and Summary
+        scanner = RepositoryScanner(workspace_root)
+        index = CodeIndex(workspace_root)
+
+        scan_results = scanner.scan()
+        index_results = index.index()
+
+        summary_gen = WorkspaceSummary(scan_results, index_results)
+        workspace_summary = summary_gen.generate()
+
+        # Determine templates directory (typically 'skills/developer/prompts' at project root)
+        templates_dir = Path(workspace_root) / "skills" / "developer" / "prompts"
+        builder = PromptBuilder(str(templates_dir))
+
+        # Setup Conversation
+        conv_store = ConversationStore(Path(workspace_root) / ".aios_conversations")
+        conv_manager = ConversationManager(conv_store)
+
+        raw_query = intent.parameters.get("raw_query", f"Run {action}")
+        conv = conv_manager.get_current_conversation()
+        if not conv:
+            conv = conv_manager.create_conversation(
+                title="Default Conversation", agent_name="developer_agent"
+            )
+
+        # Append User Message to Conversation
+        conv_manager.add_message(conv.id, "user", raw_query)
+        # Reload updated conversation
+        conv = conv_manager.get_current_conversation()
 
         base_system_instruction = (
             "You are the Lead Software Engineer Developer Agent for this Personal AI OS.\n"
@@ -175,35 +217,35 @@ class DeveloperAgent(Agent):
         )
 
         try:
+            # Format Conversation Summary
+            conversation_summary = "No previous summary."
+            if conv.summary:
+                s = conv.summary
+                conversation_summary = (
+                    f"Summary: {s.summary}\n"
+                    f"Decisions:\n" + "\n".join([f"- {d}" for d in s.decisions]) + "\n"
+                    "Action Items:\n" + "\n".join([f"- {a}" for a in s.action_items]) + "\n"
+                    "Unresolved Questions:\n"
+                    + "\n".join([f"- {q}" for q in s.unresolved_questions])
+                )
+
+            # Format Conversation History (excluding the last user prompt we just appended)
+            history_lines = []
+            for m in conv.messages[:-1]:
+                history_lines.append(f"{m.role.upper()}: {m.content}")
+            conversation_history = (
+                "\n".join(history_lines) if history_lines else "No previous messages."
+            )
+
+            extra_replacements = {}
+            template_name = ""
+
             if action == "AnalyzeRepository":
-                list_res = self._tool_service.execute_tool(
-                    "filesystem", {"action": "list", "path": "."}
-                )
-                files_list = list_res.output if list_res.success else "Failed to list files."
-
-                prompt = (
-                    f"Perform a repository analysis for the current workspace.\n\n"
-                    f"Context Info:\n{context_str}\n\n"
-                    f"Relevant Memories:\n{memories_str}\n\n"
-                    f"Files in workspace root:\n{files_list}\n\n"
-                    f"Please provide an overview of the workspace structure, its primary files, "
-                    f"and main capabilities."
-                )
-
-                llm_res = self._model_service.execute_request(
-                    LLMRequest(
-                        prompt=prompt,
-                        system_instruction=base_system_instruction,
-                        model_name="claude-3-5-sonnet",
-                    )
-                )
-                return AgentResult(
-                    success=True, response=llm_res.content, data={"llm_response": llm_res}
-                )
+                template_name = "analyze_repository"
 
             elif action == "ExplainFile":
+                template_name = "explain_file"
                 path = intent.parameters.get("path", "core/src/aios/kernel.py")
-
                 read_res = self._tool_service.execute_tool(
                     "filesystem", {"action": "read", "path": path}
                 )
@@ -212,86 +254,569 @@ class DeveloperAgent(Agent):
                         success=False,
                         response=f"Failed to read file '{path}': {read_res.error}",
                     )
-
-                prompt = (
-                    f"Explain the following file in the codebase.\n\n"
-                    f"File Path: {path}\n\n"
-                    f"File Contents:\n```python\n{read_res.output}\n```\n\n"
-                    f"Please explain its purpose, key classes/functions, and role in the system."
-                )
-
-                llm_res = self._model_service.execute_request(
-                    LLMRequest(
-                        prompt=prompt,
-                        system_instruction=base_system_instruction,
-                        model_name="claude-3-5-sonnet",
-                    )
-                )
-                return AgentResult(
-                    success=True, response=llm_res.content, data={"llm_response": llm_res}
-                )
+                extra_replacements["file_contents"] = read_res.output
 
             elif action == "SummarizeArchitecture":
-                list_res = self._tool_service.execute_tool(
-                    "filesystem", {"action": "list", "path": "."}
-                )
-                files_list = list_res.output if list_res.success else "Failed to list files."
-
-                prompt = (
-                    f"Summarize the system architecture.\n\n"
-                    f"Workspace Context:\n{context_str}\n\n"
-                    f"Relevant memories:\n{memories_str}\n\n"
-                    f"Files in project root:\n{files_list}\n\n"
-                    f"Describe the system architecture, component relationships, "
-                    f"and service organization."
-                )
-
-                llm_res = self._model_service.execute_request(
-                    LLMRequest(
-                        prompt=prompt,
-                        system_instruction=base_system_instruction,
-                        model_name="claude-3-5-sonnet",
-                    )
-                )
-                return AgentResult(
-                    success=True, response=llm_res.content, data={"llm_response": llm_res}
-                )
+                template_name = "summarize_architecture"
 
             elif action == "GitReview":
-                status_res = self._tool_service.execute_tool("git", {"action": "status"})
-                git_status = (
-                    status_res.output if status_res.success else "Failed to get git status."
-                )
+                template_name = "git_review"
 
-                log_res = self._tool_service.execute_tool("git", {"action": "log"})
-                git_log = log_res.output if log_res.success else "Failed to get git log."
+            elif action == "ReviewRepository":
+                template_name = "review_repository"
 
-                prompt = (
-                    f"Perform a review of current git changes and recent history.\n\n"
-                    f"Git Status:\n{git_status}\n\n"
-                    f"Git Log (recent commits):\n{git_log}\n\n"
-                    f"Please review the uncommitted changes, explain their purpose, "
-                    f"and summarize progress."
-                )
+            elif action == "ReviewArchitecture":
+                template_name = "review_architecture"
 
-                llm_res = self._model_service.execute_request(
-                    LLMRequest(
-                        prompt=prompt,
-                        system_instruction=base_system_instruction,
-                        model_name="claude-3-5-sonnet",
-                    )
-                )
+            elif action == "ReviewSecurity":
+                template_name = "review_security"
+
+            elif action == "AnalyzeDependencies":
+                template_name = "analyze_dependencies"
+
+            elif action == "DetectDeadCode":
+                template_name = "detect_dead_code"
+
+            elif action == "AnalyzeTodos":
+                template_name = "analyze_todos"
+
+            elif action == "ReviewTests":
+                template_name = "review_tests"
+
+            elif action == "ReviewGitChanges":
+                template_name = "review_git_changes"
+
+            elif action == "GenerateReleaseNotes":
+                template_name = "generate_release_notes"
+
+            elif action == "GenerateCommitMessage":
+                template_name = "generate_commit_message"
+
+            elif action == "InvestigateBug":
+                template_name = "investigate_bug"
+                bug_desc = intent.parameters.get("bug_description", "")
+                if not bug_desc and "args" in intent.parameters:
+                    bug_desc = intent.parameters["args"]
+                extra_replacements["bug_description"] = bug_desc or "No description provided."
+
+            elif action == "ExplainStackTrace":
+                template_name = "explain_stack_trace"
+                stack = intent.parameters.get("stack_trace", "")
+                if not stack and "args" in intent.parameters:
+                    stack = intent.parameters["args"]
+                extra_replacements["stack_trace"] = stack or "No stack trace provided."
+
+            elif action == "DetectCodeSmells":
+                template_name = "detect_code_smells"
+
+            elif action == "DetectDuplicateCode":
+                template_name = "detect_duplicate_code"
+
+            elif action == "SuggestRefactoring":
+                template_name = "suggest_refactoring"
+
+            else:
                 return AgentResult(
-                    success=True, response=llm_res.content, data={"llm_response": llm_res}
+                    success=False,
+                    response=f"DeveloperAgent action '{action}' is not supported.",
                 )
+
+            # --- INTELLIGENCE ENGINE PIPELINE ---
+            from aios.services.intelligence import (
+                ContextRanker,
+                IntentExpander,
+                MemoryRanker,
+                ReasoningContext,
+                RepositoryAnalyzer,
+                ToolSelector,
+            )
+
+            # 1. Repository Analyzer
+            analyzer = RepositoryAnalyzer(scan_results, index_results)
+            full_analysis = analyzer.analyze()
+
+            # Merge extra_replacements into analysis dict for context ranking
+            analysis_dict = {**full_analysis.__dict__, **extra_replacements}
+
+            # 2. Context Ranker
+            selected_context = ContextRanker().select_context(action, raw_query, analysis_dict)
+
+            # 3. Memory Ranker
+            ranked_memories = MemoryRanker(agent_context.memories).rank(
+                raw_query,
+                context.project_root if context else "default"
+            )
+
+            # 4. Tool Selector
+            selected_tools = ToolSelector().select_tools(intent)
+
+            # 5. Intent Expander
+            expanded_query = IntentExpander().expand(intent)
+
+            # 6. Assemble Reasoning Context
+            project_name = workspace_summary.get("project", {}).get("project_name", "Unknown")
+            reasoning_context = ReasoningContext(
+                intent=intent,
+                repository_analysis=selected_context,
+                conversation_summary=conversation_summary,
+                conversation_history=conversation_history,
+                memories=ranked_memories,
+                workspace={"project_name": project_name},
+                selected_tools=selected_tools,
+                expanded_query=expanded_query
+            )
+
+            # 7. Prompt Builder consumes only ReasoningContext
+            prompt = builder.build_prompt_from_reasoning_context(
+                template_name, reasoning_context
+            )
+
+            # Execute Request to LLM
+            llm_res = self._model_service.execute_request(
+                LLMRequest(
+                    prompt=prompt,
+                    system_instruction=base_system_instruction,
+                    model_name="claude-3-5-sonnet",
+                )
+            )
+
+            # Append Assistant Message to Conversation
+            conv_manager.add_message(conv.id, "assistant", llm_res.content)
+            # Reload to summarize if needed
+            conv = conv_manager.get_current_conversation()
+            conv_manager.summarize_if_needed(conv, self._model_service)
 
             return AgentResult(
-                success=False,
-                response=f"DeveloperAgent action '{action}' is not supported.",
+                success=True,
+                response=llm_res.content,
+                data={"llm_response": llm_res, "workspace_summary": workspace_summary}
             )
 
         except Exception as e:
+            logger.error(f"DeveloperAgent execution exception: {e}", exc_info=True)
             return AgentResult(success=False, response=f"DeveloperAgent execution exception: {e}")
+
+
+class CareerAgent(Agent):
+    """Career Agent to help prepare job applications by analyzing job descriptions,
+
+    tailoring resumes, ATS scoring, and generating cover letters.
+    """
+
+    def __init__(
+        self,
+        memory_service: MemoryService,
+        context_service: ContextService,
+        tool_service: ToolService,
+        model_service: ModelService,
+        github_service: Optional[Any] = None,
+        career_os: Optional[Any] = None,
+        daily_os: Optional[Any] = None,
+    ) -> None:
+        self._memory_service = memory_service
+        self._context_service = context_service
+        self._tool_service = tool_service
+        self._model_service = model_service
+        self._github_service = github_service
+        self._career_os = career_os
+        self._daily_os = daily_os
+
+
+
+    @property
+    def name(self) -> str:
+        return "career_agent"
+
+    @property
+    def description(self) -> str:
+        return "Career Agent to help prepare job applications."
+
+    def execute(self, agent_context: AgentContext) -> AgentResult:
+        from pathlib import Path
+        import json
+
+        from aios.services.developer.builder import PromptBuilder
+
+        intent = agent_context.intent
+        action = intent.action
+        logger.info(f"CareerAgent executing action: {action}")
+
+        # Determine workspace root
+        context = agent_context.context
+        workspace_root = context.project_root if context else str(Path.cwd().resolve())
+
+        # Determine templates directory (typically 'skills/career/prompts' at project root)
+        templates_dir = Path(workspace_root) / "skills" / "career" / "prompts"
+        builder = PromptBuilder(str(templates_dir))
+
+        base_system_instruction = (
+            "You are the Career Coach Agent for this Personal AI OS.\n"
+            "Analyze and reason about the job requirements and user qualifications.\n"
+            "Focus on high-quality technical analysis, skill matching, and tailored suggestions.\n"
+            "Do not execute automatic file modifications or perform autonomous actions."
+        )
+
+        try:
+            extra_replacements = {}
+            template_name = ""
+
+            if action == "AnalyzeJob":
+                template_name = "analyze_job"
+                job_path = intent.parameters.get("job_description_path", "job.pdf")
+                read_res = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": job_path}
+                )
+                job_content = (
+                    read_res.output
+                    if read_res.success
+                    else f"Placeholder job requirements for {job_path}."
+                )
+                if self._career_os:
+                    analysis = self._career_os.job_analyzer.analyze_job(job_content)
+                    return AgentResult(
+                        success=True,
+                        response=f"Job analysis complete:\n{json.dumps(analysis, indent=2)}",
+                        data={"analysis": analysis}
+                    )
+                extra_replacements["job_path"] = job_path
+                extra_replacements["job_content"] = job_content
+
+            elif action == "TailorResume":
+                template_name = "tailor_resume"
+                resume_path = intent.parameters.get("resume_path", "resume.pdf")
+                job_path = intent.parameters.get("job_description_path", "job.pdf")
+
+                read_resume = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": resume_path}
+                )
+                resume_content = (
+                    read_resume.output
+                    if read_resume.success
+                    else f"Placeholder resume content for {resume_path}."
+                )
+
+                read_job = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": job_path}
+                )
+                job_content = (
+                    read_job.output
+                    if read_job.success
+                    else f"Placeholder job requirements for {job_path}."
+                )
+                if self._career_os:
+                    # Construct active Resume and tailor
+                    dummy_resume = Resume(
+                        id="resume_tailored",
+                        title="Tailored Resume",
+                        versions=[ResumeVersion(version=1, summary=resume_content)]
+                    )
+                    optimized = self._career_os.resume_optimizer.tailor_resume(dummy_resume, job_content)
+                    return AgentResult(
+                        success=True,
+                        response=f"Resume tailoring complete:\nSummary: {optimized.summary}\nProjects count: {len(optimized.projects)}",
+                        data={"optimized_version": optimized}
+                    )
+                extra_replacements["resume_path"] = resume_path
+                extra_replacements["resume_content"] = resume_content
+                extra_replacements["job_path"] = job_path
+                extra_replacements["job_content"] = job_content
+
+            elif action == "ATSScore":
+                template_name = "ats_score"
+                resume_path = intent.parameters.get("resume_path", "resume.pdf")
+                job_path = intent.parameters.get("job_description_path", "job.pdf")
+
+                read_resume = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": resume_path}
+                )
+                resume_content = (
+                    read_resume.output
+                    if read_resume.success
+                    else f"Placeholder resume content for {resume_path}."
+                )
+
+                read_job = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": job_path}
+                )
+                job_content = (
+                    read_job.output
+                    if read_job.success
+                    else f"Placeholder job requirements for {job_path}."
+                )
+                if self._career_os:
+                    dummy_version = ResumeVersion(version=1, summary=resume_content)
+                    analysis = self._career_os.ats_analyzer.score_resume_against_job(dummy_version, job_content)
+                    return AgentResult(
+                        success=True,
+                        response=f"ATS scoring complete:\n{json.dumps(analysis, indent=2)}",
+                        data={"ats_analysis": analysis}
+                    )
+                extra_replacements["resume_content"] = resume_content
+                extra_replacements["job_content"] = job_content
+
+            elif action == "InterviewPrep":
+                template_name = "interview_prep"
+                job_path = intent.parameters.get("job_description_path", "job.pdf")
+                read_res = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": job_path}
+                )
+                job_content = (
+                    read_res.output
+                    if read_res.success
+                    else f"Placeholder job requirements for {job_path}."
+                )
+                if self._career_os:
+                    company = intent.parameters.get("company", "Target Company")
+                    role = intent.parameters.get("role", "Software Engineer")
+                    prep = self._career_os.interview_coach.prepare_interview(company, role)
+                    return AgentResult(
+                        success=True,
+                        response=f"Interview prep materials generated:\n{json.dumps(prep, indent=2)}",
+                        data={"prep": prep}
+                    )
+                extra_replacements["job_content"] = job_content
+
+            elif action == "CoverLetter":
+                template_name = "cover_letter"
+                resume_path = intent.parameters.get("resume_path", "resume.pdf")
+                job_path = intent.parameters.get("job_description_path", "job.pdf")
+
+                read_resume = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": resume_path}
+                )
+                resume_content = (
+                    read_resume.output
+                    if read_resume.success
+                    else f"Placeholder resume content for {resume_path}."
+                )
+
+                read_job = self._tool_service.execute_tool(
+                    "filesystem", {"action": "read", "path": job_path}
+                )
+                job_content = (
+                    read_job.output
+                    if read_job.success
+                    else f"Placeholder job requirements for {job_path}."
+                )
+                if self._career_os:
+                    dummy_version = ResumeVersion(version=1, summary=resume_content)
+                    letter = self._career_os.cover_letter_generator.generate_cover_letter(dummy_version, job_content)
+                    return AgentResult(
+                        success=True,
+                        response=f"Cover letter complete:\n{letter}",
+                        data={"cover_letter": letter}
+                    )
+                extra_replacements["resume_content"] = resume_content
+                extra_replacements["job_content"] = job_content
+
+            elif action == "GitHubPortfolio":
+                username = intent.parameters.get("username", "Anzar0904")
+                if self._career_os:
+                    analysis = self._career_os.portfolio_analyzer.analyze_portfolio(username)
+                    return AgentResult(
+                        success=True,
+                        response=f"GitHub Portfolio analysis complete:\n{json.dumps(analysis, indent=2)}",
+                        data={"analysis": analysis}
+                    )
+
+                if not self._github_service:
+                    return AgentResult(
+                        success=False,
+                        response="GitHubService is not configured for CareerAgent."
+                    )
+
+                try:
+                    repos = self._github_service.search_repositories(f"user:{username}")
+                except Exception as e:
+                    return AgentResult(
+                        success=False,
+                        response=f"Failed to fetch repositories for {username}: {e}"
+                    )
+
+                repos_details = []
+                for r in repos[:5]:
+                    try:
+                        stats = self._github_service.get_repository_stats(f"{r.owner}/{r.name}")
+                        repos_details.append({
+                            "name": r.name,
+                            "description": r.description,
+                            "stars": stats.get("stars", 0),
+                            "forks": stats.get("forks", 0),
+                            "open_issues": stats.get("open_issues", 0),
+                        })
+                    except Exception:
+                        pass
+
+                prompt = (
+                    f"You are the Career Coach Agent. Analyze the user's GitHub profile and repositories for portfolio building.\n\n"
+                    f"GitHub Username: {username}\n"
+                    f"Repositories:\n{json.dumps(repos_details, indent=2)}\n\n"
+                    "Please analyze these repositories and generate a report on:\n"
+                    "1. Profile Evaluation (Overall strength and technical focus)\n"
+                    "2. Strongest Repositories (Select and rank the top projects)\n"
+                    "3. Portfolio Summaries (Write elevator pitches for the best repositories)\n"
+                    "4. Resume Recommendations (How to highlight these projects on a resume)\n"
+                    "5. Active vs. Inactive status detection"
+                )
+
+                llm_res = self._model_service.execute_request(
+                    LLMRequest(
+                        prompt=prompt,
+                        system_instruction=base_system_instruction,
+                        model_name="claude-3-5-sonnet",
+                    )
+                )
+                return AgentResult(
+                    success=True,
+                    response=llm_res.content,
+                    data={"llm_response": llm_res}
+                )
+
+            elif action == "ListApplications":
+                if self._career_os:
+                    apps = self._career_os.application_tracker.list_applications()
+                    return AgentResult(
+                        success=True,
+                        response=f"Applications tracked count: {len(apps)}",
+                        data={"applications": apps}
+                    )
+
+            elif action == "AddApplication":
+                if self._career_os:
+                    app = JobApplication(
+                        id=intent.parameters.get("id", "app_1"),
+                        company=intent.parameters.get("company", "Default Company"),
+                        role=intent.parameters.get("role", "Developer"),
+                        status=intent.parameters.get("status", "applied"),
+                        applied_date=intent.parameters.get("applied_date", "2026-07-04"),
+                        notes=intent.parameters.get("notes", ""),
+                    )
+                    self._career_os.application_tracker.add_application(app)
+                    return AgentResult(
+                        success=True,
+                        response=f"Successfully added application for {app.role} at {app.company}.",
+                        data={"application": app}
+                    )
+
+            elif action == "GenerateCareerPlan":
+                if self._career_os:
+                    plan = self._career_os.career_planner.generate_plan()
+                    return AgentResult(
+                        success=True,
+                        response=f"Career growth plan generated:\n{json.dumps(plan, indent=2)}",
+                        data={"plan": plan}
+                    )
+
+            elif action == "MatchJobs":
+                if self._career_os:
+                    jobs = intent.parameters.get("jobs", ["Default Job description"])
+                    matches = self._career_os.job_matcher.match_jobs(jobs)
+                    return AgentResult(
+                        success=True,
+                        response=f"Matches summary count: {len(matches)}",
+                        data={"matches": matches}
+                    )
+
+            elif action == "PlanDay":
+                if self._daily_os:
+                    plan = self._daily_os.planner.plan_day()
+                    tasks_str = "\n".join([f"- [{t.priority}] {t.title} ({t.effort_hours}h)" for t in plan.tasks])
+                    sched_str = "\n".join([f"- {item.time_slot}: {item.task_title}" for item in plan.schedule.items])
+                    return AgentResult(
+                        success=True,
+                        response=f"Daily Plan generated for {plan.date}:\n\nTasks:\n{tasks_str}\n\nSchedule:\n{sched_str}",
+                        data={"plan": plan}
+                    )
+
+            elif action == "UpdateTaskStatus":
+                if self._daily_os:
+                    tid = intent.parameters.get("task_id", "")
+                    status = intent.parameters.get("status", "Completed")
+                    pct = float(intent.parameters.get("completion_percentage", 100.0))
+                    task = self._daily_os.progress_tracker.update_task_status(tid, status, pct)
+                    return AgentResult(
+                        success=True,
+                        response=f"Task {tid} status updated to {status} ({pct}%).",
+                        data={"task": task}
+                    )
+
+            elif action == "StartWorkSession":
+                if self._daily_os:
+                    tid = intent.parameters.get("task_id", "")
+                    mid = intent.parameters.get("mission_id", "")
+                    cat = intent.parameters.get("category", "focus")
+                    notes = intent.parameters.get("notes", "")
+                    session = self._daily_os.session_recorder.start_session(tid, mid, cat, notes)
+                    return AgentResult(
+                        success=True,
+                        response=f"Work session started: {session.session_id}.",
+                        data={"session": session}
+                    )
+
+            elif action == "EndWorkSession":
+                if self._daily_os:
+                    sid = intent.parameters.get("session_id", "")
+                    notes = intent.parameters.get("notes", "")
+                    session = self._daily_os.session_recorder.end_session(sid, notes)
+                    return AgentResult(
+                        success=True,
+                        response=f"Work session {sid} ended. Duration: {session.duration_mins:.2f} mins.",
+                        data={"session": session}
+                    )
+
+            elif action == "GenerateDailyReview":
+                if self._daily_os:
+                    review = self._daily_os.daily_review.generate_review()
+                    return AgentResult(
+                        success=True,
+                        response=f"Daily Review:\nProductivity Rating/Summary: {review.productivity_summary}\nCompleted: {review.completed_tasks}\nIncomplete: {review.incomplete_tasks}",
+                        data={"review": review}
+                    )
+
+            elif action == "AnalyzeProductivity":
+                if self._daily_os:
+                    metrics = self._daily_os.productivity_analyzer.analyze_productivity()
+                    return AgentResult(
+                        success=True,
+                        response=f"Productivity Metrics:\nCompletion Rate: {metrics['completion_rate']}%\nFocus Time: {metrics['focus_time_mins']} mins\nPlanning Accuracy: {metrics['planning_accuracy_percentage']}%",
+                        data={"metrics": metrics}
+                    )
+
+            else:
+                return AgentResult(
+                    success=False,
+                    response=f"CareerAgent action '{action}' is not supported.",
+                )
+
+
+
+
+            # Build prompt
+            prompt = builder.build_prompt(
+                template_name=template_name,
+                workspace_summary={},
+                intent_action=action,
+                intent_parameters=intent.parameters,
+                memories=agent_context.memories,
+                extra_replacements=extra_replacements
+            )
+
+            # Query LLM
+            llm_res = self._model_service.execute_request(
+                LLMRequest(
+                    prompt=prompt,
+                    system_instruction=base_system_instruction,
+                )
+            )
+
+            return AgentResult(
+                success=True,
+                response=llm_res.content,
+                data={"llm_response": llm_res}
+            )
+
+        except Exception as e:
+            return AgentResult(success=False, response=f"CareerAgent execution exception: {e}")
 
 
 class LocalAgentRuntime(AgentRuntimeService):
@@ -299,14 +824,13 @@ class LocalAgentRuntime(AgentRuntimeService):
 
     and agent execution.
     """
-
     def __init__(
         self,
         event_bus: EventBusService,
-        memory_service,
-        context_service,
-        tool_service,
-        model_service,
+        memory_service: MemoryService,
+        context_service: ContextService,
+        tool_service: ToolService,
+        model_service: ModelService,
     ) -> None:
         self._event_bus = event_bus
         self._memory_service = memory_service
@@ -321,18 +845,6 @@ class LocalAgentRuntime(AgentRuntimeService):
         self._event_bus.register_event_type(AgentStartedEvent)
         self._event_bus.register_event_type(AgentCompletedEvent)
         self._event_bus.register_event_type(AgentFailedEvent)
-
-        self.register_agent(
-            MockAgent(self._memory_service, self._context_service, self._tool_service)
-        )
-        self.register_agent(
-            DeveloperAgent(
-                self._memory_service,
-                self._context_service,
-                self._tool_service,
-                self._model_service,
-            )
-        )
 
     def register_agent(self, agent: Agent) -> None:
         name = agent.name
@@ -367,9 +879,11 @@ class LocalAgentRuntime(AgentRuntimeService):
                 tools=tools,
             )
 
-            # Route developer intents to developer_agent
+            # Route intents to corresponding agents
             if intent.intent_type == IntentType.DEVELOPER:
                 agent = self._agents.get("developer_agent")
+            elif intent.intent_type == IntentType.CAREER:
+                agent = self._agents.get("career_agent")
             else:
                 agent = self._agents.get("mock_agent")
 

@@ -59,6 +59,18 @@ class LocalIntentResolver(IntentResolverService):
         if cleaned in ("git review", "git status review", "review git"):
             return IntentType.DEVELOPER
 
+        # Career rules
+        if cleaned.startswith("analyze job ") or cleaned == "analyze job":
+            return IntentType.CAREER
+        if cleaned.startswith("tailor resume ") or cleaned == "tailor resume":
+            return IntentType.CAREER
+        if cleaned.startswith("ats score ") or cleaned == "ats score":
+            return IntentType.CAREER
+        if cleaned.startswith("interview prep ") or cleaned == "interview prep":
+            return IntentType.CAREER
+        if cleaned.startswith("cover letter ") or cleaned == "cover letter":
+            return IntentType.CAREER
+
         # System rules
         if cleaned in ("status", "system status", "uptime", "kernel status"):
             return IntentType.SYSTEM
@@ -175,6 +187,60 @@ class LocalIntentResolver(IntentResolverService):
                     target_service="AgentRuntimeService",
                     action="GitReview",
                     parameters={},
+                    confidence=1.0,
+                )
+
+        elif intent_type == IntentType.CAREER:
+            lower_text = cleaned.lower()
+            if lower_text.startswith("analyze job"):
+                path = cleaned[len("analyze job") :].strip()
+                return Intent(
+                    intent_type=IntentType.CAREER,
+                    target_service="AgentRuntimeService",
+                    action="AnalyzeJob",
+                    parameters={"job_description_path": path or "job.pdf"},
+                    confidence=1.0,
+                )
+            elif lower_text.startswith("tailor resume"):
+                args = cleaned[len("tailor resume") :].strip().split()
+                resume_path = args[0] if len(args) > 0 else "resume.pdf"
+                job_path = args[1] if len(args) > 1 else "job.pdf"
+                return Intent(
+                    intent_type=IntentType.CAREER,
+                    target_service="AgentRuntimeService",
+                    action="TailorResume",
+                    parameters={"resume_path": resume_path, "job_description_path": job_path},
+                    confidence=1.0,
+                )
+            elif lower_text.startswith("ats score"):
+                args = cleaned[len("ats score") :].strip().split()
+                resume_path = args[0] if len(args) > 0 else "resume.pdf"
+                job_path = args[1] if len(args) > 1 else "job.pdf"
+                return Intent(
+                    intent_type=IntentType.CAREER,
+                    target_service="AgentRuntimeService",
+                    action="ATSScore",
+                    parameters={"resume_path": resume_path, "job_description_path": job_path},
+                    confidence=1.0,
+                )
+            elif lower_text.startswith("interview prep"):
+                path = cleaned[len("interview prep") :].strip()
+                return Intent(
+                    intent_type=IntentType.CAREER,
+                    target_service="AgentRuntimeService",
+                    action="InterviewPrep",
+                    parameters={"job_description_path": path or "job.pdf"},
+                    confidence=1.0,
+                )
+            elif lower_text.startswith("cover letter"):
+                args = cleaned[len("cover letter") :].strip().split()
+                resume_path = args[0] if len(args) > 0 else "resume.pdf"
+                job_path = args[1] if len(args) > 1 else "job.pdf"
+                return Intent(
+                    intent_type=IntentType.CAREER,
+                    target_service="AgentRuntimeService",
+                    action="CoverLetter",
+                    parameters={"resume_path": resume_path, "job_description_path": job_path},
                     confidence=1.0,
                 )
 

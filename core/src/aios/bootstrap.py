@@ -231,8 +231,8 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     intent_engine.initialize()
     registry.register(IntentEngine, intent_engine)
 
-    from aios.services.workspace_intelligence import WorkspaceIntelligenceService
-    from aios.services.workspace_intelligence_impl import LocalWorkspaceIntelligenceService
+    from aios.services.workspace_intelligence import WorkspaceIntelligenceService, CodeIntelligenceService
+    from aios.services.workspace_intelligence_impl import LocalWorkspaceIntelligenceService, LocalCodeIntelligenceService
 
     workspace_intel = LocalWorkspaceIntelligenceService(
         project_intel=project_intelligence,
@@ -243,6 +243,65 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     )
     workspace_intel.initialize()
     registry.register(WorkspaceIntelligenceService, workspace_intel)
+
+    code_intel = LocalCodeIntelligenceService(
+        project_intel=project_intelligence,
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    code_intel.initialize()
+    registry.register(CodeIntelligenceService, code_intel)
+
+    from aios.services.engineering_intelligence import EngineeringIntelligenceService
+    from aios.services.engineering_intelligence_impl import LocalEngineeringIntelligenceService
+
+    eng_intel = LocalEngineeringIntelligenceService(
+        code_intel=code_intel,
+        workspace_intel=workspace_intel,
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    eng_intel.initialize()
+    registry.register(EngineeringIntelligenceService, eng_intel)
+
+    from aios.services.software_engineer import SoftwareEngineerService
+    from aios.services.software_engineer_impl import LocalSoftwareEngineerService
+
+    swe_service = LocalSoftwareEngineerService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    swe_service.initialize()
+    registry.register(SoftwareEngineerService, swe_service)
+
+    from aios.services.execution_engine import ExecutionEngine
+    from aios.services.execution_engine_impl import LocalExecutionEngine
+
+    exec_engine = LocalExecutionEngine(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    exec_engine.initialize()
+    registry.register(ExecutionEngine, exec_engine)
+
+    from aios.services.ai_workspace import AIWorkspaceService
+    from aios.services.ai_workspace_impl import LocalAIWorkspaceService
+
+    workspace_service = LocalAIWorkspaceService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        registry=registry
+    )
+    workspace_service.initialize()
+    registry.register(AIWorkspaceService, workspace_service)
 
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)

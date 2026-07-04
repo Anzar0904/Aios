@@ -11,32 +11,19 @@ from aios.services.agent import (
     AgentRuntimeService,
     AgentStartedEvent,
 )
-from aios.services.agent_impl import LocalAgentRuntime
 from aios.services.context import ContextLoadedEvent, ContextService
-from aios.services.context_impl import LocalContextService
 from aios.services.event_bus import EventBusService, KernelStartedEvent
-from aios.services.event_bus_impl import LocalEventBus
 from aios.services.intent import Intent, IntentResolverService, IntentResult, IntentType
-from aios.services.intent_impl import LocalIntentResolver
-from aios.services.memory import MemoryService
-from aios.services.memory_impl import LocalMemoryService
-from aios.services.model import ModelService
-from aios.services.model_impl import LocalModelService
 from aios.services.session import (
     SessionEndedEvent,
     SessionService,
     SessionStartedEvent,
 )
-from aios.services.session_impl import LocalSessionService
-
-# Import stubs for bootstrap registration
 from aios.services.tool import (
     ToolCompletedEvent,
     ToolFailedEvent,
-    ToolService,
     ToolStartedEvent,
 )
-from aios.services.tool_impl import LocalToolManager
 
 
 class RuntimeState(Enum):
@@ -56,10 +43,10 @@ class Kernel:
     Exposes only lifecycle and runtime state methods.
     """
 
-    def __init__(self, config_path: Path) -> None:
+    def __init__(self, config_path: Path, registry: ServiceRegistry | None = None) -> None:
         self.config_path = config_path
         self.config: OSConfig | None = None
-        self.registry = ServiceRegistry()
+        self.registry = registry if registry is not None else ServiceRegistry()
         self._state = RuntimeState.HALTED
         self._boot_time: float | None = None
         self._active_session_id: str | None = None
@@ -93,8 +80,12 @@ class Kernel:
             print("Loading configuration...")
             self.config = load_config(self.config_path)
 
-            print("Registering services...")
-            self._register_core_services()
+            # If registry is not pre-populated, use composition root fallback
+            if not self.registry.get_all():
+                print("Registering services via fallback Composition Root...")
+                from aios.bootstrap import bootstrap_kernel
+                bootstrapped = bootstrap_kernel(self.config_path)
+                self.registry = bootstrapped.registry
 
             print("Starting Kernel...")
             self._initialize_services()
@@ -231,30 +222,6 @@ class Kernel:
         if self._state not in (RuntimeState.READY, RuntimeState.BUSY):
             raise RuntimeError(f"Cannot change busy status when Kernel state is {self._state.name}")
         self._state = RuntimeState.BUSY if busy else RuntimeState.READY
-
-    def _register_core_services(self) -> None:
-        """Instantiates and registers the core services."""
-        event_bus = LocalEventBus()
-        self.registry.register(EventBusService, event_bus)
-
-        session_service = LocalSessionService(event_bus)
-        context_service = LocalContextService(event_bus)
-        memory_service = LocalMemoryService(event_bus)
-        tool_service = LocalToolManager(event_bus)
-
-        self.registry.register(SessionService, session_service)
-        self.registry.register(ContextService, context_service)
-        self.registry.register(MemoryService, memory_service)
-        self.registry.register(IntentResolverService, LocalIntentResolver())
-        model_service = LocalModelService()
-        self.registry.register(ModelService, model_service)
-        self.registry.register(ToolService, tool_service)
-        self.registry.register(
-            AgentRuntimeService,
-            LocalAgentRuntime(
-                event_bus, memory_service, context_service, tool_service, model_service
-            ),
-        )
 
     def _initialize_services(self) -> None:
         """Invokes the initialize stage on all registered services."""
