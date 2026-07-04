@@ -410,6 +410,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     test_fail_service.initialize()
     registry.register(FailureAnalysisService, test_fail_service)
 
+    from aios.services.test_validation import ValidationService
+    from aios.services.test_validation_impl import LocalValidationService
+
+    validation_service = LocalValidationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    validation_service.initialize()
+    registry.register(ValidationService, validation_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

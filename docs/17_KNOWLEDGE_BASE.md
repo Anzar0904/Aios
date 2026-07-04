@@ -358,6 +358,22 @@ This section maps the essential runtime components of the operating system:
   * `FailureAnalysisReport`: Diagnostic report containing clusters lists, recommendations, and ratings.
 * **Current Status**: Current.
 
+### 3.22 Unified Validation Report Data Models
+* **Purpose**: Compiles test execution metrics, coverage calculations, and diagnostic failure records into a single authoritative validation artifact used across other AI OS components.
+* **Data Models & Components**:
+  * `ValidationService`: Unified validation service compiling gates and decisions.
+  * `ValidationStatus`: Evaluated gate results (PASS, WARNING, FAIL).
+  * `ValidationDecision`: High-level quality release decision (APPROVED, REJECTED, MANUAL_REVIEW).
+  * `ValidationFinding`: Flagged discovery detailing file errors.
+  * `ValidationRecommendation`: Recommended adjustments to address failing gates.
+  * `ValidationEvidence`: Telemetry snippets validating gates.
+  * `ValidationGate`: Quality gates checking execution counts, coverage, and severity.
+  * `ValidationMetrics`: Consolidated summary metrics (passed gates count, total tests, coverages).
+  * `ValidationScore`: Raw score and confidence deduction penalty records.
+  * `ValidationSummary`: Aggregated report summary tracking release decisions.
+  * `ValidationReport`: Assembled unified report package.
+* **Current Status**: Current.
+
 ---
 
 
