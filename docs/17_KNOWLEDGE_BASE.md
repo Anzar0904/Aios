@@ -638,6 +638,25 @@ This section maps the essential runtime components of the operating system:
   * `N8NValidator`: Server config and request integrity validator.
 * **Current Status**: Current.
 
+### 3.38 Workflow Monitoring & Telemetry Data Models
+* **Purpose**: Records, tracks, validates, and analyzes workflow execution telemetry traces and performance aggregates.
+* **Data Models & Components**:
+  * `WorkflowMonitoringService`: Central conductor registering execution traces, generating alerts, writing workspace files, and syncing Notion records.
+  * `WorkflowExecutionTracker`: Memory registers recording run telemetry sessions.
+  * `WorkflowExecutionRecord`: Single run details containing execution IDs, start/end stamps, metrics parameters, and error status messages.
+  * `WorkflowExecutionState`: Outcome enums mapping states: SUCCESS, FAILED, TIMEOUT, CANCELLED, SKIPPED.
+  * `WorkflowExecutionMetrics`: Duration details, CPU pcts, and memory usage MB counts.
+  * `WorkflowTelemetry`: Set of execution records for a workflow.
+  * `WorkflowPerformanceAnalyzer`: Aggregate stats calculations (success ratios, median delays, and P95 latency rates).
+  * `WorkflowFailureAnalyzer`: Fail patterns identifier highlighting recurring errors.
+  * `WorkflowRetryAnalyzer`: Ratios tracker counting retry loops and frequencies.
+  * `WorkflowAlert`: Configure-triggered run warning structs.
+  * `WorkflowHealthScore`: Struct scoring workflow health status out of 100.0.
+  * `WorkflowStatistics`: Compiled performance aggregates object.
+  * `WorkflowMonitoringReport`: Consolidated telemetry report payload.
+  * `WorkflowMonitoringValidator`: Trace validator checking sequences and timing ordering logic.
+* **Current Status**: Current.
+
 ---
 
 
