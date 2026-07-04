@@ -231,6 +231,19 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     intent_engine.initialize()
     registry.register(IntentEngine, intent_engine)
 
+    from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+    from aios.services.workspace_intelligence_impl import LocalWorkspaceIntelligenceService
+
+    workspace_intel = LocalWorkspaceIntelligenceService(
+        project_intel=project_intelligence,
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    workspace_intel.initialize()
+    registry.register(WorkspaceIntelligenceService, workspace_intel)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

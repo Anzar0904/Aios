@@ -135,7 +135,17 @@ This section maps the essential runtime components of the operating system:
   * `IntentResult`: Contains process outcomes and resolved plans.
 * **Current Status**: Current.
 
+### 3.7 Workspace Intelligence Data Models
+* **Purpose**: Provide full repository understanding, architecture observations, dependency relations, and health checks.
+* **Data Models & Components**:
+  * `WorkspaceIntelligenceService`: Central service managing analysis, memory backups, and Knowledge Hub publishing.
+  * `RepositorySummary`: Formulates high-level architecture details, service graphs, design patterns, entrypoints, and observations.
+  * `RepositoryHealth`: Formulates repository file statistics, test counts, docs counts, and coverage ratios.
+  * `RepositoryAnalyzer`, `ArchitectureAnalyzer`, `DependencyAnalyzer`, `TechnologyAnalyzer`, `DocumentationAnalyzer`: Modular subcomponents.
+* **Current Status**: Current.
+
 ---
+
 
 
 
