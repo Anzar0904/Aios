@@ -592,6 +592,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     workflow_translator.initialize()
     registry.register(WorkflowTranslator, workflow_translator)
 
+    from aios.services.n8n_integration import N8NIntegrationService
+    from aios.services.n8n_integration_impl import LocalN8NIntegrationService
+
+    n8n_integration_service = LocalN8NIntegrationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    n8n_integration_service.initialize()
+    registry.register(N8NIntegrationService, n8n_integration_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

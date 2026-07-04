@@ -621,6 +621,23 @@ This section maps the essential runtime components of the operating system:
   * `TranslationValidator`: Schema and broken edges validator.
 * **Current Status**: Current.
 
+### 3.37 self-hosted n8n Integration Data Models
+* **Purpose**: Coordinates communication, REST API integrations, auth configurations, uploads, and health audits with self-hosted n8n servers.
+* **Data Models & Components**:
+  * `N8NIntegrationService`: Central conductor service coordinating client uploads, metadata tracking, status reports, and notion database publishing.
+  * `N8NClient`: Wrapper client executing REST queries (workflows uploads, executions triggering, activations status).
+  * `N8NConnectionManager`: Connection profile header generator.
+  * `N8NAuthenticationProvider`: Abstract authentication header generator subclassed by `APIKeyAuthenticationProvider` and `BearerTokenAuthenticationProvider`.
+  * `N8NWorkflowRepository` & `N8NExecutionRepository`: Catalogs tracking uploaded workflows and status executions metadata.
+  * `N8NCredentialRepository`: Index register catalog matching credential names to vault keys.
+  * `N8NHealthMonitor`: Diagnostics server availability, latency, version details, and OAuth capability mappings.
+  * `N8NWorkspaceMapper`: Map catalog mapping workflows owners to workspaces.
+  * `N8NServerInformation`: Struct carrying n8n instance version, ID, and capability parameters.
+  * `N8NConnectionProfile`: Server target URL, auth config types, and timeout limits.
+  * `N8NIntegrationReport`: Report summary containing connectivity status, latencies, uploaded counts, and versions.
+  * `N8NValidator`: Server config and request integrity validator.
+* **Current Status**: Current.
+
 ---
 
 
