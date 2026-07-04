@@ -38,29 +38,30 @@ graph TD
     PersistenceService --> PersistenceRegistry
     PersistenceRegistry -->|Resolves| PersistenceProvider
     PersistenceProvider --> PostgreSQLProvider
-    PostgreSQLProvider --> PostgreSQL[PostgreSQL Database]
+    PostgreSQLProvider --> DatabaseTransport
+    DatabaseTransport --> PostgreSQLTransport[PostgreSQLTransport - Production]
+    DatabaseTransport --> SQLiteTransportForTests[SQLiteTransportForTests - Tests]
 ```
 
 ### Key Interfaces
 *   **`PersistenceProvider`**: Abstract base class declaring standard capabilities (`connect`, `disconnect`, `execute`, `begin_transaction`, `commit_transaction`, `rollback_transaction`, `validate_connection`, `run_migration`).
-*   **`ConnectionManager`**: Handles pooling, retries, timeout management, and reconnections.
-*   **`TransactionManager`**: Manages transaction scopes, rollbacks, commits, and failure recoveries.
-*   **`MigrationManager`**: Tracks and applies migration versions, discovering pending files.
-*   **`RepositoryRegistry`**: Registers and resolves domain-specific data repositories for different database entities.
+*   **`DatabaseTransport`**: Abstract interface decoupling providers from target database drivers (connect, disconnect, execute, transaction hooks).
+*   **`TransportFactory`**: Factory discovering and instantiating appropriate database transports.
+*   **`RepositoryRegistry`**: Registers and resolves domain-specific repositories.
 
 ---
 
 ## 4. Potential Conflicts & Integration Strategy
 
-*   **Circular Dependencies**: Ensure managers do not reference each other directly. `PersistenceService` will act as the orchestrating mediator, coordinating connections, transactions, and migration executions.
-*   **Node.js vs. Python version differences**: Standard library `sqlite3` and `unittest.mock` will be used to simulate database transport and pool errors during testing, leaving psycopg2/PostgreSQL driver interactions abstract until M7.
-*   **Secrets Exposure**: Connection strings and credentials will not be stored in telemetry, reports, or logs, following security rules.
+*   **Circular Dependencies**: Ensured managers coordinate exclusively via the `PersistenceService` mediator.
+*   **Decoupled SQLite Mocking**: Moved SQLite-backed pooling and connections completely out of the production runtime into [test_persistence.py](file:///Users/anzarakhtar/aios/core/tests/test_persistence.py) via `SQLiteTransportForTests`. Production code executes strictly over PostgreSQL protocols, reporting `"Awaiting Runtime Configuration"` if env is missing.
+*   **Secrets Exposure**: Connection strings and credentials are excluded from reports and logs.
 
 ---
 
 ## 5. Recommended Integration Strategy
 
-1.  Define abstract bases `PersistenceProvider`, `ConnectionManager`, `TransactionManager`, and `MigrationManager` in a new service package `core/src/aios/services/persistence.py` and implement concrete counterparts in `core/src/aios/services/persistence_impl.py`.
+1.  Define abstract bases `PersistenceProvider`, `DatabaseTransport`, `TransportConnection`, and `TransportTransaction` in `core/src/aios/services/persistence.py` and implement concrete psycopg2 wrappers in `core/src/aios/services/persistence_impl.py`.
 2.  Wire and register all persistence services in `core/src/aios/bootstrap.py`.
-3.  Write comprehensive unit tests in `core/tests/test_persistence.py` mocking ONLY the database transport/connection layers.
+3.  Write test transports `SQLiteTransportForTests` and `MockDatabaseTransport` inside `core/tests/test_persistence.py` to verify connection affinity, transactions, and diagnostics under test scopes.
 4.  Compile all health and diagnostic reports using `PersistenceReportGenerator`.

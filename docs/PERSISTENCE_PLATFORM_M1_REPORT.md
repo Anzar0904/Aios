@@ -1,81 +1,77 @@
-# Persistence Platform Milestone 1 Integration Report
+# Persistence Platform Milestone 1.1 Integration Report
 
-## 1. Architecture Discovery & Integration Strategy
+## 1. Architectural Correction: Database Transport Abstraction
 
-### 1.1 Discovery Summary
-An extensive discovery phase was conducted on the Personal AI OS codebase to analyze existing components:
-*   **Dependency Injection**: Driven by the class-mapped registration system `ServiceRegistry` in [registry.py](file:///Users/anzarakhtar/aios/core/src/aios/registry.py).
-*   **Lifecycle**: Standardized by the base class `ServiceLifecycle` in [base.py](file:///Users/anzarakhtar/aios/core/src/aios/services/base.py) (handling `initialize`, `on_ready`, `on_active`, and `teardown` stages).
-*   **Diagnostics/Health**: Monitored via custom domain-specific metrics trackers and diagnostics validators.
+During architecture review, it was resolved that PostgreSQLProvider should not transparently execute on top of an internal SQLite database at runtime. To ensure that production engines execute strictly over production-ready protocols, this milestone correction decouples database provider logic from the concrete transport layer.
 
-### 1.2 Integration Strategy
-To integrate persistence without violating architecture rules:
-*   Registered all persistence managers inside the unified Composition Root in [bootstrap.py](file:///Users/anzarakhtar/aios/core/src/aios/bootstrap.py).
-*   Designed the persistence classes to inherit directly from `ServiceLifecycle` so that the Kernel manages their startup and shutdown automatically.
-*   Enforced database provider decoupling: all subsystems communicate strictly with `PersistenceService`, never referencing PostgreSQL directly.
-
----
-
-## 2. Persistence Architecture & Provider Abstraction
-
-The Persistence Platform follows a strictly decoupled provider-agnostic layering pattern:
+### 1.1 Decoupled Layering Architecture
+A database transport abstraction layer has been introduced:
 
 ```mermaid
 graph TD
     Subsystems[Subsystems: memory, workflow, etc.] -->|Exclusively| PersistenceService[PersistenceService Interface]
     PersistenceService -->|Routes| PersistenceServiceImpl[PersistenceServiceImpl]
-    PersistenceServiceImpl -->|Resolves from registry| PersistenceProvider[PersistenceProvider Interface]
-    PersistenceProvider --> PostgreSQLProvider[PostgreSQLProvider]
-    PostgreSQLProvider --> ConnectionPool[ConnectionPool]
-    PostgreSQLProvider --> TransactionManager[TransactionManager]
-    PostgreSQLProvider --> MigrationManager[MigrationManager]
+    PersistenceServiceImpl -->|Resolves provider| PostgreSQLProvider[PostgreSQLProvider]
+    PostgreSQLProvider -->|Delegates only to| DatabaseTransport[DatabaseTransport Interface]
+    DatabaseTransport --> PostgreSQLTransport[PostgreSQLTransport - Production Runtime]
+    DatabaseTransport --> SQLiteTransportForTests[SQLiteTransportForTests - Tests Only]
+    DatabaseTransport --> MockDatabaseTransport[MockDatabaseTransport - Tests Only]
 ```
 
-### 2.1 Interface Specifications
-*   **`PersistenceService`**: Exposes simple unified methods `execute(query, params)`, `begin_transaction()`, `commit_transaction()`, and `rollback_transaction()` to consumer subsystems.
-*   **`PersistenceProvider`**: Abstract interface declaring required hooks for database initialization, connecting, query executing, and transactional operations.
-*   **`PersistenceRegistry`**: Registers and instantiates pluggable provider classes by name (e.g. `'postgresql'`).
-*   **`RepositoryRegistry`**: A clean, centralized dictionary structure enabling future business domain entities to register their table repositories.
+### 1.2 Transport Interface Specifications
+*   **`DatabaseTransport`**: Abstract interface exposing base methods:
+    *   `connect()` / `disconnect()`
+    *   `execute(query, params)` / `execute_many(query, params_list)`
+    *   `begin_transaction() -> TransportTransaction`
+    *   `health() -> TransportHealth`
+    *   `capabilities() -> TransportCapabilities`
+    *   `validate_configuration() -> List[str]`
+*   **`TransportConnection`**: Abstract instance wrapping active client connections.
+*   **`TransportTransaction`**: Abstract transaction wrapper exposing standard `commit()` and `rollback()` targets.
+*   **`TransportResult`**: Contains list of fetched rows, affected count, and last inserted ID.
+*   **`TransportFactory`**: Configures, validates, and instantiates registered transports.
+
+---
+
+## 2. Decoupled Provider & Runtime Separation
+
+### 2.1 Production PostgreSQL Transport
+The concrete `PostgreSQLTransport` executes database statements over the `psycopg2` driver. It does not contain any fallback logic to SQLite:
+*   **Awaiting Runtime Configuration**: If Postgres connection parameters (`POSTGRES_HOST`, `POSTGRES_USER`, etc.) are missing from the environment, the transport enters the `"Awaiting Runtime Configuration"` state. In this state, it does not fail the kernel bootstrap, but safely blocks query execution and reports status errors.
+*   **Validation**: Validates configuration parameters. If any key config is missing, it logs info and suspends active socket connections.
+
+### 2.2 Test Transports Separation
+To completely isolate SQLite from the production runtime codebase:
+*   `SQLiteTransportForTests` has been created and placed strictly inside [test_persistence.py](file:///Users/anzarakhtar/aios/core/tests/test_persistence.py). It wraps Python's standard `sqlite3` using memory-shared schemas (`file:persistence_test_db?mode=memory&cache=shared`) and coordinates connection-affinity for transaction savepoint scopes.
+*   `MockDatabaseTransport` has been created inside [test_persistence.py](file:///Users/anzarakhtar/aios/core/tests/test_persistence.py) to simulate offline connectivity errors, protocol compatibility warnings, and configuration mismatches.
+*   The production code in `persistence_impl.py` contains **zero** `sqlite3` imports or SQLite references.
 
 ---
 
 ## 3. Core Lifecycles
 
-### 3.1 Connection Pool Lifecycle & Management
-The connection pool runs on `ConnectionPool` in `persistence_impl.py`:
-*   **Pre-population**: When the provider is connected, it pre-spawns connection instances up to `pool_min_size`.
-*   **Acquisition & Validation**: Checks out connection instances on demand. Every checkout performs a quick query validation (`SELECT 1`). If a connection is dead, it is automatically discarded and a new connection is spawned.
-*   **Pool Growth**: If checkout requests exceed available pooled connections, the pool dynamically spawns new instances up to `pool_max_size`.
-*   **Timeout & Exhaustion**: If all slots up to `pool_max_size` are active, requests block and raise a `TimeoutError` after a configurable timeout limit.
-*   **Graceful Teardown**: Closes all active connections and empties the pool.
+### 3.1 Connection Management
+The transport establishes connection pooling and manages timeouts:
+*   **Connect/Disconnect**: Opens client sockets and maps query parameters.
+*   **Validation**: Every active query checked out from pools runs a pre-validation `SELECT 1` probe to confirm socket status.
+*   **Metrics**: Collects connection counts, average roundtrip times, and P95 latency profiles.
 
-### 3.2 Transaction Lifecycle & Nested Savepoints
-Transaction scopes are managed by the `TransactionManager`:
-*   **Flat Transactions**: The first call to `begin_transaction()` acquires a pooled connection and starts a database transaction (`BEGIN TRANSACTION`).
-*   **Nested Transactions**: Subsequent calls to `begin_transaction()` while a transaction is active create database savepoints (`SAVEPOINT sp_N`), incrementing the nested stack counter.
-*   **Committing**: Committing decrements the stack counter. Once the stack counter hits zero, the changes are committed to the database (`COMMIT`) and the connection is returned to the pool.
-*   **Rollbacks**: Rollbacks restore the state to the nearest nested transaction savepoint (`ROLLBACK TO SAVEPOINT sp_N`). If rolling back the outermost scope, the entire transaction is rolled back (`ROLLBACK`) and the connection is returned to the pool.
+### 3.2 Transaction Stack & Savepoints
+Transaction scopes are tracked by the `TransactionStackManager`:
+*   **Flat Transactions**: The outermost scope requests a transport-level transaction (`begin_transaction()`).
+*   **Nested Savepoints**: Any nested transaction requests are managed using database savepoints (`SAVEPOINT sp_N`). Commits release savepoint labels, and rollbacks restore state coordinates to savepoints.
 
-### 3.3 Migration Lifecycle & Validation
-Database schemas are managed by the `MigrationManager`:
-*   **Discovery**: Migrations are registered in sequential version numbers.
-*   **Sequence Validation**: Checks for duplicate migration versions and verifies that migration versions are registered in ascending sequential order.
-*   **History & Tracking**: Compares registered migrations against the internal `_migrations` database history table.
-*   **Atomic Application**: Pending migration scripts are executed inside atomic transaction blocks to prevent partial migration states in case of script failures.
+### 3.3 Migrations
+Migrations are discovered and validated by the `MigrationManager`. Sequenced scripts are registered, compared to the applied history versions inside the `_migrations` table, and executed atomically.
 
 ---
 
-## 4. Diagnostics & Health Monitoring
+## 4. Diagnostics & Health Indicators
 
 ### 4.1 Diagnostics Checks
-The `PersistenceDiagnostics` service scans database configuration and connectivity states, returning remediation actions:
-*   **Connection Failure**: Probes connection health. Remediates by prompting checking database process status and port listings.
-*   **Pool Configuration Inconsistency**: Ensures min size > 0 and max >= min. Remediates by instructing correcting parameters.
-*   **Migration Sequence Inconsistency**: Detects duplicate or unordered migration versions. Remediates by instructing sequence audits.
+The `PersistenceDiagnostics` service scans configurations and connection health, outputting:
+*   **Awaiting Runtime Configuration**: Emits actionable advice to configure Postgres variables (`POSTGRES_HOST`, `POSTGRES_USER`, etc.) when missing.
+*   **Connection/Credential Errors**: Diagnoses port connection failures, bad authentication parameters, or SSL mismatches.
 
-### 4.2 Health Audits
-The `PersistenceHealthMonitor` compiles runtime metrics:
-*   **Availability**: Checks connection state.
-*   **Latency**: Measures query roundtrip latencies and maintains average and P95 latency profiles.
-*   **Pool Status**: Exposes active connection counts and total pool size.
-*   **Performance Metrics**: Exposes query success rates, transaction retry/failure statistics, and applied migration levels.
+### 4.2 Health Monitoring
+The `PersistenceHealthMonitor` polls transport health. It records latencies, checks server availability, and calculates overall health scores.

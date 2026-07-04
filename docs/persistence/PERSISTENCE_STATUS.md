@@ -1,7 +1,7 @@
 # Persistence Subsystem Status
 
 - **Active Provider**: POSTGRESQL
-- **Status**: ONLINE
-- **Reachable**: True
-- **Database Target**: localhost:5432
-- **Database Name**: aios
+- **Status**: OFFLINE
+- **Reachable**: False
+- **Database Target**: :5432
+- **Database Name**: 

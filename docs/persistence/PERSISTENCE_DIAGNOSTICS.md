@@ -1,7 +1,9 @@
 # Persistence Platform Diagnostics
 
-- **Diagnostics Status**: OK
+- **Diagnostics Status**: ERROR
 
 ## Logged Diagnostics Issues
 
-All diagnostics validation checks passed. Database operation is stable.
+### [Configuration Warning] Awaiting Runtime Configuration
+**Remediation**: Configure environment variables POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE to establish live database connections.
+

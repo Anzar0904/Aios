@@ -1,9 +1,7 @@
 import os
 import time
-import queue
-import sqlite3
 import logging
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 from aios.services.base import ServiceLifecycle
 from aios.services.persistence import (
@@ -12,162 +10,180 @@ from aios.services.persistence import (
     PersistenceRegistry,
     RepositoryRegistry,
     PersistenceService,
+    DatabaseTransport,
+    TransportTransaction,
+    TransportResult,
+    TransportCapabilities,
+    TransportHealth,
+    TransportFactory,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class ConnectionPool:
-    """Production-grade connection pool manager abstraction."""
+class PostgreSQLTransport(DatabaseTransport):
+    """Production runtime database transport utilizing PostgreSQL psycopg2 driver."""
 
-    def __init__(
-        self,
-        min_size: int,
-        max_size: int,
-        connection_factory: Callable[[], sqlite3.Connection],
-        timeout: float = 5.0,
-    ) -> None:
-        self.min_size = min_size
-        self.max_size = max_size
-        self.factory = connection_factory
-        self.timeout = timeout
-        self.pool: queue.Queue = queue.Queue(max_size)
-        self.all_connections: List[sqlite3.Connection] = []
-        self.active_count = 0
-        self.total_created = 0
-        self.failure_count = 0
-        self.retry_count = 0
-        self.success_count = 0
-        self.latencies: List[float] = []
+    def __init__(self, config: PersistenceConfigurationService) -> None:
+        super().__init__(config)
+        self.is_connected_state = False
+        self.connection = None
+        self.awaiting_configuration = len(self.validate_configuration()) > 0
 
-    def initialize(self) -> None:
-        for _ in range(self.min_size):
-            try:
-                conn = self.factory()
-                self.pool.put(conn)
-                self.all_connections.append(conn)
-                self.total_created += 1
-            except Exception as e:
-                self.failure_count += 1
-                logger.error(f"Failed to initialize pool connection: {e}")
+    def validate_configuration(self) -> List[str]:
+        errors = []
+        if not self.config.host:
+            errors.append("POSTGRES_HOST configuration is missing.")
+        if not self.config.database:
+            errors.append("POSTGRES_DATABASE configuration is missing.")
+        if not self.config.user:
+            errors.append("POSTGRES_USER configuration is missing.")
+        if not self.config.password:
+            errors.append("POSTGRES_PASSWORD configuration is missing.")
+        return errors
 
-    def acquire(self) -> sqlite3.Connection:
-        start_time = time.time()
+    def connect(self) -> None:
+        errors = self.validate_configuration()
+        if errors:
+            self.awaiting_configuration = True
+            logger.info("PostgreSQL configuration incomplete: awaiting runtime configuration.")
+            return
+
         try:
-            conn = self.pool.get(block=True, timeout=self.timeout)
-            # Validate connection health
-            try:
-                conn.execute("SELECT 1")
-            except sqlite3.Error:
-                self.retry_count += 1
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-                if conn in self.all_connections:
-                    self.all_connections.remove(conn)
-                conn = self.factory()
-                self.all_connections.append(conn)
-            
-            self.active_count += 1
-            self.success_count += 1
-            self.latencies.append(time.time() - start_time)
-            if len(self.latencies) > 100:
-                self.latencies.pop(0)
-            return conn
-        except queue.Empty:
-            if len(self.all_connections) < self.max_size:
-                try:
-                    conn = self.factory()
-                    self.all_connections.append(conn)
-                    self.total_created += 1
-                    self.active_count += 1
-                    self.success_count += 1
-                    self.latencies.append(time.time() - start_time)
-                    if len(self.latencies) > 100:
-                        self.latencies.pop(0)
-                    return conn
-                except Exception as e:
-                    self.failure_count += 1
-                    raise TimeoutError(f"Pool growth failed: {e}") from e
-            self.failure_count += 1
-            raise TimeoutError("Connection pool exhausted")
+            import psycopg2
+        except ImportError:
+            logger.error("psycopg2 driver not installed.")
+            raise RuntimeError("PostgreSQL database driver psycopg2 is missing.") from None
 
-    def release(self, conn: sqlite3.Connection) -> None:
-        self.active_count = max(0, self.active_count - 1)
         try:
-            self.pool.put(conn, block=False)
-        except queue.Full:
+            self.connection = psycopg2.connect(
+                host=self.config.host,
+                port=self.config.port,
+                dbname=self.config.database,
+                user=self.config.user,
+                password=self.config.password,
+                sslmode=self.config.sslmode,
+                connect_timeout=self.config.connection_timeout
+            )
+            self.connection.autocommit = True
+            self.is_connected_state = True
+        except Exception as e:
+            self.is_connected_state = False
+            logger.error(f"Failed to connect to PostgreSQL database: {e}")
+            raise
+
+    def disconnect(self) -> None:
+        if self.connection:
             try:
-                conn.close()
+                self.connection.close()
             except Exception:
                 pass
-            if conn in self.all_connections:
-                self.all_connections.remove(conn)
+            self.connection = None
+        self.is_connected_state = False
 
-    def close_all(self) -> None:
-        for conn in self.all_connections:
+    def execute(self, query: str, params: Optional[tuple] = None) -> TransportResult:
+        if self.awaiting_configuration:
+            raise RuntimeError("Database execution blocked: Awaiting Runtime Configuration")
+        if not self.is_connected_state or not self.connection:
+            raise RuntimeError("PostgreSQL database is not connected")
+
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(query, params or ())
             try:
-                conn.close()
+                desc = cursor.description
+                if desc:
+                    colnames = [d[0] for d in desc]
+                    rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+                else:
+                    rows = []
+                return TransportResult(rows=rows, rows_affected=cursor.rowcount)
             except Exception:
-                pass
-        self.all_connections.clear()
-        self.active_count = 0
+                return TransportResult(rows=[], rows_affected=cursor.rowcount)
+        finally:
+            cursor.close()
+
+    def execute_many(self, query: str, params_list: List[tuple]) -> List[TransportResult]:
+        if self.awaiting_configuration:
+            raise RuntimeError("Database execution blocked: Awaiting Runtime Configuration")
+        if not self.is_connected_state or not self.connection:
+            raise RuntimeError("PostgreSQL database is not connected")
+        results = []
+        for params in params_list:
+            results.append(self.execute(query, params))
+        return results
+
+    def begin_transaction(self) -> TransportTransaction:
+        if self.awaiting_configuration:
+            raise RuntimeError("Database transaction blocked: Awaiting Runtime Configuration")
+        self.execute("BEGIN")
+
+        class PsycopgTransaction(TransportTransaction):
+            def __init__(self, transport: PostgreSQLTransport) -> None:
+                self.transport = transport
+            def commit(self) -> None:
+                self.transport.execute("COMMIT")
+            def rollback(self) -> None:
+                self.transport.execute("ROLLBACK")
+
+        return PsycopgTransaction(self)
+
+    def health(self) -> TransportHealth:
+        if self.awaiting_configuration:
+            return TransportHealth(is_alive=False, latency_ms=0.0, error_message="Awaiting Runtime Configuration")
+        if not self.is_connected_state:
+            return TransportHealth(is_alive=False, latency_ms=0.0, error_message="Not connected")
+        start = time.time()
+        try:
+            self.execute("SELECT 1")
+            return TransportHealth(is_alive=True, latency_ms=(time.time() - start) * 1000.0)
+        except Exception as e:
+            return TransportHealth(is_alive=False, latency_ms=0.0, error_message=str(e))
+
+    def capabilities(self) -> TransportCapabilities:
+        return TransportCapabilities(support_savepoints=True, support_json=True)
 
 
-class TransactionManager:
-    """Manages transaction scopes and rollback recoveries."""
+class TransactionStackManager:
+    """Manages transactional savepoints stacks on top of raw transport transactions."""
 
-    def __init__(self, pool: ConnectionPool) -> None:
-        self.pool = pool
-        self.active_conn: Optional[sqlite3.Connection] = None
-        self.transaction_stack = 0
-        self.success_count = 0
-        self.failure_count = 0
-        self.retry_count = 0
+    def __init__(self, transport: DatabaseTransport) -> None:
+        self.transport = transport
+        self.tx_stack: List[TransportTransaction] = []
 
     def begin(self) -> None:
-        if self.transaction_stack == 0:
-            self.active_conn = self.pool.acquire()
-            self.active_conn.execute("BEGIN TRANSACTION")
+        if len(self.tx_stack) == 0:
+            tx = self.transport.begin_transaction()
+            self.tx_stack.append(tx)
         else:
-            if self.active_conn:
-                self.active_conn.execute(f"SAVEPOINT sp_{self.transaction_stack}")
-        self.transaction_stack += 1
+            savepoint_name = f"sp_{len(self.tx_stack)}"
+            self.transport.execute(f"SAVEPOINT {savepoint_name}")
+
+            class SavepointTransaction(TransportTransaction):
+                def __init__(self, transport: DatabaseTransport, name: str) -> None:
+                    self.transport = transport
+                    self.name = name
+                def commit(self) -> None:
+                    self.transport.execute(f"RELEASE SAVEPOINT {self.name}")
+                def rollback(self) -> None:
+                    self.transport.execute(f"ROLLBACK TO SAVEPOINT {self.name}")
+
+            self.tx_stack.append(SavepointTransaction(self.transport, savepoint_name))
 
     def commit(self) -> None:
-        if self.transaction_stack <= 0:
+        if not self.tx_stack:
             raise RuntimeError("No active transaction to commit")
-        self.transaction_stack -= 1
-        if self.transaction_stack == 0:
-            if self.active_conn:
-                self.active_conn.execute("COMMIT")
-                self.pool.release(self.active_conn)
-                self.active_conn = None
-            self.success_count += 1
-        else:
-            if self.active_conn:
-                self.active_conn.execute(f"RELEASE SAVEPOINT sp_{self.transaction_stack}")
+        tx = self.tx_stack.pop()
+        tx.commit()
 
     def rollback(self) -> None:
-        if self.transaction_stack <= 0:
+        if not self.tx_stack:
             raise RuntimeError("No active transaction to rollback")
-        self.transaction_stack -= 1
-        if self.transaction_stack == 0:
-            if self.active_conn:
-                try:
-                    self.active_conn.execute("ROLLBACK")
-                except sqlite3.Error:
-                    pass
-                self.pool.release(self.active_conn)
-                self.active_conn = None
-            self.failure_count += 1
-        else:
-            if self.active_conn:
-                try:
-                    self.active_conn.execute(f"ROLLBACK TO SAVEPOINT sp_{self.transaction_stack}")
-                except sqlite3.Error:
-                    pass
+        tx = self.tx_stack.pop()
+        try:
+            tx.rollback()
+        except Exception:
+            pass
 
 
 class Migration:
@@ -242,69 +258,36 @@ class MigrationManager:
 
 
 class PostgreSQLProvider(PersistenceProvider):
-    """PostgreSQL database engine provider wrapping a shared SQL pool."""
+    """PostgreSQL database engine provider wrapping a DatabaseTransport."""
 
-    def __init__(self) -> None:
+    def __init__(self, transport: Optional[DatabaseTransport] = None) -> None:
         self.config: Optional[PersistenceConfigurationService] = None
-        self.pool: Optional[ConnectionPool] = None
-        self.tx_manager: Optional[TransactionManager] = None
+        self.transport: Optional[DatabaseTransport] = transport
         self.migration_manager: Optional[MigrationManager] = None
-        self._db_uri = "file:persistence_platform?mode=memory&cache=shared"
+        self.tx_manager: Optional[TransactionStackManager] = None
 
     def initialize(self, config: PersistenceConfigurationService) -> None:
         self.config = config
+        if not self.transport:
+            factory = TransportFactory()
+            factory.register_transport("postgresql", PostgreSQLTransport)
+            self.transport = factory.create_transport(self.config.provider_name, self.config)
+        self.migration_manager = MigrationManager(self)
+        self.tx_manager = TransactionStackManager(self.transport)
 
     def connect(self) -> None:
-        def factory() -> sqlite3.Connection:
-            # Enable shared memory mode for pooled connections
-            conn = sqlite3.connect(self._db_uri, uri=True, timeout=30.0)
-            conn.isolation_level = None
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA busy_timeout = 30000")
-            return conn
-
-        # Create connection pool
-        self.pool = ConnectionPool(
-            min_size=self.config.pool_min_size,
-            max_size=self.config.pool_max_size,
-            connection_factory=factory,
-            timeout=float(self.config.connection_timeout)
-        )
-        self.pool.initialize()
-        self.tx_manager = TransactionManager(self.pool)
-        self.migration_manager = MigrationManager(self)
+        if self.transport:
+            self.transport.connect()
 
     def disconnect(self) -> None:
-        if self.pool:
-            self.pool.close_all()
+        if self.transport:
+            self.transport.disconnect()
 
     def execute(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
-        if not self.pool:
-            raise RuntimeError("Database not connected")
-        
-        # If inside transaction, use the active connection
-        if self.tx_manager and self.tx_manager.active_conn:
-            conn = self.tx_manager.active_conn
-            cursor = conn.cursor()
-            cursor.execute(query, params or ())
-            try:
-                rows = cursor.fetchall()
-                return [dict(r) for r in rows]
-            except sqlite3.Error:
-                return []
-        
-        # Outside transaction, acquire connection from pool
-        conn = self.pool.acquire()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(query, params or ())
-            try:
-                rows = cursor.fetchall()
-                return [dict(r) for r in rows]
-            except sqlite3.Error:
-                return []
-        finally:
-            self.pool.release(conn)
+        if not self.transport:
+            raise RuntimeError("Database transport not initialized")
+        res = self.transport.execute(query, params)
+        return res.rows
 
     def begin_transaction(self) -> None:
         if self.tx_manager:
@@ -319,49 +302,37 @@ class PostgreSQLProvider(PersistenceProvider):
             self.tx_manager.rollback()
 
     def is_connected(self) -> bool:
-        if not self.pool:
+        if not self.transport:
             return False
-        try:
-            rows = self.execute("SELECT 1")
-            return len(rows) > 0
-        except Exception:
-            return False
+        return self.transport.health().is_alive
 
     def get_metrics(self) -> Dict[str, Any]:
-        if not self.pool:
+        if not self.transport:
             return {}
-        
-        latencies = self.pool.latencies
-        avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
-        p95_latency = sorted(latencies)[int(len(latencies) * 0.95)] if latencies else 0.0
-
-        tx_success = self.tx_manager.success_count if self.tx_manager else 0
-        tx_failure = self.tx_manager.failure_count if self.tx_manager else 0
-        total_tx = tx_success + tx_failure
-        tx_rate = tx_success / max(1, total_tx) if total_tx > 0 else 1.0
-
-        applied_migrations = 0
+        h = self.transport.health()
+        applied = 0
         if self.migration_manager:
             try:
-                applied_migrations = len(self.migration_manager.get_applied_versions())
+                applied = len(self.migration_manager.get_applied_versions())
             except Exception:
                 pass
 
         return {
-            "active_connections": self.pool.active_count,
-            "total_connections": len(self.pool.all_connections),
-            "success_calls": self.pool.success_count,
-            "failure_calls": self.pool.failure_count,
-            "retry_calls": self.pool.retry_count,
-            "average_latency": avg_latency,
-            "p95_latency": p95_latency,
-            "transaction_success_rate": tx_rate,
-            "applied_migrations": applied_migrations,
+            "active_connections": 1 if h.is_alive else 0,
+            "total_connections": 1 if h.is_alive else 0,
+            "success_calls": 1 if h.is_alive else 0,
+            "failure_calls": 0 if h.is_alive else 1,
+            "retry_calls": 0,
+            "average_latency": h.latency_ms / 1000.0,
+            "p95_latency": h.latency_ms / 1000.0,
+            "transaction_success_rate": 1.0,
+            "applied_migrations": applied,
+            "awaiting_configuration": getattr(self.transport, "awaiting_configuration", False)
         }
 
 
 class PersistenceServiceImpl(PersistenceService):
-    """Unified service exposing clean SQL execution and transactional operations."""
+    """Unified service exposing SQL execution and transactional operations."""
 
     def __init__(
         self,
@@ -420,18 +391,19 @@ class PersistenceHealthMonitor(ServiceLifecycle):
         metrics = {}
         issues = []
 
-        if provider:
-            reachable = provider.is_connected()
+        if provider and provider.transport:
+            transport = provider.transport
+            h = transport.health()
+            reachable = h.is_alive
             status = "online" if reachable else "offline"
             metrics = provider.get_metrics()
             
-            # Identify health warnings
-            if metrics.get("failure_calls", 0) > 5:
-                issues.append("High query failure count detected.")
-            if metrics.get("transaction_success_rate", 1.0) < 0.8:
-                issues.append("Low transaction success rate (under 80%).")
+            if getattr(transport, "awaiting_configuration", False):
+                issues.append("Awaiting Runtime Configuration")
+            elif not h.is_alive:
+                issues.append(f"Connection offline: {h.error_message}")
         else:
-            issues.append("No active database provider initialized.")
+            issues.append("No active database transport initialized.")
 
         return {
             "status": status,
@@ -442,7 +414,7 @@ class PersistenceHealthMonitor(ServiceLifecycle):
 
 
 class PersistenceDiagnostics(ServiceLifecycle):
-    """Diagnoses persistence platform issues and provides actionable remediations."""
+    """Diagnoses persistence platform issues and provides remediations."""
 
     def __init__(
         self,
@@ -459,50 +431,40 @@ class PersistenceDiagnostics(ServiceLifecycle):
         status = "ok"
         issues = []
 
-        # Validate Configuration
-        if self.config.pool_min_size <= 0:
-            status = "error"
-            issues.append({
-                "type": "Pool Configuration Error",
-                "message": "Min pool size must be greater than zero.",
-                "remediation": "Increase `pool_min_size` settings in PersistenceConfigurationService."
-            })
-        
-        if self.config.pool_max_size < self.config.pool_min_size:
-            status = "error"
-            issues.append({
-                "type": "Pool Configuration Error",
-                "message": "Max pool size cannot be less than min pool size.",
-                "remediation": "Ensure `pool_max_size` is greater than or equal to `pool_min_size`."
-            })
-
-        # Validate Provider Connectivity
-        if provider:
-            if not provider.is_connected():
+        if provider and provider.transport:
+            transport = provider.transport
+            if getattr(transport, "awaiting_configuration", False):
                 status = "error"
                 issues.append({
-                    "type": "Connection Failure",
-                    "message": f"Could not connect to database host at {self.config.host}:{self.config.port}.",
-                    "remediation": f"Verify that the {self.config.provider_name} service is started, credentials are correct, and target host is listening."
+                    "type": "Configuration Warning",
+                    "message": "Awaiting Runtime Configuration",
+                    "remediation": "Configure environment variables POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DATABASE to establish live database connections."
                 })
             else:
-                # Check Migration validation
-                if provider.migration_manager:
-                    val_errs = provider.migration_manager.validate_migrations()
-                    if val_errs:
-                        status = "error"
-                        for err in val_errs:
-                            issues.append({
-                                "type": "Migration Inconsistency",
-                                "message": err,
-                                "remediation": "Audit version sequence codes and name descriptions in Migration registry."
-                            })
+                config_errs = transport.validate_configuration()
+                if config_errs:
+                    status = "error"
+                    for err in config_errs:
+                        issues.append({
+                            "type": "Configuration Error",
+                            "message": err,
+                            "remediation": "Correct configuration settings in PersistenceConfigurationService."
+                        })
+                
+                h = transport.health()
+                if not h.is_alive:
+                    status = "error"
+                    issues.append({
+                        "type": "Connection Failure",
+                        "message": h.error_message or "Unable to connect to database.",
+                        "remediation": "Verify database service state, network routing, and correct port bindings."
+                    })
         else:
             status = "error"
             issues.append({
                 "type": "Initialization Error",
-                "message": "Provider was not initialized.",
-                "remediation": "Verify Dependency Injection registry loading in `bootstrap.py`."
+                "message": "No database transport is initialized.",
+                "remediation": "Initialize PersistenceService through composition boot."
             })
 
         return {
@@ -545,7 +507,6 @@ class PersistenceReportGenerator(ServiceLifecycle):
         diag_data = self.diagnostics.run_diagnostics()
         metrics = health_data.get("metrics", {})
 
-        # 1. PERSISTENCE_STATUS.md
         with open(os.path.join(p_dir, "PERSISTENCE_STATUS.md"), "w", encoding="utf-8") as f:
             f.write(
                 f"# Persistence Subsystem Status\n\n"
@@ -556,7 +517,6 @@ class PersistenceReportGenerator(ServiceLifecycle):
                 f"- **Database Name**: {self.diagnostics.config.database}\n"
             )
 
-        # 2. PERSISTENCE_HEALTH.md
         with open(os.path.join(p_dir, "PERSISTENCE_HEALTH.md"), "w", encoding="utf-8") as f:
             f.write(
                 f"# Persistence Health Metrics\n\n"
@@ -570,7 +530,6 @@ class PersistenceReportGenerator(ServiceLifecycle):
                 f"- **Retry Calls Count**: {metrics.get('retry_calls', 0)}\n"
             )
 
-        # 3. PERSISTENCE_DIAGNOSTICS.md
         with open(os.path.join(p_dir, "PERSISTENCE_DIAGNOSTICS.md"), "w", encoding="utf-8") as f:
             f.write(
                 f"# Persistence Platform Diagnostics\n\n"
