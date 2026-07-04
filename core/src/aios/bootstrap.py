@@ -727,6 +727,7 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     # Register Production self-hosted n8n components
     from aios.n8n import (
         N8NConfigurationService,
+        N8NSessionManager,
         N8NAuthenticationManager,
         N8NConnectionManager,
         N8NClient,
@@ -745,23 +746,32 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     )
 
     n8n_config = N8NConfigurationService()
-    n8n_auth = N8NAuthenticationManager(n8n_config)
+    n8n_session = N8NSessionManager(n8n_config)
+    n8n_auth = N8NAuthenticationManager(n8n_config, n8n_session)
     n8n_conn = N8NConnectionManager(n8n_config, n8n_auth)
-    n8n_client = N8NClient(n8n_conn)
+    n8n_client = N8NClient(n8n_conn, n8n_session)
     n8n_workflow = N8NWorkflowManager(n8n_client)
     n8n_execution = N8NExecutionManager(n8n_client)
     n8n_credential = N8NCredentialManager(n8n_client)
     n8n_workspace = N8NWorkspaceManager()
-    n8n_health = N8NHealthMonitor(n8n_client, n8n_auth, n8n_workflow)
     n8n_version = N8NVersionManager(n8n_client)
-    n8n_capability = N8NCapabilityManager()
+    n8n_capability = N8NCapabilityManager(n8n_client)
+    n8n_health = N8NHealthMonitor(
+        n8n_client,
+        n8n_auth,
+        n8n_workflow,
+        n8n_execution,
+        n8n_version,
+        n8n_capability
+    )
     n8n_telemetry = N8NTelemetryCollector(n8n_health)
     n8n_event = N8NEventMonitor()
     n8n_validator = N8NValidator()
-    n8n_diagnostics = N8NDiagnostics(n8n_auth)
-    n8n_report = N8NReportGenerator(os.getcwd(), n8n_health)
+    n8n_diagnostics = N8NDiagnostics(n8n_config, n8n_auth, n8n_session)
+    n8n_report = N8NReportGenerator(os.getcwd(), n8n_health, n8n_diagnostics)
 
     n8n_config.initialize()
+    n8n_session.initialize()
     n8n_auth.initialize()
     n8n_conn.initialize()
     n8n_client.initialize()
@@ -779,6 +789,7 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     n8n_report.initialize()
 
     registry.register(N8NConfigurationService, n8n_config)
+    registry.register(N8NSessionManager, n8n_session)
     registry.register(N8NAuthenticationManager, n8n_auth)
     registry.register(N8NConnectionManager, n8n_conn)
     registry.register(N8NClient, n8n_client)

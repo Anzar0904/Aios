@@ -1,5 +1,6 @@
 from aios.n8n.service import (
     N8NConfigurationService as N8NConfigurationService,
+    N8NSessionManager as N8NSessionManager,
     N8NAuthenticationManager as N8NAuthenticationManager,
     N8NConnectionManager as N8NConnectionManager,
     N8NClient as N8NClient,
@@ -8,7 +9,9 @@ from aios.n8n.service import (
     N8NCredentialManager as N8NCredentialManager,
     N8NWorkspaceManager as N8NWorkspaceManager,
     N8NHealthMonitor as N8NHealthMonitor,
+    N8NVersionDetector as N8NVersionDetector,
     N8NVersionManager as N8NVersionManager,
+    N8NCapabilityDetector as N8NCapabilityDetector,
     N8NCapabilityManager as N8NCapabilityManager,
     N8NTelemetryCollector as N8NTelemetryCollector,
     N8NEventMonitor as N8NEventMonitor,
