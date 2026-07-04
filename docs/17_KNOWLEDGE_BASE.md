@@ -343,6 +343,21 @@ This section maps the essential runtime components of the operating system:
   * `ValidationGap`: Actionable descriptions indicating missing suites or low test coverages.
 * **Current Status**: Current.
 
+### 3.21 Intelligent Failure Analysis Data Models
+* **Purpose**: Analyzes test execution traceback outputs, clusters logs by exception class patterns, executes root cause correlations using call graphs, and recommends actionable adjustments.
+* **Data Models & Components**:
+  * `FailureAnalysisService`: Coordinating service executing analyses, caching reports in Memory, and publishing reports.
+  * `FailureAnalyzer`: Classifies failure patterns and groups trace signatures.
+  * `RootCauseAnalyzer`: Isolates origins of failures in codebase graphs.
+  * `FailureSignature`: Traced log details for single exceptions.
+  * `FailurePattern`: Matches error families (e.g. assertion, import, runtime).
+  * `FailureCluster`: Collections of signatures sharing similar patterns.
+  * `FailureRecommendation`: Direct tips outlining resolution steps.
+  * `FailureSeverity`: Severity metrics classifications (LOW, MEDIUM, HIGH, CRITICAL).
+  * `FailureConfidence`: Confidence metrics levels (LOW, MEDIUM, HIGH, CERTAIN).
+  * `FailureAnalysisReport`: Diagnostic report containing clusters lists, recommendations, and ratings.
+* **Current Status**: Current.
+
 ---
 
 

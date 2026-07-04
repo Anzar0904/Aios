@@ -398,6 +398,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     test_cov_service.initialize()
     registry.register(AITestCoverageService, test_cov_service)
 
+    from aios.services.test_failure import FailureAnalysisService
+    from aios.services.test_failure_impl import LocalFailureAnalysisService
+
+    test_fail_service = LocalFailureAnalysisService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    test_fail_service.initialize()
+    registry.register(FailureAnalysisService, test_fail_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel
