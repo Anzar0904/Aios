@@ -411,6 +411,22 @@ This section maps the essential runtime components of the operating system:
   * `DocumentationResult`: Summary of generated/registered documents lists.
 * **Current Status**: Current.
 
+### 3.25 README Intelligence Data Models
+* **Purpose**: Compares repository structures against documentation guidelines, formats planned README sections lists, validates internal links structures, and updates README markdown content.
+* **Data Models & Components**:
+  * `READMEIntelligenceService`: Coordinating service managing README analysis and generation sessions.
+  * `READMEAnalyzer`: Compares existing headers to highlight missing/outdated standard sections.
+  * `READMEPlanner`: Sequences layout blocks according to formatting guidelines.
+  * `READMEValidator`: Flag formatting inconsistencies or duplicate headings.
+  * `READMEGenerator`: Concat planned sections list into markdown content.
+  * `READMEUpdater`: Selectively merges updates to existing README files.
+  * `READMESection`: Individual document section model (heading, content, priority).
+  * `READMETemplate`: Section ordering and style constraint configurations.
+  * `READMEArtifact`: Constructed README markdown file object.
+  * `READMESummary`: Registry metadata tracker (status, section count).
+  * `READMEReport`: Analysis outcome report outlining recommendations.
+* **Current Status**: Current.
+
 ---
 
 
