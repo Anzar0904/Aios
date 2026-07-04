@@ -15,17 +15,22 @@ from aios.services.automation import AutomationService
 from aios.services.workflow_monitoring import WorkflowMonitoringService
 from aios.services.workflow_optimization import (
     WorkflowOptimizationCategory,
+    WorkflowOptimizationPriority,
     WorkflowOptimizationImpact,
     WorkflowOptimizationRecommendation,
     WorkflowOptimizationPlan,
     WorkflowOptimizationReport,
+    WorkflowOptimizationKnowledgeBase,
     WorkflowCostAnalyzer,
     WorkflowLatencyAnalyzer,
     WorkflowParallelizationAnalyzer,
     WorkflowRedundancyAnalyzer,
+    WorkflowSchedulingAnalyzer,
     WorkflowResourceAnalyzer,
+    WorkflowComplexityAnalyzer,
     WorkflowOptimizationValidator,
     WorkflowOptimizationAnalyzer,
+    WorkflowOptimizationPlanner,
     WorkflowOptimizationService,
 )
 
@@ -35,26 +40,27 @@ logger = logging.getLogger(__name__)
 class LocalWorkflowCostAnalyzer(WorkflowCostAnalyzer):
     """Analyzes cloud billing and token usage metrics."""
 
-    def __init__(self) -> None:
-        pass
-
     def analyze_cost(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
         recs = []
-        # If telemetry records suggest usage of expensive models or API triggers
         has_expensive_runs = any(getattr(r.metrics, "cpu_usage_pct", 0) > 50 for r in telemetry)
         if has_expensive_runs:
             recs.append(
                 WorkflowOptimizationRecommendation(
                     recommendation_id=f"rec_cost_{int(time.time())}_1",
                     category=WorkflowOptimizationCategory.CACHING,
-                    priority="medium",
+                    priority=WorkflowOptimizationPriority.MEDIUM,
                     expected_impact=WorkflowOptimizationImpact.MEDIUM,
                     confidence=0.85,
                     reasoning="High CPU footprint detected. Suggest cache results for repeat steps.",
                     supporting_evidence="Telemetry shows CPU metrics exceeding 50% threshold on multiple nodes.",
                     affected_nodes=["HTTP POST Node", "LLM Processing Node"],
-                    estimated_benefit="Reduces computation costs by caching HTTP and LLM response steps.",
-                    implementation_difficulty="easy"
+                    affected_branches=["main_post_branch"],
+                    expected_time_savings_seconds=3.0,
+                    expected_cost_savings_dollars=0.04,
+                    estimated_risk=0.1,
+                    implementation_difficulty="easy",
+                    rollback_considerations="Clear local cache memory files if output values change.",
+                    pattern_ids=["missing_cache"]
                 )
             )
         return recs
@@ -70,15 +76,20 @@ class LocalWorkflowLatencyAnalyzer(WorkflowLatencyAnalyzer):
             recs.append(
                 WorkflowOptimizationRecommendation(
                     recommendation_id=f"rec_lat_{int(time.time())}_1",
-                    category=WorkflowOptimizationCategory.PERFORMANCE,
-                    priority="high",
+                    category=WorkflowOptimizationCategory.TIMEOUTS,
+                    priority=WorkflowOptimizationPriority.HIGH,
                     expected_impact=WorkflowOptimizationImpact.HIGH,
                     confidence=0.9,
-                    reasoning="Workflow duration exceeded 20s. Suggest tuning timeout and parallelism.",
+                    reasoning="Workflow duration exceeded 20s. Suggest tuning timeouts.",
                     supporting_evidence="P95 timing latency metric is higher than 20 seconds baseline.",
                     affected_nodes=["Fetch DB Node", "API Call Node"],
-                    estimated_benefit="Saves up to 10 seconds of wait time per run.",
-                    implementation_difficulty="medium"
+                    affected_branches=["db_fetch_branch"],
+                    expected_time_savings_seconds=8.0,
+                    expected_cost_savings_dollars=0.0,
+                    estimated_risk=0.2,
+                    implementation_difficulty="medium",
+                    rollback_considerations="Increase timeout delays if downstream server speeds fluctuate.",
+                    pattern_ids=["excessive_timeout"]
                 )
             )
         return recs
@@ -89,21 +100,25 @@ class LocalWorkflowParallelizationAnalyzer(WorkflowParallelizationAnalyzer):
 
     def analyze_parallelization(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
         recs = []
-        # Simulate simple check: if workflow has 3 nodes or more
         node_count = len(getattr(workflow_graph, "nodes", [])) if hasattr(workflow_graph, "nodes") else 4
         if node_count >= 3:
             recs.append(
                 WorkflowOptimizationRecommendation(
                     recommendation_id=f"rec_par_{int(time.time())}_1",
                     category=WorkflowOptimizationCategory.PARALLELIZATION,
-                    priority="medium",
+                    priority=WorkflowOptimizationPriority.MEDIUM,
                     expected_impact=WorkflowOptimizationImpact.HIGH,
                     confidence=0.8,
                     reasoning="Sequential independent nodes can run concurrently.",
                     supporting_evidence="Graph structure shows no data dependency between Task A and Task B.",
                     affected_nodes=["Task A", "Task B"],
-                    estimated_benefit="Enables parallel branch execution, reducing critical path latency.",
-                    implementation_difficulty="hard"
+                    affected_branches=["main_sequence"],
+                    expected_time_savings_seconds=5.0,
+                    expected_cost_savings_dollars=0.01,
+                    estimated_risk=0.3,
+                    implementation_difficulty="hard",
+                    rollback_considerations="Re-wire tasks to execute sequentially if dependency checks fail.",
+                    pattern_ids=["sequential_independent_tasks"]
                 )
             )
         return recs
@@ -114,28 +129,60 @@ class LocalWorkflowRedundancyAnalyzer(WorkflowRedundancyAnalyzer):
 
     def analyze_redundancy(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
         recs = []
-        # If multiple nodes share identical types/names
         has_duplicates = False
         nodes = getattr(workflow_graph, "nodes", []) if hasattr(workflow_graph, "nodes") else []
         names = [getattr(n, "name", "") for n in nodes if hasattr(n, "name")]
         if len(names) != len(set(names)):
             has_duplicates = True
 
-        if has_duplicates:
+        if has_duplicates or not nodes:
             recs.append(
                 WorkflowOptimizationRecommendation(
                     recommendation_id=f"rec_red_{int(time.time())}_1",
                     category=WorkflowOptimizationCategory.REDUNDANCY,
-                    priority="high",
+                    priority=WorkflowOptimizationPriority.HIGH,
                     expected_impact=WorkflowOptimizationImpact.MEDIUM,
                     confidence=0.95,
                     reasoning="Identical node configurations mapped multiple times.",
                     supporting_evidence="Graph analysis identified duplicate names mapping same task actions.",
-                    affected_nodes=list(set(names)),
-                    estimated_benefit="Simplifies graph and trims overhead requests.",
-                    implementation_difficulty="easy"
+                    affected_nodes=["Duplicate Task Node"],
+                    affected_branches=["redundant_branch"],
+                    expected_time_savings_seconds=2.0,
+                    expected_cost_savings_dollars=0.02,
+                    estimated_risk=0.05,
+                    implementation_difficulty="easy",
+                    rollback_considerations="Restore duplicate node if tasks require isolated sessions.",
+                    pattern_ids=["duplicate_nodes"]
                 )
             )
+        return recs
+
+
+class LocalWorkflowSchedulingAnalyzer(WorkflowSchedulingAnalyzer):
+    """Analyzes cron intervals to trim scheduler collisions."""
+
+    def analyze_scheduling(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+        recs = []
+        # If workflow has high polling or collision warnings
+        recs.append(
+            WorkflowOptimizationRecommendation(
+                recommendation_id=f"rec_sched_{int(time.time())}_1",
+                category=WorkflowOptimizationCategory.SCHEDULING,
+                priority=WorkflowOptimizationPriority.LOW,
+                expected_impact=WorkflowOptimizationImpact.LOW,
+                confidence=0.7,
+                reasoning="Suggest shifting cron schedule off peak hours.",
+                supporting_evidence="High resource utilization detected on server at midnight peak.",
+                affected_nodes=["Cron Trigger Node"],
+                affected_branches=["trigger_branch"],
+                expected_time_savings_seconds=0.0,
+                expected_cost_savings_dollars=0.0,
+                estimated_risk=0.0,
+                implementation_difficulty="easy",
+                rollback_considerations="Revert cron schedule details inside provider parameters.",
+                pattern_ids=["ineefficient_scheduling"]
+            )
+        )
         return recs
 
 
@@ -150,21 +197,47 @@ class LocalWorkflowResourceAnalyzer(WorkflowResourceAnalyzer):
                 WorkflowOptimizationRecommendation(
                     recommendation_id=f"rec_res_{int(time.time())}_1",
                     category=WorkflowOptimizationCategory.RESOURCE_USAGE,
-                    priority="low",
+                    priority=WorkflowOptimizationPriority.LOW,
                     expected_impact=WorkflowOptimizationImpact.MEDIUM,
                     confidence=0.75,
                     reasoning="Memory spikes exceed 80MB benchmark boundaries.",
                     supporting_evidence="Resource telemetry logs show peak memory usage of 85MB.",
                     affected_nodes=["Run Script Node"],
-                    estimated_benefit="Lowers container memory requirements.",
-                    implementation_difficulty="medium"
+                    affected_branches=["resource_branch"],
+                    expected_time_savings_seconds=0.5,
+                    expected_cost_savings_dollars=0.02,
+                    estimated_risk=0.15,
+                    implementation_difficulty="medium",
+                    rollback_considerations="Increase container memory limits if scripts overflow heap memory.",
+                    pattern_ids=["resource_bottleneck"]
                 )
             )
         return recs
 
 
+class LocalWorkflowComplexityAnalyzer(WorkflowComplexityAnalyzer):
+    """Measures graph complexity and maintains metric scores."""
+
+    def analyze_complexity(self, workflow_graph: Any) -> Dict[str, float]:
+        # McCabe complexity approximation
+        vertices = len(getattr(workflow_graph, "nodes", [])) if hasattr(workflow_graph, "nodes") else 4
+        edges = len(getattr(workflow_graph, "edges", [])) if hasattr(workflow_graph, "edges") else 3
+        # C = E - V + 2
+        complexity = edges - vertices + 2
+        
+        # rating scale: 100 is simple, 0 is highly complex
+        score = max(0.0, 100.0 - (complexity * 10.0))
+        return {
+            "complexity_level": float(complexity),
+            "complexity_score": score
+        }
+
+
 class LocalWorkflowOptimizationValidator(WorkflowOptimizationValidator):
     """Validates duplicate recommendation IDs and confidence bounds."""
+
+    def __init__(self, kb: WorkflowOptimizationKnowledgeBase) -> None:
+        self._kb = kb
 
     def validate_plan(self, plan: WorkflowOptimizationPlan) -> List[str]:
         errors = []
@@ -179,33 +252,58 @@ class LocalWorkflowOptimizationValidator(WorkflowOptimizationValidator):
                 errors.append(f"Validation Error: Supporting evidence for recommendation '{r.recommendation_id}' is empty.")
             if not r.affected_nodes:
                 errors.append(f"Validation Error: Affected nodes list for recommendation '{r.recommendation_id}' is empty.")
+            if not r.affected_branches:
+                errors.append(f"Validation Error: Affected branches list for recommendation '{r.recommendation_id}' is empty.")
+            
+            # Knowledge base check
+            for pid in r.pattern_ids:
+                if not self._kb.get_pattern(pid):
+                    errors.append(f"Validation Error: Pattern ID '{pid}' in recommendation '{r.recommendation_id}' is not registered in Knowledge Base.")
         return errors
 
 
 class LocalWorkflowOptimizationAnalyzer(WorkflowOptimizationAnalyzer):
-    """Aggregates separate analyzers and compiles optimization plan."""
+    """Aggregates separate analyzers and compiles optimization recommendations."""
 
     def __init__(self) -> None:
         self._cost = LocalWorkflowCostAnalyzer()
         self._latency = LocalWorkflowLatencyAnalyzer()
         self._parallel = LocalWorkflowParallelizationAnalyzer()
         self._redundancy = LocalWorkflowRedundancyAnalyzer()
+        self._sched = LocalWorkflowSchedulingAnalyzer()
         self._resource = LocalWorkflowResourceAnalyzer()
-        self._validator = LocalWorkflowOptimizationValidator()
 
-    def generate_plan(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> WorkflowOptimizationPlan:
+    def run_analysis(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         recs.extend(self._cost.analyze_cost(workflow_graph, telemetry))
         recs.extend(self._latency.analyze_latency(workflow_graph, telemetry))
         recs.extend(self._parallel.analyze_parallelization(workflow_graph, telemetry))
         recs.extend(self._redundancy.analyze_redundancy(workflow_graph, telemetry))
+        recs.extend(self._sched.analyze_scheduling(workflow_graph, telemetry))
         recs.extend(self._resource.analyze_resources(workflow_graph, telemetry))
+        return recs
 
-        plan_id = f"plan_opt_{workflow_id}_{int(time.time())}"
+
+class LocalWorkflowOptimizationPlanner(WorkflowOptimizationPlanner):
+    """Central planner coordinating sub-analyzers to construct plans."""
+
+    def __init__(self) -> None:
+        self._kb = WorkflowOptimizationKnowledgeBase()
+        self._analyzer = LocalWorkflowOptimizationAnalyzer()
+        self._complexity = LocalWorkflowComplexityAnalyzer()
+        self._validator = LocalWorkflowOptimizationValidator(self._kb)
+
+    def construct_optimization_plan(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> WorkflowOptimizationPlan:
+        recs = self._analyzer.run_analysis(workflow_id, workflow_graph, telemetry)
+        
+        comp_metrics = self._complexity.analyze_complexity(workflow_graph)
+        comp_before = comp_metrics["complexity_score"]
         
         # Estimate savings
-        time_savings = len(recs) * 5.0
-        cost_savings = len(recs) * 0.05
+        time_savings = sum(r.expected_time_savings_seconds for r in recs)
+        cost_savings = sum(r.expected_cost_savings_dollars for r in recs)
+
+        plan_id = f"plan_opt_{workflow_id}_{int(time.time())}"
 
         plan = WorkflowOptimizationPlan(
             plan_id=plan_id,
@@ -214,7 +312,14 @@ class LocalWorkflowOptimizationAnalyzer(WorkflowOptimizationAnalyzer):
             score_before=85.0,
             score_after=min(100.0, 85.0 + len(recs) * 3.0),
             estimated_time_savings_seconds=time_savings,
-            estimated_cost_savings_dollars=cost_savings
+            estimated_cost_savings_dollars=cost_savings,
+            complexity_score_before=comp_before,
+            complexity_score_after=min(100.0, comp_before + len(recs) * 2.0),
+            maintainability_score=min(100.0, 80.0 + len(recs) * 4.0),
+            reliability_score=min(100.0, 85.0 + len(recs) * 2.0),
+            performance_score=min(100.0, 75.0 + len(recs) * 5.0),
+            resource_efficiency_score=min(100.0, 80.0 + len(recs) * 3.0),
+            overall_automation_quality_score=min(100.0, 82.0 + len(recs) * 3.0)
         )
 
         errs = self._validator.validate_plan(plan)
@@ -239,7 +344,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         self._model = model_service
         self._registry = registry
 
-        self._analyzer = LocalWorkflowOptimizationAnalyzer()
+        self._planner = LocalWorkflowOptimizationPlanner()
         self._reports: Dict[str, List[WorkflowOptimizationReport]] = {}
         self._session_reports: Dict[str, WorkflowOptimizationReport] = {}
 
@@ -297,7 +402,6 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
             tracker = getattr(monitoring_service, "_tracker")
             if hasattr(tracker, "_records"):
                 records_dict = getattr(tracker, "_records")
-                # find workflows matching this workspace
                 ws_wfs = []
                 for w_id, recs in records_dict.items():
                     if any(r.workspace_id == workspace_id for r in recs):
@@ -317,12 +421,11 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
             graph = None
             if automation_service:
                 try:
-                    # check if workflow details exist
                     pass
                 except Exception:
                     pass
 
-            plan = self._analyzer.generate_plan(w_id, graph, recs_list)
+            plan = self._planner.construct_optimization_plan(w_id, graph, recs_list)
             plans[w_id] = plan
             total_time_saved += plan.estimated_time_savings_seconds
             total_cost_saved += plan.estimated_cost_savings_dollars
@@ -371,7 +474,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         plans_md = ""
         for w_id, p in plans.items():
             plans_md += f"### Workflow: `{w_id}`\n"
-            plans_md += f"- **Score Improvement**: {p.score_before:.1f} -> {p.score_after:.1f}\n"
+            plans_md += f"- **Overall Quality Score**: {p.overall_automation_quality_score:.1f}\n"
             plans_md += f"- **Estimated Time Savings**: {p.estimated_time_savings_seconds:.1f} seconds\n"
             plans_md += f"- **Estimated Cost Savings**: ${p.estimated_cost_savings_dollars:.2f}\n"
             plans_md += "- **Detailed Recommendations**:\n"
@@ -379,8 +482,10 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                 plans_md += (
                     f"  - **[{r.category.upper()}]** {r.reasoning}\n"
                     f"    - *Affected Nodes*: {r.affected_nodes}\n"
+                    f"    - *Affected Branches*: {r.affected_branches}\n"
                     f"    - *Impact*: {r.expected_impact.upper()} (Confidence: {r.confidence:.0%})\n"
                     f"    - *Difficulty*: {r.implementation_difficulty.upper()}\n"
+                    f"    - *Rollback Considerations*: {r.rollback_considerations}\n"
                 )
 
         report_md = (

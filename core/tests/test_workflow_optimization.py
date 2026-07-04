@@ -11,20 +11,22 @@ from aios.services.workflow_monitoring import (
     WorkflowExecutionState,
     WorkflowExecutionMetrics,
     WorkflowExecutionRecord,
-    WorkflowMonitoringService,
 )
 from aios.services.workflow_monitoring_impl import LocalWorkflowMonitoringService
 from aios.services.workflow_optimization import (
     WorkflowOptimizationCategory,
+    WorkflowOptimizationPriority,
     WorkflowOptimizationImpact,
     WorkflowOptimizationRecommendation,
     WorkflowOptimizationPlan,
     WorkflowOptimizationReport,
+    WorkflowOptimizationKnowledgeBase,
 )
 from aios.services.workflow_optimization_impl import (
     LocalWorkflowCostAnalyzer,
     LocalWorkflowLatencyAnalyzer,
     LocalWorkflowParallelizationAnalyzer,
+    LocalWorkflowComplexityAnalyzer,
     LocalWorkflowOptimizationValidator,
     LocalWorkflowOptimizationService,
 )
@@ -42,34 +44,38 @@ def mock_workspace_service():
     return service
 
 
+def test_knowledge_base():
+    kb = WorkflowOptimizationKnowledgeBase()
+    patterns = kb.get_all_patterns()
+    assert len(patterns) >= 15
+    p = kb.get_pattern("missing_cache")
+    assert p is not None
+    assert p.name == "Missing Cache"
+
+
 def test_cost_analyzer():
     analyzer = LocalWorkflowCostAnalyzer()
-    
-    # Trace with high CPU usage trigger cost cache
     r1 = WorkflowExecutionRecord(
         "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
         WorkflowExecutionMetrics(10.0, 1.0, 0, 70.0, 50.0), time.time()
     )
-
     recs = analyzer.analyze_cost(None, [r1])
     assert len(recs) == 1
     assert recs[0].category == WorkflowOptimizationCategory.CACHING
     assert "High CPU footprint" in recs[0].reasoning
+    assert "missing_cache" in recs[0].pattern_ids
 
 
 def test_latency_analyzer():
     analyzer = LocalWorkflowLatencyAnalyzer()
-    
-    # Trace with duration > 20s
     r1 = WorkflowExecutionRecord(
         "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
         WorkflowExecutionMetrics(25.0, 1.0, 0, 5.0, 50.0), time.time()
     )
-
     recs = analyzer.analyze_latency(None, [r1])
     assert len(recs) == 1
-    assert recs[0].category == WorkflowOptimizationCategory.PERFORMANCE
-    assert recs[0].priority == "high"
+    assert recs[0].category == WorkflowOptimizationCategory.TIMEOUTS
+    assert recs[0].priority == WorkflowOptimizationPriority.HIGH
 
 
 def test_parallelization_analyzer():
@@ -79,23 +85,54 @@ def test_parallelization_analyzer():
     assert recs[0].category == WorkflowOptimizationCategory.PARALLELIZATION
 
 
-def test_optimization_validator():
-    validator = LocalWorkflowOptimizationValidator()
+def test_complexity_analyzer():
+    analyzer = LocalWorkflowComplexityAnalyzer()
+    metrics = analyzer.analyze_complexity(None)
+    assert metrics["complexity_level"] == 1.0
+    assert "complexity_score" in metrics
 
-    # Valid plan
+
+def test_optimization_validator():
+    kb = WorkflowOptimizationKnowledgeBase()
+    validator = LocalWorkflowOptimizationValidator(kb)
+
     rec = WorkflowOptimizationRecommendation(
-        "rec_1", WorkflowOptimizationCategory.COST, "medium",
-        WorkflowOptimizationImpact.MEDIUM, 0.8, "Reasoning", "Evidence",
-        ["Node1"], "Benefit", "easy"
+        recommendation_id="rec_1",
+        category=WorkflowOptimizationCategory.COST,
+        priority=WorkflowOptimizationPriority.MEDIUM,
+        expected_impact=WorkflowOptimizationImpact.MEDIUM,
+        confidence=0.8,
+        reasoning="Reasoning",
+        supporting_evidence="Evidence",
+        affected_nodes=["Node1"],
+        affected_branches=["Branch1"],
+        expected_time_savings_seconds=10.0,
+        expected_cost_savings_dollars=0.05,
+        estimated_risk=0.1,
+        implementation_difficulty="easy",
+        rollback_considerations="None",
+        pattern_ids=["missing_cache"]
     )
     plan_valid = WorkflowOptimizationPlan("plan_1", "wf_test", [rec])
     assert len(validator.validate_plan(plan_valid)) == 0
 
     # Invalid confidence range
     rec_invalid = WorkflowOptimizationRecommendation(
-        "rec_1", WorkflowOptimizationCategory.COST, "medium",
-        WorkflowOptimizationImpact.MEDIUM, 1.5, "Reasoning", "Evidence",
-        ["Node1"], "Benefit", "easy"
+        recommendation_id="rec_1",
+        category=WorkflowOptimizationCategory.COST,
+        priority=WorkflowOptimizationPriority.MEDIUM,
+        expected_impact=WorkflowOptimizationImpact.MEDIUM,
+        confidence=1.5,
+        reasoning="Reasoning",
+        supporting_evidence="Evidence",
+        affected_nodes=["Node1"],
+        affected_branches=["Branch1"],
+        expected_time_savings_seconds=10.0,
+        expected_cost_savings_dollars=0.05,
+        estimated_risk=0.1,
+        implementation_difficulty="easy",
+        rollback_considerations="None",
+        pattern_ids=["missing_cache"]
     )
     plan_invalid = WorkflowOptimizationPlan("plan_1", "wf_test", [rec_invalid])
     errors = validator.validate_plan(plan_invalid)
@@ -111,7 +148,6 @@ def test_optimization_service_report(tmp_path, mock_memory_service, mock_workspa
     meta = WorkspaceMetadata(ws_id, 0.0, "/src", ws_root, "active")
     mock_workspace_service._workspaces = {ws_id: meta}
 
-    # Setup monitoring tracker with records
     mon_service = LocalWorkflowMonitoringService(memory_service=mock_memory_service)
     mon_service.initialize()
     
@@ -205,9 +241,21 @@ def test_backward_compatibility():
             recs = super().analyze_cost(graph, telemetry)
             recs.append(
                 WorkflowOptimizationRecommendation(
-                    "rec_custom", WorkflowOptimizationCategory.COST, "low",
-                    WorkflowOptimizationImpact.LOW, 0.99, "Custom reasoning", "Evidence",
-                    ["CustomNode"], "Benefit", "easy"
+                    recommendation_id="rec_custom",
+                    category=WorkflowOptimizationCategory.COST,
+                    priority=WorkflowOptimizationPriority.LOW,
+                    expected_impact=WorkflowOptimizationImpact.LOW,
+                    confidence=0.99,
+                    reasoning="Custom reasoning",
+                    supporting_evidence="Evidence",
+                    affected_nodes=["CustomNode"],
+                    affected_branches=["CustomBranch"],
+                    expected_time_savings_seconds=0.0,
+                    expected_cost_savings_dollars=0.0,
+                    estimated_risk=0.0,
+                    implementation_difficulty="easy",
+                    rollback_considerations="None",
+                    pattern_ids=["missing_cache"]
                 )
             )
             return recs

@@ -661,17 +661,22 @@ This section maps the essential runtime components of the operating system:
 * **Purpose**: Analyzes execution telemetries and graph structures to generate performance, latency, caching, parallelization, cost, and reliability optimization recommendations.
 * **Data Models & Components**:
   * `WorkflowOptimizationService`: Conductor initiating workspace optimizations, exporting reports, caching summaries, and publishing Notion records.
-  * `WorkflowOptimizationAnalyzer`: Coordinates cost, latency, parallelization, redundancy, and resource analyzers to construct optimization plans.
+  * `WorkflowOptimizationPlanner`: Central coordinator coordinating analyzers to construct optimization plans.
+  * `WorkflowOptimizationAnalyzer`: Coordinates cost, latency, parallelization, redundancy, scheduling, and resource analyzers to construct optimization plans.
+  * `WorkflowOptimizationKnowledgeBase`: Catalog of pre-defined reusable optimization patterns.
+  * `WorkflowOptimizationPattern`: Pre-defined knowledge pattern definition.
   * `WorkflowOptimizationPlan`: Detailed plans carrying recommendations lists, expected score gains, time and cost savings.
-  * `WorkflowOptimizationRecommendation`: Concrete recommendations detailing categories, confidence metrics, reasoning, supporting evidence, and implementation difficulty.
+  * `WorkflowOptimizationRecommendation`: Concrete recommendations detailing categories, confidence metrics, reasoning, supporting evidence, rollback considerations, and implementation difficulty.
   * `WorkflowOptimizationCategory`: Enums mapping optimization scopes (PERFORMANCE, COST, RELIABILITY, CACHING, parallelization).
-  * `WorkflowOptimizationImpact`: Enums mapping impact levels (HIGH, MEDIUM, LOW).
+  * `WorkflowOptimizationPriority` & `WorkflowOptimizationImpact`: Enums mapping priority and impact levels (HIGH, MEDIUM, LOW).
   * `WorkflowCostAnalyzer`: Scans for expensive nodes to suggest token cache and request reduction optimizations.
   * `WorkflowLatencyAnalyzer`: Tracks slow steps to suggest branch timeouts.
   * `WorkflowParallelizationAnalyzer`: Identifies independent sequential tasks to parallelize.
   * `WorkflowRedundancyAnalyzer`: Scans for duplicate nodes to merge actions.
+  * `WorkflowSchedulingAnalyzer`: Optimizes cron schedules.
   * `WorkflowResourceAnalyzer`: Monitors excessive CPU or memory usage.
-  * `WorkflowOptimizationValidator`: Validates recommendation unique IDs, evidence completeness, and confidence limits.
+  * `WorkflowComplexityAnalyzer`: Measures graph complexity.
+  * `WorkflowOptimizationValidator`: Validates recommendation unique IDs, evidence completeness, pattern references, and confidence limits.
   * `WorkflowOptimizationReport`: Consolidated report payload.
 * **Current Status**: Current.
 
