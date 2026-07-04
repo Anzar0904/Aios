@@ -461,6 +461,24 @@ This section maps the essential runtime components of the operating system:
   * `ArchitectureReport`: Health reports identifying circular imports.
 * **Current Status**: Current.
 
+### 3.28 Engineering Documentation Data Models
+* **Purpose**: Generates Architecture Decision Records (ADRs), formats implementation reports and technical timelines, and validates document completeness checks.
+* **Data Models & Components**:
+  * `EngineeringDocumentationService`: Coordinating service managing ADR creations and implementations reporting.
+  * `EngineeringDocumentPlanner`: Selects technical decisions or implementation phases requiring documenting.
+  * `ADRGenerator`: Formats context, consequences, and trade-offs into markdown files.
+  * `EngineeringReportGenerator`: Combines timelines, validation scores, and risk assessments into summaries.
+  * `EngineeringDocumentValidator`: Flags empty ADR context sections or duplicate identifiers.
+  * `DecisionRecord`: ADR record detailing context, choices, and consequences.
+  * `ImplementationSummary`: List of added features and modified files.
+  * `EngineeringTimeline`: Technical step timeline detailing phase durations.
+  * `ChangeSummary`: Metrics tracking lines addition and deletion changes counts.
+  * `ValidationSummary`: Summarizes test execution runs and coverage stats.
+  * `RiskSummary`: Tag tags designating risk levels and impacted boundaries.
+  * `EngineeringDocumentArtifact`: Formatted output artifact (ADR or report markdown).
+  * `EngineeringDocumentationReport`: Executive summary report tracking recommendations.
+* **Current Status**: Current.
+
 ---
 
 

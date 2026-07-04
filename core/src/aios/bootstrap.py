@@ -483,6 +483,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     arch_doc_service.initialize()
     registry.register(ArchitectureDocumentationService, arch_doc_service)
 
+    from aios.services.engineering_documentation import EngineeringDocumentationService
+    from aios.services.engineering_documentation_impl import LocalEngineeringDocumentationService
+
+    eng_doc_service = LocalEngineeringDocumentationService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    eng_doc_service.initialize()
+    registry.register(EngineeringDocumentationService, eng_doc_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel
