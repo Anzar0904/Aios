@@ -313,6 +313,22 @@ This section maps the essential runtime components of the operating system:
   * `TestGenerationReport`: Aggregates warnings count, strategies, confidence, and generated artifacts lists.
 * **Current Status**: Current.
 
+### 3.19 Intelligent Test Execution Engine Data Models
+* **Purpose**: Coordinates process execution of python tests inside the workspace sandbox, parsing summaries of results, capturing timing logs, and sync reporting metrics.
+* **Data Models & Components**:
+  * `TestExecutionService`: Coordinating service managing test executions runs, caching summaries in Memory, and publishing reports.
+  * `TestExecutor`: Primary coordinator initiating runner commands.
+  * `TestRunner`: Standard execution orchestrator.
+  * `ExecutionSession`: Lifecycle state tracking session executions.
+  * `ExecutionTarget`: Targeted test file, class, or method.
+  * `ExecutionResult`: Single run outcome detailing error listings, success state, and duration metrics.
+  * `ExecutionLog`: Single line telemetry logs captured during test runs.
+  * `ExecutionMetrics`: Consolidates totals (passed, failed, skipped, duration).
+  * `ExecutionSummary`: Aggregates summary outputs and execution list states.
+  * `TestFrameworkAdapter`: Interface for pluggable framework execution (Jest, JUnit, Pytest).
+  * `PytestAdapter`: Adapter wrapping subprocess runs.
+* **Current Status**: Current.
+
 ---
 
 

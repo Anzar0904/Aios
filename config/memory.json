@@ -2549,5 +2549,33 @@
             "importance": 1,
             "additional": {}
         }
+    },
+    {
+        "memory_id": "e3242129-7781-4b96-a7aa-df806a19fc2c",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783177399.1275709,
+        "updated_at": 1783177399.1275709,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "37cf1ea4-e542-4aed-ae14-02e74cf09162",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "e1d4e1af-9b0b-4e7f-8304-61958bddbc4f",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783177426.3339279,
+        "updated_at": 1783177426.3339279,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "ba44f83c-04e0-49dc-a301-440a6b9c6972",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
     }
 ]
