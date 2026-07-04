@@ -520,6 +520,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     approval_service.initialize()
     registry.register(ApprovalEngineService, approval_service)
 
+    from aios.services.review import ReviewEngine
+    from aios.services.review_impl import LocalReviewEngine
+
+    review_service = LocalReviewEngine(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    review_service.initialize()
+    registry.register(ReviewEngine, review_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

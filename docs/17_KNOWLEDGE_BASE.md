@@ -513,6 +513,22 @@ This section maps the essential runtime components of the operating system:
   * `AutomationIntelligenceService`, `GitHubAutomationService`, `ExecutionPlanService`, `ApplyEngineService`, `ReleaseIntelligenceService`: Exposed future subsystem integration points.
 * **Current Status**: Current.
 
+### 3.31 Review Engine Data Models
+* **Purpose**: Performs code and engineering review analyses on Approval Packages to produce structured, categorized, and severity-ranked findings without modifying files.
+* **Data Models & Components**:
+  * `ReviewEngine`: Coordinating service managing quality reviews, history logs, and Notion reporting.
+  * `ReviewSession`: Lifecycle tracker for active quality review runs.
+  * `ReviewFinding`: Detailed code review diagnostic issue containing category, severity, confidence, related components/files, and recommendations.
+  * `ReviewCategory`: Enum mapping review domains (`ARCHITECTURE`, `MAINTAINABILITY`, `PERFORMANCE`, `SECURITY`, `RELIABILITY`, `TESTING`, `DOCUMENTATION`, `COMPLEXITY`, `DEPENDENCY_RISK`, `BACKWARD_COMPATIBILITY`, `OPERATIONAL_READINESS`, `FUTURE_SCALABILITY`).
+  * `ReviewSeverity`: Enum mapping finding impacts (`INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
+  * `ReviewRecommendation`: Remediation recommendations carrying actionable step checklists.
+  * `ReviewSummary`: Consolidated executive metrics summarizing overall review findings, health parameters, strengths, weaknesses, blocking lists, and confidence rating.
+  * `ReviewEvidence`: Telemetry records backing individual findings.
+  * `ReviewAnalyzer`: Evaluation engine auditing approval package properties.
+  * `ReviewValidator`: Structural check class verifying duplicate findings, completeness, severity consistency, and reviewer confidences.
+  * `ReviewReport`: Review payload packaged for Knowledge Hub syncs.
+* **Current Status**: Current.
+
 ---
 
 
