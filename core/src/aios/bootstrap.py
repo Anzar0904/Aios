@@ -422,6 +422,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     validation_service.initialize()
     registry.register(ValidationService, validation_service)
 
+    from aios.services.engineering_profile import EngineeringProfileService
+    from aios.services.engineering_profile_impl import LocalEngineeringProfileService
+
+    profile_service = LocalEngineeringProfileService(
+        memory_service=memory_service,
+        knowledge_hub=knowledge_hub,
+        model_service=model_service,
+        registry=registry
+    )
+    profile_service.initialize()
+    registry.register(EngineeringProfileService, profile_service)
+
     # 5. Instantiate Kernel with the registry
     kernel = Kernel(config_path=config_path, registry=registry)
     runtime_service._kernel = kernel

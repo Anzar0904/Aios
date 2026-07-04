@@ -374,6 +374,26 @@ This section maps the essential runtime components of the operating system:
   * `ValidationReport`: Assembled unified report package.
 * **Current Status**: Current.
 
+### 3.23 Engineering Profiles Foundation Data Models
+* **Purpose**: Provides a single source of strongly-typed configuration settings managing coding style parameters, testing targets, execution configurations, release methods, and automation intervals.
+* **Data Models & Components**:
+  * `EngineeringProfileService`: Coordinating service managing engineering profile registries.
+  * `EngineeringProfile`: Consolidated configuration profile mapping nested categories.
+  * `ProjectProfile`: General project identity details (name, version, descriptors).
+  * `CodingProfile`: Language style limits and lint mappings.
+  * `TestingProfile`: Execution frameworks preferences and coverage policies.
+  * `ExecutionProfile`: Sandbox constraints and execution timeout limits.
+  * `DocumentationProfile`: Documentation templates formats.
+  * `GitHubProfile`: Repository coordinates, branches, and organization tags.
+  * `ReleaseProfile`: Automated versioning policies and release settings.
+  * `AutomationProfile`: Cron trigger intervals and retry counts.
+  * `WorkspaceProfile`: Active workspace locations and file exclude definitions.
+  * `ProfileSerializer`: Serializes configurations to/from dictionaries.
+  * `ProfileLoader`: Loads profile configs from files.
+  * `ProfileManager`: Deep merges and validates profiles.
+  * `ProfileRegistry`: In-memory thread-safe profile store registry.
+* **Current Status**: Current.
+
 ---
 
 
