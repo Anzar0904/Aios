@@ -58,7 +58,7 @@ class N8NSessionManager(DIInitializeMixin):
             return False
 
         url = f"{self.config_service.server_url.rstrip('/')}/rest/login"
-        payload = {"email": email, "password": password}
+        payload = {"emailOrLdapLoginId": email, "password": password}
         try:
             with httpx.Client(timeout=10.0, verify=self.config_service.tls_verify) as client:
                 res = client.post(url, json=payload)
@@ -177,6 +177,26 @@ class N8NClient(DIInitializeMixin):
         if self.session_manager.is_session_expired():
             self.session_manager.renew_session()
 
+        custom_headers = {}
+        custom_headers.update(self.connection_manager.auth_manager.get_auth_headers())
+        if "/rest/" in url:
+            sess_headers = self.session_manager.get_auth_headers()
+            if sess_headers:
+                custom_headers = {k: v for k, v in custom_headers.items() if k.lower() not in ["x-n8n-api-key", "authorization"]}
+                custom_headers.update(sess_headers)
+        elif "/api/v1/" in url:
+            custom_headers = {k: v for k, v in custom_headers.items() if k.lower() != "cookie"}
+            env_key = self.connection_manager.config_service.api_key
+            env_token = self.connection_manager.config_service.bearer_token
+            if env_key:
+                custom_headers["X-N8N-API-KEY"] = env_key
+            elif env_token:
+                custom_headers["Authorization"] = f"Bearer {env_token}"
+
+        if "headers" in kwargs:
+            custom_headers.update(kwargs["headers"])
+            del kwargs["headers"]
+
         retries = self.connection_manager.config_service.max_retries
         last_exc = None
         start_time = time.time()
@@ -189,7 +209,7 @@ class N8NClient(DIInitializeMixin):
                     if url.startswith("/"):
                         full_url = f"{self.connection_manager.config_service.server_url.rstrip('/')}{url}"
                     
-                    response = client.request(method, full_url, **kwargs)
+                    response = client.request(method, full_url, headers=custom_headers, **kwargs)
                     latency = time.time() - start_time
                     self.latencies.append(latency)
                     if len(self.latencies) > 100:
@@ -197,9 +217,14 @@ class N8NClient(DIInitializeMixin):
 
                     if response.status_code == 401:
                         if self.session_manager.renew_session():
+                            # Refresh headers with new session details if applicable
+                            if "/rest/" in url:
+                                sess_headers = self.session_manager.get_auth_headers()
+                                if sess_headers:
+                                    custom_headers.update(sess_headers)
                             with self.connection_manager.get_client() as new_client:
                                 start_retry = time.time()
-                                response = new_client.request(method, full_url, **kwargs)
+                                response = new_client.request(method, full_url, headers=custom_headers, **kwargs)
                                 latency_retry = time.time() - start_retry
                                 self.latencies.append(latency_retry)
                                 if len(self.latencies) > 100:
@@ -237,13 +262,13 @@ class N8NWorkflowManager(DIInitializeMixin):
         res = self.client.request("GET", f"/api/v1/workflows/{workflow_id}")
         return res.json()
 
-    def upload_workflow(self, name: str, nodes: List[Dict[str, Any]], connections: Dict[str, Any]) -> Dict[str, Any]:
-        payload = {"name": name, "nodes": nodes, "connections": connections}
+    def upload_workflow(self, name: str, nodes: List[Dict[str, Any]], connections: Dict[str, Any], settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        payload = {"name": name, "nodes": nodes, "connections": connections, "settings": settings or {}}
         res = self.client.request("POST", "/api/v1/workflows", json=payload)
         return res.json()
 
     def update_workflow(self, workflow_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        res = self.client.request("PATCH", f"/api/v1/workflows/{workflow_id}", json=payload)
+        res = self.client.request("PUT", f"/api/v1/workflows/{workflow_id}", json=payload)
         return res.json()
 
     def delete_workflow(self, workflow_id: str) -> bool:
@@ -251,13 +276,11 @@ class N8NWorkflowManager(DIInitializeMixin):
         return res.status_code == 200
 
     def activate_workflow(self, workflow_id: str) -> bool:
-        payload = {"active": True}
-        res = self.client.request("PATCH", f"/api/v1/workflows/{workflow_id}", json=payload)
+        res = self.client.request("POST", f"/api/v1/workflows/{workflow_id}/activate")
         return res.status_code == 200
 
     def deactivate_workflow(self, workflow_id: str) -> bool:
-        payload = {"active": False}
-        res = self.client.request("PATCH", f"/api/v1/workflows/{workflow_id}", json=payload)
+        res = self.client.request("POST", f"/api/v1/workflows/{workflow_id}/deactivate")
         return res.status_code == 200
 
     def export_workflow(self, workflow_id: str) -> Dict[str, Any]:
@@ -283,6 +306,42 @@ class N8NExecutionManager(DIInitializeMixin):
         self.client = client
 
     def execute_workflow(self, workflow_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        if self.client.session_manager.session_cookie:
+            try:
+                res_wf = self.client.request("GET", f"/rest/workflows/{workflow_id}")
+                wf_data = res_wf.json().get("data", {})
+            except Exception:
+                try:
+                    res_wf = self.client.request("GET", f"/api/v1/workflows/{workflow_id}")
+                    wf_data = res_wf.json()
+                except Exception:
+                    wf_data = {}
+
+            if wf_data:
+                nodes = wf_data.get("nodes", [])
+                trigger_name = None
+                for n in nodes:
+                    if "trigger" in n.get("type", "").lower() or "webhook" in n.get("type", "").lower():
+                        trigger_name = n.get("name")
+                        break
+                if not trigger_name and nodes:
+                    trigger_name = nodes[0].get("name")
+
+                if trigger_name:
+                    payload = {
+                        "workflowData": {
+                            "id": workflow_id,
+                            "name": wf_data.get("name", "Workflow"),
+                            "nodes": nodes,
+                            "connections": wf_data.get("connections", {})
+                        },
+                        "destinationNode": {
+                            "nodeName": trigger_name
+                        }
+                    }
+                    res = self.client.request("POST", f"/rest/workflows/{workflow_id}/run", json=payload)
+                    return res.json().get("data", {})
+
         res = self.client.request("POST", f"/api/v1/workflows/{workflow_id}/run", json=input_data)
         return res.json()
 

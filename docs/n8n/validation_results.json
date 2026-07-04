@@ -1,0 +1,75 @@
+{
+  "reachable": true,
+  "server_status": 200,
+  "auth_method": "API Key",
+  "auth_success": true,
+  "auth_latency": 21.48294448852539,
+  "capabilities": [
+    "workflow_list",
+    "workflow_import",
+    "workflow_export",
+    "execution_history",
+    "execution_polling",
+    "webhooks",
+    "variables",
+    "oauth2",
+    "sticky-notes"
+  ],
+  "endpoints": {
+    "/healthz": true,
+    "/rest/settings": true,
+    "/api/v1/workflows": true,
+    "/api/v1/executions": true,
+    "/api/v1/credentials": true,
+    "/api/v1/tags": true
+  },
+  "workflow_lifecycle": {
+    "uploaded": true,
+    "validated": true,
+    "activated": true,
+    "executed": true,
+    "execution_id": "29",
+    "execution_duration": 13.724803924560547,
+    "deactivated": true,
+    "deleted": true,
+    "cleanup_confirmed": true
+  },
+  "telemetry": {
+    "version": "1.25.0",
+    "health_score": {
+      "status": "online",
+      "server_reachable": true,
+      "authentication_successful": true,
+      "server_version": "1.25.0",
+      "workflows_count": 4,
+      "executions_count": 0,
+      "supported_capabilities": [
+        "workflow_list",
+        "workflow_import",
+        "workflow_export",
+        "execution_history",
+        "execution_polling",
+        "webhooks",
+        "variables",
+        "oauth2",
+        "sticky-notes"
+      ],
+      "latency_ms": 55.07206916809082,
+      "average_response_time_ms": 27.693053086598713,
+      "failure_rate": 0.045454545454545456,
+      "retry_statistics": {
+        "total_retries": 2,
+        "total_calls": 22
+      },
+      "issues": []
+    }
+  },
+  "diagnostics": {
+    "status": "ok",
+    "server_reachable": true,
+    "authentication_successful": true,
+    "server_version": "unknown",
+    "issues": [],
+    "credentials_configured": true
+  }
+}
