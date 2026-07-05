@@ -4,7 +4,28 @@ version = "0.1.0"
 description = "Core runtime engine and orchestration layer for the Personal AI OS"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "httpx==0.28.1",
+    "rich==15.0.0",
+]
+
+[project.optional-dependencies]
+postgresql = [
+    "psycopg2-binary==2.9.9",
+]
+redis = [
+    "redis==8.0.1",
+]
+qdrant = [
+    "qdrant-client==1.18.0",
+]
+embeddings = [
+    "sentence-transformers==3.0.1",
+]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.15.20",
+]
 
 [project.scripts]
 aios = "aios.cli:main"
