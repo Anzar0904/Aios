@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from aios.services.base import ServiceLifecycle
 from aios.services.persistence import *
+from .repo_base import _RepositoryMixin
 
 logger = logging.getLogger(__name__)
 
@@ -1139,43 +1140,27 @@ class WorkspacePersistenceReportGenerator(ServiceLifecycle):
                 f.write(f"- `{repo_name}`\n")
 
 
-class EngineeringTaskRepositoryImpl(EngineeringTaskRepository):
+class EngineeringTaskRepositoryImpl(_RepositoryMixin, EngineeringTaskRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, task: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("engineering_tasks", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO engineering_tasks (id, name, description, priority, status, "
-                "creation_time, update_time, completion_time, workspace, current_phase, "
-                "assigned_agent, dependencies, retry_count, operation_results) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "name=excluded.name, description=excluded.description, priority=excluded.priority, "
-                "status=excluded.status, update_time=excluded.update_time, completion_time=excluded.completion_time, "
-                "workspace=excluded.workspace, current_phase=excluded.current_phase, "
-                "assigned_agent=excluded.assigned_agent, dependencies=excluded.dependencies, "
-                "retry_count=excluded.retry_count, operation_results=excluded.operation_results"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('engineering_tasks', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO engineering_tasks (id, name, description, priority, status, "
+            "creation_time, update_time, completion_time, workspace, current_phase, "
+            "assigned_agent, dependencies, retry_count, operation_results) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "name=excluded.name, description=excluded.description, priority=excluded.priority, "
+            "status=excluded.status, update_time=excluded.update_time, completion_time=excluded.completion_time, "
+            "workspace=excluded.workspace, current_phase=excluded.current_phase, "
+            "assigned_agent=excluded.assigned_agent, dependencies=excluded.dependencies, "
+            "retry_count=excluded.retry_count, operation_results=excluded.operation_results"
+        )
+        return self._write('engineering_tasks', q, (
                     task["id"],
                     task.get("name"),
                     task.get("description"),
@@ -1190,186 +1175,70 @@ class EngineeringTaskRepositoryImpl(EngineeringTaskRepository):
                     json.dumps(task.get("dependencies") or []),
                     task.get("retry_count", 0),
                     json.dumps(task.get("operation_results") or {}),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Task saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="engineering_tasks",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="engineering_tasks",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Task saved successfully.')
 
     def get(self, task_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("engineering_tasks", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM engineering_tasks WHERE id = ?"
-            rows = self.service.execute(q, (task_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Task '{task_id}' not found.",
-                    latency=latency,
-                    repository="engineering_tasks",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('engineering_tasks', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["dependencies"] = json.loads(row["dependencies"] or "[]")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Task retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="engineering_tasks",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="engineering_tasks",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'engineering_tasks',
+            "SELECT * FROM engineering_tasks WHERE id = ?",
+            (task_id,),
+            task_id,
+            _parse,
+            "Task retrieved successfully.",
+        )
 
     def delete(self, task_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("engineering_tasks", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM engineering_tasks WHERE id = ?"
-            self.service.execute(q, (task_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Task deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="engineering_tasks",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="engineering_tasks",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('engineering_tasks', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'engineering_tasks',
+            "DELETE FROM engineering_tasks WHERE id = ?",
+            (task_id,),
+            "Task deleted successfully.",
+        )
 
     def list_all(self) -> PersistenceResult:
-        status_res = self.service.check_status("engineering_tasks", "list_all")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM engineering_tasks"
-            rows = self.service.execute(q)
-            latency = (time.time() - start_time) * 1000
-            results = []
-            for r in rows:
-                row = dict(r)
-                row["dependencies"] = json.loads(row["dependencies"] or "[]")
-                row["operation_results"] = json.loads(row["operation_results"] or "{}")
-                results.append(row)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Tasks listed successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="engineering_tasks",
-                payload=results,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="engineering_tasks",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('engineering_tasks', "list_all")
+        if guard is not None:
+            return guard
+        def _parse(row):
+            row["dependencies"] = json.loads(row["dependencies"] or "[]")
+            row["operation_results"] = json.loads(row["operation_results"] or "{}")
+            return row
+        return self._fetch_all(
+            'engineering_tasks',
+            "SELECT * FROM engineering_tasks",
+            _parse,
+            "Tasks listed successfully.",
+        )
 
 
-class PlanningRepositoryImpl(PlanningRepository):
+class PlanningRepositoryImpl(_RepositoryMixin, PlanningRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, plan: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("planning_sessions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO planning_sessions (id, execution_plan, decision_tree, "
-                "architecture_decisions, dependency_graph, planning_statistics, planning_version, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "execution_plan=excluded.execution_plan, decision_tree=excluded.decision_tree, "
-                "architecture_decisions=excluded.architecture_decisions, dependency_graph=excluded.dependency_graph, "
-                "planning_statistics=excluded.planning_statistics, planning_version=excluded.planning_version, timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('planning_sessions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO planning_sessions (id, execution_plan, decision_tree, "
+            "architecture_decisions, dependency_graph, planning_statistics, planning_version, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "execution_plan=excluded.execution_plan, decision_tree=excluded.decision_tree, "
+            "architecture_decisions=excluded.architecture_decisions, dependency_graph=excluded.dependency_graph, "
+            "planning_statistics=excluded.planning_statistics, planning_version=excluded.planning_version, timestamp=excluded.timestamp"
+        )
+        return self._write('planning_sessions', q, (
                     plan["id"],
                     json.dumps(plan.get("execution_plan") or {}),
                     json.dumps(plan.get("decision_tree") or {}),
@@ -1378,150 +1247,59 @@ class PlanningRepositoryImpl(PlanningRepository):
                     json.dumps(plan.get("planning_statistics") or {}),
                     plan.get("planning_version", 1),
                     plan.get("timestamp", time.time()),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Planning session saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="planning_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="planning_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Planning session saved successfully.')
 
     def get(self, plan_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("planning_sessions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM planning_sessions WHERE id = ?"
-            rows = self.service.execute(q, (plan_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Plan '{plan_id}' not found.",
-                    latency=latency,
-                    repository="planning_sessions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('planning_sessions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["execution_plan"] = json.loads(row["execution_plan"] or "{}")
             row["decision_tree"] = json.loads(row["decision_tree"] or "{}")
             row["architecture_decisions"] = json.loads(row["architecture_decisions"] or "{}")
             row["dependency_graph"] = json.loads(row["dependency_graph"] or "{}")
             row["planning_statistics"] = json.loads(row["planning_statistics"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Planning session retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="planning_sessions",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="planning_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'planning_sessions',
+            "SELECT * FROM planning_sessions WHERE id = ?",
+            (plan_id,),
+            plan_id,
+            _parse,
+            "Planning session retrieved successfully.",
+        )
 
     def delete(self, plan_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("planning_sessions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM planning_sessions WHERE id = ?"
-            self.service.execute(q, (plan_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Planning session deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="planning_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="planning_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('planning_sessions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'planning_sessions',
+            "DELETE FROM planning_sessions WHERE id = ?",
+            (plan_id,),
+            "Planning session deleted successfully.",
+        )
 
 
-class ApprovalRepositoryImpl(ApprovalRepository):
+class ApprovalRepositoryImpl(_RepositoryMixin, ApprovalRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, approval: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("approval_sessions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO approval_sessions (id, workspace_id, metadata, decision_outcome, "
-                "confidence, policy_used, review_status, approver, timeline_metadata, operation_results, created_at, closed_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workspace_id=excluded.workspace_id, metadata=excluded.metadata, decision_outcome=excluded.decision_outcome, "
-                "confidence=excluded.confidence, policy_used=excluded.policy_used, review_status=excluded.review_status, "
-                "approver=excluded.approver, timeline_metadata=excluded.timeline_metadata, "
-                "operation_results=excluded.operation_results, created_at=excluded.created_at, closed_at=excluded.closed_at"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('approval_sessions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO approval_sessions (id, workspace_id, metadata, decision_outcome, "
+            "confidence, policy_used, review_status, approver, timeline_metadata, operation_results, created_at, closed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workspace_id=excluded.workspace_id, metadata=excluded.metadata, decision_outcome=excluded.decision_outcome, "
+            "confidence=excluded.confidence, policy_used=excluded.policy_used, review_status=excluded.review_status, "
+            "approver=excluded.approver, timeline_metadata=excluded.timeline_metadata, "
+            "operation_results=excluded.operation_results, created_at=excluded.created_at, closed_at=excluded.closed_at"
+        )
+        return self._write('approval_sessions', q, (
                     approval["id"],
                     approval.get("workspace_id"),
                     json.dumps(approval.get("metadata") or {}),
@@ -1534,292 +1312,110 @@ class ApprovalRepositoryImpl(ApprovalRepository):
                     json.dumps(approval.get("operation_results") or {}),
                     approval.get("created_at"),
                     approval.get("closed_at"),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Approval session saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="approval_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="approval_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Approval session saved successfully.')
 
     def get(self, approval_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("approval_sessions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM approval_sessions WHERE id = ?"
-            rows = self.service.execute(q, (approval_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Approval '{approval_id}' not found.",
-                    latency=latency,
-                    repository="approval_sessions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('approval_sessions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["metadata"] = json.loads(row["metadata"] or "{}")
             row["policy_used"] = json.loads(row["policy_used"] or "{}")
             row["timeline_metadata"] = json.loads(row["timeline_metadata"] or "{}")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Approval session retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="approval_sessions",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="approval_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'approval_sessions',
+            "SELECT * FROM approval_sessions WHERE id = ?",
+            (approval_id,),
+            approval_id,
+            _parse,
+            "Approval session retrieved successfully.",
+        )
 
     def delete(self, approval_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("approval_sessions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM approval_sessions WHERE id = ?"
-            self.service.execute(q, (approval_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Approval session deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="approval_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="approval_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('approval_sessions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'approval_sessions',
+            "DELETE FROM approval_sessions WHERE id = ?",
+            (approval_id,),
+            "Approval session deleted successfully.",
+        )
 
 
-class ReviewRepositoryImpl(ReviewRepository):
+class ReviewRepositoryImpl(_RepositoryMixin, ReviewRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, review: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("review_sessions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO review_sessions (id, session_id, workspace_id, state_transitions, metadata) "
-                "VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "session_id=excluded.session_id, workspace_id=excluded.workspace_id, "
-                "state_transitions=excluded.state_transitions, metadata=excluded.metadata"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('review_sessions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO review_sessions (id, session_id, workspace_id, state_transitions, metadata) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "session_id=excluded.session_id, workspace_id=excluded.workspace_id, "
+            "state_transitions=excluded.state_transitions, metadata=excluded.metadata"
+        )
+        return self._write('review_sessions', q, (
                     review["id"],
                     review.get("session_id"),
                     review.get("workspace_id"),
                     json.dumps(review.get("state_transitions") or []),
                     json.dumps(review.get("metadata") or {}),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Review session saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="review_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="review_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Review session saved successfully.')
 
     def get(self, review_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("review_sessions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM review_sessions WHERE id = ?"
-            rows = self.service.execute(q, (review_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Review '{review_id}' not found.",
-                    latency=latency,
-                    repository="review_sessions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('review_sessions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["state_transitions"] = json.loads(row["state_transitions"] or "[]")
             row["metadata"] = json.loads(row["metadata"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Review session retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="review_sessions",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="review_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'review_sessions',
+            "SELECT * FROM review_sessions WHERE id = ?",
+            (review_id,),
+            review_id,
+            _parse,
+            "Review session retrieved successfully.",
+        )
 
     def delete(self, review_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("review_sessions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM review_sessions WHERE id = ?"
-            self.service.execute(q, (review_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Review session deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="review_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="review_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('review_sessions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'review_sessions',
+            "DELETE FROM review_sessions WHERE id = ?",
+            (review_id,),
+            "Review session deleted successfully.",
+        )
 
 
-class DocumentationMetadataRepositoryImpl(DocumentationMetadataRepository):
+class DocumentationMetadataRepositoryImpl(_RepositoryMixin, DocumentationMetadataRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, doc: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("documentation_metadata", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO documentation_metadata (id, workspace_id, session_id, category, "
-                "status, generation_time, author, publication_status, knowledge_references, checksums, version) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workspace_id=excluded.workspace_id, session_id=excluded.session_id, category=excluded.category, "
-                "status=excluded.status, generation_time=excluded.generation_time, author=excluded.author, "
-                "publication_status=excluded.publication_status, knowledge_references=excluded.knowledge_references, "
-                "checksums=excluded.checksums, version=excluded.version"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('documentation_metadata', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO documentation_metadata (id, workspace_id, session_id, category, "
+            "status, generation_time, author, publication_status, knowledge_references, checksums, version) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workspace_id=excluded.workspace_id, session_id=excluded.session_id, category=excluded.category, "
+            "status=excluded.status, generation_time=excluded.generation_time, author=excluded.author, "
+            "publication_status=excluded.publication_status, knowledge_references=excluded.knowledge_references, "
+            "checksums=excluded.checksums, version=excluded.version"
+        )
+        return self._write('documentation_metadata', q, (
                     doc["id"],
                     doc.get("workspace_id"),
                     doc.get("session_id"),
@@ -1831,147 +1427,56 @@ class DocumentationMetadataRepositoryImpl(DocumentationMetadataRepository):
                     json.dumps(doc.get("knowledge_references") or []),
                     json.dumps(doc.get("checksums") or {}),
                     doc.get("version", 1),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Documentation metadata saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="documentation_metadata",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="documentation_metadata",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Documentation metadata saved successfully.')
 
     def get(self, doc_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("documentation_metadata", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM documentation_metadata WHERE id = ?"
-            rows = self.service.execute(q, (doc_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Doc metadata '{doc_id}' not found.",
-                    latency=latency,
-                    repository="documentation_metadata",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('documentation_metadata', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["knowledge_references"] = json.loads(row["knowledge_references"] or "[]")
             row["checksums"] = json.loads(row["checksums"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Documentation metadata retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="documentation_metadata",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="documentation_metadata",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'documentation_metadata',
+            "SELECT * FROM documentation_metadata WHERE id = ?",
+            (doc_id,),
+            doc_id,
+            _parse,
+            "Documentation metadata retrieved successfully.",
+        )
 
     def delete(self, doc_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("documentation_metadata", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM documentation_metadata WHERE id = ?"
-            self.service.execute(q, (doc_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Documentation metadata deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="documentation_metadata",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="documentation_metadata",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('documentation_metadata', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'documentation_metadata',
+            "DELETE FROM documentation_metadata WHERE id = ?",
+            (doc_id,),
+            "Documentation metadata deleted successfully.",
+        )
 
 
-class TestSessionRepositoryImpl(TestSessionRepository):
+class TestSessionRepositoryImpl(_RepositoryMixin, TestSessionRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, session: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("test_sessions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO test_sessions (id, workspace_id, status, pass_count, fail_count, "
-                "coverage_summary, execution_time, failure_categories, environment_metadata, operation_results, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workspace_id=excluded.workspace_id, status=excluded.status, pass_count=excluded.pass_count, "
-                "fail_count=excluded.fail_count, coverage_summary=excluded.coverage_summary, "
-                "execution_time=excluded.execution_time, failure_categories=excluded.failure_categories, "
-                "environment_metadata=excluded.environment_metadata, operation_results=excluded.operation_results, timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('test_sessions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO test_sessions (id, workspace_id, status, pass_count, fail_count, "
+            "coverage_summary, execution_time, failure_categories, environment_metadata, operation_results, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workspace_id=excluded.workspace_id, status=excluded.status, pass_count=excluded.pass_count, "
+            "fail_count=excluded.fail_count, coverage_summary=excluded.coverage_summary, "
+            "execution_time=excluded.execution_time, failure_categories=excluded.failure_categories, "
+            "environment_metadata=excluded.environment_metadata, operation_results=excluded.operation_results, timestamp=excluded.timestamp"
+        )
+        return self._write('test_sessions', q, (
                     session["id"],
                     session.get("workspace_id"),
                     session.get("status"),
@@ -1983,147 +1488,56 @@ class TestSessionRepositoryImpl(TestSessionRepository):
                     json.dumps(session.get("environment_metadata") or {}),
                     json.dumps(session.get("operation_results") or {}),
                     session.get("timestamp", time.time()),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Test session saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="test_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="test_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Test session saved successfully.')
 
     def get(self, session_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("test_sessions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM test_sessions WHERE id = ?"
-            rows = self.service.execute(q, (session_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Test session '{session_id}' not found.",
-                    latency=latency,
-                    repository="test_sessions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('test_sessions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["coverage_summary"] = json.loads(row["coverage_summary"] or "{}")
             row["failure_categories"] = json.loads(row["failure_categories"] or "{}")
             row["environment_metadata"] = json.loads(row["environment_metadata"] or "{}")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Test session retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="test_sessions",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="test_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'test_sessions',
+            "SELECT * FROM test_sessions WHERE id = ?",
+            (session_id,),
+            session_id,
+            _parse,
+            "Test session retrieved successfully.",
+        )
 
     def delete(self, session_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("test_sessions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM test_sessions WHERE id = ?"
-            self.service.execute(q, (session_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Test session deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="test_sessions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="test_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('test_sessions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'test_sessions',
+            "DELETE FROM test_sessions WHERE id = ?",
+            (session_id,),
+            "Test session deleted successfully.",
+        )
 
 
-class TestResultRepositoryImpl(TestResultRepository):
+class TestResultRepositoryImpl(_RepositoryMixin, TestResultRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, result: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("test_results", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO test_results (id, session_id, suite_id, name, category, passed, execution_time, error_message, metadata) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "session_id=excluded.session_id, suite_id=excluded.suite_id, name=excluded.name, "
-                "category=excluded.category, passed=excluded.passed, execution_time=excluded.execution_time, "
-                "error_message=excluded.error_message, metadata=excluded.metadata"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('test_results', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO test_results (id, session_id, suite_id, name, category, passed, execution_time, error_message, metadata) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "session_id=excluded.session_id, suite_id=excluded.suite_id, name=excluded.name, "
+            "category=excluded.category, passed=excluded.passed, execution_time=excluded.execution_time, "
+            "error_message=excluded.error_message, metadata=excluded.metadata"
+        )
+        return self._write('test_results', q, (
                     result["id"],
                     result.get("session_id"),
                     result.get("suite_id"),
@@ -2133,110 +1547,35 @@ class TestResultRepositoryImpl(TestResultRepository):
                     result.get("execution_time", 0.0),
                     result.get("error_message"),
                     json.dumps(result.get("metadata") or {}),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Test result saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="test_results",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="test_results",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Test result saved successfully.')
 
     def get(self, result_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("test_results", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM test_results WHERE id = ?"
-            rows = self.service.execute(q, (result_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Test result '{result_id}' not found.",
-                    latency=latency,
-                    repository="test_results",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('test_results', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["passed"] = bool(row["passed"])
             row["metadata"] = json.loads(row["metadata"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Test result retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="test_results",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="test_results",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'test_results',
+            "SELECT * FROM test_results WHERE id = ?",
+            (result_id,),
+            result_id,
+            _parse,
+            "Test result retrieved successfully.",
+        )
 
     def delete(self, result_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("test_results", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM test_results WHERE id = ?"
-            self.service.execute(q, (result_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Test result deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="test_results",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="test_results",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('test_results', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'test_results',
+            "DELETE FROM test_results WHERE id = ?",
+            (result_id,),
+            "Test result deleted successfully.",
+        )
 
 
 class EngineeringMemoryValidator(ServiceLifecycle):
@@ -2845,41 +2184,25 @@ class EngineeringMemoryServiceImpl(EngineeringMemoryService):
             return result
 
 
-class WorkflowRepositoryImpl(WorkflowRepository):
+class WorkflowRepositoryImpl(_RepositoryMixin, WorkflowRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, workflow: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("automation_workflows", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO automation_workflows (id, name, description, metadata, triggers, "
-                "actions, conditions, variables, policy, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "name=excluded.name, description=excluded.description, metadata=excluded.metadata, "
-                "triggers=excluded.triggers, actions=excluded.actions, conditions=excluded.conditions, "
-                "variables=excluded.variables, policy=excluded.policy, created_at=excluded.created_at, "
-                "updated_at=excluded.updated_at"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('automation_workflows', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO automation_workflows (id, name, description, metadata, triggers, "
+            "actions, conditions, variables, policy, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "name=excluded.name, description=excluded.description, metadata=excluded.metadata, "
+            "triggers=excluded.triggers, actions=excluded.actions, conditions=excluded.conditions, "
+            "variables=excluded.variables, policy=excluded.policy, created_at=excluded.created_at, "
+            "updated_at=excluded.updated_at"
+        )
+        return self._write('automation_workflows', q, (
                     workflow["id"],
                     workflow.get("name"),
                     workflow.get("description"),
@@ -2891,149 +2214,52 @@ class WorkflowRepositoryImpl(WorkflowRepository):
                     json.dumps(workflow.get("policy") or {}),
                     workflow.get("created_at") or time.time(),
                     workflow.get("updated_at") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow definition saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="automation_workflows",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            diag = self.service.get_diagnostics_for_error(e)
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                diagnostics=diag,
-                latency=latency,
-                repository="automation_workflows",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow definition saved successfully.')
 
     def get(self, workflow_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("automation_workflows", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM automation_workflows WHERE id = ?"
-            rows = self.service.execute(q, (workflow_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow definition '{workflow_id}' not found.",
-                    latency=latency,
-                    repository="automation_workflows",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in [
-                "metadata",
-                "triggers",
-                "actions",
-                "conditions",
-                "variables",
-                "policy",
-            ]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow definition retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="automation_workflows",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="automation_workflows",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('automation_workflows', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'automation_workflows',
+            "SELECT * FROM automation_workflows WHERE id = ?",
+            (workflow_id,),
+            workflow_id,
+            _parse,
+            "Workflow definition retrieved successfully.",
+        )
 
     def delete(self, workflow_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("automation_workflows", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM automation_workflows WHERE id = ?"
-            self.service.execute(q, (workflow_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow definition deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="automation_workflows",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="automation_workflows",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('automation_workflows', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'automation_workflows',
+            "DELETE FROM automation_workflows WHERE id = ?",
+            (workflow_id,),
+            "Workflow definition deleted successfully.",
+        )
 
 
-class WorkflowExecutionRepositoryImpl(WorkflowExecutionRepository):
+class WorkflowExecutionRepositoryImpl(_RepositoryMixin, WorkflowExecutionRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, execution: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_executions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO workflow_executions (id, workflow_id, workspace_id, status, success, "
-                "error_summary, execution_time, created_at, closed_at, metadata) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_id=excluded.workflow_id, workspace_id=excluded.workspace_id, status=excluded.status, "
-                "success=excluded.success, error_summary=excluded.error_summary, execution_time=excluded.execution_time, "
-                "created_at=excluded.created_at, closed_at=excluded.closed_at, metadata=excluded.metadata"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_executions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_executions (id, workflow_id, workspace_id, status, success, "
+            "error_summary, execution_time, created_at, closed_at, metadata) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_id=excluded.workflow_id, workspace_id=excluded.workspace_id, status=excluded.status, "
+            "success=excluded.success, error_summary=excluded.error_summary, execution_time=excluded.execution_time, "
+            "created_at=excluded.created_at, closed_at=excluded.closed_at, metadata=excluded.metadata"
+        )
+        return self._write('workflow_executions', q, (
                     execution["id"],
                     execution.get("workflow_id"),
                     execution.get("workspace_id"),
@@ -3044,141 +2270,56 @@ class WorkflowExecutionRepositoryImpl(WorkflowExecutionRepository):
                     execution.get("created_at") or time.time(),
                     execution.get("closed_at"),
                     json.dumps(execution.get("metadata") or {}),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow execution saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_executions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_executions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow execution saved successfully.')
 
     def get(self, execution_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_executions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_executions WHERE id = ?"
-            rows = self.service.execute(q, (execution_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow execution '{execution_id}' not found.",
-                    latency=latency,
-                    repository="workflow_executions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
+        guard = self._guard_status('workflow_executions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["metadata"] = json.loads(row["metadata"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow execution retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_executions",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_executions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'workflow_executions',
+            "SELECT * FROM workflow_executions WHERE id = ?",
+            (execution_id,),
+            execution_id,
+            _parse,
+            "Workflow execution retrieved successfully.",
+        )
 
     def delete(self, execution_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_executions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_executions WHERE id = ?"
-            self.service.execute(q, (execution_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow execution deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_executions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_executions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_executions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_executions',
+            "DELETE FROM workflow_executions WHERE id = ?",
+            (execution_id,),
+            "Workflow execution deleted successfully.",
+        )
 
 
-class WorkflowMonitoringRepositoryImpl(WorkflowMonitoringRepository):
+class WorkflowMonitoringRepositoryImpl(_RepositoryMixin, WorkflowMonitoringRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, monitor_report: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_monitoring", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO workflow_monitoring (id, workflow_id, execution_summaries, health_summaries, "
-                "performance_summaries, alert_summaries, success_rates, latency_summaries, retry_summaries, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_id=excluded.workflow_id, execution_summaries=excluded.execution_summaries, "
-                "health_summaries=excluded.health_summaries, performance_summaries=excluded.performance_summaries, "
-                "alert_summaries=excluded.alert_summaries, success_rates=excluded.success_rates, "
-                "latency_summaries=excluded.latency_summaries, retry_summaries=excluded.retry_summaries, "
-                "timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_monitoring', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_monitoring (id, workflow_id, execution_summaries, health_summaries, "
+            "performance_summaries, alert_summaries, success_rates, latency_summaries, retry_summaries, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_id=excluded.workflow_id, execution_summaries=excluded.execution_summaries, "
+            "health_summaries=excluded.health_summaries, performance_summaries=excluded.performance_summaries, "
+            "alert_summaries=excluded.alert_summaries, success_rates=excluded.success_rates, "
+            "latency_summaries=excluded.latency_summaries, retry_summaries=excluded.retry_summaries, "
+            "timestamp=excluded.timestamp"
+        )
+        return self._write('workflow_monitoring', q, (
                     monitor_report["id"],
                     monitor_report.get("workflow_id"),
                     json.dumps(monitor_report.get("execution_summaries") or {}),
@@ -3189,149 +2330,53 @@ class WorkflowMonitoringRepositoryImpl(WorkflowMonitoringRepository):
                     json.dumps(monitor_report.get("latency_summaries") or {}),
                     json.dumps(monitor_report.get("retry_summaries") or {}),
                     monitor_report.get("timestamp") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow monitoring report saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_monitoring",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_monitoring",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow monitoring report saved successfully.')
 
     def get(self, report_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_monitoring", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_monitoring WHERE id = ?"
-            rows = self.service.execute(q, (report_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow monitoring report '{report_id}' not found.",
-                    latency=latency,
-                    repository="workflow_monitoring",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in [
-                "execution_summaries",
-                "health_summaries",
-                "performance_summaries",
-                "alert_summaries",
-                "success_rates",
-                "latency_summaries",
-                "retry_summaries",
-            ]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow monitoring report retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_monitoring",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_monitoring",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_monitoring', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'workflow_monitoring',
+            "SELECT * FROM workflow_monitoring WHERE id = ?",
+            (report_id,),
+            report_id,
+            _parse,
+            "Workflow monitoring report retrieved successfully.",
+        )
 
     def delete(self, report_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_monitoring", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_monitoring WHERE id = ?"
-            self.service.execute(q, (report_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow monitoring report deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_monitoring",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_monitoring",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_monitoring', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_monitoring',
+            "DELETE FROM workflow_monitoring WHERE id = ?",
+            (report_id,),
+            "Workflow monitoring report deleted successfully.",
+        )
 
 
-class WorkflowOptimizationRepositoryImpl(WorkflowOptimizationRepository):
+class WorkflowOptimizationRepositoryImpl(_RepositoryMixin, WorkflowOptimizationRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, optimization: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_optimizations", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO workflow_optimizations (id, workflow_id, optimization_plans, detected_patterns, "
-                "complexity_scores, recommendation_metadata, optimization_statistics, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_id=excluded.workflow_id, optimization_plans=excluded.optimization_plans, "
-                "detected_patterns=excluded.detected_patterns, complexity_scores=excluded.complexity_scores, "
-                "recommendation_metadata=excluded.recommendation_metadata, "
-                "optimization_statistics=excluded.optimization_statistics, timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_optimizations', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_optimizations (id, workflow_id, optimization_plans, detected_patterns, "
+            "complexity_scores, recommendation_metadata, optimization_statistics, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_id=excluded.workflow_id, optimization_plans=excluded.optimization_plans, "
+            "detected_patterns=excluded.detected_patterns, complexity_scores=excluded.complexity_scores, "
+            "recommendation_metadata=excluded.recommendation_metadata, "
+            "optimization_statistics=excluded.optimization_statistics, timestamp=excluded.timestamp"
+        )
+        return self._write('workflow_optimizations', q, (
                     optimization["id"],
                     optimization.get("workflow_id"),
                     json.dumps(optimization.get("optimization_plans") or {}),
@@ -3340,147 +2385,53 @@ class WorkflowOptimizationRepositoryImpl(WorkflowOptimizationRepository):
                     json.dumps(optimization.get("recommendation_metadata") or {}),
                     json.dumps(optimization.get("optimization_statistics") or {}),
                     optimization.get("timestamp") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow optimization recommendations saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_optimizations",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_optimizations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow optimization recommendations saved successfully.')
 
     def get(self, optimization_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_optimizations", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_optimizations WHERE id = ?"
-            rows = self.service.execute(q, (optimization_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow optimization '{optimization_id}' not found.",
-                    latency=latency,
-                    repository="workflow_optimizations",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in [
-                "optimization_plans",
-                "detected_patterns",
-                "complexity_scores",
-                "recommendation_metadata",
-                "optimization_statistics",
-            ]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow optimization retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_optimizations",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_optimizations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_optimizations', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'workflow_optimizations',
+            "SELECT * FROM workflow_optimizations WHERE id = ?",
+            (optimization_id,),
+            optimization_id,
+            _parse,
+            "Workflow optimization retrieved successfully.",
+        )
 
     def delete(self, optimization_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_optimizations", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_optimizations WHERE id = ?"
-            self.service.execute(q, (optimization_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow optimization deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_optimizations",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_optimizations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_optimizations', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_optimizations',
+            "DELETE FROM workflow_optimizations WHERE id = ?",
+            (optimization_id,),
+            "Workflow optimization deleted successfully.",
+        )
 
 
-class WorkflowVersionRepositoryImpl(WorkflowVersionRepository):
+class WorkflowVersionRepositoryImpl(_RepositoryMixin, WorkflowVersionRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, version: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_versions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO workflow_versions (id, workflow_id, version_metadata, migration_metadata, "
-                "compatibility_metadata, rollback_metadata, version_graph_references, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_id=excluded.workflow_id, version_metadata=excluded.version_metadata, "
-                "migration_metadata=excluded.migration_metadata, compatibility_metadata=excluded.compatibility_metadata, "
-                "rollback_metadata=excluded.rollback_metadata, version_graph_references=excluded.version_graph_references, "
-                "timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_versions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_versions (id, workflow_id, version_metadata, migration_metadata, "
+            "compatibility_metadata, rollback_metadata, version_graph_references, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_id=excluded.workflow_id, version_metadata=excluded.version_metadata, "
+            "migration_metadata=excluded.migration_metadata, compatibility_metadata=excluded.compatibility_metadata, "
+            "rollback_metadata=excluded.rollback_metadata, version_graph_references=excluded.version_graph_references, "
+            "timestamp=excluded.timestamp"
+        )
+        return self._write('workflow_versions', q, (
                     version["id"],
                     version.get("workflow_id"),
                     json.dumps(version.get("version_metadata") or {}),
@@ -3489,147 +2440,53 @@ class WorkflowVersionRepositoryImpl(WorkflowVersionRepository):
                     json.dumps(version.get("rollback_metadata") or {}),
                     json.dumps(version.get("version_graph_references") or {}),
                     version.get("timestamp") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow version details saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_versions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_versions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow version details saved successfully.')
 
     def get(self, version_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_versions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_versions WHERE id = ?"
-            rows = self.service.execute(q, (version_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow version '{version_id}' not found.",
-                    latency=latency,
-                    repository="workflow_versions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in [
-                "version_metadata",
-                "migration_metadata",
-                "compatibility_metadata",
-                "rollback_metadata",
-                "version_graph_references",
-            ]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow version retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_versions",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_versions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_versions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'workflow_versions',
+            "SELECT * FROM workflow_versions WHERE id = ?",
+            (version_id,),
+            version_id,
+            _parse,
+            "Workflow version retrieved successfully.",
+        )
 
     def delete(self, version_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_versions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_versions WHERE id = ?"
-            self.service.execute(q, (version_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow version deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_versions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_versions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_versions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_versions',
+            "DELETE FROM workflow_versions WHERE id = ?",
+            (version_id,),
+            "Workflow version deleted successfully.",
+        )
 
 
-class WorkflowTranslationRepositoryImpl(WorkflowTranslationRepository):
+class WorkflowTranslationRepositoryImpl(_RepositoryMixin, WorkflowTranslationRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, translation: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_translations", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO workflow_translations (id, workflow_id, workflow_metadata, translation_metadata, "
-                "ir_version, translation_statistics, compilation_summaries, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_id=excluded.workflow_id, workflow_metadata=excluded.workflow_metadata, "
-                "translation_metadata=excluded.translation_metadata, ir_version=excluded.ir_version, "
-                "translation_statistics=excluded.translation_statistics, "
-                "compilation_summaries=excluded.compilation_summaries, timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_translations', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_translations (id, workflow_id, workflow_metadata, translation_metadata, "
+            "ir_version, translation_statistics, compilation_summaries, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_id=excluded.workflow_id, workflow_metadata=excluded.workflow_metadata, "
+            "translation_metadata=excluded.translation_metadata, ir_version=excluded.ir_version, "
+            "translation_statistics=excluded.translation_statistics, "
+            "compilation_summaries=excluded.compilation_summaries, timestamp=excluded.timestamp"
+        )
+        return self._write('workflow_translations', q, (
                     translation["id"],
                     translation.get("workflow_id"),
                     json.dumps(translation.get("workflow_metadata") or {}),
@@ -3638,151 +2495,53 @@ class WorkflowTranslationRepositoryImpl(WorkflowTranslationRepository):
                     json.dumps(translation.get("translation_statistics") or {}),
                     json.dumps(translation.get("compilation_summaries") or {}),
                     translation.get("timestamp") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow translation saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_translations",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_translations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow translation saved successfully.')
 
     def get(self, translation_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_translations", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_translations WHERE id = ?"
-            rows = self.service.execute(q, (translation_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow translation '{translation_id}' not found.",
-                    latency=latency,
-                    repository="workflow_translations",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in [
-                "workflow_metadata",
-                "translation_metadata",
-                "translation_statistics",
-                "compilation_summaries",
-            ]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow translation retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_translations",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_translations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_translations', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'workflow_translations',
+            "SELECT * FROM workflow_translations WHERE id = ?",
+            (translation_id,),
+            translation_id,
+            _parse,
+            "Workflow translation retrieved successfully.",
+        )
 
     def delete(self, translation_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_translations", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_translations WHERE id = ?"
-            self.service.execute(q, (translation_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow translation deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_translations",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_translations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_translations', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_translations',
+            "DELETE FROM workflow_translations WHERE id = ?",
+            (translation_id,),
+            "Workflow translation deleted successfully.",
+        )
 
 
-class WorkflowIntegrationRepositoryImpl(WorkflowIntegrationRepository):
+class WorkflowIntegrationRepositoryImpl(_RepositoryMixin, WorkflowIntegrationRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, integration: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_integrations", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            conn_metadata = dict(integration.get("connection_metadata") or {})
-            for key in ["password", "token", "secret", "cookie", "api_key", "credentials"]:
-                if key in conn_metadata:
-                    del conn_metadata[key]
-
-            q = (
-                "INSERT INTO workflow_integrations (id, workflow_id, execution_id, connection_metadata, "
-                "server_metadata, health_metadata, capability_discovery, validation_metadata, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_id=excluded.workflow_id, execution_id=excluded.execution_id, "
-                "connection_metadata=excluded.connection_metadata, server_metadata=excluded.server_metadata, "
-                "health_metadata=excluded.health_metadata, capability_discovery=excluded.capability_discovery, "
-                "validation_metadata=excluded.validation_metadata, timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_integrations', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_integrations (id, workflow_id, execution_id, connection_metadata, "
+            "server_metadata, health_metadata, capability_discovery, validation_metadata, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_id=excluded.workflow_id, execution_id=excluded.execution_id, "
+            "connection_metadata=excluded.connection_metadata, server_metadata=excluded.server_metadata, "
+            "health_metadata=excluded.health_metadata, capability_discovery=excluded.capability_discovery, "
+            "validation_metadata=excluded.validation_metadata, timestamp=excluded.timestamp"
+        )
+        return self._write('workflow_integrations', q, (
                     integration["id"],
                     integration.get("workflow_id"),
                     integration.get("execution_id"),
@@ -3792,145 +2551,51 @@ class WorkflowIntegrationRepositoryImpl(WorkflowIntegrationRepository):
                     json.dumps(integration.get("capability_discovery") or []),
                     json.dumps(integration.get("validation_metadata") or {}),
                     integration.get("timestamp") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow integration metadata saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_integrations",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_integrations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Workflow integration metadata saved successfully.')
 
     def get(self, integration_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_integrations", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_integrations WHERE id = ?"
-            rows = self.service.execute(q, (integration_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Workflow integration '{integration_id}' not found.",
-                    latency=latency,
-                    repository="workflow_integrations",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in [
-                "connection_metadata",
-                "server_metadata",
-                "health_metadata",
-                "capability_discovery",
-                "validation_metadata",
-            ]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow integration retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_integrations",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_integrations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_integrations', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'workflow_integrations',
+            "SELECT * FROM workflow_integrations WHERE id = ?",
+            (integration_id,),
+            integration_id,
+            _parse,
+            "Workflow integration retrieved successfully.",
+        )
 
     def delete(self, integration_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_integrations", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_integrations WHERE id = ?"
-            self.service.execute(q, (integration_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Workflow integration deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_integrations",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_integrations",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_integrations', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_integrations',
+            "DELETE FROM workflow_integrations WHERE id = ?",
+            (integration_id,),
+            "Workflow integration deleted successfully.",
+        )
 
 
-class AutomationTelemetryRepositoryImpl(AutomationTelemetryRepository):
+class AutomationTelemetryRepositoryImpl(_RepositoryMixin, AutomationTelemetryRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, telemetry: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_executions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO workflow_executions (id, workflow_id, workspace_id, status, success, "
-                "execution_time, created_at, metadata) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "status=excluded.status, success=excluded.success, execution_time=excluded.execution_time, "
-                "metadata=excluded.metadata"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('workflow_executions', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO workflow_executions (id, workflow_id, workspace_id, status, success, "
+            "execution_time, created_at, metadata) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "status=excluded.status, success=excluded.success, execution_time=excluded.execution_time, "
+            "metadata=excluded.metadata"
+        )
+        return self._write('workflow_executions', q, (
                     telemetry["id"],
                     telemetry.get("workflow_id", "system"),
                     telemetry.get("workspace_id", "system"),
@@ -3939,142 +2604,55 @@ class AutomationTelemetryRepositoryImpl(AutomationTelemetryRepository):
                     telemetry.get("execution_time", 0.0),
                     time.time(),
                     json.dumps(telemetry),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Telemetry saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_executions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_executions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Telemetry saved successfully.')
 
     def get(self, telemetry_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_executions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM workflow_executions WHERE id = ?"
-            rows = self.service.execute(q, (telemetry_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Telemetry '{telemetry_id}' not found.",
-                    latency=latency,
-                    repository="workflow_executions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            payload = json.loads(row["metadata"] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Telemetry retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_executions",
-                payload=payload,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_executions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_executions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'workflow_executions',
+            "SELECT * FROM workflow_executions WHERE id = ?",
+            (telemetry_id,),
+            telemetry_id,
+            _parse,
+            "Telemetry retrieved successfully.",
+        )
 
     def delete(self, telemetry_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("workflow_executions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM workflow_executions WHERE id = ?"
-            self.service.execute(q, (telemetry_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Telemetry deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="workflow_executions",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="workflow_executions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('workflow_executions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'workflow_executions',
+            "DELETE FROM workflow_executions WHERE id = ?",
+            (telemetry_id,),
+            "Telemetry deleted successfully.",
+        )
 
 
-class AutomationStatisticsRepositoryImpl(AutomationStatisticsRepository):
+class AutomationStatisticsRepositoryImpl(_RepositoryMixin, AutomationStatisticsRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, stats: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("automation_statistics", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = (
-                "INSERT INTO automation_statistics (id, workflow_count, execution_count, translation_count, "
-                "optimization_count, monitoring_count, version_count, success_ratios, failure_ratios, "
-                "usage_trends, timestamp) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET "
-                "workflow_count=excluded.workflow_count, execution_count=excluded.execution_count, "
-                "translation_count=excluded.translation_count, optimization_count=excluded.optimization_count, "
-                "monitoring_count=excluded.monitoring_count, version_count=excluded.version_count, "
-                "success_ratios=excluded.success_ratios, failure_ratios=excluded.failure_ratios, "
-                "usage_trends=excluded.usage_trends, timestamp=excluded.timestamp"
-            )
-            self.service.execute(
-                q,
-                (
+        guard = self._guard_status('automation_statistics', "save")
+        if guard is not None:
+            return guard
+        q = (
+            "INSERT INTO automation_statistics (id, workflow_count, execution_count, translation_count, "
+            "optimization_count, monitoring_count, version_count, success_ratios, failure_ratios, "
+            "usage_trends, timestamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET "
+            "workflow_count=excluded.workflow_count, execution_count=excluded.execution_count, "
+            "translation_count=excluded.translation_count, optimization_count=excluded.optimization_count, "
+            "monitoring_count=excluded.monitoring_count, version_count=excluded.version_count, "
+            "success_ratios=excluded.success_ratios, failure_ratios=excluded.failure_ratios, "
+            "usage_trends=excluded.usage_trends, timestamp=excluded.timestamp"
+        )
+        return self._write('automation_statistics', q, (
                     stats["id"],
                     stats.get("workflow_count", 0),
                     stats.get("execution_count", 0),
@@ -4086,104 +2664,32 @@ class AutomationStatisticsRepositoryImpl(AutomationStatisticsRepository):
                     json.dumps(stats.get("failure_ratios") or {}),
                     json.dumps(stats.get("usage_trends") or {}),
                     stats.get("timestamp") or time.time(),
-                ),
-            )
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Automation statistics saved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="automation_statistics",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="automation_statistics",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+                ), 'Automation statistics saved successfully.')
 
     def get(self, stats_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("automation_statistics", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM automation_statistics WHERE id = ?"
-            rows = self.service.execute(q, (stats_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Automation statistics '{stats_id}' not found.",
-                    latency=latency,
-                    repository="automation_statistics",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-
-            row = dict(rows[0])
-            for json_field in ["success_ratios", "failure_ratios", "usage_trends"]:
-                row[json_field] = json.loads(row[json_field] or "{}")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Automation statistics retrieved successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="automation_statistics",
-                payload=row,
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="automation_statistics",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('automation_statistics', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'automation_statistics',
+            "SELECT * FROM automation_statistics WHERE id = ?",
+            (stats_id,),
+            stats_id,
+            _parse,
+            "Automation statistics retrieved successfully.",
+        )
 
     def delete(self, stats_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("automation_statistics", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        start_time = time.time()
-        try:
-            q = "DELETE FROM automation_statistics WHERE id = ?"
-            self.service.execute(q, (stats_id,))
-            latency = (time.time() - start_time) * 1000
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Automation statistics deleted successfully.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="automation_statistics",
-            )
-        except Exception as e:
-            latency = (time.time() - start_time) * 1000
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=latency,
-                repository="automation_statistics",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('automation_statistics', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'automation_statistics',
+            "DELETE FROM automation_statistics WHERE id = ?",
+            (stats_id,),
+            "Automation statistics deleted successfully.",
+        )
 
 
 class AutomationPersistenceValidator(ServiceLifecycle):
@@ -4757,29 +3263,16 @@ class AutomationPersistenceServiceImpl(AutomationPersistenceService):
             return result
 
 
-class AIProviderRepositoryImpl(AIProviderRepository):
+class AIProviderRepositoryImpl(_RepositoryMixin, AIProviderRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, provider: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("ai_providers", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO ai_providers (id, name, version, priority, status, context_window, cost_per_million_input, cost_per_million_output, auth_type, supported_models, is_local, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('ai_providers', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO ai_providers (id, name, version, priority, status, context_window, cost_per_million_input, cost_per_million_output, auth_type, supported_models, is_local, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        return self._write('ai_providers', q, (
                 provider["id"],
                 provider.get("name"),
                 provider.get("version"),
@@ -4793,590 +3286,217 @@ class AIProviderRepositoryImpl(AIProviderRepository):
                 1 if provider.get("is_local") else 0,
                 provider.get("created_at") or time.time(),
                 provider.get("updated_at") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="AI Provider saved.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="ai_providers",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="ai_providers",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'AI Provider saved.')
 
     def get(self, provider_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("ai_providers", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "SELECT * FROM ai_providers WHERE id = ?"
-            rows = self.service.execute(q, (provider_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=f"Provider '{provider_id}' not found.",
-                    latency=latency,
-                    repository="ai_providers",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
+        guard = self._guard_status('ai_providers', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["supported_models"] = json.loads(row["supported_models"] or "[]")
             row["is_local"] = bool(row["is_local"])
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Provider retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="ai_providers",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="ai_providers",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'ai_providers',
+            "SELECT * FROM ai_providers WHERE id = ?",
+            (provider_id,),
+            provider_id,
+            _parse,
+            "Provider retrieved.",
+        )
 
     def delete(self, provider_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("ai_providers", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM ai_providers WHERE id = ?", (provider_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Provider deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="ai_providers",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="ai_providers",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('ai_providers', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'ai_providers',
+            "DELETE FROM ai_providers WHERE id = ?",
+            (provider_id,),
+            "Provider deleted.",
+        )
 
 
-class ProviderCapabilityRepositoryImpl(ProviderCapabilityRepository):
+class ProviderCapabilityRepositoryImpl(_RepositoryMixin, ProviderCapabilityRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
-
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
 
     def save(self, capabilities: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_capabilities", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_capabilities (id, provider_name, capabilities, timestamp) VALUES (?, ?, ?, ?)"
-            params = (
-                capabilities["id"],
-                capabilities.get("provider_name"),
-                json.dumps(capabilities.get("capabilities", {})),
-                capabilities.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            latency = (time.time() - start_time) * 1000
+        guard = self._guard_status('provider_capabilities', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_capabilities (id, provider_name, capabilities, timestamp) VALUES (?, ?, ?, ?)"
+        params = (
+            capabilities["id"],
+            capabilities.get("provider_name"),
+            json.dumps(capabilities.get("capabilities", {})),
+            capabilities.get("timestamp") or time.time(),
+        )
 
-            # Cache integration
-            from aios.registry import ServiceRegistry
+        def _cache_payload():
+            row = {**capabilities}
+            row["capabilities"] = capabilities.get("capabilities", {})
+            row["timestamp"] = capabilities.get("timestamp") or time.time()
+            return row
 
-            try:
-                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
-            except Exception:
-                cache_svc = None
-                policy_mgr = None
-
-            if cache_svc and policy_mgr:
-                policy = policy_mgr.get_policy("provider_capabilities")
-                if policy == CachePolicy.WRITE_THROUGH:
-                    row = {**capabilities}
-                    row["capabilities"] = capabilities.get("capabilities", {})
-                    row["timestamp"] = capabilities.get("timestamp") or time.time()
-                    res = PersistenceResult(
-                        status=PersistenceStatus.SUCCESS,
-                        message="Capabilities retrieved.",
-                        provider=self.service.config.provider_name,
-                        latency=latency,
-                        repository="provider_capabilities",
-                        payload=row,
-                    )
-                    cache_svc.set("provider_capabilities", capabilities["id"], res)
-                elif policy != CachePolicy.NO_CACHE:
-                    cache_svc.delete("provider_capabilities", capabilities["id"])
-
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Capabilities saved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_capabilities",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_capabilities",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        return self._write_with_cache(
+            'provider_capabilities', q, params,
+            'Capabilities saved.',
+            cache_namespace='provider_capabilities',
+            entity_id=capabilities["id"],
+            cache_payload_fn=_cache_payload,
+            retrieve_msg='Capabilities retrieved.',
+        )
 
     def get(self, capability_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_capabilities", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        from aios.registry import ServiceRegistry
-
-        try:
-            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-        except Exception:
-            cache_svc = None
-
-        def fetch():
-            start_time = time.time()
-            try:
-                rows = self.service.execute(
-                    "SELECT * FROM provider_capabilities WHERE id = ?", (capability_id,)
-                )
-                latency = (time.time() - start_time) * 1000
-                if not rows:
-                    result = PersistenceResult(
-                        status=PersistenceStatus.UNKNOWN_FAILURE,
-                        message="Capabilities not found.",
-                        latency=latency,
-                        repository="provider_capabilities",
-                    )
-                    if self.service.config.policy == PersistencePolicy.STRICT:
-                        raise RuntimeError(result.message)
-                    return result
-                row = dict(rows[0])
-                row["capabilities"] = json.loads(row["capabilities"] or "{}")
-                return PersistenceResult(
-                    status=PersistenceStatus.SUCCESS,
-                    message="Capabilities retrieved.",
-                    provider=self.service.config.provider_name,
-                    latency=latency,
-                    repository="provider_capabilities",
-                    payload=row,
-                )
-            except Exception as e:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=str(e),
-                    latency=(time.time() - start_time) * 1000,
-                    repository="provider_capabilities",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message) from e
-                return result
-
-        if cache_svc:
-            return cache_svc.get("provider_capabilities", capability_id, fetch)
-        return fetch()
+        def _parse(row):
+            row["capabilities"] = json.loads(row["capabilities"] or "{}")
+            return row
+        return self._fetch_one_with_cache(
+            'provider_capabilities',
+            "SELECT * FROM provider_capabilities WHERE id = ?",
+            (capability_id,),
+            capability_id,
+            _parse,
+            'Capabilities retrieved.',
+            'Capabilities not found.',
+            'provider_capabilities',
+        )
 
     def delete(self, capability_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_capabilities", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_capabilities WHERE id = ?", (capability_id,))
-            latency = (time.time() - start_time) * 1000
-
-            # Cache integration
-            from aios.registry import ServiceRegistry
-
-            try:
-                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-            except Exception:
-                cache_svc = None
-            if cache_svc:
-                cache_svc.delete("provider_capabilities", capability_id)
-
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Capabilities deleted.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_capabilities",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_capabilities",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_capabilities', "delete")
+        if guard is not None:
+            return guard
+        return self._delete_with_cache(
+            'provider_capabilities',
+            "DELETE FROM provider_capabilities WHERE id = ?",
+            (capability_id,),
+            'Capabilities deleted.',
+            'provider_capabilities',
+            capability_id,
+        )
 
 
-class ProviderHealthRepositoryImpl(ProviderHealthRepository):
+class ProviderHealthRepositoryImpl(_RepositoryMixin, ProviderHealthRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
-
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
 
     def save(self, health: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_health", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_health (id, provider_name, is_healthy, availability_pct, success_rate, rate_limited_until, circuit_breaker_state, cooldown_until, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-            params = (
-                health["id"],
-                health.get("provider_name"),
-                1 if health.get("is_healthy") else 0,
-                health.get("availability_pct"),
-                health.get("success_rate"),
-                health.get("rate_limited_until"),
-                health.get("circuit_breaker_state"),
-                health.get("cooldown_until"),
-                health.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            latency = (time.time() - start_time) * 1000
+        guard = self._guard_status('provider_health', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_health (id, provider_name, is_healthy, availability_pct, success_rate, rate_limited_until, circuit_breaker_state, cooldown_until, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        params = (
+            health["id"],
+            health.get("provider_name"),
+            1 if health.get("is_healthy") else 0,
+            health.get("availability_pct"),
+            health.get("success_rate"),
+            health.get("rate_limited_until"),
+            health.get("circuit_breaker_state"),
+            health.get("cooldown_until"),
+            health.get("timestamp") or time.time(),
+        )
 
-            # Cache integration
-            from aios.registry import ServiceRegistry
+        def _cache_payload():
+            row = {**health}
+            row["is_healthy"] = bool(health.get("is_healthy"))
+            return row
 
-            try:
-                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
-            except Exception:
-                cache_svc = None
-                policy_mgr = None
-
-            if cache_svc and policy_mgr:
-                policy = policy_mgr.get_policy("provider_health")
-                if policy == CachePolicy.WRITE_THROUGH:
-                    row = {**health}
-                    row["is_healthy"] = bool(health.get("is_healthy"))
-                    res = PersistenceResult(
-                        status=PersistenceStatus.SUCCESS,
-                        message="Health report retrieved.",
-                        provider=self.service.config.provider_name,
-                        latency=latency,
-                        repository="provider_health",
-                        payload=row,
-                    )
-                    cache_svc.set("provider_health", health["id"], res)
-                elif policy != CachePolicy.NO_CACHE:
-                    cache_svc.delete("provider_health", health["id"])
-
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Health status saved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_health",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_health",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        return self._write_with_cache(
+            'provider_health', q, params,
+            'Health status saved.',
+            cache_namespace='provider_health',
+            entity_id=health["id"],
+            cache_payload_fn=_cache_payload,
+            retrieve_msg='Health report retrieved.',
+        )
 
     def get(self, health_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_health", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        from aios.registry import ServiceRegistry
-
-        try:
-            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-        except Exception:
-            cache_svc = None
-
-        def fetch():
-            start_time = time.time()
-            try:
-                rows = self.service.execute(
-                    "SELECT * FROM provider_health WHERE id = ?", (health_id,)
-                )
-                latency = (time.time() - start_time) * 1000
-                if not rows:
-                    result = PersistenceResult(
-                        status=PersistenceStatus.UNKNOWN_FAILURE,
-                        message="Health report not found.",
-                        latency=latency,
-                        repository="provider_health",
-                    )
-                    if self.service.config.policy == PersistencePolicy.STRICT:
-                        raise RuntimeError(result.message)
-                    return result
-                row = dict(rows[0])
-                row["is_healthy"] = bool(row["is_healthy"])
-                return PersistenceResult(
-                    status=PersistenceStatus.SUCCESS,
-                    message="Health report retrieved.",
-                    provider=self.service.config.provider_name,
-                    latency=latency,
-                    repository="provider_health",
-                    payload=row,
-                )
-            except Exception as e:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=str(e),
-                    latency=(time.time() - start_time) * 1000,
-                    repository="provider_health",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message) from e
-                return result
-
-        if cache_svc:
-            return cache_svc.get("provider_health", health_id, fetch)
-        return fetch()
+        def _parse(row):
+            row["is_healthy"] = bool(row["is_healthy"])
+            return row
+        return self._fetch_one_with_cache(
+            'provider_health',
+            "SELECT * FROM provider_health WHERE id = ?",
+            (health_id,),
+            health_id,
+            _parse,
+            'Health report retrieved.',
+            'Health report not found.',
+            'provider_health',
+        )
 
     def delete(self, health_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_health", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_health WHERE id = ?", (health_id,))
-            latency = (time.time() - start_time) * 1000
-
-            # Cache integration
-            from aios.registry import ServiceRegistry
-
-            try:
-                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-            except Exception:
-                cache_svc = None
-            if cache_svc:
-                cache_svc.delete("provider_health", health_id)
-
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Health report deleted.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_health",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_health",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_health', "delete")
+        if guard is not None:
+            return guard
+        return self._delete_with_cache(
+            'provider_health',
+            "DELETE FROM provider_health WHERE id = ?",
+            (health_id,),
+            'Health report deleted.',
+            'provider_health',
+            health_id,
+        )
 
 
-class ProviderTelemetryRepositoryImpl(ProviderTelemetryRepository):
+class ProviderTelemetryRepositoryImpl(_RepositoryMixin, ProviderTelemetryRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, telemetry: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_telemetry", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_telemetry (id, provider_name, average_latency, p95_latency, query_latencies, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('provider_telemetry', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_telemetry (id, provider_name, average_latency, p95_latency, query_latencies, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+        return self._write('provider_telemetry', q, (
                 telemetry["id"],
                 telemetry.get("provider_name"),
                 telemetry.get("average_latency"),
                 telemetry.get("p95_latency"),
                 json.dumps(telemetry.get("query_latencies", [])),
                 telemetry.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Telemetry saved.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_telemetry",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_telemetry",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'Telemetry saved.')
 
     def get(self, telemetry_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_telemetry", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            rows = self.service.execute(
-                "SELECT * FROM provider_telemetry WHERE id = ?", (telemetry_id,)
-            )
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message="Telemetry report not found.",
-                    latency=latency,
-                    repository="provider_telemetry",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
+        guard = self._guard_status('provider_telemetry', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["query_latencies"] = json.loads(row["query_latencies"] or "[]")
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Telemetry report retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_telemetry",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_telemetry",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'provider_telemetry',
+            "SELECT * FROM provider_telemetry WHERE id = ?",
+            (telemetry_id,),
+            telemetry_id,
+            _parse,
+            "Telemetry report not found.",
+        )
 
     def delete(self, telemetry_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_telemetry", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_telemetry WHERE id = ?", (telemetry_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Telemetry deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_telemetry",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_telemetry",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_telemetry', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'provider_telemetry',
+            "DELETE FROM provider_telemetry WHERE id = ?",
+            (telemetry_id,),
+            "Telemetry deleted.",
+        )
 
 
-class ProviderStatisticsRepositoryImpl(ProviderStatisticsRepository):
+class ProviderStatisticsRepositoryImpl(_RepositoryMixin, ProviderStatisticsRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, statistics: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_statistics", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_statistics (id, provider_name, total_requests, success_count, failure_count, error_summary, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('provider_statistics', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_statistics (id, provider_name, total_requests, success_count, failure_count, error_summary, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        return self._write('provider_statistics', q, (
                 statistics["id"],
                 statistics.get("provider_name"),
                 statistics.get("total_requests"),
@@ -5384,119 +3504,44 @@ class ProviderStatisticsRepositoryImpl(ProviderStatisticsRepository):
                 statistics.get("failure_count"),
                 statistics.get("error_summary"),
                 statistics.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Statistics saved.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_statistics",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_statistics",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'Statistics saved.')
 
     def get(self, statistics_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_statistics", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            rows = self.service.execute(
-                "SELECT * FROM provider_statistics WHERE id = ?", (statistics_id,)
-            )
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message="Statistics not found.",
-                    latency=latency,
-                    repository="provider_statistics",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Statistics retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_statistics",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_statistics",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_statistics', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'provider_statistics',
+            "SELECT * FROM provider_statistics WHERE id = ?",
+            (statistics_id,),
+            statistics_id,
+            _parse,
+            "Statistics not found.",
+        )
 
     def delete(self, statistics_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_statistics", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_statistics WHERE id = ?", (statistics_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Statistics deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_statistics",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_statistics",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_statistics', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'provider_statistics',
+            "DELETE FROM provider_statistics WHERE id = ?",
+            (statistics_id,),
+            "Statistics deleted.",
+        )
 
 
-class ProviderQuotaRepositoryImpl(ProviderQuotaRepository):
+class ProviderQuotaRepositoryImpl(_RepositoryMixin, ProviderQuotaRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, quota: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_quotas", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_quotas (id, provider_name, quota_limit, quota_used, remaining_quota, is_exhausted, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('provider_quotas', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_quotas (id, provider_name, quota_limit, quota_used, remaining_quota, is_exhausted, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        return self._write('provider_quotas', q, (
                 quota["id"],
                 quota.get("provider_name"),
                 quota.get("quota_limit"),
@@ -5504,295 +3549,110 @@ class ProviderQuotaRepositoryImpl(ProviderQuotaRepository):
                 quota.get("remaining_quota"),
                 1 if quota.get("is_exhausted") else 0,
                 quota.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Quota saved.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_quotas",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_quotas",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'Quota saved.')
 
     def get(self, quota_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_quotas", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            rows = self.service.execute("SELECT * FROM provider_quotas WHERE id = ?", (quota_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message="Quota not found.",
-                    latency=latency,
-                    repository="provider_quotas",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
+        guard = self._guard_status('provider_quotas', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
             row["is_exhausted"] = bool(row["is_exhausted"])
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Quota retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_quotas",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_quotas",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            return row
+        return self._fetch_one(
+            'provider_quotas',
+            "SELECT * FROM provider_quotas WHERE id = ?",
+            (quota_id,),
+            quota_id,
+            _parse,
+            "Quota not found.",
+        )
 
     def delete(self, quota_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_quotas", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_quotas WHERE id = ?", (quota_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Quota deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_quotas",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_quotas",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_quotas', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'provider_quotas',
+            "DELETE FROM provider_quotas WHERE id = ?",
+            (quota_id,),
+            "Quota deleted.",
+        )
 
 
-class ProviderRoutingRepositoryImpl(ProviderRoutingRepository):
+class ProviderRoutingRepositoryImpl(_RepositoryMixin, ProviderRoutingRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
-
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
 
     def save(self, routing: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_routing", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_routing (id, request_model, selected_provider, selected_model, strategy, routing_candidates, operation_result_ref, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            params = (
-                routing["id"],
-                routing.get("request_model"),
-                routing.get("selected_provider"),
-                routing.get("selected_model"),
-                routing.get("strategy"),
-                json.dumps(routing.get("routing_candidates", [])),
-                routing.get("operation_result_ref"),
-                routing.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            latency = (time.time() - start_time) * 1000
+        guard = self._guard_status('provider_routing', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_routing (id, request_model, selected_provider, selected_model, strategy, routing_candidates, operation_result_ref, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        params = (
+            routing["id"],
+            routing.get("request_model"),
+            routing.get("selected_provider"),
+            routing.get("selected_model"),
+            routing.get("strategy"),
+            json.dumps(routing.get("routing_candidates", [])),
+            routing.get("operation_result_ref"),
+            routing.get("timestamp") or time.time(),
+        )
 
-            # Cache integration
-            from aios.registry import ServiceRegistry
+        def _cache_payload():
+            row = {**routing}
+            row["routing_candidates"] = routing.get("routing_candidates", [])
+            row["timestamp"] = routing.get("timestamp") or time.time()
+            return row
 
-            try:
-                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
-            except Exception:
-                cache_svc = None
-                policy_mgr = None
-
-            if cache_svc and policy_mgr:
-                policy = policy_mgr.get_policy("provider_routing")
-                if policy == CachePolicy.WRITE_THROUGH:
-                    row = {**routing}
-                    row["routing_candidates"] = routing.get("routing_candidates", [])
-                    row["timestamp"] = routing.get("timestamp") or time.time()
-                    res = PersistenceResult(
-                        status=PersistenceStatus.SUCCESS,
-                        message="Routing decision retrieved.",
-                        provider=self.service.config.provider_name,
-                        latency=latency,
-                        repository="provider_routing",
-                        payload=row,
-                    )
-                    cache_svc.set("provider_routing", routing["id"], res)
-                elif policy != CachePolicy.NO_CACHE:
-                    cache_svc.delete("provider_routing", routing["id"])
-
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Routing decision saved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_routing",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_routing",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        return self._write_with_cache(
+            'provider_routing', q, params,
+            'Routing decision saved.',
+            cache_namespace='provider_routing',
+            entity_id=routing["id"],
+            cache_payload_fn=_cache_payload,
+            retrieve_msg='Routing decision retrieved.',
+        )
 
     def get(self, routing_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_routing", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-
-        from aios.registry import ServiceRegistry
-
-        try:
-            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-        except Exception:
-            cache_svc = None
-
-        def fetch():
-            start_time = time.time()
-            try:
-                rows = self.service.execute(
-                    "SELECT * FROM provider_routing WHERE id = ?", (routing_id,)
-                )
-                latency = (time.time() - start_time) * 1000
-                if not rows:
-                    result = PersistenceResult(
-                        status=PersistenceStatus.UNKNOWN_FAILURE,
-                        message="Routing decision not found.",
-                        latency=latency,
-                        repository="provider_routing",
-                    )
-                    if self.service.config.policy == PersistencePolicy.STRICT:
-                        raise RuntimeError(result.message)
-                    return result
-                row = dict(rows[0])
-                row["routing_candidates"] = json.loads(row["routing_candidates"] or "[]")
-                return PersistenceResult(
-                    status=PersistenceStatus.SUCCESS,
-                    message="Routing decision retrieved.",
-                    provider=self.service.config.provider_name,
-                    latency=latency,
-                    repository="provider_routing",
-                    payload=row,
-                )
-            except Exception as e:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message=str(e),
-                    latency=(time.time() - start_time) * 1000,
-                    repository="provider_routing",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message) from e
-                return result
-
-        if cache_svc:
-            return cache_svc.get("provider_routing", routing_id, fetch)
-        return fetch()
+        def _parse(row):
+            row["routing_candidates"] = json.loads(row["routing_candidates"] or "[]")
+            return row
+        return self._fetch_one_with_cache(
+            'provider_routing',
+            "SELECT * FROM provider_routing WHERE id = ?",
+            (routing_id,),
+            routing_id,
+            _parse,
+            'Routing decision retrieved.',
+            'Routing decision not found.',
+            'provider_routing',
+        )
 
     def delete(self, routing_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_routing", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_routing WHERE id = ?", (routing_id,))
-            latency = (time.time() - start_time) * 1000
-
-            # Cache integration
-            from aios.registry import ServiceRegistry
-
-            try:
-                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
-            except Exception:
-                cache_svc = None
-            if cache_svc:
-                cache_svc.delete("provider_routing", routing_id)
-
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Routing decision deleted.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_routing",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_routing",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_routing', "delete")
+        if guard is not None:
+            return guard
+        return self._delete_with_cache(
+            'provider_routing',
+            "DELETE FROM provider_routing WHERE id = ?",
+            (routing_id,),
+            'Routing decision deleted.',
+            'provider_routing',
+            routing_id,
+        )
 
 
-class ProviderSessionRepositoryImpl(ProviderSessionRepository):
+class ProviderSessionRepositoryImpl(_RepositoryMixin, ProviderSessionRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, session: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_sessions", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_sessions (id, session_id, workspace_id, project_id, active_provider, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('provider_sessions', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_sessions (id, session_id, workspace_id, project_id, active_provider, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        return self._write('provider_sessions', q, (
                 session["id"],
                 session.get("session_id"),
                 session.get("workspace_id"),
@@ -5800,335 +3660,119 @@ class ProviderSessionRepositoryImpl(ProviderSessionRepository):
                 session.get("active_provider"),
                 session.get("created_at") or time.time(),
                 session.get("updated_at") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Session saved.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_sessions",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'Session saved.')
 
     def get(self, session_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_sessions", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            rows = self.service.execute(
-                "SELECT * FROM provider_sessions WHERE id = ?", (session_id,)
-            )
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message="Session not found.",
-                    latency=latency,
-                    repository="provider_sessions",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Session retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_sessions",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_sessions', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'provider_sessions',
+            "SELECT * FROM provider_sessions WHERE id = ?",
+            (session_id,),
+            session_id,
+            _parse,
+            "Session not found.",
+        )
 
     def delete(self, session_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_sessions", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_sessions WHERE id = ?", (session_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Session deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_sessions",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_sessions",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_sessions', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'provider_sessions',
+            "DELETE FROM provider_sessions WHERE id = ?",
+            (session_id,),
+            "Session deleted.",
+        )
 
 
-class ProviderCheckpointRepositoryImpl(ProviderCheckpointRepository):
+class ProviderCheckpointRepositoryImpl(_RepositoryMixin, ProviderCheckpointRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, checkpoint: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_checkpoints", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            ctx = checkpoint.get("context")
-            ctx_str = json.dumps(ctx) if isinstance(ctx, (dict, list)) else str(ctx)
-            q = "INSERT OR REPLACE INTO provider_checkpoints (id, task_id, provider_name, context, retry_count, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('provider_checkpoints', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_checkpoints (id, task_id, provider_name, context, retry_count, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+        return self._write('provider_checkpoints', q, (
                 checkpoint["id"],
                 checkpoint.get("task_id"),
                 checkpoint.get("provider_name"),
-                ctx_str,
+                json.dumps(checkpoint.get("context") or {}),
                 checkpoint.get("retry_count"),
                 checkpoint.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Checkpoint saved.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_checkpoints",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_checkpoints",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'Checkpoint saved.')
 
     def get(self, checkpoint_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_checkpoints", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            rows = self.service.execute(
-                "SELECT * FROM provider_checkpoints WHERE id = ?", (checkpoint_id,)
-            )
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message="Checkpoint not found.",
-                    latency=latency,
-                    repository="provider_checkpoints",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
-            try:
-                row["context"] = json.loads(row["context"])
-            except Exception:
-                pass
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Checkpoint retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_checkpoints",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_checkpoints",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_checkpoints', "get")
+        if guard is not None:
+            return guard
+        def _parse(row):
+            row["context"] = json.loads(row["context"])
+            return row
+        return self._fetch_one(
+            'provider_checkpoints',
+            "SELECT * FROM provider_checkpoints WHERE id = ?",
+            (checkpoint_id,),
+            checkpoint_id,
+            _parse,
+            "Checkpoint not found.",
+        )
 
     def delete(self, checkpoint_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_checkpoints", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_checkpoints WHERE id = ?", (checkpoint_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Checkpoint deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_checkpoints",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_checkpoints",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_checkpoints', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'provider_checkpoints',
+            "DELETE FROM provider_checkpoints WHERE id = ?",
+            (checkpoint_id,),
+            "Checkpoint deleted.",
+        )
 
 
-class ProviderFailoverRepositoryImpl(ProviderFailoverRepository):
+class ProviderFailoverRepositoryImpl(_RepositoryMixin, ProviderFailoverRepository):
     def __init__(self, service: PersistenceService) -> None:
         self.service = service
 
-    def initialize(self) -> None:
-        pass
-
-    def start(self) -> None:
-        pass
-
-    def stop(self) -> None:
-        pass
-
     def save(self, failover: Dict[str, Any]) -> PersistenceResult:
-        status_res = self.service.check_status("provider_failovers", "save")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            q = "INSERT OR REPLACE INTO provider_failovers (id, failed_provider, target_provider, checkpoint_id, error_message, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-            params = (
+        guard = self._guard_status('provider_failovers', "save")
+        if guard is not None:
+            return guard
+        q = "INSERT OR REPLACE INTO provider_failovers (id, failed_provider, target_provider, checkpoint_id, error_message, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
+        return self._write('provider_failovers', q, (
                 failover["id"],
                 failover.get("failed_provider"),
                 failover.get("target_provider"),
                 failover.get("checkpoint_id"),
                 failover.get("error_message"),
                 failover.get("timestamp") or time.time(),
-            )
-            self.service.execute(q, params)
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Failover history logged.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_failovers",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_failovers",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+            ), 'Failover history logged.')
 
     def get(self, failover_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_failovers", "get")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            rows = self.service.execute(
-                "SELECT * FROM provider_failovers WHERE id = ?", (failover_id,)
-            )
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(
-                    status=PersistenceStatus.UNKNOWN_FAILURE,
-                    message="Failover log not found.",
-                    latency=latency,
-                    repository="provider_failovers",
-                )
-                if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
-                return result
-            row = dict(rows[0])
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Failover log retrieved.",
-                provider=self.service.config.provider_name,
-                latency=latency,
-                repository="provider_failovers",
-                payload=row,
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_failovers",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_failovers', "get")
+        if guard is not None:
+            return guard
+        def _parse(row): return row
+        return self._fetch_one(
+            'provider_failovers',
+            "SELECT * FROM provider_failovers WHERE id = ?",
+            (failover_id,),
+            failover_id,
+            _parse,
+            "Failover log not found.",
+        )
 
     def delete(self, failover_id: str) -> PersistenceResult:
-        status_res = self.service.check_status("provider_failovers", "delete")
-        if status_res.status != PersistenceStatus.SUCCESS:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(status_res.message)
-            return status_res
-        start_time = time.time()
-        try:
-            self.service.execute("DELETE FROM provider_failovers WHERE id = ?", (failover_id,))
-            return PersistenceResult(
-                status=PersistenceStatus.SUCCESS,
-                message="Failover log deleted.",
-                provider=self.service.config.provider_name,
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_failovers",
-            )
-        except Exception as e:
-            result = PersistenceResult(
-                status=PersistenceStatus.UNKNOWN_FAILURE,
-                message=str(e),
-                latency=(time.time() - start_time) * 1000,
-                repository="provider_failovers",
-            )
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+        guard = self._guard_status('provider_failovers', "delete")
+        if guard is not None:
+            return guard
+        return self._write(
+            'provider_failovers',
+            "DELETE FROM provider_failovers WHERE id = ?",
+            (failover_id,),
+            "Failover log deleted.",
+        )
