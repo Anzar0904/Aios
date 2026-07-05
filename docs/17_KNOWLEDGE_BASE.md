@@ -826,8 +826,8 @@ This section maps the essential runtime components of the operating system:
   * `POSTGRESQL_MIGRATION_VALIDATION.md`
 * **Current Status**: Production Validated.
 
-### 3.11 Redis Platform (Sprint 5 Milestones 1, 2 & 3)
-* **Purpose**: Implements high-performance runtime cache acceleration and session storage. Ephemeral states, dialog sessions, rate limits, lookup caches, and session lifecycles are stored in Redis to accelerate read/write performance. Zero-downtime grace fallback is achieved via Simulated FakeRedisClient and local in-memory session dictionaries if Redis is offline.
+### 3.11 Redis Platform (Sprint 5 Milestones 1, 2, 3 & 4)
+* **Purpose**: Implements high-performance runtime cache acceleration, session storage, and distributed coordination. Ephemeral states, dialog sessions, rate limits, lookup caches, lock leases, wait graphs, and reentrancy states are stored in Redis to accelerate read/write performance. Zero-downtime grace fallback is achieved via Simulated FakeRedisClient, local in-memory session dictionaries, and local fallback lock tables if Redis is offline.
 * **Core Interfaces & Classes**:
   - `RedisRuntimeService` / `RedisRuntimeServiceImpl`: Coordinator orchestrating status, health, and reporting.
   - `RedisConnectionManager`: Directs connection pools and handles simulated fallback.
@@ -843,6 +843,10 @@ This section maps the essential runtime components of the operating system:
   - `SessionRegistryImpl`: Centralized session ownership registry storing configs and policies.
   - `SessionRecoveryManagerImpl`: Rebuilds recoverable and persistent reference session data once connection returns.
   - `SessionStatisticsCollectorImpl` / `SessionHealthMonitorImpl` / `SessionDiagnosticsImpl` / `SessionRecommendationEngineImpl`: Telemetry monitoring, error capture, and optimization advice.
+  - `RedisCoordinationServiceImpl` / `DistributedLockManagerImpl` / `LockLeaseManagerImpl` / `MutexManagerImpl`: Directs lock acquisition, renewals, releases, and reentrant/shared locks.
+  - `LockRegistryImpl`: Centralized configuration registry for lock metadata.
+  - `DeadlockDetectorImpl`: Cycle detector running DFS wait-graph cycles and recommendations.
+  - `CoordinationStatisticsCollectorImpl` / `CoordinationHealthMonitorImpl` / `CoordinationDiagnosticsImpl` / `CoordinationRecommendationEngineImpl`: Tracks acquisition delays, wait latencies, diagnosed errors, and lock optimization advices.
 * **Current Status**: Completed.
 
 ---

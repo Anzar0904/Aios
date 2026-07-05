@@ -1477,6 +1477,198 @@ class RedisSessionService(ServiceLifecycle, abc.ABC):
         pass
 
 
+class LockPolicy(enum.Enum):
+    EXCLUSIVE = "exclusive"
+    SHARED = "shared"
+    REENTRANT = "reentrant"
+    LEASE = "lease"
+
+
+class LockRegistry(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def register_lock_type(
+        self,
+        lock_type: str,
+        owner_service: str,
+        redis_prefix: str,
+        lease_duration: float,
+        renewal_strategy: str,
+        timeout: float,
+        recovery_strategy: str,
+        deadlock_rules: Dict[str, Any],
+        retry_policy: Dict[str, Any]
+    ) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_configuration(self, lock_type: str) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_all_types(self) -> List[str]:
+        pass
+
+
+class LockLeaseManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def acquire_lease(
+        self,
+        lock_type: str,
+        lock_id: str,
+        owner_id: str,
+        policy: LockPolicy,
+        lease_duration: Optional[float] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def renew_lease(self, lock_type: str, lock_id: str, owner_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def release_lease(self, lock_type: str, lock_id: str, owner_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def force_release(self, lock_type: str, lock_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def verify_ownership(self, lock_type: str, lock_id: str, owner_id: str) -> bool:
+        pass
+
+
+class LockRecoveryManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def recover_locks(self) -> int:
+        pass
+
+    @abc.abstractmethod
+    def trigger_lock_rebuild(self) -> None:
+        pass
+
+
+class DeadlockDetector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def register_wait(self, owner_id: str, lock_id: str, lock_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def unregister_wait(self, owner_id: str, lock_id: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def detect_deadlocks(self) -> List[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def get_deadlock_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class MutexManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def acquire_mutex(self, lock_type: str, lock_id: str, owner_id: str, timeout: float) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def release_mutex(self, lock_type: str, lock_id: str, owner_id: str) -> bool:
+        pass
+
+
+class CoordinationStatisticsCollector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def record_acquisition(self, lock_type: str, policy: LockPolicy, success: bool, wait_time_ms: float) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_renewal(self, lock_type: str, success: bool) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_release(self, lock_type: str, success: bool) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_deadlock(self, cycle: List[str]) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_recovery(self, count: int) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_latency(self, op: str, latency_ms: float) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_metrics(self) -> Dict[str, Any]:
+        pass
+
+
+class CoordinationHealthMonitor(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def check_health(self) -> Dict[str, Any]:
+        pass
+
+
+class CoordinationDiagnostics(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify configuration") -> None:
+        pass
+
+
+class CoordinationRecommendationEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class DistributedLockManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def acquire(
+        self,
+        lock_type: str,
+        lock_id: str,
+        owner_id: str,
+        policy: LockPolicy,
+        lease_duration: Optional[float] = None,
+        timeout: Optional[float] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def release(self, lock_type: str, lock_id: str, owner_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def renew(self, lock_type: str, lock_id: str, owner_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def is_locked(self, lock_type: str, lock_id: str) -> bool:
+        pass
+
+
+class RedisCoordinationService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_lock_manager(self) -> DistributedLockManager:
+        pass
+
+    @abc.abstractmethod
+    def get_registry(self) -> LockRegistry:
+        pass
+
+    @abc.abstractmethod
+    def get_lease_manager(self) -> LockLeaseManager:
+        pass
+
+
+
 
 
 

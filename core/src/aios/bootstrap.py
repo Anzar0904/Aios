@@ -148,6 +148,18 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         SessionStore,
         SessionManager,
         RedisSessionService,
+        LockPolicy,
+        LockRegistry,
+        LockLeaseManager,
+        LockRecoveryManager,
+        DeadlockDetector,
+        MutexManager,
+        CoordinationStatisticsCollector,
+        CoordinationHealthMonitor,
+        CoordinationDiagnostics,
+        CoordinationRecommendationEngine,
+        DistributedLockManager,
+        RedisCoordinationService,
     )
     from aios.services.persistence_impl import (
         PostgreSQLProvider,
@@ -257,6 +269,17 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         SessionRecoveryManagerImpl,
         SessionManagerImpl,
         RedisSessionServiceImpl,
+        LockRegistryImpl,
+        DeadlockDetectorImpl,
+        CoordinationStatisticsCollectorImpl,
+        CoordinationDiagnosticsImpl,
+        CoordinationHealthMonitorImpl,
+        CoordinationRecommendationEngineImpl,
+        LockLeaseManagerImpl,
+        LockRecoveryManagerImpl,
+        MutexManagerImpl,
+        DistributedLockManagerImpl,
+        RedisCoordinationServiceImpl,
     )
 
     p_config = PersistenceConfigurationService()
@@ -797,6 +820,61 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(SessionRecoveryManager, session_recovery)
     registry.register(SessionManager, session_manager)
     registry.register(RedisSessionService, redis_session_service)
+
+    # Instantiate Distributed Coordination Platform classes
+    lock_registry = LockRegistryImpl()
+    deadlock_detector = DeadlockDetectorImpl()
+    coord_stats = CoordinationStatisticsCollectorImpl()
+    coord_diag = CoordinationDiagnosticsImpl(redis_provider)
+    coord_health = CoordinationHealthMonitorImpl(redis_provider)
+    coord_recommend = CoordinationRecommendationEngineImpl(coord_stats, coord_diag)
+    lock_lease_mgr = LockLeaseManagerImpl(
+        redis_provider,
+        lock_registry,
+        deadlock_detector,
+        coord_stats,
+        coord_diag
+    )
+    lock_recovery_mgr = LockRecoveryManagerImpl(coord_stats)
+    mutex_mgr = MutexManagerImpl(lock_lease_mgr, coord_stats)
+    dist_lock_mgr = DistributedLockManagerImpl(
+        lock_lease_mgr,
+        deadlock_detector,
+        coord_stats
+    )
+    redis_coordination_service = RedisCoordinationServiceImpl(
+        redis_provider,
+        lock_registry,
+        lock_lease_mgr,
+        dist_lock_mgr
+    )
+
+    # Initialize all Distributed Coordination classes
+    lock_registry.initialize()
+    deadlock_detector.initialize()
+    coord_stats.initialize()
+    coord_diag.initialize()
+    coord_health.initialize()
+    coord_recommend.initialize()
+    lock_lease_mgr.initialize()
+    lock_recovery_mgr.initialize()
+    mutex_mgr.initialize()
+    dist_lock_mgr.initialize()
+    redis_coordination_service.initialize()
+
+    # Register Coordination Platform in DI container
+    registry.register(LockRegistry, lock_registry)
+    registry.register(DeadlockDetector, deadlock_detector)
+    registry.register(CoordinationStatisticsCollector, coord_stats)
+    registry.register(CoordinationDiagnostics, coord_diag)
+    registry.register(CoordinationHealthMonitor, coord_health)
+    registry.register(CoordinationRecommendationEngine, coord_recommend)
+    registry.register(LockLeaseManager, lock_lease_mgr)
+    registry.register(LockRecoveryManager, lock_recovery_mgr)
+    registry.register(MutexManager, mutex_mgr)
+    registry.register(DistributedLockManager, dist_lock_mgr)
+    registry.register(RedisCoordinationService, redis_coordination_service)
+
 
 
 
