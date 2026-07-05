@@ -21,6 +21,8 @@ class ServiceRegistry:
             )
         if not isinstance(instance, service_type):
             raise TypeError(f"Instance must be an implementation of {service_type.__name__}")
+        if service_type in self._services:
+            raise ValueError(f"Service {service_type.__name__} is already registered")
         self._services[service_type] = instance
 
     def get(self, service_type: Type[T]) -> T:

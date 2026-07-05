@@ -226,14 +226,18 @@ class Kernel:
     def _initialize_services(self) -> None:
         """Invokes the initialize stage on all registered services."""
         for service in self.registry.get_all():
-            service.initialize()
+            if not getattr(service, "_lifecycle_initialized", False):
+                service.initialize()
+                setattr(service, "_lifecycle_initialized", True)
 
     def _transition_to_ready(self) -> None:
         """Invokes the on_ready stage on all registered services and publishes startup event."""
         event_bus = self.registry.get(EventBusService)
 
         for service in self.registry.get_all():
-            service.on_ready()
+            if not getattr(service, "_lifecycle_ready", False):
+                service.on_ready()
+                setattr(service, "_lifecycle_ready", True)
 
         event_bus.publish(KernelStartedEvent(version=self.config.runtime.version))
 
@@ -255,7 +259,9 @@ class Kernel:
             # Teardown in reverse order of registration
             for service in reversed(self.registry.get_all()):
                 try:
-                    service.teardown()
+                    if not getattr(service, "_lifecycle_teardown", False):
+                        service.teardown()
+                        setattr(service, "_lifecycle_teardown", True)
                 except Exception as e:
                     # Engineering Constitution: fail loudly in development, safely in production
                     print(f"Error during service teardown: {e}", file=sys.stderr)
