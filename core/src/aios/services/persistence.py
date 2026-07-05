@@ -1,6 +1,6 @@
 import abc
 import os
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar, Callable
 
 from aios.services.base import ServiceLifecycle
 
@@ -1114,6 +1114,369 @@ class RedisRuntimeService(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def generate_reports(self) -> None:
         pass
+
+
+class CachePolicy(enum.Enum):
+    READ_THROUGH = "READ_THROUGH"
+    WRITE_THROUGH = "WRITE_THROUGH"
+    CACHE_ASIDE = "CACHE_ASIDE"
+    NO_CACHE = "NO_CACHE"
+
+
+class CachePolicyManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_policy(self, subsystem: str) -> CachePolicy:
+        pass
+
+    @abc.abstractmethod
+    def get_ttl(self, subsystem: str) -> int:
+        pass
+
+    @abc.abstractmethod
+    def set_policy(self, subsystem: str, policy: CachePolicy) -> None:
+        pass
+
+    @abc.abstractmethod
+    def set_ttl(self, subsystem: str, ttl: int) -> None:
+        pass
+
+
+class CacheInvalidationManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def invalidate_key(self, key: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def invalidate_entity(self, subsystem: str, entity_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def invalidate_workspace(self, workspace_id: str) -> int:
+        pass
+
+    @abc.abstractmethod
+    def invalidate_project(self, project_id: str) -> int:
+        pass
+
+    @abc.abstractmethod
+    def invalidate_provider(self, provider_name: str) -> int:
+        pass
+
+    @abc.abstractmethod
+    def invalidate_pattern(self, pattern: str) -> int:
+        pass
+
+    @abc.abstractmethod
+    def invalidate_bulk(self, keys: List[str]) -> int:
+        pass
+
+
+class CacheWarmupService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def warmup_all_background(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def warm_subsystem(self, subsystem: str) -> None:
+        pass
+
+
+class CacheRebuildService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def trigger_rebuild_background(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def rebuild_incremental(self) -> int:
+        pass
+
+
+class CacheStatisticsCollector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def record_hit(self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_miss(self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_expiration(self, key: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_invalidation(self, count: int) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_warmup(self, key_count: int) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_rebuild(self, key_count: int) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_recommendation(self, rec: Dict[str, Any]) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_metrics(self) -> Dict[str, Any]:
+        pass
+
+
+class CacheHealthMonitor(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def check_health(self) -> Dict[str, Any]:
+        pass
+
+
+class CacheDiagnostics(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify cache config") -> None:
+        pass
+
+
+class CacheRecommendationEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class RedisCacheService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get(
+        self,
+        subsystem: str,
+        entity_id: str,
+        fetch_func: Callable[[], Any],
+        policy: Optional[CachePolicy] = None,
+        ttl: Optional[int] = None
+    ) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def set(
+        self,
+        subsystem: str,
+        entity_id: str,
+        value: Any,
+        policy: Optional[CachePolicy] = None,
+        ttl: Optional[int] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete(self, subsystem: str, entity_id: str) -> bool:
+        pass
+
+
+class SessionPolicy(enum.Enum):
+    EPHEMERAL = "ephemeral"
+    RECOVERABLE = "recoverable"
+    PERSISTENT_REFERENCE = "persistent_reference"
+
+
+class SessionRegistry(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def register_session_type(
+        self,
+        session_type: str,
+        owner_service: str,
+        ttl: float,
+        policy: SessionPolicy,
+        recovery_strategy: str,
+        redis_prefix: str,
+        source_of_truth: Optional[str] = None,
+        heartbeat_required: bool = False
+    ) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_configuration(self, session_type: str) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_all_types(self) -> List[str]:
+        pass
+
+
+class SessionExpirationManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def check_expirations(self) -> List[str]:
+        pass
+
+    @abc.abstractmethod
+    def expire_session(self, session_id: str, reason: str) -> None:
+        pass
+
+
+class SessionRecoveryManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def recover_session(self, session_type: str, session_id: str) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def register_recovery_handler(
+        self,
+        session_type: str,
+        handler: Callable[[str], Optional[Dict[str, Any]]]
+    ) -> None:
+        pass
+
+    @abc.abstractmethod
+    def trigger_rebuild_incremental(self) -> int:
+        pass
+
+
+class SessionStatisticsCollector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def record_create(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_read(self, session_type: str, hit: bool, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_update(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_delete(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_expire(self, session_type: str, reason: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_renew(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_recovery(self, session_type: str, success: bool) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_heartbeat(self, session_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_latency(self, op: str, latency_ms: float) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_metrics(self) -> Dict[str, Any]:
+        pass
+
+
+class SessionHealthMonitor(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def check_health(self) -> Dict[str, Any]:
+        pass
+
+
+class SessionDiagnostics(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify session configuration") -> None:
+        pass
+
+
+class SessionRecommendationEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class SessionStore(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def create(
+        self,
+        session_type: str,
+        session_id: str,
+        data: Dict[str, Any],
+        workspace_id: Optional[str] = None,
+        project_id: Optional[str] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def read(self, session_type: str, session_id: str) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def update(self, session_type: str, session_id: str, data: Dict[str, Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete(self, session_type: str, session_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def renew(self, session_type: str, session_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def heartbeat(self, session_type: str, session_id: str) -> bool:
+        pass
+
+
+class SessionManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def create_session(
+        self,
+        session_type: str,
+        session_id: str,
+        data: Dict[str, Any],
+        workspace_id: Optional[str] = None,
+        project_id: Optional[str] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def get_session(self, session_type: str, session_id: str) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def update_session(self, session_type: str, session_id: str, data: Dict[str, Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete_session(self, session_type: str, session_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def renew_session(self, session_type: str, session_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def heartbeat(self, session_type: str, session_id: str) -> bool:
+        pass
+
+
+class RedisSessionService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_manager(self) -> SessionManager:
+        pass
+
+    @abc.abstractmethod
+    def get_registry(self) -> SessionRegistry:
+        pass
+
+    @abc.abstractmethod
+    def get_store(self) -> SessionStore:
+        pass
+
+
 
 
 

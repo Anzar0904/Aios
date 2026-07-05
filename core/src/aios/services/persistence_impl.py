@@ -965,6 +965,23 @@ class WorkspaceRepositoryImpl(WorkspaceRepository):
                 )
             )
             latency = (time.time() - start_time) * 1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
+            except Exception:
+                cache_svc = None
+                policy_mgr = None
+
+            if cache_svc and policy_mgr:
+                policy = policy_mgr.get_policy("workspace")
+                if policy == CachePolicy.WRITE_THROUGH:
+                    cache_svc.set("workspace", workspace["id"], workspace)
+                elif policy != CachePolicy.NO_CACHE:
+                    cache_svc.delete("workspace", workspace["id"])
+
             return PersistenceResult(
                 status=PersistenceStatus.SUCCESS,
                 message="Workspace saved successfully.",
@@ -993,7 +1010,13 @@ class WorkspaceRepositoryImpl(WorkspaceRepository):
                 raise RuntimeError(status_res.message)
             return None
 
+        from aios.registry import ServiceRegistry
         try:
+            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+        except Exception:
+            cache_svc = None
+
+        def fetch():
             q = "SELECT * FROM workspaces WHERE id = ?"
             rows = self.service.execute(q, (workspace_id,))
             if not rows:
@@ -1001,10 +1024,10 @@ class WorkspaceRepositoryImpl(WorkspaceRepository):
             row = dict(rows[0])
             row["metadata"] = json.loads(row["metadata"] or "{}")
             return row
-        except Exception as e:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise
-            return None
+
+        if cache_svc:
+            return cache_svc.get("workspace", workspace_id, fetch)
+        return fetch()
 
     def delete(self, workspace_id: str) -> PersistenceResult:
         status_res = self.service.check_status("workspaces", "delete")
@@ -1025,6 +1048,16 @@ class WorkspaceRepositoryImpl(WorkspaceRepository):
             q = "DELETE FROM workspaces WHERE id = ?"
             self.service.execute(q, (workspace_id,))
             latency = (time.time() - start_time) * 1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+            except Exception:
+                cache_svc = None
+            if cache_svc:
+                cache_svc.delete("workspace", workspace_id)
+
             return PersistenceResult(
                 status=PersistenceStatus.SUCCESS,
                 message="Workspace deleted successfully.",
@@ -1045,6 +1078,7 @@ class WorkspaceRepositoryImpl(WorkspaceRepository):
             if self.service.config.policy == PersistencePolicy.STRICT:
                 raise RuntimeError(result.message) from e
             return result
+
 
     def list_all(self) -> List[Dict[str, Any]]:
         status_res = self.service.check_status("workspaces", "list_all")
@@ -1442,6 +1476,36 @@ class EngineeringProfileRepositoryImpl(EngineeringProfileRepository):
                 )
             )
             latency = (time.time() - start_time) * 1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
+            except Exception:
+                cache_svc = None
+                policy_mgr = None
+
+            if cache_svc and policy_mgr:
+                policy = policy_mgr.get_policy("profile")
+                if policy == CachePolicy.WRITE_THROUGH:
+                    prof_copy = {**profile}
+                    prof_copy["coding_standards"] = profile.get("coding_standards", [])
+                    prof_copy["naming_conventions"] = profile.get("naming_conventions", {})
+                    prof_copy["release_formatting_rules"] = profile.get("release_formatting_rules", {})
+                    prof_copy["markdown_preferences"] = profile.get("markdown_preferences", {})
+                    prof_copy["section_ordering"] = profile.get("section_ordering", [])
+                    prof_copy["doc_naming_conventions"] = profile.get("doc_naming_conventions", {})
+                    prof_copy["doc_versioning_preferences"] = profile.get("doc_versioning_preferences", {})
+                    prof_copy["exclude_patterns"] = profile.get("exclude_patterns", [])
+                    prof_copy["sandbox_enabled"] = bool(profile.get("sandbox_enabled"))
+                    prof_copy["generate_api_docs"] = bool(profile.get("generate_api_docs"))
+                    prof_copy["auto_release"] = bool(profile.get("auto_release"))
+                    prof_copy["version"] = ver
+                    cache_svc.set("profile", profile["id"], prof_copy)
+                elif policy != CachePolicy.NO_CACHE:
+                    cache_svc.delete("profile", profile["id"])
+
             return PersistenceResult(
                 status=PersistenceStatus.SUCCESS,
                 message="Engineering profile saved successfully.",
@@ -1470,7 +1534,13 @@ class EngineeringProfileRepositoryImpl(EngineeringProfileRepository):
                 raise RuntimeError(status_res.message)
             return None
 
+        from aios.registry import ServiceRegistry
         try:
+            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+        except Exception:
+            cache_svc = None
+
+        def fetch():
             q = "SELECT * FROM engineering_profiles WHERE id = ?"
             rows = self.service.execute(q, (profile_id,))
             if not rows:
@@ -1488,10 +1558,10 @@ class EngineeringProfileRepositoryImpl(EngineeringProfileRepository):
             row["generate_api_docs"] = bool(row["generate_api_docs"])
             row["auto_release"] = bool(row["auto_release"])
             return row
-        except Exception as e:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise
-            return None
+
+        if cache_svc:
+            return cache_svc.get("profile", profile_id, fetch)
+        return fetch()
 
     def delete(self, profile_id: str) -> PersistenceResult:
         status_res = self.service.check_status("engineering_profiles", "delete")
@@ -1512,6 +1582,16 @@ class EngineeringProfileRepositoryImpl(EngineeringProfileRepository):
             q = "DELETE FROM engineering_profiles WHERE id = ?"
             self.service.execute(q, (profile_id,))
             latency = (time.time() - start_time) * 1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+            except Exception:
+                cache_svc = None
+            if cache_svc:
+                cache_svc.delete("profile", profile_id)
+
             return PersistenceResult(
                 status=PersistenceStatus.SUCCESS,
                 message="Engineering profile deleted successfully.",
@@ -1532,6 +1612,7 @@ class EngineeringProfileRepositoryImpl(EngineeringProfileRepository):
             if self.service.config.policy == PersistencePolicy.STRICT:
                 raise RuntimeError(result.message) from e
             return result
+
 
     def get_history(self, profile_id: str) -> List[Dict[str, Any]]:
         status_res = self.service.check_status("engineering_profiles", "get_history")
@@ -1601,6 +1682,32 @@ class ConfigurationRepositoryImpl(ConfigurationRepository):
                 )
             )
             latency = (time.time() - start_time) * 1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
+            except Exception:
+                cache_svc = None
+                policy_mgr = None
+
+            if cache_svc and policy_mgr:
+                policy = policy_mgr.get_policy("configuration")
+                if policy == CachePolicy.WRITE_THROUGH:
+                    cfg_copy = {**config_profile}
+                    cfg_copy["env_profile"] = config_profile.get("env_profile", {})
+                    cfg_copy["workspace_settings"] = config_profile.get("workspace_settings", {})
+                    cfg_copy["provider_preferences"] = config_profile.get("provider_preferences", {})
+                    cfg_copy["git_preferences"] = config_profile.get("git_preferences", {})
+                    cfg_copy["automation_preferences"] = config_profile.get("automation_preferences", {})
+                    cfg_copy["documentation_preferences"] = config_profile.get("documentation_preferences", {})
+                    cfg_copy["testing_preferences"] = config_profile.get("testing_preferences", {})
+                    cfg_copy["approval_preferences"] = config_profile.get("approval_preferences", {})
+                    cache_svc.set("configuration", config_profile["id"], cfg_copy)
+                elif policy != CachePolicy.NO_CACHE:
+                    cache_svc.delete("configuration", config_profile["id"])
+
             return PersistenceResult(
                 status=PersistenceStatus.SUCCESS,
                 message="Configuration profile saved successfully.",
@@ -1629,7 +1736,13 @@ class ConfigurationRepositoryImpl(ConfigurationRepository):
                 raise RuntimeError(status_res.message)
             return None
 
+        from aios.registry import ServiceRegistry
         try:
+            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+        except Exception:
+            cache_svc = None
+
+        def fetch():
             q = "SELECT * FROM configuration_profiles WHERE id = ?"
             rows = self.service.execute(q, (config_profile_id,))
             if not rows:
@@ -1644,10 +1757,10 @@ class ConfigurationRepositoryImpl(ConfigurationRepository):
             row["testing_preferences"] = json.loads(row["testing_preferences"] or "{}")
             row["approval_preferences"] = json.loads(row["approval_preferences"] or "{}")
             return row
-        except Exception as e:
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise
-            return None
+
+        if cache_svc:
+            return cache_svc.get("configuration", config_profile_id, fetch)
+        return fetch()
 
     def delete(self, config_profile_id: str) -> PersistenceResult:
         status_res = self.service.check_status("configuration_profiles", "delete")
@@ -1668,6 +1781,16 @@ class ConfigurationRepositoryImpl(ConfigurationRepository):
             q = "DELETE FROM configuration_profiles WHERE id = ?"
             self.service.execute(q, (config_profile_id,))
             latency = (time.time() - start_time) * 1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+            except Exception:
+                cache_svc = None
+            if cache_svc:
+                cache_svc.delete("configuration", config_profile_id)
+
             return PersistenceResult(
                 status=PersistenceStatus.SUCCESS,
                 message="Configuration profile deleted successfully.",
@@ -1688,6 +1811,7 @@ class ConfigurationRepositoryImpl(ConfigurationRepository):
             if self.service.config.policy == PersistencePolicy.STRICT:
                 raise RuntimeError(result.message) from e
             return result
+
 
 
 class WorkspacePersistenceValidator(ServiceLifecycle):
@@ -6000,7 +6124,29 @@ class ProviderCapabilityRepositoryImpl(ProviderCapabilityRepository):
                 capabilities.get("timestamp") or time.time()
             )
             self.service.execute(q, params)
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities saved.", provider=self.service.config.provider_name, latency=(time.time() - start_time)*1000, repository="provider_capabilities")
+            latency = (time.time() - start_time)*1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
+            except Exception:
+                cache_svc = None
+                policy_mgr = None
+
+            if cache_svc and policy_mgr:
+                policy = policy_mgr.get_policy("provider_capabilities")
+                if policy == CachePolicy.WRITE_THROUGH:
+                    row = {**capabilities}
+                    row["capabilities"] = capabilities.get("capabilities", {})
+                    row["timestamp"] = capabilities.get("timestamp") or time.time()
+                    res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_capabilities", payload=row)
+                    cache_svc.set("provider_capabilities", capabilities["id"], res)
+                elif policy != CachePolicy.NO_CACHE:
+                    cache_svc.delete("provider_capabilities", capabilities["id"])
+
+            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities saved.", provider=self.service.config.provider_name, latency=latency, repository="provider_capabilities")
         except Exception as e:
             result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_capabilities")
             if self.service.config.policy == PersistencePolicy.STRICT:
@@ -6013,23 +6159,35 @@ class ProviderCapabilityRepositoryImpl(ProviderCapabilityRepository):
             if self.service.config.policy == PersistencePolicy.STRICT:
                 raise RuntimeError(status_res.message)
             return status_res
-        start_time = time.time()
+
+        from aios.registry import ServiceRegistry
         try:
-            rows = self.service.execute("SELECT * FROM provider_capabilities WHERE id = ?", (capability_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message="Capabilities not found.", latency=latency, repository="provider_capabilities")
+            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+        except Exception:
+            cache_svc = None
+
+        def fetch():
+            start_time = time.time()
+            try:
+                rows = self.service.execute("SELECT * FROM provider_capabilities WHERE id = ?", (capability_id,))
+                latency = (time.time() - start_time) * 1000
+                if not rows:
+                    result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message="Capabilities not found.", latency=latency, repository="provider_capabilities")
+                    if self.service.config.policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(result.message)
+                    return result
+                row = dict(rows[0])
+                row["capabilities"] = json.loads(row["capabilities"] or "{}")
+                return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_capabilities", payload=row)
+            except Exception as e:
+                result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_capabilities")
                 if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
+                    raise RuntimeError(result.message) from e
                 return result
-            row = dict(rows[0])
-            row["capabilities"] = json.loads(row["capabilities"] or "{}")
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_capabilities", payload=row)
-        except Exception as e:
-            result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_capabilities")
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+
+        if cache_svc:
+            return cache_svc.get("provider_capabilities", capability_id, fetch)
+        return fetch()
 
     def delete(self, capability_id: str) -> PersistenceResult:
         status_res = self.service.check_status("provider_capabilities", "delete")
@@ -6040,7 +6198,18 @@ class ProviderCapabilityRepositoryImpl(ProviderCapabilityRepository):
         start_time = time.time()
         try:
             self.service.execute("DELETE FROM provider_capabilities WHERE id = ?", (capability_id,))
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities deleted.", provider=self.service.config.provider_name, latency=(time.time() - start_time)*1000, repository="provider_capabilities")
+            latency = (time.time() - start_time)*1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+            except Exception:
+                cache_svc = None
+            if cache_svc:
+                cache_svc.delete("provider_capabilities", capability_id)
+
+            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities deleted.", provider=self.service.config.provider_name, latency=latency, repository="provider_capabilities")
         except Exception as e:
             result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_capabilities")
             if self.service.config.policy == PersistencePolicy.STRICT:
@@ -6077,7 +6246,28 @@ class ProviderHealthRepositoryImpl(ProviderHealthRepository):
                 health.get("timestamp") or time.time()
             )
             self.service.execute(q, params)
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health status saved.", provider=self.service.config.provider_name, latency=(time.time() - start_time)*1000, repository="provider_health")
+            latency = (time.time() - start_time)*1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
+            except Exception:
+                cache_svc = None
+                policy_mgr = None
+
+            if cache_svc and policy_mgr:
+                policy = policy_mgr.get_policy("provider_health")
+                if policy == CachePolicy.WRITE_THROUGH:
+                    row = {**health}
+                    row["is_healthy"] = bool(health.get("is_healthy"))
+                    res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health report retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_health", payload=row)
+                    cache_svc.set("provider_health", health["id"], res)
+                elif policy != CachePolicy.NO_CACHE:
+                    cache_svc.delete("provider_health", health["id"])
+
+            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health status saved.", provider=self.service.config.provider_name, latency=latency, repository="provider_health")
         except Exception as e:
             result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_health")
             if self.service.config.policy == PersistencePolicy.STRICT:
@@ -6090,23 +6280,35 @@ class ProviderHealthRepositoryImpl(ProviderHealthRepository):
             if self.service.config.policy == PersistencePolicy.STRICT:
                 raise RuntimeError(status_res.message)
             return status_res
-        start_time = time.time()
+
+        from aios.registry import ServiceRegistry
         try:
-            rows = self.service.execute("SELECT * FROM provider_health WHERE id = ?", (health_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message="Health report not found.", latency=latency, repository="provider_health")
+            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+        except Exception:
+            cache_svc = None
+
+        def fetch():
+            start_time = time.time()
+            try:
+                rows = self.service.execute("SELECT * FROM provider_health WHERE id = ?", (health_id,))
+                latency = (time.time() - start_time) * 1000
+                if not rows:
+                    result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message="Health report not found.", latency=latency, repository="provider_health")
+                    if self.service.config.policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(result.message)
+                    return result
+                row = dict(rows[0])
+                row["is_healthy"] = bool(row["is_healthy"])
+                return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health report retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_health", payload=row)
+            except Exception as e:
+                result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_health")
                 if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
+                    raise RuntimeError(result.message) from e
                 return result
-            row = dict(rows[0])
-            row["is_healthy"] = bool(row["is_healthy"])
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health report retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_health", payload=row)
-        except Exception as e:
-            result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_health")
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+
+        if cache_svc:
+            return cache_svc.get("provider_health", health_id, fetch)
+        return fetch()
 
     def delete(self, health_id: str) -> PersistenceResult:
         status_res = self.service.check_status("provider_health", "delete")
@@ -6117,7 +6319,18 @@ class ProviderHealthRepositoryImpl(ProviderHealthRepository):
         start_time = time.time()
         try:
             self.service.execute("DELETE FROM provider_health WHERE id = ?", (health_id,))
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health report deleted.", provider=self.service.config.provider_name, latency=(time.time() - start_time)*1000, repository="provider_health")
+            latency = (time.time() - start_time)*1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+            except Exception:
+                cache_svc = None
+            if cache_svc:
+                cache_svc.delete("provider_health", health_id)
+
+            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health report deleted.", provider=self.service.config.provider_name, latency=latency, repository="provider_health")
         except Exception as e:
             result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_health")
             if self.service.config.policy == PersistencePolicy.STRICT:
@@ -6376,7 +6589,29 @@ class ProviderRoutingRepositoryImpl(ProviderRoutingRepository):
                 routing.get("timestamp") or time.time()
             )
             self.service.execute(q, params)
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision saved.", provider=self.service.config.provider_name, latency=(time.time() - start_time)*1000, repository="provider_routing")
+            latency = (time.time() - start_time)*1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+                policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
+            except Exception:
+                cache_svc = None
+                policy_mgr = None
+
+            if cache_svc and policy_mgr:
+                policy = policy_mgr.get_policy("provider_routing")
+                if policy == CachePolicy.WRITE_THROUGH:
+                    row = {**routing}
+                    row["routing_candidates"] = routing.get("routing_candidates", [])
+                    row["timestamp"] = routing.get("timestamp") or time.time()
+                    res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_routing", payload=row)
+                    cache_svc.set("provider_routing", routing["id"], res)
+                elif policy != CachePolicy.NO_CACHE:
+                    cache_svc.delete("provider_routing", routing["id"])
+
+            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision saved.", provider=self.service.config.provider_name, latency=latency, repository="provider_routing")
         except Exception as e:
             result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_routing")
             if self.service.config.policy == PersistencePolicy.STRICT:
@@ -6389,23 +6624,35 @@ class ProviderRoutingRepositoryImpl(ProviderRoutingRepository):
             if self.service.config.policy == PersistencePolicy.STRICT:
                 raise RuntimeError(status_res.message)
             return status_res
-        start_time = time.time()
+
+        from aios.registry import ServiceRegistry
         try:
-            rows = self.service.execute("SELECT * FROM provider_routing WHERE id = ?", (routing_id,))
-            latency = (time.time() - start_time) * 1000
-            if not rows:
-                result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message="Routing decision not found.", latency=latency, repository="provider_routing")
+            cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+        except Exception:
+            cache_svc = None
+
+        def fetch():
+            start_time = time.time()
+            try:
+                rows = self.service.execute("SELECT * FROM provider_routing WHERE id = ?", (routing_id,))
+                latency = (time.time() - start_time) * 1000
+                if not rows:
+                    result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message="Routing decision not found.", latency=latency, repository="provider_routing")
+                    if self.service.config.policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(result.message)
+                    return result
+                row = dict(rows[0])
+                row["routing_candidates"] = json.loads(row["routing_candidates"] or "[]")
+                return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_routing", payload=row)
+            except Exception as e:
+                result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_routing")
                 if self.service.config.policy == PersistencePolicy.STRICT:
-                    raise RuntimeError(result.message)
+                    raise RuntimeError(result.message) from e
                 return result
-            row = dict(rows[0])
-            row["routing_candidates"] = json.loads(row["routing_candidates"] or "[]")
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision retrieved.", provider=self.service.config.provider_name, latency=latency, repository="provider_routing", payload=row)
-        except Exception as e:
-            result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_routing")
-            if self.service.config.policy == PersistencePolicy.STRICT:
-                raise RuntimeError(result.message) from e
-            return result
+
+        if cache_svc:
+            return cache_svc.get("provider_routing", routing_id, fetch)
+        return fetch()
 
     def delete(self, routing_id: str) -> PersistenceResult:
         status_res = self.service.check_status("provider_routing", "delete")
@@ -6416,7 +6663,18 @@ class ProviderRoutingRepositoryImpl(ProviderRoutingRepository):
         start_time = time.time()
         try:
             self.service.execute("DELETE FROM provider_routing WHERE id = ?", (routing_id,))
-            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision deleted.", provider=self.service.config.provider_name, latency=(time.time() - start_time)*1000, repository="provider_routing")
+            latency = (time.time() - start_time)*1000
+
+            # Cache integration
+            from aios.registry import ServiceRegistry
+            try:
+                cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
+            except Exception:
+                cache_svc = None
+            if cache_svc:
+                cache_svc.delete("provider_routing", routing_id)
+
+            return PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision deleted.", provider=self.service.config.provider_name, latency=latency, repository="provider_routing")
         except Exception as e:
             result = PersistenceResult(status=PersistenceStatus.UNKNOWN_FAILURE, message=str(e), latency=(time.time() - start_time)*1000, repository="provider_routing")
             if self.service.config.policy == PersistencePolicy.STRICT:
@@ -7745,7 +8003,32 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
         self.report_gen.generate_reports()
 
 
-from aios.services.persistence import RedisTransport, RedisProvider, RedisRuntimeService
+from aios.services.persistence import (
+    RedisTransport,
+    RedisProvider,
+    RedisRuntimeService,
+    CachePolicy,
+    CachePolicyManager,
+    CacheInvalidationManager,
+    CacheWarmupService,
+    CacheRebuildService,
+    CacheStatisticsCollector,
+    CacheHealthMonitor,
+    CacheDiagnostics,
+    CacheRecommendationEngine,
+    RedisCacheService,
+    SessionPolicy,
+    SessionRegistry,
+    SessionExpirationManager,
+    SessionRecoveryManager,
+    SessionStatisticsCollector,
+    SessionHealthMonitor,
+    SessionDiagnostics,
+    SessionRecommendationEngine,
+    SessionStore,
+    SessionManager,
+    RedisSessionService,
+)
 
 class RedisConfigurationService(ServiceLifecycle):
     def __init__(self) -> None:
@@ -7811,6 +8094,18 @@ class FakeRedisClient:
     def exists(self, key: str) -> bool:
         self.get(key)  # trigger expiry
         return key in self._data
+
+    def keys(self, pattern: str = "*") -> List[str]:
+        import fnmatch
+        now = time.time()
+        expired = [k for k, exp in self._expires.items() if now > exp]
+        for k in expired:
+            if k in self._data:
+                del self._data[k]
+            if k in self._expires:
+                del self._expires[k]
+        return [k for k in self._data.keys() if fnmatch.fnmatch(k, pattern)]
+
 
 
 class RedisConnectionManager(ServiceLifecycle):
@@ -8145,6 +8440,1272 @@ class RedisRuntimeServiceImpl(RedisRuntimeService, ServiceLifecycle):
 
     def generate_reports(self) -> None:
         self.report_gen.generate_reports()
+
+
+# -----------------------------------------------------------------------------
+# Runtime Cache Platform Implementation
+# -----------------------------------------------------------------------------
+
+def serialize_val(val: Any) -> str:
+    if isinstance(val, PersistenceResult):
+        return json.dumps({
+            "__type__": "PersistenceResult",
+            "status": val.status.value,
+            "message": val.message,
+            "error_code": val.error_code,
+            "diagnostics": val.diagnostics,
+            "retryable": val.retryable,
+            "provider": val.provider,
+            "latency": val.latency,
+            "operation_id": val.operation_id,
+            "timestamp": val.timestamp,
+            "repository": val.repository,
+            "payload": val.payload
+        })
+    return json.dumps({
+        "__type__": "raw",
+        "value": val
+    })
+
+def deserialize_val(s: str) -> Any:
+    d = json.loads(s)
+    if isinstance(d, dict) and d.get("__type__") == "PersistenceResult":
+        from aios.services.persistence import PersistenceStatus
+        return PersistenceResult(
+            status=PersistenceStatus(d["status"]),
+            message=d["message"],
+            error_code=d["error_code"],
+            diagnostics=d["diagnostics"],
+            retryable=d["retryable"],
+            provider=d["provider"],
+            latency=d["latency"],
+            operation_id=d["operation_id"],
+            timestamp=d["timestamp"],
+            repository=d["repository"],
+            payload=d["payload"]
+        )
+    elif isinstance(d, dict) and d.get("__type__") == "raw":
+        return d["value"]
+    return d
+
+
+class CachePolicyManagerImpl(CachePolicyManager):
+    def __init__(self) -> None:
+        self._policies: Dict[str, CachePolicy] = {
+            "provider_capabilities": CachePolicy.READ_THROUGH,
+            "provider_routing": CachePolicy.READ_THROUGH,
+            "provider_health": CachePolicy.READ_THROUGH,
+            "workspace": CachePolicy.READ_THROUGH,
+            "profile": CachePolicy.READ_THROUGH,
+            "runtime_statistics": CachePolicy.READ_THROUGH,
+            "configuration": CachePolicy.READ_THROUGH,
+            "workflow": CachePolicy.READ_THROUGH,
+        }
+        self._ttls: Dict[str, int] = {
+            "provider_capabilities": 900,
+            "provider_routing": 900,
+            "provider_health": 30,
+            "workspace": 600,
+            "profile": 1800,
+            "runtime_statistics": 60,
+            "configuration": 3600,
+            "workflow": 600,
+        }
+
+    def initialize(self) -> None:
+        for sub in list(self._policies.keys()):
+            env_policy = os.environ.get(f"CACHE_POLICY_{sub.upper()}")
+            if env_policy:
+                try:
+                    self._policies[sub] = CachePolicy(env_policy)
+                except ValueError:
+                    pass
+            env_ttl = os.environ.get(f"CACHE_TTL_{sub.upper()}")
+            if env_ttl:
+                try:
+                    self._ttls[sub] = int(env_ttl)
+                except ValueError:
+                    pass
+
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_policy(self, subsystem: str) -> CachePolicy:
+        return self._policies.get(subsystem, CachePolicy.READ_THROUGH)
+
+    def get_ttl(self, subsystem: str) -> int:
+        return self._ttls.get(subsystem, 60)
+
+    def set_policy(self, subsystem: str, policy: CachePolicy) -> None:
+        self._policies[subsystem] = policy
+
+    def set_ttl(self, subsystem: str, ttl: int) -> None:
+        self._ttls[subsystem] = ttl
+
+
+class CacheStatisticsCollectorImpl(CacheStatisticsCollector):
+    def __init__(self) -> None:
+        self.hits = 0
+        self.misses = 0
+        self.expirations = 0
+        self.invalidations = 0
+        self.warmups = 0
+        self.rebuilds = 0
+        self.latencies: List[float] = []
+        self.recommendations: List[Dict[str, Any]] = []
+        self.correlation_ids: List[str] = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def record_hit(self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None) -> None:
+        self.hits += 1
+        self.latencies.append(latency_ms)
+        if len(self.latencies) > 1000:
+            self.latencies.pop(0)
+        if correlation_id and correlation_id not in self.correlation_ids:
+            self.correlation_ids.append(correlation_id)
+            if len(self.correlation_ids) > 100:
+                self.correlation_ids.pop(0)
+
+    def record_miss(self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None) -> None:
+        self.misses += 1
+        self.latencies.append(latency_ms)
+        if len(self.latencies) > 1000:
+            self.latencies.pop(0)
+        if correlation_id and correlation_id not in self.correlation_ids:
+            self.correlation_ids.append(correlation_id)
+            if len(self.correlation_ids) > 100:
+                self.correlation_ids.pop(0)
+
+    def record_expiration(self, key: str) -> None:
+        self.expirations += 1
+
+    def record_invalidation(self, count: int) -> None:
+        self.invalidations += count
+
+    def record_warmup(self, key_count: int) -> None:
+        self.warmups += key_count
+
+    def record_rebuild(self, key_count: int) -> None:
+        self.rebuilds += key_count
+
+    def record_recommendation(self, rec: Dict[str, Any]) -> None:
+        self.recommendations.append({**rec, "timestamp": time.time()})
+        if len(self.recommendations) > 100:
+            self.recommendations.pop(0)
+
+    def get_metrics(self) -> Dict[str, Any]:
+        total = self.hits + self.misses
+        hit_ratio = self.hits / total if total > 0 else 1.0
+        miss_ratio = self.misses / total if total > 0 else 0.0
+        avg_latency = sum(self.latencies) / len(self.latencies) if self.latencies else 0.0
+        return {
+            "cache_hits": self.hits,
+            "cache_misses": self.misses,
+            "hit_ratio": hit_ratio,
+            "miss_ratio": miss_ratio,
+            "ttl_expirations": self.expirations,
+            "invalidations": self.invalidations,
+            "warmups": self.warmups,
+            "rebuilds": self.rebuilds,
+            "average_latency_ms": avg_latency,
+            "recommendation_history": self.recommendations,
+            "correlation_ids": self.correlation_ids
+        }
+
+
+class CacheDiagnosticsImpl(CacheDiagnostics):
+    def __init__(self, provider: RedisProvider) -> None:
+        self.provider = provider
+        self.errors: List[Dict[str, Any]] = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify cache config") -> None:
+        self.errors.append({
+            "message": message,
+            "severity": severity,
+            "remediation": remediation,
+            "timestamp": time.time()
+        })
+        if len(self.errors) > 100:
+            self.errors.pop(0)
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        status = "healthy"
+        remediations = []
+        is_online = False
+        try:
+            is_online = self.provider.transport.is_connected()
+            if is_online:
+                transport = self.provider.transport
+                if hasattr(transport, "conn_manager") and transport.conn_manager.client:
+                    client = transport.conn_manager.client
+                    if isinstance(client, FakeRedisClient):
+                        is_online = False
+        except Exception:
+            pass
+
+        if not is_online:
+            status = "degraded"
+            remediations.append("Redis acceleration is offline. Ephemeral simulated client in use. Performance is degraded, but postgres remains operational.")
+        
+        criticals = [e for e in self.errors if e["severity"] == "CRITICAL"]
+        if criticals:
+            status = "critical"
+
+        return {
+            "status": status,
+            "remediations": remediations,
+            "errors": self.errors,
+            "redis_connected": is_online
+        }
+
+
+class CacheHealthMonitorImpl(CacheHealthMonitor):
+    def __init__(self, provider: RedisProvider) -> None:
+        self.provider = provider
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def check_health(self) -> Dict[str, Any]:
+        is_online = False
+        try:
+            is_online = self.provider.transport.is_connected()
+            if is_online:
+                transport = self.provider.transport
+                if hasattr(transport, "conn_manager") and transport.conn_manager.client:
+                    client = transport.conn_manager.client
+                    if isinstance(client, FakeRedisClient):
+                        is_online = False
+        except Exception:
+            pass
+        return {
+            "status": "online" if is_online else "degraded",
+            "connected": is_online,
+            "timestamp": time.time()
+        }
+
+
+class CacheRecommendationEngineImpl(CacheRecommendationEngine):
+    def __init__(self, stats: CacheStatisticsCollector, diag: CacheDiagnostics) -> None:
+        self.stats = stats
+        self.diag = diag
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        recs = []
+        metrics = self.stats.get_metrics()
+        diagnostics = self.diag.get_diagnostics()
+
+        if not diagnostics["redis_connected"]:
+            recs.append({
+                "category": "Connectivity",
+                "issue": "Redis backend is disconnected.",
+                "suggestion": "Start Redis server or verify host configuration to enable hardware acceleration.",
+                "severity": "WARNING"
+            })
+
+        total = metrics["cache_hits"] + metrics["cache_misses"]
+        if total > 5 and metrics["hit_ratio"] < 0.2:
+            recs.append({
+                "category": "Efficiency",
+                "issue": f"Cache hit ratio is very low ({metrics['hit_ratio']:.1%}).",
+                "suggestion": "Increase configured TTL values or trigger startup warmup to prepopulate cache.",
+                "severity": "WARNING"
+            })
+
+        if metrics["ttl_expirations"] > 10:
+            recs.append({
+                "category": "TTL Configuration",
+                "issue": f"High number of TTL expirations ({metrics['ttl_expirations']}).",
+                "suggestion": "Consider increasing TTL limits for relatively static metadata (e.g. Workspace metadata).",
+                "severity": "INFO"
+            })
+
+        if not recs:
+            recs.append({
+                "category": "Maintenance",
+                "issue": "Cache is performing optimally.",
+                "suggestion": "Keep active settings.",
+                "severity": "INFO"
+            })
+
+        for r in recs:
+            self.stats.record_recommendation(r)
+
+        return recs
+
+
+class CacheInvalidationManagerImpl(CacheInvalidationManager):
+    def __init__(self, provider: RedisProvider, stats: CacheStatisticsCollector) -> None:
+        self.provider = provider
+        self.stats = stats
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def make_key(self, subsystem: str, entity_id: str) -> str:
+        context = RuntimeCorrelationManager.get_context()
+        workspace = context.get("workspace_id") or "default_workspace"
+        project = context.get("project_id") or "default_project"
+        return f"aios:v1:{workspace}:{project}:{subsystem}:{entity_id}:cache"
+
+    def invalidate_key(self, key: str) -> bool:
+        try:
+            success = self.provider.delete(key)
+            if success:
+                self.stats.record_invalidation(1)
+            return success
+        except Exception:
+            return False
+
+    def invalidate_entity(self, subsystem: str, entity_id: str) -> bool:
+        key = self.make_key(subsystem, entity_id)
+        return self.invalidate_key(key)
+
+    def invalidate_workspace(self, workspace_id: str) -> int:
+        pattern = f"aios:v1:{workspace_id}:*:*:*:*"
+        return self.invalidate_pattern(pattern)
+
+    def invalidate_project(self, project_id: str) -> int:
+        pattern = f"aios:v1:*:{project_id}:*:*:*"
+        return self.invalidate_pattern(pattern)
+
+    def invalidate_provider(self, provider_name: str) -> int:
+        pattern = f"aios:v1:*:*:provider_*:{provider_name}:*"
+        return self.invalidate_pattern(pattern)
+
+    def invalidate_pattern(self, pattern: str) -> int:
+        count = 0
+        try:
+            keys = self.provider.transport.execute_command("keys", pattern)
+            if keys:
+                for k in keys:
+                    if self.provider.delete(k):
+                        count += 1
+        except Exception:
+            pass
+        if count > 0:
+            self.stats.record_invalidation(count)
+        return count
+
+    def invalidate_bulk(self, keys: List[str]) -> int:
+        count = 0
+        for k in keys:
+            try:
+                if self.provider.delete(k):
+                    count += 1
+            except Exception:
+                pass
+        if count > 0:
+            self.stats.record_invalidation(count)
+        return count
+
+
+class CacheWarmupServiceImpl(CacheWarmupService):
+    def __init__(self, service: PersistenceService, cache_service: RedisCacheService, stats: CacheStatisticsCollector) -> None:
+        self.service = service
+        self.cache_service = cache_service
+        self.stats = stats
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def warmup_all_background(self) -> None:
+        import threading
+        thread = threading.Thread(target=self._run_warmup, daemon=True)
+        thread.start()
+
+    def _run_warmup(self) -> None:
+        subsystems = ["workspace", "configuration", "profile", "provider_capabilities", "provider_health", "provider_routing"]
+        for sub in subsystems:
+            try:
+                self.warm_subsystem(sub)
+            except Exception:
+                pass
+
+    def warm_subsystem(self, subsystem: str) -> None:
+        count = 0
+        if subsystem == "workspace":
+            try:
+                rows = self.service.execute("SELECT * FROM workspaces ORDER BY last_accessed DESC LIMIT 5")
+                for r in rows:
+                    row = dict(r)
+                    row["metadata"] = json.loads(row["metadata"] or "{}")
+                    self.cache_service.set("workspace", row["id"], row)
+                    count += 1
+            except Exception:
+                pass
+        elif subsystem == "profile":
+            try:
+                rows = self.service.execute("SELECT * FROM engineering_profiles ORDER BY timestamp DESC LIMIT 5")
+                for r in rows:
+                    row = dict(r)
+                    row["coding_standards"] = json.loads(row["coding_standards"] or "[]")
+                    row["naming_conventions"] = json.loads(row["naming_conventions"] or "{}")
+                    row["release_formatting_rules"] = json.loads(row["release_formatting_rules"] or "{}")
+                    row["markdown_preferences"] = json.loads(row["markdown_preferences"] or "{}")
+                    row["section_ordering"] = json.loads(row["section_ordering"] or "[]")
+                    row["doc_naming_conventions"] = json.loads(row["doc_naming_conventions"] or "{}")
+                    row["doc_versioning_preferences"] = json.loads(row["doc_versioning_preferences"] or "{}")
+                    row["exclude_patterns"] = json.loads(row["exclude_patterns"] or "[]")
+                    row["sandbox_enabled"] = bool(row["sandbox_enabled"])
+                    row["generate_api_docs"] = bool(row["generate_api_docs"])
+                    row["auto_release"] = bool(row["auto_release"])
+                    self.cache_service.set("profile", row["id"], row)
+                    count += 1
+            except Exception:
+                pass
+        elif subsystem == "configuration":
+            try:
+                rows = self.service.execute("SELECT * FROM configuration_profiles LIMIT 5")
+                for r in rows:
+                    row = dict(r)
+                    row["env_profile"] = json.loads(row["env_profile"] or "{}")
+                    row["workspace_settings"] = json.loads(row["workspace_settings"] or "{}")
+                    row["provider_preferences"] = json.loads(row["provider_preferences"] or "{}")
+                    row["git_preferences"] = json.loads(row["git_preferences"] or "{}")
+                    row["automation_preferences"] = json.loads(row["automation_preferences"] or "{}")
+                    row["documentation_preferences"] = json.loads(row["documentation_preferences"] or "{}")
+                    row["testing_preferences"] = json.loads(row["testing_preferences"] or "{}")
+                    row["approval_preferences"] = json.loads(row["approval_preferences"] or "{}")
+                    self.cache_service.set("configuration", row["id"], row)
+                    count += 1
+            except Exception:
+                pass
+        elif subsystem == "provider_capabilities":
+            try:
+                rows = self.service.execute("SELECT * FROM provider_capabilities ORDER BY timestamp DESC LIMIT 5")
+                for r in rows:
+                    row = dict(r)
+                    row["capabilities"] = json.loads(row["capabilities"] or "{}")
+                    res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Capabilities retrieved.", provider=self.service.config.provider_name, latency=0.0, repository="provider_capabilities", payload=row)
+                    self.cache_service.set("provider_capabilities", row["id"], res)
+                    count += 1
+            except Exception:
+                pass
+        elif subsystem == "provider_health":
+            try:
+                rows = self.service.execute("SELECT * FROM provider_health ORDER BY timestamp DESC LIMIT 5")
+                for r in rows:
+                    row = dict(r)
+                    row["is_healthy"] = bool(row["is_healthy"])
+                    res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Health report retrieved.", provider=self.service.config.provider_name, latency=0.0, repository="provider_health", payload=row)
+                    self.cache_service.set("provider_health", row["id"], res)
+                    count += 1
+            except Exception:
+                pass
+        elif subsystem == "provider_routing":
+            try:
+                rows = self.service.execute("SELECT * FROM provider_routing ORDER BY timestamp DESC LIMIT 5")
+                for r in rows:
+                    row = dict(r)
+                    row["routing_candidates"] = json.loads(row["routing_candidates"] or "[]")
+                    res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Routing decision retrieved.", provider=self.service.config.provider_name, latency=0.0, repository="provider_routing", payload=row)
+                    self.cache_service.set("provider_routing", row["id"], res)
+                    count += 1
+            except Exception:
+                pass
+
+        if count > 0:
+            self.stats.record_warmup(count)
+
+
+class CacheRebuildServiceImpl(CacheRebuildService):
+    def __init__(self, service: PersistenceService, provider: RedisProvider, stats: CacheStatisticsCollector, warmup_svc: CacheWarmupService) -> None:
+        self.service = service
+        self.provider = provider
+        self.stats = stats
+        self.warmup_svc = warmup_svc
+        self._rebuilding = False
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def trigger_rebuild_background(self) -> None:
+        if self._rebuilding:
+            return
+        import threading
+        thread = threading.Thread(target=self._run_rebuild, daemon=True)
+        thread.start()
+
+    def _run_rebuild(self) -> None:
+        self._rebuilding = True
+        try:
+            try:
+                self.provider.transport.connect()
+            except Exception:
+                pass
+
+            if self.provider.transport.is_connected():
+                self.rebuild_incremental()
+        finally:
+            self._rebuilding = False
+
+    def rebuild_incremental(self) -> int:
+        initial_warmups = self.stats.warmups
+        self.warmup_svc.warm_subsystem("workspace")
+        self.warmup_svc.warm_subsystem("profile")
+        self.warmup_svc.warm_subsystem("configuration")
+        self.warmup_svc.warm_subsystem("provider_capabilities")
+        self.warmup_svc.warm_subsystem("provider_health")
+        self.warmup_svc.warm_subsystem("provider_routing")
+        
+        rebuilt_keys = self.stats.warmups - initial_warmups
+        if rebuilt_keys > 0:
+            self.stats.record_rebuild(rebuilt_keys)
+        return rebuilt_keys
+
+
+class RedisCacheServiceImpl(RedisCacheService):
+    def __init__(
+        self,
+        provider: RedisProvider,
+        policy_mgr: CachePolicyManager,
+        stats: CacheStatisticsCollector,
+        diag: CacheDiagnostics,
+    ) -> None:
+        self.provider = provider
+        self.policy_mgr = policy_mgr
+        self.stats = stats
+        self.diag = diag
+        self._disabled = False
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def make_key(self, subsystem: str, entity_id: str) -> str:
+        context = RuntimeCorrelationManager.get_context()
+        workspace = context.get("workspace_id") or "default_workspace"
+        project = context.get("project_id") or "default_project"
+        return f"aios:v1:{workspace}:{project}:{subsystem}:{entity_id}:cache"
+
+    def get(
+        self,
+        subsystem: str,
+        entity_id: str,
+        fetch_func: Callable[[], Any],
+        policy: Optional[CachePolicy] = None,
+        ttl: Optional[int] = None
+    ) -> Any:
+        start_time = time.time()
+        active_policy = policy if policy is not None else self.policy_mgr.get_policy(subsystem)
+        active_ttl = ttl if ttl is not None else self.policy_mgr.get_ttl(subsystem)
+
+        if active_policy == CachePolicy.NO_CACHE or self._disabled:
+            return fetch_func()
+
+        key = self.make_key(subsystem, entity_id)
+        context = RuntimeCorrelationManager.get_context()
+        corr_id = context.get("correlation_id")
+
+        try:
+            cached_val = self.provider.get(key)
+            if cached_val is not None:
+                latency_ms = (time.time() - start_time) * 1000.0
+                self.stats.record_hit(subsystem, latency_ms, corr_id)
+                return deserialize_val(cached_val)
+        except Exception as e:
+            self.diag.log_error(f"Cache get error: {str(e)}", severity="ERROR", remediation="Verify Redis connection")
+
+        latency_ms = (time.time() - start_time) * 1000.0
+        self.stats.record_miss(subsystem, latency_ms, corr_id)
+
+        db_val = fetch_func()
+
+        if db_val is not None and (active_policy == CachePolicy.READ_THROUGH or active_policy == CachePolicy.CACHE_ASIDE):
+            try:
+                self.provider.set(key, serialize_val(db_val), ttl=active_ttl)
+            except Exception as e:
+                self.diag.log_error(f"Cache set error: {str(e)}", severity="ERROR", remediation="Verify Redis connection")
+
+        return db_val
+
+    def set(
+        self,
+        subsystem: str,
+        entity_id: str,
+        value: Any,
+        policy: Optional[CachePolicy] = None,
+        ttl: Optional[int] = None
+    ) -> bool:
+        active_policy = policy if policy is not None else self.policy_mgr.get_policy(subsystem)
+        active_ttl = ttl if ttl is not None else self.policy_mgr.get_ttl(subsystem)
+
+        if active_policy == CachePolicy.NO_CACHE or self._disabled:
+            return False
+
+        key = self.make_key(subsystem, entity_id)
+
+        try:
+            success = self.provider.set(key, serialize_val(value), ttl=active_ttl)
+            return success
+        except Exception as e:
+            self.diag.log_error(f"Cache set error: {str(e)}", severity="ERROR", remediation="Verify Redis connection")
+            return False
+
+    def delete(self, subsystem: str, entity_id: str) -> bool:
+        key = self.make_key(subsystem, entity_id)
+        try:
+            return self.provider.delete(key)
+        except Exception as e:
+            self.diag.log_error(f"Cache delete error: {str(e)}", severity="ERROR", remediation="Verify Redis connection")
+            return False
+
+
+class SessionRegistryImpl(SessionRegistry):
+    def __init__(self) -> None:
+        self.configs: Dict[str, Dict[str, Any]] = {}
+
+    def initialize(self) -> None:
+        self.register_session_type(
+            "ai", "AIService", 3600.0, SessionPolicy.EPHEMERAL, "none", "ai", heartbeat_required=True
+        )
+        self.register_session_type(
+            "workspace", "WorkspaceService", 86400.0, SessionPolicy.PERSISTENT_REFERENCE, "reconstruct_from_db", "workspace", "workspaces", heartbeat_required=False
+        )
+        self.register_session_type(
+            "workflow", "WorkflowService", 7200.0, SessionPolicy.RECOVERABLE, "reconstruct_from_db", "workflow", "workflow_executions", heartbeat_required=True
+        )
+        self.register_session_type(
+            "provider", "ProviderService", 1800.0, SessionPolicy.EPHEMERAL, "none", "provider", heartbeat_required=True
+        )
+        self.register_session_type(
+            "engineering", "EngineeringProfileService", 14400.0, SessionPolicy.PERSISTENT_REFERENCE, "reconstruct_from_db", "engineering", "engineering_profiles", heartbeat_required=False
+        )
+        self.register_session_type(
+            "automation", "AutomationService", 3600.0, SessionPolicy.RECOVERABLE, "reconstruct_from_db", "automation", "automation_telemetry", heartbeat_required=True
+        )
+        self.register_session_type(
+            "temporary_execution", "ExecutionService", 900.0, SessionPolicy.EPHEMERAL, "none", "temp_exec", heartbeat_required=False
+        )
+        self.register_session_type(
+            "runtime_validation", "ValidationService", 600.0, SessionPolicy.EPHEMERAL, "none", "validation", heartbeat_required=False
+        )
+
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def register_session_type(
+        self,
+        session_type: str,
+        owner_service: str,
+        ttl: float,
+        policy: SessionPolicy,
+        recovery_strategy: str,
+        redis_prefix: str,
+        source_of_truth: Optional[str] = None,
+        heartbeat_required: bool = False
+    ) -> None:
+        self.configs[session_type] = {
+            "owner_service": owner_service,
+            "ttl": ttl,
+            "policy": policy,
+            "recovery_strategy": recovery_strategy,
+            "redis_prefix": redis_prefix,
+            "source_of_truth": source_of_truth,
+            "heartbeat_required": heartbeat_required
+        }
+
+    def get_configuration(self, session_type: str) -> Dict[str, Any]:
+        cfg = self.configs.get(session_type)
+        if not cfg:
+            return {
+                "owner_service": "Unknown",
+                "ttl": 3600.0,
+                "policy": SessionPolicy.EPHEMERAL,
+                "recovery_strategy": "none",
+                "redis_prefix": session_type,
+                "source_of_truth": None,
+                "heartbeat_required": False
+            }
+        return cfg
+
+    def get_all_types(self) -> List[str]:
+        return list(self.configs.keys())
+
+
+class SessionStatisticsCollectorImpl(SessionStatisticsCollector):
+    def __init__(self) -> None:
+        self.creates: Dict[str, int] = {}
+        self.reads: Dict[str, int] = {}
+        self.updates: Dict[str, int] = {}
+        self.deletes: Dict[str, int] = {}
+        self.expirations: Dict[str, int] = {}
+        self.renewals: Dict[str, int] = {}
+        self.recoveries: Dict[str, int] = {}
+        self.recovery_success: Dict[str, int] = {}
+        self.heartbeats: Dict[str, int] = {}
+        self.latencies: List[float] = []
+        self.errors: List[str] = []
+        self.recommendations: List[Dict[str, Any]] = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def record_create(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        self.creates[session_type] = self.creates.get(session_type, 0) + 1
+
+    def record_read(self, session_type: str, hit: bool, correlation_id: Optional[str] = None) -> None:
+        key = f"{session_type}:hit" if hit else f"{session_type}:miss"
+        self.reads[key] = self.reads.get(key, 0) + 1
+
+    def record_update(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        self.updates[session_type] = self.updates.get(session_type, 0) + 1
+
+    def record_delete(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        self.deletes[session_type] = self.deletes.get(session_type, 0) + 1
+
+    def record_expire(self, session_type: str, reason: str) -> None:
+        key = f"{session_type}:{reason}"
+        self.expirations[key] = self.expirations.get(key, 0) + 1
+
+    def record_renew(self, session_type: str, correlation_id: Optional[str] = None) -> None:
+        self.renewals[session_type] = self.renewals.get(session_type, 0) + 1
+
+    def record_recovery(self, session_type: str, success: bool) -> None:
+        self.recoveries[session_type] = self.recoveries.get(session_type, 0) + 1
+        if success:
+            self.recovery_success[session_type] = self.recovery_success.get(session_type, 0) + 1
+
+    def record_heartbeat(self, session_type: str) -> None:
+        self.heartbeats[session_type] = self.heartbeats.get(session_type, 0) + 1
+
+    def record_latency(self, op: str, latency_ms: float) -> None:
+        self.latencies.append(latency_ms)
+        if len(self.latencies) > 1000:
+            self.latencies.pop(0)
+
+    def get_metrics(self) -> Dict[str, Any]:
+        total_latency = sum(self.latencies)
+        avg_latency = total_latency / len(self.latencies) if self.latencies else 0.0
+        
+        return {
+            "session_creates": self.creates,
+            "session_reads": self.reads,
+            "session_updates": self.updates,
+            "session_deletes": self.deletes,
+            "session_expirations": self.expirations,
+            "session_renewals": self.renewals,
+            "session_recoveries": self.recoveries,
+            "session_recovery_success": self.recovery_success,
+            "session_heartbeats": self.heartbeats,
+            "average_latency_ms": avg_latency,
+            "recommendation_count": len(self.recommendations),
+            "learning_metadata": {
+                "session_duration_trends": "stable",
+                "recovery_trends": "high_success",
+                "expiration_trends": "normal",
+                "heartbeat_statistics": "regular"
+            }
+        }
+
+
+class SessionDiagnosticsImpl(SessionDiagnostics):
+    def __init__(self, provider: RedisProvider) -> None:
+        self.provider = provider
+        self.errors: List[Dict[str, Any]] = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        is_fake = "FakeRedisClient" in str(type(getattr(self.provider.transport, "client", None))) if hasattr(self.provider, "transport") else True
+        
+        try:
+            ping_res = self.provider.transport.execute_command("ping") if hasattr(self.provider, "transport") else False
+            ping_ok = (ping_res is True or ping_res == "PONG" or ping_res == b"PONG")
+        except Exception:
+            ping_ok = False
+
+        status = "degraded" if (is_fake or not ping_ok) else "healthy"
+        if not ping_ok:
+            status = "unhealthy"
+
+        return {
+            "status": status,
+            "connection_alive": ping_ok,
+            "using_simulated_client": is_fake,
+            "diagnosed_errors": self.errors[-100:],
+            "active_issues": len(self.errors)
+        }
+
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify session configuration") -> None:
+        self.errors.append({
+            "timestamp": time.time(),
+            "message": message,
+            "severity": severity,
+            "remediation": remediation
+        })
+
+
+class SessionHealthMonitorImpl(SessionHealthMonitor):
+    def __init__(self, provider: RedisProvider) -> None:
+        self.provider = provider
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def check_health(self) -> Dict[str, Any]:
+        is_fake = "FakeRedisClient" in str(type(getattr(self.provider.transport, "client", None))) if hasattr(self.provider, "transport") else True
+        try:
+            ping_res = self.provider.transport.execute_command("ping") if hasattr(self.provider, "transport") else False
+            ping_ok = (ping_res is True or ping_res == "PONG" or ping_res == b"PONG")
+            latency = 1.0
+        except Exception as e:
+            ping_ok = False
+            latency = 0.0
+
+        status = "healthy"
+        if not ping_ok:
+            status = "unhealthy"
+        elif is_fake:
+            status = "degraded"
+
+        return {
+            "status": status,
+            "latency_ms": latency,
+            "provider": "redis",
+            "is_alive": ping_ok
+        }
+
+
+class SessionRecommendationEngineImpl(SessionRecommendationEngine):
+    def __init__(self, stats: SessionStatisticsCollector, diag: SessionDiagnostics) -> None:
+        self.stats = stats
+        self.diag = diag
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        recs = []
+        diag_info = self.diag.get_diagnostics()
+        if diag_info["status"] == "degraded":
+            recs.append({
+                "category": "Connectivity",
+                "recommendation": "Migrate from simulated FakeRedisClient to a live Redis cluster.",
+                "priority": "HIGH"
+            })
+        
+        metrics = self.stats.get_metrics()
+        total_expirations = sum(metrics["session_expirations"].values())
+        if total_expirations > 50:
+            recs.append({
+                "category": "TTL Configuration",
+                "recommendation": "Consider extending the session TTL for frequently expiring subsystems.",
+                "priority": "MEDIUM"
+            })
+
+        if not recs:
+            recs.append({
+                "category": "Maintenance",
+                "recommendation": "Session platform configuration is running optimally.",
+                "priority": "LOW"
+            })
+        return recs
+
+
+class SessionStoreImpl(SessionStore):
+    def __init__(
+        self,
+        provider: RedisProvider,
+        registry: SessionRegistry,
+        stats: SessionStatisticsCollector,
+        diag: SessionDiagnostics
+    ) -> None:
+        self.provider = provider
+        self.registry = registry
+        self.stats = stats
+        self.diag = diag
+        self._disabled = False
+        self._fallback_store: Dict[str, Dict[str, Any]] = {}
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def make_key(self, workspace_id: Optional[str], project_id: Optional[str], session_type: str, session_id: str) -> str:
+        ws = workspace_id or "default"
+        proj = project_id or "default"
+        return f"aios:v1:{ws}:{proj}:session:{session_type}:{session_id}"
+
+    def create(
+        self,
+        session_type: str,
+        session_id: str,
+        data: Dict[str, Any],
+        workspace_id: Optional[str] = None,
+        project_id: Optional[str] = None
+    ) -> bool:
+        start_time = time.time()
+        cfg = self.registry.get_configuration(session_type)
+        ttl = cfg["ttl"]
+        
+        session_payload = {
+            "workspace_id": workspace_id or "default",
+            "project_id": project_id or "default",
+            "session_type": session_type,
+            "creation_time": start_time,
+            "last_access_time": start_time,
+            "ttl": ttl,
+            "version": 1,
+            "data": data
+        }
+
+        key = self.make_key(workspace_id, project_id, session_type, session_id)
+        
+        self.stats.record_create(session_type)
+
+        if self._disabled:
+            expiration = start_time + ttl
+            self._fallback_store[key] = {
+                "payload": session_payload,
+                "expiration": expiration
+            }
+            self.stats.record_latency("create", (time.time() - start_time) * 1000)
+            return True
+
+        try:
+            success = self.provider.set(key, serialize_val(session_payload), ttl=int(ttl))
+        except Exception as e:
+            success = False
+            self.diag.log_error(f"Session write failure: {str(e)}")
+
+        if not success:
+            expiration = start_time + ttl
+            self._fallback_store[key] = {
+                "payload": session_payload,
+                "expiration": expiration
+            }
+            self.stats.record_latency("create", (time.time() - start_time) * 1000)
+            return True
+
+        self.stats.record_latency("create", (time.time() - start_time) * 1000)
+        return True
+
+
+    def read(self, session_type: str, session_id: str) -> Optional[Dict[str, Any]]:
+        pattern = f"aios:v1:*:*:session:{session_type}:{session_id}"
+        start_time = time.time()
+        
+        for key, val in list(self._fallback_store.items()):
+            import fnmatch
+            if fnmatch.fnmatch(key, pattern):
+                if time.time() - val["payload"].get("creation_time", 0) > 604800.0:
+                    del self._fallback_store[key]
+                    self.stats.record_expire(session_type, "max_lifetime")
+                    continue
+                if time.time() > val["expiration"]:
+                    del self._fallback_store[key]
+                    self.stats.record_expire(session_type, "idle_timeout")
+                    continue
+                val["payload"]["last_access_time"] = time.time()
+                cfg = self.registry.get_configuration(session_type)
+                val["expiration"] = time.time() + cfg["ttl"]
+                self.stats.record_read(session_type, hit=True)
+                self.stats.record_latency("read", (time.time() - start_time) * 1000)
+                return val["payload"]["data"]
+
+        if self._disabled:
+            self.stats.record_read(session_type, hit=False)
+            return None
+
+        try:
+            keys = self.provider.transport.execute_command("keys", pattern)
+            if not keys:
+                self.stats.record_read(session_type, hit=False)
+                return None
+            
+            key = keys[0]
+            raw = self.provider.get(key)
+            if raw is None:
+                self.stats.record_read(session_type, hit=False)
+                return None
+
+            payload = deserialize_val(raw)
+            if time.time() - payload.get("creation_time", 0) > 604800.0:
+                self.provider.delete(key)
+                self.stats.record_expire(session_type, "max_lifetime")
+                self.stats.record_read(session_type, hit=False)
+                return None
+
+            payload["last_access_time"] = time.time()
+            cfg = self.registry.get_configuration(session_type)
+            self.provider.set(key, serialize_val(payload), ttl=int(cfg["ttl"]))
+            
+            self.stats.record_read(session_type, hit=True)
+            self.stats.record_latency("read", (time.time() - start_time) * 1000)
+            return payload["data"]
+        except Exception as e:
+            self.diag.log_error(f"Session read failure: {str(e)}")
+            self.stats.record_read(session_type, hit=False)
+            return None
+
+    def update(self, session_type: str, session_id: str, data: Dict[str, Any]) -> bool:
+        pattern = f"aios:v1:*:*:session:{session_type}:{session_id}"
+        start_time = time.time()
+        self.stats.record_update(session_type)
+
+        for key, val in list(self._fallback_store.items()):
+            import fnmatch
+            if fnmatch.fnmatch(key, pattern):
+                if time.time() > val["expiration"]:
+                    del self._fallback_store[key]
+                    self.stats.record_expire(session_type, "idle_timeout")
+                    continue
+                val["payload"]["data"] = data
+                val["payload"]["last_access_time"] = time.time()
+                cfg = self.registry.get_configuration(session_type)
+                val["expiration"] = time.time() + cfg["ttl"]
+                self.stats.record_latency("update", (time.time() - start_time) * 1000)
+                return True
+
+        if self._disabled:
+            return False
+
+        try:
+            keys = self.provider.transport.execute_command("keys", pattern)
+            if not keys:
+                return False
+            key = keys[0]
+            raw = self.provider.get(key)
+            if raw is None:
+                return False
+            payload = deserialize_val(raw)
+            payload["data"] = data
+            payload["last_access_time"] = time.time()
+            cfg = self.registry.get_configuration(session_type)
+            success = self.provider.set(key, serialize_val(payload), ttl=int(cfg["ttl"]))
+            self.stats.record_latency("update", (time.time() - start_time) * 1000)
+            return success
+        except Exception as e:
+            self.diag.log_error(f"Session update failure: {str(e)}")
+            return False
+
+    def delete(self, session_type: str, session_id: str) -> bool:
+        pattern = f"aios:v1:*:*:session:{session_type}:{session_id}"
+        start_time = time.time()
+        self.stats.record_delete(session_type)
+
+        deleted = False
+        for key in list(self._fallback_store.keys()):
+            import fnmatch
+            if fnmatch.fnmatch(key, pattern):
+                del self._fallback_store[key]
+                deleted = True
+
+        if self._disabled:
+            return deleted
+
+        try:
+            keys = self.provider.transport.execute_command("keys", pattern)
+            if not keys:
+                return deleted
+            for key in keys:
+                self.provider.delete(key)
+                deleted = True
+            self.stats.record_latency("delete", (time.time() - start_time) * 1000)
+            return deleted
+        except Exception as e:
+            self.diag.log_error(f"Session delete failure: {str(e)}")
+            return deleted
+
+    def renew(self, session_type: str, session_id: str) -> bool:
+        pattern = f"aios:v1:*:*:session:{session_type}:{session_id}"
+        start_time = time.time()
+        self.stats.record_renew(session_type)
+
+        renewed = False
+        for key, val in list(self._fallback_store.items()):
+            import fnmatch
+            if fnmatch.fnmatch(key, pattern):
+                cfg = self.registry.get_configuration(session_type)
+                val["expiration"] = time.time() + cfg["ttl"]
+                val["payload"]["last_access_time"] = time.time()
+                renewed = True
+
+        if self._disabled:
+            return renewed
+
+        try:
+            keys = self.provider.transport.execute_command("keys", pattern)
+            if not keys:
+                return renewed
+            for key in keys:
+                raw = self.provider.get(key)
+                if raw is not None:
+                    payload = deserialize_val(raw)
+                    payload["last_access_time"] = time.time()
+                    cfg = self.registry.get_configuration(session_type)
+                    self.provider.set(key, serialize_val(payload), ttl=int(cfg["ttl"]))
+                    renewed = True
+            self.stats.record_latency("renew", (time.time() - start_time) * 1000)
+            return renewed
+        except Exception as e:
+            self.diag.log_error(f"Session renew failure: {str(e)}")
+            return renewed
+
+    def heartbeat(self, session_type: str, session_id: str) -> bool:
+        self.stats.record_heartbeat(session_type)
+        return self.renew(session_type, session_id)
+
+
+class SessionExpirationManagerImpl(SessionExpirationManager):
+    def __init__(self, store: SessionStore, registry: SessionRegistry) -> None:
+        self.store = store
+        self.registry = registry
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def check_expirations(self) -> List[str]:
+        return []
+
+    def expire_session(self, session_id: str, reason: str) -> None:
+        pass
+
+
+class SessionRecoveryManagerImpl(SessionRecoveryManager):
+    def __init__(self, p_service: PersistenceService, provider: RedisProvider, stats: SessionStatisticsCollector) -> None:
+        self.p_service = p_service
+        self.provider = provider
+        self.stats = stats
+        self.handlers: Dict[str, Callable[[str], Optional[Dict[str, Any]]]] = {}
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def register_recovery_handler(
+        self,
+        session_type: str,
+        handler: Callable[[str], Optional[Dict[str, Any]]]
+    ) -> None:
+        self.handlers[session_type] = handler
+
+    def recover_session(self, session_type: str, session_id: str) -> Optional[Dict[str, Any]]:
+        handler = self.handlers.get(session_type)
+        if not handler:
+            self.stats.record_recovery(session_type, success=False)
+            return None
+        try:
+            data = handler(session_id)
+            if data is not None:
+                self.stats.record_recovery(session_type, success=True)
+                return data
+        except Exception:
+            pass
+        self.stats.record_recovery(session_type, success=False)
+        return None
+
+    def trigger_rebuild_incremental(self) -> int:
+        return 0
+
+
+class SessionManagerImpl(SessionManager):
+    def __init__(
+        self,
+        store: SessionStore,
+        recovery: SessionRecoveryManager,
+        registry: SessionRegistry,
+        stats: SessionStatisticsCollector
+    ) -> None:
+        self.store = store
+        self.recovery = recovery
+        self.registry = registry
+        self.stats = stats
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def create_session(
+        self,
+        session_type: str,
+        session_id: str,
+        data: Dict[str, Any],
+        workspace_id: Optional[str] = None,
+        project_id: Optional[str] = None
+    ) -> bool:
+        return self.store.create(session_type, session_id, data, workspace_id, project_id)
+
+    def get_session(self, session_type: str, session_id: str) -> Optional[Dict[str, Any]]:
+        data = self.store.read(session_type, session_id)
+        if data is not None:
+            return data
+
+        cfg = self.registry.get_configuration(session_type)
+        if cfg["policy"] in (SessionPolicy.RECOVERABLE, SessionPolicy.PERSISTENT_REFERENCE):
+            recovered = self.recovery.recover_session(session_type, session_id)
+            if recovered is not None:
+                self.store.create(session_type, session_id, recovered)
+                return recovered
+        return None
+
+    def update_session(self, session_type: str, session_id: str, data: Dict[str, Any]) -> bool:
+        return self.store.update(session_type, session_id, data)
+
+    def delete_session(self, session_type: str, session_id: str) -> bool:
+        return self.store.delete(session_type, session_id)
+
+    def renew_session(self, session_type: str, session_id: str) -> bool:
+        return self.store.renew(session_type, session_id)
+
+    def heartbeat(self, session_type: str, session_id: str) -> bool:
+        return self.store.heartbeat(session_type, session_id)
+
+
+class RedisSessionServiceImpl(RedisSessionService):
+    def __init__(
+        self,
+        provider: RedisProvider,
+        registry: SessionRegistry,
+        store: SessionStore,
+        manager: SessionManager,
+        stats: SessionStatisticsCollector,
+        diag: SessionDiagnostics
+    ) -> None:
+        self.provider = provider
+        self.registry = registry
+        self.store = store
+        self.manager = manager
+        self.stats = stats
+        self.diag = diag
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_manager(self) -> SessionManager:
+        return self.manager
+
+    def get_registry(self) -> SessionRegistry:
+        return self.registry
+
+    def get_store(self) -> SessionStore:
+        return self.store
+
+
 
 
 

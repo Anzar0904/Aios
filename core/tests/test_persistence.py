@@ -33,7 +33,8 @@ class SQLiteTransportForTests(DatabaseTransport):
         self.pool = None
         self.active_conn = None
         self.tx_depth = 0
-        self._db_uri = "file:persistence_test_db?mode=memory&cache=shared"
+        import uuid
+        self._db_uri = f"file:persistence_test_db_{uuid.uuid4()}?mode=memory&cache=shared"
 
     def validate_configuration(self) -> List[str]:
         return []

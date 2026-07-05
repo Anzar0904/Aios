@@ -127,6 +127,27 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         RedisTransport,
         RedisProvider,
         RedisRuntimeService,
+        CachePolicy,
+        CachePolicyManager,
+        CacheInvalidationManager,
+        CacheWarmupService,
+        CacheRebuildService,
+        CacheStatisticsCollector,
+        CacheHealthMonitor,
+        CacheDiagnostics,
+        CacheRecommendationEngine,
+        RedisCacheService,
+        SessionPolicy,
+        SessionRegistry,
+        SessionExpirationManager,
+        SessionRecoveryManager,
+        SessionStatisticsCollector,
+        SessionHealthMonitor,
+        SessionDiagnostics,
+        SessionRecommendationEngine,
+        SessionStore,
+        SessionManager,
+        RedisSessionService,
     )
     from aios.services.persistence_impl import (
         PostgreSQLProvider,
@@ -217,6 +238,25 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         RedisValidator,
         RedisReportGenerator,
         RedisRuntimeServiceImpl,
+        CachePolicyManagerImpl,
+        CacheStatisticsCollectorImpl,
+        CacheDiagnosticsImpl,
+        CacheHealthMonitorImpl,
+        CacheRecommendationEngineImpl,
+        CacheInvalidationManagerImpl,
+        CacheWarmupServiceImpl,
+        CacheRebuildServiceImpl,
+        RedisCacheServiceImpl,
+        SessionRegistryImpl,
+        SessionStatisticsCollectorImpl,
+        SessionDiagnosticsImpl,
+        SessionHealthMonitorImpl,
+        SessionRecommendationEngineImpl,
+        SessionStoreImpl,
+        SessionExpirationManagerImpl,
+        SessionRecoveryManagerImpl,
+        SessionManagerImpl,
+        RedisSessionServiceImpl,
     )
 
     p_config = PersistenceConfigurationService()
@@ -652,6 +692,36 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     redis_report.initialize()
     redis_service.initialize()
 
+    # Instantiate Runtime Cache Platform classes
+    cache_policy_mgr = CachePolicyManagerImpl()
+    cache_stats = CacheStatisticsCollectorImpl()
+    cache_diag = CacheDiagnosticsImpl(redis_provider)
+    cache_health = CacheHealthMonitorImpl(redis_provider)
+    cache_recommend = CacheRecommendationEngineImpl(cache_stats, cache_diag)
+    cache_inval = CacheInvalidationManagerImpl(redis_provider, cache_stats)
+    redis_cache_service = RedisCacheServiceImpl(
+        redis_provider,
+        cache_policy_mgr,
+        cache_stats,
+        cache_diag
+    )
+    cache_warmup = CacheWarmupServiceImpl(p_service, redis_cache_service, cache_stats)
+    cache_rebuild = CacheRebuildServiceImpl(p_service, redis_provider, cache_stats, cache_warmup)
+
+    # Initialize all Runtime Cache classes
+    cache_policy_mgr.initialize()
+    cache_stats.initialize()
+    cache_diag.initialize()
+    cache_health.initialize()
+    cache_recommend.initialize()
+    cache_inval.initialize()
+    redis_cache_service.initialize()
+    cache_warmup.initialize()
+    cache_rebuild.initialize()
+
+    # Trigger Startup Cache Warmup in background
+    cache_warmup.warmup_all_background()
+
     # Register in DI container
     registry.register(RedisConfigurationService, redis_cfg)
     registry.register(RedisConnectionManager, redis_conn)
@@ -664,6 +734,71 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(RedisValidator, redis_validator)
     registry.register(RedisReportGenerator, redis_report)
     registry.register(RedisRuntimeService, redis_service)
+
+    registry.register(CachePolicyManager, cache_policy_mgr)
+    registry.register(CacheStatisticsCollector, cache_stats)
+    registry.register(CacheDiagnostics, cache_diag)
+    registry.register(CacheHealthMonitor, cache_health)
+    registry.register(CacheRecommendationEngine, cache_recommend)
+    registry.register(CacheInvalidationManager, cache_inval)
+    registry.register(CacheWarmupService, cache_warmup)
+    registry.register(CacheRebuildService, cache_rebuild)
+    registry.register(RedisCacheService, redis_cache_service)
+
+    # Instantiate Runtime Session Platform classes
+    session_registry = SessionRegistryImpl()
+    session_stats = SessionStatisticsCollectorImpl()
+    session_diag = SessionDiagnosticsImpl(redis_provider)
+    session_health = SessionHealthMonitorImpl(redis_provider)
+    session_recommend = SessionRecommendationEngineImpl(session_stats, session_diag)
+    session_store = SessionStoreImpl(
+        redis_provider,
+        session_registry,
+        session_stats,
+        session_diag
+    )
+    session_expiration = SessionExpirationManagerImpl(session_store, session_registry)
+    session_recovery = SessionRecoveryManagerImpl(p_service, redis_provider, session_stats)
+    session_manager = SessionManagerImpl(
+        session_store,
+        session_recovery,
+        session_registry,
+        session_stats
+    )
+    redis_session_service = RedisSessionServiceImpl(
+        redis_provider,
+        session_registry,
+        session_store,
+        session_manager,
+        session_stats,
+        session_diag
+    )
+
+    # Initialize all Runtime Session classes
+    session_registry.initialize()
+    session_stats.initialize()
+    session_diag.initialize()
+    session_health.initialize()
+    session_recommend.initialize()
+    session_store.initialize()
+    session_expiration.initialize()
+    session_recovery.initialize()
+    session_manager.initialize()
+    redis_session_service.initialize()
+
+    # Register Session Platform in DI container
+    registry.register(SessionRegistry, session_registry)
+    registry.register(SessionStatisticsCollector, session_stats)
+    registry.register(SessionDiagnostics, session_diag)
+    registry.register(SessionHealthMonitor, session_health)
+    registry.register(SessionRecommendationEngine, session_recommend)
+    registry.register(SessionStore, session_store)
+    registry.register(SessionExpirationManager, session_expiration)
+    registry.register(SessionRecoveryManager, session_recovery)
+    registry.register(SessionManager, session_manager)
+    registry.register(RedisSessionService, redis_session_service)
+
+
 
     session_service = LocalSessionService(event_bus)
     context_service = LocalContextService(event_bus)

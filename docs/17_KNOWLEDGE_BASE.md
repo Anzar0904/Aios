@@ -826,6 +826,25 @@ This section maps the essential runtime components of the operating system:
   * `POSTGRESQL_MIGRATION_VALIDATION.md`
 * **Current Status**: Production Validated.
 
+### 3.11 Redis Platform (Sprint 5 Milestones 1, 2 & 3)
+* **Purpose**: Implements high-performance runtime cache acceleration and session storage. Ephemeral states, dialog sessions, rate limits, lookup caches, and session lifecycles are stored in Redis to accelerate read/write performance. Zero-downtime grace fallback is achieved via Simulated FakeRedisClient and local in-memory session dictionaries if Redis is offline.
+* **Core Interfaces & Classes**:
+  - `RedisRuntimeService` / `RedisRuntimeServiceImpl`: Coordinator orchestrating status, health, and reporting.
+  - `RedisConnectionManager`: Directs connection pools and handles simulated fallback.
+  - `RedisTransportImpl`: Low-level command routing recording latencies.
+  - `RedisProviderImpl`: Ephemeral key-value operations wrapper.
+  - `RedisCacheServiceImpl`: Main caching entrypoint with read-through, write-through, and cache-aside methods.
+  - `CachePolicyManagerImpl`: Manages explicit cache policies and configurable TTL overrides.
+  - `CacheInvalidationManagerImpl`: Coordinates manual, bulk, entity, workspace, project, provider, and pattern invalidations.
+  - `CacheWarmupServiceImpl`: Prepopulates hot metadata at startup in a background thread.
+  - `CacheRebuildServiceImpl`: Incrementally rebuilds cache once Redis connection is re-established.
+  - `CacheStatisticsCollectorImpl` / `CacheHealthMonitorImpl` / `CacheDiagnosticsImpl` / `CacheRecommendationEngineImpl`: Caching statistics, diagnostics, health check, and recommendation engine.
+  - `RedisSessionServiceImpl` / `SessionManagerImpl` / `SessionStoreImpl`: Main session engine directing sliding expiration, maximum lifetimes, heartbeats, and in-memory fallbacks.
+  - `SessionRegistryImpl`: Centralized session ownership registry storing configs and policies.
+  - `SessionRecoveryManagerImpl`: Rebuilds recoverable and persistent reference session data once connection returns.
+  - `SessionStatisticsCollectorImpl` / `SessionHealthMonitorImpl` / `SessionDiagnosticsImpl` / `SessionRecommendationEngineImpl`: Telemetry monitoring, error capture, and optimization advice.
+* **Current Status**: Completed.
+
 ---
 
 ## 4. Planned & Future Subsystems
