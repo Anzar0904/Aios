@@ -8385,6 +8385,8 @@ class RedisConfigurationService(ServiceLifecycle):
         except ValueError:
             self.max_connections = 10
         self.awaiting_configuration = not self.host
+        self.environment = os.environ.get("AIOS_ENV", "production").lower()
+        self.fallback_enabled = os.environ.get("REDIS_FALLBACK_ENABLED", "false").lower() == "true"
 
     def initialize(self) -> None: pass
     def start(self) -> None: pass
@@ -8455,6 +8457,11 @@ class RedisConnectionManager(ServiceLifecycle):
         if self.config.awaiting_configuration:
             return None
 
+        is_prod = self.config.environment == "production"
+        allow_fallback = not is_prod and self.config.fallback_enabled
+
+        primary_error = None
+
         try:
             import redis
             self.client = redis.Redis(
@@ -8468,18 +8475,33 @@ class RedisConnectionManager(ServiceLifecycle):
                 max_connections=self.config.max_connections,
                 decode_responses=True
             )
-        except Exception:
-            self.client = FakeRedisClient()
-
-        try:
             self.retries += 1
             if self.client.ping():
                 self.connection_failures = 0
                 return self.client
-        except Exception:
-            self.connection_failures += 1
+        except Exception as e:
+            primary_error = e
+
+        if allow_fallback:
+            error_reason = primary_error or "Redis ping failed"
+            logger.warning(
+                f"Redis connection failed ({error_reason}). "
+                f"Falling back to FakeRedisClient as fallback is enabled "
+                f"in environment '{self.config.environment}'."
+            )
             self.client = FakeRedisClient()
+            self.connection_failures += 1
             return self.client
+        else:
+            self.connection_failures += 1
+            error_reason = primary_error or RuntimeError("Redis ping failed")
+            logger.error(
+                f"Redis connection failed ({error_reason}) and fallback is disabled "
+                f"in environment '{self.config.environment}'."
+            )
+            if isinstance(error_reason, Exception):
+                raise error_reason
+            raise RuntimeError(str(error_reason))
 
 
 class RedisTransportImpl(RedisTransport):
