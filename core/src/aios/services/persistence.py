@@ -2373,6 +2373,99 @@ class ContextBuilder(ServiceLifecycle, abc.ABC):
         pass
 
 
+class VectorMemoryRepository(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def save(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def upsert(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def get(self, memory_id: str) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def delete(self, memory_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def exists(self, memory_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def search(
+        self,
+        vector: List[float],
+        filter_query: Optional[Dict[str, Any]] = None,
+        limit: int = 5,
+        score_threshold: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def batch_upsert(self, points: List[Dict[str, Any]]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def batch_delete(self, memory_ids: List[Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def count(self) -> int:
+        pass
+
+    @abc.abstractmethod
+    def clear(self) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def health(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def statistics(self) -> Dict[str, Any]:
+        pass
+
+
+class EngineeringMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class WorkspaceMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class ProjectMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class DocumentationMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class ConversationMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class AutomationMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class ProviderMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class ResearchMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+class KnowledgeMemoryRepository(VectorMemoryRepository, abc.ABC):
+    pass
+
+
+
 
 
 

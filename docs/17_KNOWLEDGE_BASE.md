@@ -896,7 +896,7 @@ This section maps the essential runtime components of the operating system:
   - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
   - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
-### 3.12 Qdrant Platform (Sprint 6 Milestones 1 & 2)
+### 3.12 Qdrant Platform (Sprint 6 Milestones 1-3)
 * **Purpose**: Implements the semantic memory layer and vector search engine using Qdrant. Manages embeddings generation, HNSW collection indexing, metadata payload pre-filtering (by workspace, project, category, etc.), semantic similarity queries, and telemetry diagnostics. Fallback retrieval degrades to PostgreSQL lexical searches if Qdrant is offline.
 * **Core Implemented Classes**:
   - `QdrantConfigurationService`: Stores host, ports, dimensions, distance metrics, and quantization parameters.
@@ -909,7 +909,8 @@ This section maps the essential runtime components of the operating system:
   - `EmbeddingCacheImpl`: Caches text vector calculations in-memory with version-awareness.
   - `ChunkingServiceImpl`: Provides fixed-size, paragraph, sliding window, and token estimation chunking.
   - `ContextBuilderImpl`: Handles deduplication, similarity/relevancy ranking, and token budget context packing.
-* **Current Status**: Foundation Platform Implemented.
+  - `QdrantRepositoryImpl` and 9 domain subclasses (`EngineeringMemoryRepositoryImpl`, etc.): Base vector repository implementing exact, list, and range pre-filters, CRUD, and batch operations.
+* **Current Status**: Collections and Repository Platform Implemented.
 * **Platform Reports**:
   - [QDRANT_PLATFORM_DISCOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_DISCOVERY.md) - Vector memory engine analysis and collections strategy
   - [QDRANT_PLATFORM_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_ARCHITECTURE.md) - Components design diagram and pipeline flows
@@ -927,6 +928,12 @@ This section maps the essential runtime components of the operating system:
   - [QDRANT_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_STATISTICS.md) - Queries counts and cache hit telemetry metrics
   - [QDRANT_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_DIAGNOSTICS.md) - Offline alerts and SSL port conflicts troubleshooting
   - [QDRANT_NATIVE_INSTALLATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_NATIVE_INSTALLATION_REPORT.md) - Native Darwin ARM64 binary setup audit
+  - [QDRANT_PLATFORM_M3_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_M3_REPORT.md) - Milestone 3 certification report
+  - [QDRANT_COLLECTIONS_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTIONS_ARCHITECTURE.md) - Schemas and payload pre-filtering indexes design
+  - [QDRANT_REPOSITORY_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_REPOSITORY_ARCHITECTURE.md) - Base vector repository and PostgreSQL synchronization strategy
+  - [QDRANT_COLLECTION_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_STATISTICS.md) - Repository operations counts and latency telemetry
+  - [QDRANT_COLLECTION_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_HEALTH.md) - Health indicators check methods
+  - [QDRANT_COLLECTION_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_DIAGNOSTICS.md) - Index latency alerts and sync desync remediation
 
 ---
 

@@ -1186,6 +1186,7 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     # Link Qdrant service and embedding cache into the global RuntimeIntelligenceService (ri_service)
     ri_service.qdrant_service = qdrant_service
     ri_service.embedding_cache = embedding_cache
+    ri_service.p_repos = p_repos
 
     # Initialize all new components
     qdrant_cfg.initialize()
@@ -1215,6 +1216,62 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(EmbeddingVersionManager, embed_ver_manager)
     registry.register(ChunkingService, chunking_service)
     registry.register(ContextBuilder, context_builder)
+
+    # Instantiate Qdrant vector memory repositories
+    from aios.services.persistence import (
+        EngineeringMemoryRepository, WorkspaceMemoryRepository, ProjectMemoryRepository,
+        DocumentationMemoryRepository, ConversationMemoryRepository, AutomationMemoryRepository,
+        ProviderMemoryRepository, ResearchMemoryRepository, KnowledgeMemoryRepository
+    )
+    from aios.services.persistence_impl import (
+        EngineeringMemoryRepositoryImpl, WorkspaceMemoryRepositoryImpl, ProjectMemoryRepositoryImpl,
+        DocumentationMemoryRepositoryImpl, ConversationMemoryRepositoryImpl, AutomationMemoryRepositoryImpl,
+        ProviderMemoryRepositoryImpl, ResearchMemoryRepositoryImpl, KnowledgeMemoryRepositoryImpl
+    )
+
+    eng_mem_repo = EngineeringMemoryRepositoryImpl("engineering_memory", qdrant_provider, col_manager)
+    work_mem_repo = WorkspaceMemoryRepositoryImpl("workspace_memory", qdrant_provider, col_manager)
+    proj_mem_repo = ProjectMemoryRepositoryImpl("project_memory", qdrant_provider, col_manager)
+    doc_mem_repo = DocumentationMemoryRepositoryImpl("documentation_memory", qdrant_provider, col_manager)
+    conv_mem_repo = ConversationMemoryRepositoryImpl("conversation_memory", qdrant_provider, col_manager)
+    auto_mem_repo = AutomationMemoryRepositoryImpl("automation_memory", qdrant_provider, col_manager)
+    prov_mem_repo = ProviderMemoryRepositoryImpl("provider_memory", qdrant_provider, col_manager)
+    res_mem_repo = ResearchMemoryRepositoryImpl("research_memory", qdrant_provider, col_manager)
+    know_mem_repo = KnowledgeMemoryRepositoryImpl("knowledge_memory", qdrant_provider, col_manager)
+
+    # Initialize them
+    eng_mem_repo.initialize()
+    work_mem_repo.initialize()
+    proj_mem_repo.initialize()
+    doc_mem_repo.initialize()
+    conv_mem_repo.initialize()
+    auto_mem_repo.initialize()
+    prov_mem_repo.initialize()
+    res_mem_repo.initialize()
+    know_mem_repo.initialize()
+
+    # Register in RepositoryRegistry (p_repos)
+    p_repos.register_repository("engineering_memory", eng_mem_repo)
+    p_repos.register_repository("workspace_memory", work_mem_repo)
+    p_repos.register_repository("project_memory", proj_mem_repo)
+    p_repos.register_repository("documentation_memory", doc_mem_repo)
+    p_repos.register_repository("conversation_memory", conv_mem_repo)
+    p_repos.register_repository("automation_memory", auto_mem_repo)
+    p_repos.register_repository("provider_memory", prov_mem_repo)
+    p_repos.register_repository("research_memory", res_mem_repo)
+    p_repos.register_repository("knowledge_memory", know_mem_repo)
+
+    # Register in ServiceRegistry
+    registry.register(EngineeringMemoryRepository, eng_mem_repo)
+    registry.register(WorkspaceMemoryRepository, work_mem_repo)
+    registry.register(ProjectMemoryRepository, proj_mem_repo)
+    registry.register(DocumentationMemoryRepository, doc_mem_repo)
+    registry.register(ConversationMemoryRepository, conv_mem_repo)
+    registry.register(AutomationMemoryRepository, auto_mem_repo)
+    registry.register(ProviderMemoryRepository, prov_mem_repo)
+    registry.register(ResearchMemoryRepository, res_mem_repo)
+    registry.register(KnowledgeMemoryRepository, know_mem_repo)
+
 
 
 

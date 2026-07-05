@@ -7970,6 +7970,13 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
             h["redis_health"] = self.telemetry.redis_telemetry.get_health_analyzer().analyze_health()
         if getattr(self, "qdrant_service", None) is not None:
             h["qdrant_health"] = self.qdrant_service.get_health()
+        p_repos = getattr(self, "p_repos", None)
+        if p_repos is not None:
+            q_healths = {}
+            for name, repo in p_repos._repositories.items():
+                if name.endswith("_memory") and hasattr(repo, "health"):
+                    q_healths[name] = repo.health()
+            h["qdrant_repository_healths"] = q_healths
         return h
 
     def get_diagnostics(self) -> Dict[str, Any]:
@@ -8001,6 +8008,13 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
             s["qdrant_statistics"] = self.qdrant_service.get_telemetry()
         if getattr(self, "embedding_cache", None) is not None:
             s["embedding_cache_statistics"] = self.embedding_cache.get_statistics()
+        p_repos = getattr(self, "p_repos", None)
+        if p_repos is not None:
+            q_stats = {}
+            for name, repo in p_repos._repositories.items():
+                if name.endswith("_memory") and hasattr(repo, "statistics"):
+                    q_stats[name] = repo.statistics()
+            s["qdrant_repository_statistics"] = q_stats
         return s
 
     def get_recommendations(self) -> List[Dict[str, Any]]:
@@ -8138,6 +8152,16 @@ from aios.services.persistence import (
     ContextRanking,
     ContextAssembly,
     ContextBuilder,
+    VectorMemoryRepository,
+    EngineeringMemoryRepository,
+    WorkspaceMemoryRepository,
+    ProjectMemoryRepository,
+    DocumentationMemoryRepository,
+    ConversationMemoryRepository,
+    AutomationMemoryRepository,
+    ProviderMemoryRepository,
+    ResearchMemoryRepository,
+    KnowledgeMemoryRepository,
 )
 
 class RedisConfigurationService(ServiceLifecycle):
@@ -12658,6 +12682,286 @@ class ContextBuilderImpl(ContextBuilder):
             total_tokens=total_tokens,
             budget_respected=budget_respected
         )
+
+
+def build_qdrant_filter(filter_dict: Dict[str, Any]) -> Any:
+    from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny, Range
+    if not filter_dict:
+        return None
+        
+    must_conditions = []
+    for key, val in filter_dict.items():
+        if val is None:
+            continue
+        if key in ["created_at", "updated_at", "importance"]:
+            if isinstance(val, dict):
+                must_conditions.append(FieldCondition(
+                    key=key,
+                    range=Range(
+                        gt=val.get("gt"),
+                        gte=val.get("gte"),
+                        lt=val.get("lt"),
+                        lte=val.get("lte")
+                    )
+                ))
+            else:
+                must_conditions.append(FieldCondition(
+                    key=key,
+                    range=Range(gte=float(val), lte=float(val)) if key in ["created_at", "updated_at"] else Range(gte=int(val), lte=int(val))
+                ))
+        elif isinstance(val, list):
+            must_conditions.append(FieldCondition(
+                key=key,
+                match=MatchAny(any=val)
+            ))
+        else:
+            must_conditions.append(FieldCondition(
+                key=key,
+                match=MatchValue(value=val)
+            ))
+            
+    if not must_conditions:
+        return None
+    return Filter(must=must_conditions)
+
+
+class QdrantRepositoryImpl(VectorMemoryRepository):
+    def __init__(
+        self,
+        collection_name: str,
+        provider: QdrantProvider,
+        col_manager: CollectionManager,
+        dimensions: int = 1536,
+        distance: str = "COSINE"
+    ) -> None:
+        self.collection_name = collection_name
+        self.provider = provider
+        self.col_manager = col_manager
+        self.dimensions = dimensions
+        self.distance = distance
+        
+        self.op_counts: Dict[str, int] = {
+            "save": 0, "upsert": 0, "get": 0, "delete": 0, "exists": 0,
+            "search": 0, "batch_upsert": 0, "batch_delete": 0
+        }
+        self.op_latencies: Dict[str, List[float]] = {
+            "save": [], "upsert": [], "get": [], "delete": [], "exists": [],
+            "search": [], "batch_upsert": [], "batch_delete": []
+        }
+
+    def initialize(self) -> None:
+        try:
+            if not self.col_manager.exists(self.collection_name):
+                self.col_manager.create_collection(
+                    self.collection_name,
+                    dimensions=self.dimensions,
+                    distance=self.distance
+                )
+                for field_name in ["workspace_id", "project_id", "session_id", "user_id", "document_id", "memory_type", "tags"]:
+                    self.col_manager.create_index(self.collection_name, field_name, "keyword")
+        except Exception:
+            pass
+
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def _record_op(self, op: str, latency_ms: float) -> None:
+        self.op_counts[op] = self.op_counts.get(op, 0) + 1
+        if op in self.op_latencies:
+            self.op_latencies[op].append(latency_ms)
+            if len(self.op_latencies[op]) > 100:
+                self.op_latencies[op].pop(0)
+
+    def save(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+        t0 = time.perf_counter()
+        point_id = memory_id
+        try:
+            uuid.UUID(memory_id)
+        except ValueError:
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
+            
+        success = self.provider.upsert_points(self.collection_name, [
+            {"id": point_id, "vector": vector, "payload": payload}
+        ])
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("save", latency)
+        return success
+
+    def upsert(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+        t0 = time.perf_counter()
+        point_id = memory_id
+        try:
+            uuid.UUID(memory_id)
+        except ValueError:
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
+            
+        success = self.provider.upsert_points(self.collection_name, [
+            {"id": point_id, "vector": vector, "payload": payload}
+        ])
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("upsert", latency)
+        return success
+
+    def get(self, memory_id: str) -> Optional[Dict[str, Any]]:
+        t0 = time.perf_counter()
+        point_id = memory_id
+        try:
+            uuid.UUID(memory_id)
+        except ValueError:
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
+            
+        try:
+            res = self.provider.get_transport().execute_command(
+                "retrieve",
+                collection_name=self.collection_name,
+                ids=[point_id]
+            )
+            latency = (time.perf_counter() - t0) * 1000.0
+            self._record_op("get", latency)
+            if res:
+                return {"id": memory_id, "payload": res[0].payload, "vector": res[0].vector}
+        except Exception:
+            pass
+        return None
+
+    def delete(self, memory_id: str) -> bool:
+        t0 = time.perf_counter()
+        point_id = memory_id
+        try:
+            uuid.UUID(memory_id)
+        except ValueError:
+            point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
+            
+        success = self.provider.delete_points(self.collection_name, [point_id])
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("delete", latency)
+        return success
+
+    def exists(self, memory_id: str) -> bool:
+        t0 = time.perf_counter()
+        res = self.get(memory_id)
+        exists_flag = res is not None
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("exists", latency)
+        return exists_flag
+
+    def search(
+        self,
+        vector: List[float],
+        filter_query: Optional[Dict[str, Any]] = None,
+        limit: int = 5,
+        score_threshold: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
+        t0 = time.perf_counter()
+        q_filter = build_qdrant_filter(filter_query) if isinstance(filter_query, dict) else filter_query
+        res = self.provider.search_vectors(
+            self.collection_name,
+            vector=vector,
+            filter_query=q_filter,
+            limit=limit,
+            score_threshold=score_threshold
+        )
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("search", latency)
+        return res
+
+    def batch_upsert(self, points: List[Dict[str, Any]]) -> bool:
+        t0 = time.perf_counter()
+        pts = []
+        for p in points:
+            pid = p["id"]
+            try:
+                uuid.UUID(pid)
+            except ValueError:
+                pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, pid))
+            pts.append({"id": pid, "vector": p["vector"], "payload": p.get("payload", {})})
+        success = self.provider.upsert_points(self.collection_name, pts)
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("batch_upsert", latency)
+        return success
+
+    def batch_delete(self, memory_ids: List[Any]) -> bool:
+        t0 = time.perf_counter()
+        pids = []
+        for pid in memory_ids:
+            try:
+                uuid.UUID(pid)
+            except ValueError:
+                pid = str(uuid.uuid5(uuid.NAMESPACE_DNS, pid))
+            pids.append(pid)
+        success = self.provider.delete_points(self.collection_name, pids)
+        latency = (time.perf_counter() - t0) * 1000.0
+        self._record_op("batch_delete", latency)
+        return success
+
+    def count(self) -> int:
+        stats = self.col_manager.get_statistics(self.collection_name)
+        return stats.get("points_count", 0)
+
+    def clear(self) -> bool:
+        if self.col_manager.exists(self.collection_name):
+            self.col_manager.delete_collection(self.collection_name)
+        return self.col_manager.create_collection(self.collection_name, dimensions=self.dimensions, distance=self.distance)
+
+    def health(self) -> Dict[str, Any]:
+        info = self.provider.get_collection_info(self.collection_name)
+        status = info.get("status", "UNKNOWN")
+        is_ok = "green" in status.lower() or "ok" in status.lower()
+        return {
+            "status": "HEALTHY" if is_ok else "DEGRADED",
+            "reachable": self.provider.get_transport().is_connected(),
+            "collection_status": status
+        }
+
+    def statistics(self) -> Dict[str, Any]:
+        info = self.provider.get_collection_info(self.collection_name)
+        avg_latencies = {}
+        for op, lats in self.op_latencies.items():
+            avg_latencies[op] = sum(lats) / len(lats) if lats else 0.0
+        return {
+            "collection_name": self.collection_name,
+            "vectors_count": info.get("vectors_count", 0),
+            "points_count": info.get("points_count", 0),
+            "operation_counts": self.op_counts.copy(),
+            "average_latencies_ms": avg_latencies
+        }
+
+
+class EngineeringMemoryRepositoryImpl(QdrantRepositoryImpl, EngineeringMemoryRepository):
+    pass
+
+
+class WorkspaceMemoryRepositoryImpl(QdrantRepositoryImpl, WorkspaceMemoryRepository):
+    pass
+
+
+class ProjectMemoryRepositoryImpl(QdrantRepositoryImpl, ProjectMemoryRepository):
+    pass
+
+
+class DocumentationMemoryRepositoryImpl(QdrantRepositoryImpl, DocumentationMemoryRepository):
+    pass
+
+
+class ConversationMemoryRepositoryImpl(QdrantRepositoryImpl, ConversationMemoryRepository):
+    pass
+
+
+class AutomationMemoryRepositoryImpl(QdrantRepositoryImpl, AutomationMemoryRepository):
+    pass
+
+
+class ProviderMemoryRepositoryImpl(QdrantRepositoryImpl, ProviderMemoryRepository):
+    pass
+
+
+class ResearchMemoryRepositoryImpl(QdrantRepositoryImpl, ResearchMemoryRepository):
+    pass
+
+
+class KnowledgeMemoryRepositoryImpl(QdrantRepositoryImpl, KnowledgeMemoryRepository):
+    pass
+
 
 
 

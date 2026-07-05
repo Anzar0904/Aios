@@ -236,3 +236,134 @@ def test_dependency_injection_and_runtime_intelligence():
     stats = ri_service.get_statistics()
     assert "qdrant_statistics" in stats
     assert "embedding_cache_statistics" in stats
+
+
+def test_repositories_dependency_injection():
+    from aios.services.persistence import RepositoryRegistry
+    config_path = Path("aios.toml")
+    kernel = bootstrap_kernel(config_path)
+    registry = kernel.registry
+
+    # Verify registered in ServiceRegistry
+    from aios.services.persistence import (
+        EngineeringMemoryRepository, WorkspaceMemoryRepository, ProjectMemoryRepository,
+        DocumentationMemoryRepository, ConversationMemoryRepository, AutomationMemoryRepository,
+        ProviderMemoryRepository, ResearchMemoryRepository, KnowledgeMemoryRepository
+    )
+    assert registry.get(EngineeringMemoryRepository) is not None
+    assert registry.get(WorkspaceMemoryRepository) is not None
+    assert registry.get(ProjectMemoryRepository) is not None
+    assert registry.get(DocumentationMemoryRepository) is not None
+    assert registry.get(ConversationMemoryRepository) is not None
+    assert registry.get(AutomationMemoryRepository) is not None
+    assert registry.get(ProviderMemoryRepository) is not None
+    assert registry.get(ResearchMemoryRepository) is not None
+    assert registry.get(KnowledgeMemoryRepository) is not None
+
+    # Verify registered in RepositoryRegistry (p_repos)
+    p_repos = registry.get(RepositoryRegistry)
+    assert p_repos is not None
+    assert p_repos.get_repository("engineering_memory") is not None
+    assert p_repos.get_repository("workspace_memory") is not None
+    assert p_repos.get_repository("project_memory") is not None
+    assert p_repos.get_repository("documentation_memory") is not None
+    assert p_repos.get_repository("conversation_memory") is not None
+    assert p_repos.get_repository("automation_memory") is not None
+    assert p_repos.get_repository("provider_memory") is not None
+    assert p_repos.get_repository("research_memory") is not None
+    assert p_repos.get_repository("knowledge_memory") is not None
+
+
+def test_repository_operations():
+    from aios.services.persistence import EngineeringMemoryRepository
+    config_path = Path("aios.toml")
+    kernel = bootstrap_kernel(config_path)
+    registry = kernel.registry
+
+    repo = registry.get(EngineeringMemoryRepository)
+    assert repo is not None
+
+    # Clear and prepare test collection
+    repo.clear()
+    assert repo.count() == 0
+
+    memory_id = "test-mem-id-1"
+    vector = [0.2, 0.4, 0.6, 0.8] + [0.0] * 1532 # 1536 dim
+    payload = {
+        "workspace_id": "ws-123",
+        "project_id": "proj-456",
+        "user_id": "user-789",
+        "memory_type": "code",
+        "tags": ["python", "pytest"],
+        "importance": 5,
+        "created_at": 1700000000.0,
+        "updated_at": 1700000000.0
+    }
+
+    # Save
+    assert repo.save(memory_id, vector, payload) is True
+    assert repo.exists(memory_id) is True
+
+    # Get
+    res = repo.get(memory_id)
+    assert res is not None
+    assert res["payload"]["workspace_id"] == "ws-123"
+
+    # Search with filters
+    # Exact filter
+    search_res = repo.search(vector, filter_query={"workspace_id": "ws-123"}, limit=1)
+    assert len(search_res) == 1
+    assert search_res[0]["id"] == memory_id or search_res[0]["payload"]["workspace_id"] == "ws-123"
+
+    # Tag filter (MatchAny list)
+    search_res_tag = repo.search(vector, filter_query={"tags": ["python"]}, limit=1)
+    assert len(search_res_tag) == 1
+
+    # Range filter
+    search_res_range = repo.search(vector, filter_query={"importance": {"gt": 3, "lt": 7}}, limit=1)
+    assert len(search_res_range) == 1
+
+    # Combined filter
+    search_res_combined = repo.search(vector, filter_query={
+        "workspace_id": "ws-123",
+        "importance": {"gt": 3},
+        "tags": ["python"]
+    }, limit=1)
+    assert len(search_res_combined) == 1
+
+    # Count
+    assert repo.count() == 1
+
+    # Batch operations
+    points = [
+        {
+            "id": "test-mem-id-2",
+            "vector": [0.1] * 1536,
+            "payload": {"workspace_id": "ws-123", "importance": 2, "tags": ["rust"]}
+        },
+        {
+            "id": "test-mem-id-3",
+            "vector": [0.3] * 1536,
+            "payload": {"workspace_id": "ws-999", "importance": 8, "tags": ["python"]}
+        }
+    ]
+    assert repo.batch_upsert(points) is True
+    assert repo.count() == 3
+
+    # Batch Delete
+    assert repo.batch_delete(["test-mem-id-2", "test-mem-id-3"]) is True
+    assert repo.count() == 1
+
+    # Health and statistics
+    health = repo.health()
+    assert health["status"] == "HEALTHY"
+
+    stats = repo.statistics()
+    assert stats["collection_name"] == "engineering_memory"
+    assert stats["points_count"] == 1
+    assert stats["operation_counts"]["save"] >= 1
+
+    # Cleanup
+    assert repo.delete(memory_id) is True
+    assert repo.count() == 0
+
