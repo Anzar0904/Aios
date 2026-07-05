@@ -188,6 +188,17 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         RateLimitDiagnostics,
         RateLimitRecommendationEngine,
         RedisRateLimitService,
+        RedisRuntimeTelemetry,
+        RedisRuntimeAggregator,
+        RedisRuntimeHealthAnalyzer,
+        RedisCapacityAnalyzer,
+        RedisPerformanceAnalyzer,
+        RedisRecommendationEngine,
+        RedisRuntimeDiagnostics,
+        RedisRuntimeStatisticsCollector,
+        RedisRuntimeReporter,
+        RedisRuntimeValidator,
+        RedisRuntimeIntelligenceService,
     )
     from aios.services.persistence_impl import (
         PostgreSQLProvider,
@@ -334,6 +345,17 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         RateLimitRecommendationEngineImpl,
         RateLimitManagerImpl,
         RedisRateLimitServiceImpl,
+        RedisRuntimeTelemetryImpl,
+        RedisRuntimeAggregatorImpl,
+        RedisRuntimeHealthAnalyzerImpl,
+        RedisCapacityAnalyzerImpl,
+        RedisPerformanceAnalyzerImpl,
+        RedisRecommendationEngineImpl,
+        RedisRuntimeDiagnosticsImpl,
+        RedisRuntimeStatisticsCollectorImpl,
+        RedisRuntimeReporterImpl,
+        RedisRuntimeValidatorImpl,
+        RedisRuntimeIntelligenceServiceImpl,
     )
 
     p_config = PersistenceConfigurationService()
@@ -1048,6 +1070,86 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(RateLimitRecommendationEngine, rate_limit_recommend)
     registry.register(RateLimitManager, rate_limit_manager)
     registry.register(RedisRateLimitService, redis_rate_limit_service)
+
+    # Instantiate Redis Runtime Intelligence classes
+    redis_aggregator = RedisRuntimeAggregatorImpl(
+        cache_stats,
+        session_stats,
+        coord_stats,
+        queue_stats,
+        rate_limit_stats,
+        redis_conn
+    )
+    redis_telem = RedisRuntimeTelemetryImpl(redis_aggregator)
+    redis_health_analyzer = RedisRuntimeHealthAnalyzerImpl(
+        cache_health,
+        session_health,
+        coord_health,
+        queue_health,
+        rate_limit_health
+    )
+    redis_capacity_analyzer = RedisCapacityAnalyzerImpl(redis_aggregator)
+    redis_perf_analyzer = RedisPerformanceAnalyzerImpl(redis_aggregator)
+    redis_recommend_engine = RedisRecommendationEngineImpl(
+        cache_recommend,
+        session_recommend,
+        coord_recommend,
+        queue_recommend,
+        rate_limit_recommend
+    )
+    redis_diagnostics = RedisRuntimeDiagnosticsImpl(
+        cache_diag,
+        session_diag,
+        coord_diag,
+        queue_diag,
+        rate_limit_diag
+    )
+    redis_stats_collector = RedisRuntimeStatisticsCollectorImpl(redis_aggregator)
+    redis_reporter = RedisRuntimeReporterImpl(redis_aggregator)
+    redis_validator = RedisRuntimeValidatorImpl()
+
+    redis_intelligence_service = RedisRuntimeIntelligenceServiceImpl(
+        redis_telem,
+        redis_aggregator,
+        redis_health_analyzer,
+        redis_capacity_analyzer,
+        redis_perf_analyzer,
+        redis_recommend_engine,
+        redis_diagnostics,
+        redis_stats_collector,
+        redis_reporter,
+        redis_validator
+    )
+
+    # Initialize all Redis Runtime Intelligence classes
+    redis_aggregator.initialize()
+    redis_telem.initialize()
+    redis_health_analyzer.initialize()
+    redis_capacity_analyzer.initialize()
+    redis_perf_analyzer.initialize()
+    redis_recommend_engine.initialize()
+    redis_diagnostics.initialize()
+    redis_stats_collector.initialize()
+    redis_reporter.initialize()
+    redis_validator.initialize()
+    redis_intelligence_service.initialize()
+
+    # Link Redis Runtime Intelligence into global telemetry collector
+    ri_telem.redis_telemetry = redis_intelligence_service
+
+    # Register Redis Runtime Intelligence in DI container
+    registry.register(RedisRuntimeTelemetry, redis_telem)
+    registry.register(RedisRuntimeAggregator, redis_aggregator)
+    registry.register(RedisRuntimeHealthAnalyzer, redis_health_analyzer)
+    registry.register(RedisCapacityAnalyzer, redis_capacity_analyzer)
+    registry.register(RedisPerformanceAnalyzer, redis_perf_analyzer)
+    registry.register(RedisRecommendationEngine, redis_recommend_engine)
+    registry.register(RedisRuntimeDiagnostics, redis_diagnostics)
+    registry.register(RedisRuntimeStatisticsCollector, redis_stats_collector)
+    registry.register(RedisRuntimeReporter, redis_reporter)
+    registry.register(RedisRuntimeValidator, redis_validator)
+    registry.register(RedisRuntimeIntelligenceService, redis_intelligence_service)
+
 
 
 

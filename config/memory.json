@@ -2997,5 +2997,19 @@
             "importance": 1,
             "additional": {}
         }
+    },
+    {
+        "memory_id": "297da8de-66bb-491a-91cf-df678e8c0773",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783245412.390222,
+        "updated_at": 1783245412.390222,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "d6b50913-6f85-42b6-b272-a4988a47be03",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
     }
 ]

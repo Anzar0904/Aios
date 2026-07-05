@@ -826,8 +826,8 @@ This section maps the essential runtime components of the operating system:
   * `POSTGRESQL_MIGRATION_VALIDATION.md`
 * **Current Status**: Production Validated.
 
-### 3.11 Redis Platform (Sprint 5 Milestones 1, 2, 3, 4 & 5)
-* **Purpose**: Implements high-performance runtime cache acceleration, session storage, distributed coordination, and job scheduling. Ephemeral states, dialog sessions, rate limits, lookup caches, lock leases, wait graphs, reentrancy states, priority job schedules, and backoff timers are stored in Redis to accelerate read/write performance. Zero-downtime grace fallback is achieved via Simulated FakeRedisClient, local in-memory session dictionaries, local fallback lock tables, and local queue buffers if Redis is offline.
+### 3.11 Redis Platform (Sprint 5 Milestones 1, 2, 3, 4, 5, 6 & 7)
+* **Purpose**: Implements high-performance runtime cache acceleration, session storage, distributed coordination, job scheduling, rate limiting, and runtime telemetry intelligence. Ephemeral states, dialog sessions, rate limits, lookup caches, lock leases, wait graphs, reentrancy states, priority job schedules, backoff timers, token/window quotas, and telemetry analytics are stored/processed in Redis to accelerate read/write performance. Zero-downtime grace fallback is achieved via Simulated FakeRedisClient, local in-memory session dictionaries, local fallback lock tables, local queue buffers, and 50% capacity degraded rate limiters if Redis is offline.
 * **Core Interfaces & Classes**:
   - `RedisRuntimeService` / `RedisRuntimeServiceImpl`: Coordinator orchestrating status, health, and reporting.
   - `RedisConnectionManager`: Directs connection pools and handles simulated fallback.
@@ -853,6 +853,8 @@ This section maps the essential runtime components of the operating system:
   - `QueueWorkerCoordinatorImpl`: Coordinates worker assignments and measures concurrency utilization.
   - `QueueRecoveryManagerImpl`: Restores and recovers pending or un-acknowledged jobs once Redis connection returns.
   - `QueueStatisticsCollectorImpl` / `QueueHealthMonitorImpl` / `QueueDiagnosticsImpl` / `QueueRecommendationEngineImpl`: Telemetry capturing scheduling latency, processing durations, warning indicators, and structural performance recommendations.
+  - `RedisRateLimitServiceImpl` / `RateLimitManagerImpl` / `TokenBucketManagerImpl` / `SlidingWindowManagerImpl` / `FixedWindowManagerImpl`: Enforces quota limits across 7 default categories, supporting Token Bucket, Sliding Window, and Fixed Window algorithms with 50% capacity local fallbacks.
+  - `RedisRuntimeTelemetryImpl` / `RedisRuntimeAggregatorImpl` / `RedisRuntimeHealthAnalyzerImpl` / `RedisCapacityAnalyzerImpl` / `RedisPerformanceAnalyzerImpl` / `RedisRecommendationEngineImpl` / `RedisRuntimeDiagnosticsImpl`: Observes, aggregates, scores, and forwards structured telemetry into the global Runtime Intelligence Platform.
 * **Current Status**: Completed.
 
 ---
