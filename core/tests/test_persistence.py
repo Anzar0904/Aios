@@ -1,28 +1,27 @@
 import queue
 import sqlite3
-import pytest
+from typing import List, Optional
 from unittest.mock import MagicMock
-from typing import List, Dict, Any, Optional
 
+import pytest
 from aios.services.persistence import (
+    DatabaseTransport,
     PersistenceConfigurationService,
     PersistenceRegistry,
-    RepositoryRegistry,
-    PersistenceService,
     PersistenceStatus,
-    DatabaseTransport,
-    TransportTransaction,
-    TransportResult,
+    RepositoryRegistry,
     TransportCapabilities,
     TransportHealth,
+    TransportResult,
+    TransportTransaction,
 )
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    PersistenceHealthMonitor,
     PersistenceDiagnostics,
-    PersistenceValidator,
+    PersistenceHealthMonitor,
     PersistenceReportGenerator,
+    PersistenceServiceImpl,
+    PersistenceValidator,
+    PostgreSQLProvider,
     WorkspaceRepositoryImpl,
 )
 
@@ -36,6 +35,7 @@ class SQLiteTransportForTests(DatabaseTransport):
         self.active_conn = None
         self.tx_depth = 0
         import uuid
+
         self._db_uri = f"file:persistence_test_db_{uuid.uuid4()}?mode=memory&cache=shared"
 
     def validate_configuration(self) -> List[str]:
@@ -69,7 +69,7 @@ class SQLiteTransportForTests(DatabaseTransport):
                         c = self.factory()
                         self.all_conns.append(c)
                         return c
-                    raise TimeoutError("Pool exhausted")
+                    raise TimeoutError("Pool exhausted") from None
 
             def release(self, c):
                 try:
@@ -95,7 +95,7 @@ class SQLiteTransportForTests(DatabaseTransport):
         if not self.pool:
             raise RuntimeError("Not connected")
         query = query.replace("%s", "?")
-        
+
         if self.active_conn:
             cursor = self.active_conn.cursor()
             cursor.execute(query, params or ())
@@ -103,7 +103,7 @@ class SQLiteTransportForTests(DatabaseTransport):
                 desc = cursor.description
                 if desc:
                     colnames = [d[0] for d in desc]
-                    rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+                    rows = [dict(zip(colnames, row, strict=False)) for row in cursor.fetchall()]
                 else:
                     rows = []
                 return TransportResult(rows=rows, rows_affected=cursor.rowcount)
@@ -120,7 +120,7 @@ class SQLiteTransportForTests(DatabaseTransport):
                 desc = cursor.description
                 if desc:
                     colnames = [d[0] for d in desc]
-                    rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+                    rows = [dict(zip(colnames, row, strict=False)) for row in cursor.fetchall()]
                 else:
                     rows = []
                 return TransportResult(rows=rows, rows_affected=cursor.rowcount)
@@ -146,12 +146,14 @@ class SQLiteTransportForTests(DatabaseTransport):
         class SqliteTx(TransportTransaction):
             def __init__(self, transport) -> None:
                 self.transport = transport
+
             def commit(self) -> None:
                 self.transport.tx_depth = max(0, self.transport.tx_depth - 1)
                 if self.transport.tx_depth == 0:
                     self.transport.active_conn.execute("COMMIT")
                     self.transport.pool.release(self.transport.active_conn)
                     self.transport.active_conn = None
+
             def rollback(self) -> None:
                 self.transport.tx_depth = max(0, self.transport.tx_depth - 1)
                 if self.transport.tx_depth == 0:
@@ -201,12 +203,18 @@ class MockDatabaseTransport(DatabaseTransport):
         class MockTx(TransportTransaction):
             def commit(self) -> None:
                 pass
+
             def rollback(self) -> None:
                 pass
+
         return MockTx()
 
     def health(self) -> TransportHealth:
-        return TransportHealth(is_alive=self.is_alive, latency_ms=5.0, error_message=None if self.is_alive else "Mock Offline")
+        return TransportHealth(
+            is_alive=self.is_alive,
+            latency_ms=5.0,
+            error_message=None if self.is_alive else "Mock Offline",
+        )
 
     def capabilities(self) -> TransportCapabilities:
         return TransportCapabilities(support_savepoints=True, support_json=True)
@@ -262,7 +270,9 @@ class RecordingTransport(DatabaseTransport):
         return TransportCapabilities(support_savepoints=True, support_json=True)
 
 
-def make_recording_provider(provider_name: str = "postgresql") -> tuple[PostgreSQLProvider, RecordingTransport]:
+def make_recording_provider(
+    provider_name: str = "postgresql",
+) -> tuple[PostgreSQLProvider, RecordingTransport]:
     config = PersistenceConfigurationService()
     config.provider_name = provider_name
     transport = RecordingTransport(config)
@@ -272,7 +282,9 @@ def make_recording_provider(provider_name: str = "postgresql") -> tuple[PostgreS
     return provider, transport
 
 
-def make_recording_service(provider_name: str = "postgresql") -> tuple[PersistenceServiceImpl, RecordingTransport]:
+def make_recording_service(
+    provider_name: str = "postgresql",
+) -> tuple[PersistenceServiceImpl, RecordingTransport]:
     config = PersistenceConfigurationService()
     config.provider_name = provider_name
     registry = PersistenceRegistry()
@@ -337,7 +349,10 @@ def test_migration_history_insert_uses_postgresql_placeholders():
 
     migration_insert = next(q for q in transport.queries if q.startswith("INSERT INTO _migrations"))
     assert "?" not in migration_insert
-    assert migration_insert == "INSERT INTO _migrations (version, name, applied_at) VALUES (%s, %s, %s)"
+    assert (
+        migration_insert
+        == "INSERT INTO _migrations (version, name, applied_at) VALUES (%s, %s, %s)"
+    )
 
 
 def test_repository_crud_query_uses_postgresql_placeholders():
@@ -387,8 +402,8 @@ def test_connection_lifecycle_and_pool():
 
     # Acquire connection
     conn1 = provider.transport.pool.acquire()
-    conn2 = provider.transport.pool.acquire()
-    conn3 = provider.transport.pool.acquire()
+    provider.transport.pool.acquire()
+    provider.transport.pool.acquire()
     assert len(provider.transport.pool.all_conns) == 3
 
     # Try to acquire another -> exhausted timeout
@@ -468,8 +483,12 @@ def test_migrations():
     mgr = provider.migration_manager
     assert mgr is not None
 
-    mgr.register_migration(1, "Create Users", "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
-    mgr.register_migration(2, "Create Logins", "CREATE TABLE logins (id INTEGER PRIMARY KEY, user_id INTEGER)")
+    mgr.register_migration(
+        1, "Create Users", "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)"
+    )
+    mgr.register_migration(
+        2, "Create Logins", "CREATE TABLE logins (id INTEGER PRIMARY KEY, user_id INTEGER)"
+    )
 
     assert len(mgr.validate_migrations()) == 0
 
@@ -506,7 +525,7 @@ def test_diagnostics():
     registry = PersistenceRegistry()
     p_repos = RepositoryRegistry()
     registry.register_provider("postgresql", PostgreSQLProvider)
-    
+
     service = PersistenceServiceImpl(config, registry, p_repos)
     diagnostics = PersistenceDiagnostics(config, service)
 
@@ -520,7 +539,7 @@ def test_diagnostics():
     mock_transport = MockDatabaseTransport(config)
     service.active_provider.transport = mock_transport
     service.active_provider.connect()
-    
+
     diag2 = diagnostics.run_diagnostics()
     assert diag2["status"] == "ok"
     assert len(diag2["issues"]) == 0
@@ -537,7 +556,7 @@ def test_health_monitor():
     registry = PersistenceRegistry()
     p_repos = RepositoryRegistry()
     registry.register_provider("postgresql", PostgreSQLProvider)
-    
+
     service = PersistenceServiceImpl(config, registry, p_repos)
     health_monitor = PersistenceHealthMonitor(service)
 
@@ -570,7 +589,7 @@ def test_report_generator(tmp_path):
     registry = PersistenceRegistry()
     p_repos = RepositoryRegistry()
     registry.register_provider("postgresql", PostgreSQLProvider)
-    
+
     service = PersistenceServiceImpl(config, registry, p_repos)
     service.initialize()
     mock_transport = MockDatabaseTransport(config)
@@ -647,4 +666,3 @@ def test_begin_transaction_nested_flag_defaults_to_false_without_tx_depth():
     assert result.status == PersistenceStatus.SUCCESS
     # The BEGIN was issued (not a SAVEPOINT), confirming non-nested path
     assert any(q == "BEGIN" for q in transport.queries)
-

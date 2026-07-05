@@ -8,24 +8,25 @@ instead of real semantic embeddings.
 Fix: default changed to "sentence_transformer"; initialize() now validates the
 configured provider is registered and raises ValueError if not.
 """
+
 import os
-import pytest
 from typing import Optional
 
+import pytest
 from aios.services.persistence import (
     EmbeddingRequest,
 )
 from aios.services.persistence_impl import (
-    EmbeddingServiceImpl,
     EmbeddingCacheImpl,
     EmbeddingEngineImpl,
+    EmbeddingServiceImpl,
     MockEmbeddingProvider,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_service_with_providers(*names: str) -> EmbeddingServiceImpl:
     """Return an EmbeddingServiceImpl pre-loaded with named stub providers."""
@@ -37,7 +38,9 @@ def make_service_with_providers(*names: str) -> EmbeddingServiceImpl:
     return service
 
 
-def make_engine(service: EmbeddingServiceImpl, provider_env: Optional[str] = None) -> EmbeddingEngineImpl:
+def make_engine(
+    service: EmbeddingServiceImpl, provider_env: Optional[str] = None
+) -> EmbeddingEngineImpl:
     """Construct EmbeddingEngineImpl with optional EMBEDDING_PROVIDER override."""
     cache = EmbeddingCacheImpl()
     cache.initialize()
@@ -57,6 +60,7 @@ def make_engine(service: EmbeddingServiceImpl, provider_env: Optional[str] = Non
 # ---------------------------------------------------------------------------
 # Regression: default must NOT be "mock"
 # ---------------------------------------------------------------------------
+
 
 def test_default_active_provider_is_not_mock():
     """When EMBEDDING_PROVIDER is unset the default must NOT be 'mock'."""
@@ -91,6 +95,7 @@ def test_default_active_provider_is_sentence_transformer():
 # Regression: production startup fails clearly on invalid provider
 # ---------------------------------------------------------------------------
 
+
 def test_initialize_raises_when_provider_not_registered():
     """initialize() must raise ValueError when the configured provider is missing."""
     service = make_service_with_providers("sentence_transformer", "mock")
@@ -117,6 +122,7 @@ def test_initialize_error_message_lists_available_providers():
 # ---------------------------------------------------------------------------
 # Production startup: real provider selected and works
 # ---------------------------------------------------------------------------
+
 
 def test_initialize_succeeds_with_sentence_transformer_registered():
     """Production default 'sentence_transformer' must pass initialize() validation."""
@@ -145,6 +151,7 @@ def test_embed_text_uses_sentence_transformer_by_default():
 # Explicit mock: tests/development can still request the mock provider
 # ---------------------------------------------------------------------------
 
+
 def test_mock_provider_works_when_explicitly_requested_via_env():
     """EMBEDDING_PROVIDER=mock must still work -- useful for tests."""
     service = make_service_with_providers("sentence_transformer", "mock")
@@ -170,6 +177,7 @@ def test_mock_provider_works_when_explicitly_requested_per_request():
 # ---------------------------------------------------------------------------
 # Edge case: initialize() with no registered providers skips validation
 # ---------------------------------------------------------------------------
+
 
 def test_initialize_skips_validation_when_no_providers_registered():
     """If no providers are registered yet, initialize() must not raise (deferred registration)."""
