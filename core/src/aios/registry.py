@@ -7,9 +7,11 @@ T = TypeVar("T", bound=ServiceLifecycle)
 
 class ServiceRegistry:
     """Manages core service registration and lookup."""
+    _global_registry = None
 
     def __init__(self) -> None:
         self._services: Dict[Type[ServiceLifecycle], ServiceLifecycle] = {}
+        ServiceRegistry._global_registry = self
 
     def register(self, service_type: Type[T], instance: T) -> None:
         """Registers a service instance under its interface class."""

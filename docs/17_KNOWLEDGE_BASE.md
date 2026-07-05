@@ -725,22 +725,93 @@ This section maps the essential runtime components of the operating system:
   * `SourceControlReportGenerator`: Outputs markdown status documents (`SOURCE_CONTROL_STATUS.md`, `REPOSITORY_REPORT.md`, `BRANCH_REPORT.md`, `PULL_REQUEST_REPORT.md`, `RELEASE_REPORT.md`, `WORKFLOW_REPORT.md`, `DIAGNOSTICS.md`) to `docs/source_control/`.
 * **Current Status**: Current (Sprint Complete).
 
-### 3.42 Persistence Platform Data Models
-* **Purpose**: Coordinates all database operations, manages connection pooling and health metrics, handles transaction savepoint rollbacks, executes database migrations, and exposes a repository registration system.
+### 3.42 Persistence & Workspace Platform Data Models
+* **Purpose**: Coordinates database connection pooling, transaction savepoint rollbacks, schema migrations, and exposes durable repositories mapping workspaces, sessions, projects, profiles, and configurations to SQL.
 * **Data Models & Components**:
-  * `PersistenceConfigurationService`: Loads database configuration properties (host, port, credentials, pool limits).
+  * `PersistenceConfigurationService`: Loads database configuration properties (host, port, credentials, pool limits, active policy).
   * `PersistenceRegistry`: Registry cataloging and resolving registered pluggable PersistenceProviders.
   * `RepositoryRegistry`: Centralized container registering data repositories.
   * `PersistenceService`: Core unified service orchestrating database operations.
-  * `PersistenceProvider`: Interface implemented by database drivers (e.g. `PostgreSQLProvider`).
-  * `ConnectionPool`: Pools connections and executes validation checks (`SELECT 1`).
-  * `TransactionManager`: Manages flat and nested transaction scopes (savepoints).
-  * `MigrationManager`: Discovers, validates, and executes version migrations.
-  * `PersistenceHealthMonitor`: Audits latency averages, P95 metrics, and pool utilization.
-  * `PersistenceDiagnostics`: Scans connections, credentials, and migration status to return remediation suggestions.
-  * `PersistenceValidator`: Validates configuration parameters.
-  * `PersistenceReportGenerator`: Compiles status and health information into markdown reports inside `docs/persistence/`.
-* **Current Status**: Current (Milestone 1 Complete).
+  * `PersistencePolicy`: Enum class declaring enforcement constraints (`STRICT`, `BEST_EFFORT`, `READ_ONLY`, `MANUAL_RECOVERY`).
+  * `PersistenceStatus`: Enum class tracking status outcomes (`SUCCESS`, `AWAITING_RUNTIME_CONFIGURATION`, `PERSISTENCE_UNAVAILABLE`, `READ_ONLY_MODE`, `VALIDATION_FAILED`, `TRANSACTION_ABORTED`, `TIMEOUT`, `RETRY_REQUIRED`, `PERMISSION_DENIED`, `UNKNOWN_FAILURE`).
+  * `PersistenceResult`: Wrapper returning execution metadata, message, diagnostics, latency, and payloads.
+  * `DatabaseTransport` & `PostgreSQLTransport`: Database driver abstraction isolating execution from concrete backends.
+  * `WorkspaceRepository` / `WorkspaceRepositoryImpl`: Maps workspace models to durable databases.
+  * `WorkspaceSessionRepository` / `WorkspaceSessionRepositoryImpl`: Handles session lifecycle durability.
+  * `ProjectRepository` / `ProjectRepositoryImpl`: Persists project metadata.
+  * `EngineeringProfileRepository` / `EngineeringProfileRepositoryImpl`: Durably maps engineering profiles, versions, and rollback histories.
+  * `ConfigurationRepository` / `ConfigurationRepositoryImpl`: Persists configuration profile settings.
+  * `PersistenceBootstrapper`: Coordinates database schema creation migrations on startup.
+  * `WorkspacePersistenceService`: Coordinates durable workspace environments.
+  * `WorkspacePersistenceValidator`: Checks configurations and metadata consistency.
+  * `WorkspacePersistenceTelemetry`: Records transaction rollbacks and latencies.
+  * `WorkspacePersistenceStatistics`: Compiles count stats from tables.
+  * `WorkspacePersistenceReportGenerator`: Compiles statuses, health, statistics, and registry maps to docs.
+  * `EngineeringTaskRepository` / `EngineeringTaskRepositoryImpl`: Maps engineering implementation tasks to persistent storage.
+  * `PlanningRepository` / `PlanningRepositoryImpl`: Persists software engineering plans and dependencies.
+  * `ApprovalRepository` / `ApprovalRepositoryImpl`: Handles active quality gating session durability.
+  * `ReviewRepository` / `ReviewRepositoryImpl`: Persists gated run review sessions and transition histories.
+  * `DocumentationMetadataRepository` / `DocumentationMetadataRepositoryImpl`: Persists document templates and artifact generation logs.
+  * `TestSessionRepository` / `TestSessionRepositoryImpl`: Handles test execution session tracking.
+  * `TestResultRepository` / `TestResultRepositoryImpl`: Handles detailed execution outcome status logs.
+  * `EngineeringMemoryService` / `EngineeringMemoryServiceImpl`: Orchestrator coordinating all engineering memory database operations.
+  * `EngineeringMemoryValidator`: Validates data structures for all engineering categories.
+  * `EngineeringMemoryTelemetry`: Records latency and transaction details for engineering queries.
+  * `EngineeringMemoryStatistics`: Aggregates active row metrics from engineering database tables.
+  * `EngineeringMemoryHealthMonitor`: Verifies health and schema versions for engineering tables.
+  * `EngineeringMemoryReportGenerator`: Compiles markdown diagnostic and statistics reports for engineering memory.
+  * `WorkflowRepository` / `WorkflowRepositoryImpl`: Persists workflow node configurations, edge routes, triggers, actions, conditions, variables, and runtime execution policies.
+  * `WorkflowExecutionRepository` / `WorkflowExecutionRepositoryImpl`: Persists execution session status, time duration metrics, success codes, and error summaries.
+  * `WorkflowMonitoringRepository` / `WorkflowMonitoringRepositoryImpl`: Persists latency statistics, health score ratings, degradations alerts, and retry frequency logs.
+  * `WorkflowOptimizationRepository` / `WorkflowOptimizationRepositoryImpl`: Persists optimization plans, recommended cache strategies, and complexity audit results.
+  * `WorkflowVersionRepository` / `WorkflowVersionRepositoryImpl`: Persists parent-child lineages, semver tags, compatibility ratings, and rollback pathways.
+  * `WorkflowTranslationRepository` / `WorkflowTranslationRepositoryImpl`: Persists compiler mappings, compilation warnings, node mappings, and IR version summaries.
+  * `WorkflowIntegrationRepository` / `WorkflowIntegrationRepositoryImpl`: Persists server URLs, connection profile health indicators, and remote discovery capabilities.
+  * `AutomationTelemetryRepository` / `AutomationTelemetryRepositoryImpl`: Persists average and p95 latencies and failure categories.
+  * `AutomationStatisticsRepository` / `AutomationStatisticsRepositoryImpl`: Persists counts and failure ratios across all tables.
+  * `AutomationPersistenceService` / `AutomationPersistenceServiceImpl`: Orchestrator coordinating all automation persistence database operations.
+  * `AutomationPersistenceValidator`: Validates data structures for all automation categories.
+  * `AutomationPersistenceTelemetry`: Records latency and transaction details for automation queries.
+  * `AutomationPersistenceStatistics`: Aggregates active row metrics from automation database tables.
+  * `AutomationPersistenceHealthMonitor`: Verifies health and schema versions for automation tables.
+  * `AutomationPersistenceReportGenerator`: Compiles markdown diagnostic and statistics reports for automation persistence.
+  * `AIProviderRepository` / `AIProviderRepositoryImpl`: Persists registered provider profiles (version, priority, status, costs, etc.).
+  * `ProviderCapabilityRepository` / `ProviderCapabilityRepositoryImpl`: Persists provider capabilities maps.
+  * `ProviderHealthRepository` / `ProviderHealthRepositoryImpl`: Persists provider availability indicators and health states.
+  * `ProviderTelemetryRepository` / `ProviderTelemetryRepositoryImpl`: Persists request latency performance profiles.
+  * `ProviderStatisticsRepository` / `ProviderStatisticsRepositoryImpl`: Persists query successes and failures totals.
+  * `ProviderQuotaRepository` / `ProviderQuotaRepositoryImpl`: Persists budget quota limits and exhaustion thresholds.
+  * `ProviderRoutingRepository` / `ProviderRoutingRepositoryImpl`: Persists selector model routing choices.
+  * `ProviderSessionRepository` / `ProviderSessionRepositoryImpl`: Persists runtime session context configurations.
+  * `ProviderCheckpointRepository` / `ProviderCheckpointRepositoryImpl`: Persists serializable execution checkpoints for failover switches.
+  * `ProviderFailoverRepository` / `ProviderFailoverRepositoryImpl`: Persists failover event switches.
+  * `AIUsageStatisticsRepository` / `AIUsageStatisticsRepositoryImpl`: Persists daily and monthly cumulative token trackers.
+  * `AIMemoryRepository` / `AIMemoryRepositoryImpl`: Persists episodic facts and long term knowledge bases.
+  * `AIMemoryPersistenceService` / `AIMemoryPersistenceServiceImpl`: Coordinating orchestrator for AI Memory Persistence.
+  * `AIMemoryValidator`: Validates incoming data profiles for AI provider parameters.
+  * `AIMemoryTelemetry`: Monitors validation and transaction queries latencies.
+  * `AIMemoryStatistics`: Compiles telemetry and status metrics.
+  * `AIMemoryHealthMonitor`: Evaluates current provider availability ratings.
+  * `AIMemoryReportGenerator`: Produces operational audit logs.
+* **Current Status**: Completed.
+
+### 3.9 Runtime Intelligence Platform (Sprint 4 Milestone 6)
+* **Purpose**: Self-monitoring and unified observability consumer for the Persistence Platform, recording repository latencies, execution throughputs, transaction depths, connection pool capacities, and migration history.
+* **Core Interfaces & Classes**:
+  * `RuntimeIntelligenceService` / `RuntimeIntelligenceServiceImpl`: Orchestrates the self-monitoring platform.
+  * `RuntimeHealthMonitor`: Checks live database connections and availability percentages.
+  * `RuntimeTelemetryCollector`: Gathers latencies, connection statuses, failures, and retries.
+  * `RuntimeStatisticsEngine`: Tracks transaction counts, policies used, and cache hit/miss/read-through/write-through metrics.
+  * `RuntimeDiagnosticsEngine`: Classifies runtime errors (`INFO`, `WARNING`, `ERROR`, `CRITICAL`) and maps them to remediation logs.
+  * `RuntimeCapacityAnalyzer`: Evaluates connection pool starvation risks.
+  * `RuntimeRecommendationEngine`: Automatically logs database tuning warnings based on observed metrics (Performance, Reliability, Capacity, Maintenance).
+  * `RuntimeQueryProfiler`: Tracks queries executing slower than the 100ms threshold.
+  * `RuntimeTransactionProfiler`: Profiles transaction durations and nesting levels (`tx_depth`).
+  * `RuntimeRepositoryProfiler`: Profiles table access rates and averages repository latencies.
+  * `RuntimeLifecycleMonitor`: Tracks boot durations, database migration history, and provider hot swaps.
+  * `RuntimeCorrelationManager`: Injects a thread-local correlation context (`CorrelationID`, `WorkspaceID`, `ProjectID`, `Repository`, `Operation`) without modifying Repository APIs.
+  * `RuntimeReportGenerator`: Compiles operational dashboards to Markdown status reports in `docs/persistence/`.
+* **Current Status**: Completed.
 
 ---
 
