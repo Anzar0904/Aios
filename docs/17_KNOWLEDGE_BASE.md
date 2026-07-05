@@ -896,6 +896,23 @@ This section maps the essential runtime components of the operating system:
   - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
   - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
+### 3.12 Qdrant Platform (Sprint 6 Milestone 1)
+* **Purpose**: Implements the semantic memory layer and vector search engine using Qdrant. Manages embeddings generation, HNSW collection indexing, metadata payload pre-filtering (by workspace, project, category, etc.), semantic similarity queries, and telemetry diagnostics. Fallback retrieval degrades to PostgreSQL lexical searches if Qdrant is offline.
+* **Core Proposed Classes**:
+  - `QdrantConfigurationService`: Stores host, ports, dimensions, and distance metrics.
+  - `QdrantConnectionManager`: Manages GRPC/HTTP clients connection pool.
+  - `QdrantTransportImpl`: Executes low-level command endpoints and tracks query latency.
+  - `QdrantProviderImpl`: Implements collection CRUD, upsert, and search operations.
+  - `QdrantRuntimeServiceImpl`: Integrates health checks, stats aggregation, diagnostics, and advice recommendations.
+* **Current Status**: Architecture Discovery Completed.
+* **Planning Reports**:
+  - [QDRANT_PLATFORM_DISCOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_DISCOVERY.md) - Vector memory engine analysis and collections strategy
+  - [QDRANT_PLATFORM_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_ARCHITECTURE.md) - Components design diagram and pipeline flows
+  - [QDRANT_PLATFORM_STATUS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_STATUS.md) - ADR records and roadmap schedule
+  - [QDRANT_PLATFORM_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_HEALTH.md) - Health indicators and failure paths
+  - [QDRANT_PLATFORM_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_STATISTICS.md) - Statistics collectors and telemetry design
+  - [QDRANT_PLATFORM_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_DIAGNOSTICS.md) - Diagnostics alert parser and remediations list
+
 ---
 
 ## 4. Planned & Future Subsystems
