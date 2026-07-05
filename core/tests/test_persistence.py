@@ -9,6 +9,7 @@ from aios.services.persistence import (
     PersistenceRegistry,
     RepositoryRegistry,
     PersistenceService,
+    PersistenceStatus,
     DatabaseTransport,
     TransportTransaction,
     TransportResult,
@@ -22,6 +23,7 @@ from aios.services.persistence_impl import (
     PersistenceDiagnostics,
     PersistenceValidator,
     PersistenceReportGenerator,
+    WorkspaceRepositoryImpl,
 )
 
 
@@ -92,6 +94,7 @@ class SQLiteTransportForTests(DatabaseTransport):
     def execute(self, query: str, params: Optional[tuple] = None) -> TransportResult:
         if not self.pool:
             raise RuntimeError("Not connected")
+        query = query.replace("%s", "?")
         
         if self.active_conn:
             cursor = self.active_conn.cursor()
@@ -207,6 +210,158 @@ class MockDatabaseTransport(DatabaseTransport):
 
     def capabilities(self) -> TransportCapabilities:
         return TransportCapabilities(support_savepoints=True, support_json=True)
+
+
+class RecordingTransport(DatabaseTransport):
+    """Records queries sent by the provider without requiring a database driver."""
+
+    def __init__(self, config: PersistenceConfigurationService) -> None:
+        super().__init__(config)
+        self.queries: List[str] = []
+        self.params: List[tuple] = []
+        self.connected = False
+
+    def validate_configuration(self) -> List[str]:
+        return []
+
+    def connect(self) -> None:
+        self.connected = True
+
+    def disconnect(self) -> None:
+        self.connected = False
+
+    def execute(self, query: str, params: Optional[tuple] = None) -> TransportResult:
+        self.queries.append(query)
+        self.params.append(params or ())
+        if query == "SELECT version FROM _migrations ORDER BY version":
+            return TransportResult(rows=[])
+        return TransportResult(rows=[], rows_affected=1)
+
+    def execute_many(self, query: str, params_list: List[tuple]) -> List[TransportResult]:
+        return [self.execute(query, params) for params in params_list]
+
+    def begin_transaction(self) -> TransportTransaction:
+        self.execute("BEGIN")
+
+        class RecordingTransaction(TransportTransaction):
+            def __init__(self, transport: RecordingTransport) -> None:
+                self.transport = transport
+
+            def commit(self) -> None:
+                self.transport.execute("COMMIT")
+
+            def rollback(self) -> None:
+                self.transport.execute("ROLLBACK")
+
+        return RecordingTransaction(self)
+
+    def health(self) -> TransportHealth:
+        return TransportHealth(is_alive=True, latency_ms=1.0)
+
+    def capabilities(self) -> TransportCapabilities:
+        return TransportCapabilities(support_savepoints=True, support_json=True)
+
+
+def make_recording_provider(provider_name: str = "postgresql") -> tuple[PostgreSQLProvider, RecordingTransport]:
+    config = PersistenceConfigurationService()
+    config.provider_name = provider_name
+    transport = RecordingTransport(config)
+    provider = PostgreSQLProvider(transport=transport)
+    provider.initialize(config)
+    provider.connect()
+    return provider, transport
+
+
+def make_recording_service(provider_name: str = "postgresql") -> tuple[PersistenceServiceImpl, RecordingTransport]:
+    config = PersistenceConfigurationService()
+    config.provider_name = provider_name
+    registry = PersistenceRegistry()
+    registry.register_provider(provider_name, PostgreSQLProvider)
+    repos = RepositoryRegistry()
+    transport = RecordingTransport(config)
+    provider = PostgreSQLProvider(transport=transport)
+    provider.initialize(config)
+    provider.connect()
+    service = PersistenceServiceImpl(config, registry, repos)
+    service.active_provider = provider
+    return service, transport
+
+
+def test_sqlite_placeholder_conversion_is_unchanged():
+    provider, transport = make_recording_provider("sqlite")
+
+    provider.execute("SELECT * FROM workspaces WHERE id = ?", ("w1",))
+
+    assert transport.queries[-1] == "SELECT * FROM workspaces WHERE id = ?"
+
+
+def test_postgresql_placeholder_conversion():
+    provider, transport = make_recording_provider("postgresql")
+
+    provider.execute("SELECT * FROM workspaces WHERE id = ?", ("w1",))
+
+    assert transport.queries[-1] == "SELECT * FROM workspaces WHERE id = %s"
+
+
+def test_postgresql_multiple_placeholder_conversion():
+    provider, transport = make_recording_provider("postgresql")
+
+    provider.execute(
+        "SELECT * FROM workspaces WHERE id = ? AND status = ? AND version = ?",
+        ("w1", "active", "v1"),
+    )
+
+    assert transport.queries[-1] == (
+        "SELECT * FROM workspaces WHERE id = %s AND status = %s AND version = %s"
+    )
+
+
+def test_postgresql_query_without_parameters_is_unchanged():
+    provider, transport = make_recording_provider("postgresql")
+
+    provider.execute("SELECT 1")
+
+    assert transport.queries[-1] == "SELECT 1"
+
+
+def test_migration_history_insert_uses_postgresql_placeholders():
+    provider, transport = make_recording_provider("postgresql")
+    assert provider.migration_manager is not None
+
+    provider.migration_manager.register_migration(
+        1,
+        "Create Example",
+        "CREATE TABLE example (id TEXT PRIMARY KEY)",
+    )
+    provider.migration_manager.execute_migrations()
+
+    migration_insert = next(q for q in transport.queries if q.startswith("INSERT INTO _migrations"))
+    assert "?" not in migration_insert
+    assert migration_insert == "INSERT INTO _migrations (version, name, applied_at) VALUES (%s, %s, %s)"
+
+
+def test_repository_crud_query_uses_postgresql_placeholders():
+    service, transport = make_recording_service("postgresql")
+    repo = WorkspaceRepositoryImpl(service)
+
+    result = repo.save(
+        {
+            "id": "w1",
+            "name": "Workspace",
+            "metadata": {},
+            "state": "active",
+            "created_at": 1.0,
+            "last_accessed": 2.0,
+            "version": "v1",
+            "status": "ready",
+            "health": "ok",
+        }
+    )
+
+    workspace_insert = next(q for q in transport.queries if q.startswith("INSERT INTO workspaces"))
+    assert result.status == PersistenceStatus.SUCCESS
+    assert "?" not in workspace_insert
+    assert workspace_insert.count("%s") == 9
 
 
 def test_configuration():
@@ -428,3 +583,68 @@ def test_report_generator(tmp_path):
 
     report_gen.generate_reports()
     assert (tmp_path / "docs" / "persistence" / "PERSISTENCE_STATUS.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# Regression tests: tx_depth AttributeError on PostgreSQLTransport
+# ---------------------------------------------------------------------------
+# PostgreSQLTransport (and any future transport) does NOT define tx_depth.
+# PersistenceServiceImpl.begin_transaction() used to access transport.tx_depth
+# directly, raising AttributeError.  The fix uses getattr(..., 0) instead.
+# RecordingTransport deliberately omits tx_depth to replicate the production
+# scenario.
+
+
+def test_begin_transaction_does_not_raise_when_transport_lacks_tx_depth():
+    """begin_transaction() must not AttributeError on a transport with no tx_depth."""
+    service, transport = make_recording_service("postgresql")
+    assert not hasattr(transport, "tx_depth"), "Precondition: transport has no tx_depth"
+
+    result = service.begin_transaction()
+
+    assert result.status == PersistenceStatus.SUCCESS
+
+
+def test_commit_transaction_after_begin_does_not_raise():
+    """A transaction started on a tx_depth-less transport can be committed."""
+    service, transport = make_recording_service("postgresql")
+
+    service.begin_transaction()
+    result = service.commit_transaction()
+
+    assert result.status == PersistenceStatus.SUCCESS
+
+
+def test_rollback_transaction_after_begin_does_not_raise():
+    """A transaction started on a tx_depth-less transport can be rolled back."""
+    service, transport = make_recording_service("postgresql")
+
+    service.begin_transaction()
+    result = service.rollback_transaction()
+
+    assert result.status == PersistenceStatus.SUCCESS
+
+
+def test_nested_begin_transaction_does_not_raise_when_transport_lacks_tx_depth():
+    """Nested begin_transaction() must not AttributeError on the second call."""
+    service, transport = make_recording_service("postgresql")
+    assert not hasattr(transport, "tx_depth")
+
+    result_outer = service.begin_transaction()
+    result_inner = service.begin_transaction()  # savepoint path
+
+    assert result_outer.status == PersistenceStatus.SUCCESS
+    assert result_inner.status == PersistenceStatus.SUCCESS
+
+
+def test_begin_transaction_nested_flag_defaults_to_false_without_tx_depth():
+    """When transport has no tx_depth, nested should default to False (not nested)."""
+    service, transport = make_recording_service("postgresql")
+
+    # No prior transaction → tx_depth effectively 0 → not nested
+    result = service.begin_transaction()
+
+    assert result.status == PersistenceStatus.SUCCESS
+    # The BEGIN was issued (not a SAVEPOINT), confirming non-nested path
+    assert any(q == "BEGIN" for q in transport.queries)
+

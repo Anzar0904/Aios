@@ -329,7 +329,7 @@ class PostgreSQLProvider(PersistenceProvider):
     def execute(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
         if not self.transport:
             raise RuntimeError("Database transport not initialized")
-        q = format_query(query, self.transport)
+        q = format_query(query, self.config.provider_name if self.config else "")
         res = self.transport.execute(q, params)
         return res.rows
 
@@ -538,7 +538,7 @@ class PersistenceServiceImpl(PersistenceService):
         ri = getattr(self, "ri_service", None)
         nested = False
         if self.active_provider and self.active_provider.transport:
-            nested = self.active_provider.transport.tx_depth > 0
+            nested = getattr(self.active_provider.transport, "tx_depth", 0) > 0
 
         try:
             if self.active_provider:
@@ -15669,7 +15669,6 @@ class SemanticMemoryManagerImpl(SemanticMemoryManager):
             "storage_utilisation_disk_bytes": total_disk_bytes,
             "context_quality_score": 9.5 if self.retrieval_requests > 0 else 0.0
         }
-
 
 
 
