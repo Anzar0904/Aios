@@ -367,3 +367,109 @@ def test_repository_operations():
     assert repo.delete(memory_id) is True
     assert repo.count() == 0
 
+
+def test_embedding_engine_and_semantic_search():
+    from aios.services.persistence import EmbeddingEngine, SemanticSearchService, EmbeddingRequest, SemanticQuery
+    from aios.services.persistence_impl import SentenceTransformerProvider
+    import time
+
+    config_path = Path("aios.toml")
+    kernel = bootstrap_kernel(config_path)
+    registry = kernel.registry
+
+    engine = registry.get(EmbeddingEngine)
+    search_service = registry.get(SemanticSearchService)
+
+    assert engine is not None
+    assert search_service is not None
+
+    # Test SentenceTransformer CPU fallback provider
+    st_prov = SentenceTransformerProvider()
+    st_prov.initialize()
+    meta = st_prov.get_metadata()
+    assert meta.dimensions == 384
+    vec = st_prov.embed_text("test content")
+    assert len(vec) == 384
+
+    # Test EmbeddingEngine pipeline
+    req = EmbeddingRequest(text="Query semantic search text", provider_name="mock")
+    res = engine.embed_text(req)
+    assert res.error is None
+    assert len(res.vector) == 1532 or len(res.vector) == 1536 # matches mock provider dimensions
+
+    # Test cache logic (duplicate vector prevention)
+    res2 = engine.embed_text(req)
+    # Both returns should match
+    assert res.vector == res2.vector
+
+    # Prepare repository and collection
+    from aios.services.persistence import EngineeringMemoryRepository
+    repo = registry.get(EngineeringMemoryRepository)
+    repo.clear()
+
+    # Save point with vector
+    memory_id = "test-query-id-1"
+    repo.save(memory_id, res.vector, {
+        "text": "Query semantic search text",
+        "workspace_id": "ws-777",
+        "project_id": "proj-888"
+    })
+
+    # Test SemanticSearch query
+    query = SemanticQuery(
+        query_text="Query semantic search text",
+        collection_name="engineering_memory",
+        workspace_id="ws-777",
+        limit=5
+    )
+
+    search_res = search_service.search(query)
+    assert len(search_res) == 1
+    import uuid
+    expected_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
+    assert search_res[0].id == expected_uuid
+    assert search_res[0].text == "Query semantic search text"
+
+    # Test cross-collection search
+    cross_res = search_service.cross_collection_search(query, collections=["engineering_memory"])
+    assert len(cross_res) == 1
+    assert cross_res[0].id == expected_uuid
+
+    # Test Failure Recovery (Simulating Qdrant write block and retries)
+    from aios.services.persistence import PersistenceService
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from test_persistence import SQLiteTransportForTests
+    db = registry.get(PersistenceService)
+    
+    # Inject SQLite test transport to bypass configuration block
+    test_transport = SQLiteTransportForTests(db.config)
+    db.active_provider.transport = test_transport
+    db.on_ready()
+    
+    # Explicitly create tables on the SQLite test instance
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS pending_embedding_jobs ("
+        "  id TEXT PRIMARY KEY, text TEXT, provider_name TEXT, collection_name TEXT, "
+        "  status TEXT, attempts INTEGER, last_error TEXT, created_at REAL"
+        ")"
+    )
+    
+    # Save a fake pending embedding job
+    job_id = "pending-job-uuid-1"
+    db.execute(
+        "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at) VALUES (?, ?, ?, ?, 'PENDING', 0, ?)",
+        (job_id, "pending text message", "mock", "engineering_memory", time.time())
+    )
+    
+    # Let the retry worker process it
+    engine.run_retry_cycle()
+    
+    # Check that job has been processed and cleared
+    rows = db.execute("SELECT id FROM pending_embedding_jobs WHERE id = ?", (job_id,))
+    assert len(rows) == 0
+
+    # Clean up
+    repo.clear()
+
+

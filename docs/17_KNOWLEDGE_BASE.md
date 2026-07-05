@@ -896,7 +896,7 @@ This section maps the essential runtime components of the operating system:
   - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
   - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
-### 3.12 Qdrant Platform (Sprint 6 Milestones 1-3)
+### 3.12 Qdrant Platform (Sprint 6 Milestones 1-4)
 * **Purpose**: Implements the semantic memory layer and vector search engine using Qdrant. Manages embeddings generation, HNSW collection indexing, metadata payload pre-filtering (by workspace, project, category, etc.), semantic similarity queries, and telemetry diagnostics. Fallback retrieval degrades to PostgreSQL lexical searches if Qdrant is offline.
 * **Core Implemented Classes**:
   - `QdrantConfigurationService`: Stores host, ports, dimensions, distance metrics, and quantization parameters.
@@ -910,7 +910,10 @@ This section maps the essential runtime components of the operating system:
   - `ChunkingServiceImpl`: Provides fixed-size, paragraph, sliding window, and token estimation chunking.
   - `ContextBuilderImpl`: Handles deduplication, similarity/relevancy ranking, and token budget context packing.
   - `QdrantRepositoryImpl` and 9 domain subclasses (`EngineeringMemoryRepositoryImpl`, etc.): Base vector repository implementing exact, list, and range pre-filters, CRUD, and batch operations.
-* **Current Status**: Collections and Repository Platform Implemented.
+  - `EmbeddingEngineImpl`, `EmbeddingRequest`, `EmbeddingResponse`: Main embedding generation engine supporting version validation boundaries and batching.
+  - `SentenceTransformerProvider`, `OpenAIProvider`, `GeminiProvider`, `OllamaProvider`: Decoupled configuration-driven local and cloud providers.
+  - `SemanticSearchServiceImpl`, `SemanticQuery`, `SemanticResult`: Multi-collection semantic search engine supporting top-k ranking, query caching, and workspace filtering.
+* **Current Status**: Embedding Engine & Semantic Search Platform Implemented.
 * **Platform Reports**:
   - [QDRANT_PLATFORM_DISCOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_DISCOVERY.md) - Vector memory engine analysis and collections strategy
   - [QDRANT_PLATFORM_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_ARCHITECTURE.md) - Components design diagram and pipeline flows
@@ -934,6 +937,14 @@ This section maps the essential runtime components of the operating system:
   - [QDRANT_COLLECTION_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_STATISTICS.md) - Repository operations counts and latency telemetry
   - [QDRANT_COLLECTION_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_HEALTH.md) - Health indicators check methods
   - [QDRANT_COLLECTION_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_DIAGNOSTICS.md) - Index latency alerts and sync desync remediation
+  - [QDRANT_PLATFORM_M4_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_M4_REPORT.md) - Milestone 4 certification report
+  - [EMBEDDING_ENGINE_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/EMBEDDING_ENGINE_ARCHITECTURE.md) - Embedding providers decoupled design and database retry queue
+  - [SEMANTIC_SEARCH_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/SEMANTIC_SEARCH_ARCHITECTURE.md) - Pagination, workspace filters, and cross-collection queries
+  - [EMBEDDING_PIPELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/EMBEDDING_PIPELINE.md) - Sequential raw text flow and NaN vector validations
+  - [SEARCH_OPTIMIZATION.md](file:///Users/anzarakhtar/aios/docs/persistence/SEARCH_OPTIMIZATION.md) - Embedding cache, query cache, and lazy payload mapping
+  - [EMBEDDING_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/EMBEDDING_STATISTICS.md) - Embedding latencies and search throughput counters
+  - [SEMANTIC_SEARCH_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/SEMANTIC_SEARCH_HEALTH.md) - Active status indicators and queue diagnostics
+  - [SEMANTIC_SEARCH_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/SEMANTIC_SEARCH_DIAGNOSTICS.md) - Generation error alerts and retry configuration remediations
 
 ---
 

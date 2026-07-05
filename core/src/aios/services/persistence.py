@@ -2373,6 +2373,100 @@ class ContextBuilder(ServiceLifecycle, abc.ABC):
         pass
 
 
+@dataclass
+class EmbeddingRequest:
+    text: str
+    provider_name: Optional[str] = None
+    collection_name: Optional[str] = None
+
+
+@dataclass
+class EmbeddingResponse:
+    text: str
+    vector: List[float]
+    version: str
+    provider_name: str
+    error: Optional[str] = None
+
+
+@dataclass
+class EmbeddingJob:
+    job_id: str
+    request: EmbeddingRequest
+    status: str
+    attempts: int = 0
+    last_error: Optional[str] = None
+
+
+class EmbeddingEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def embed_text(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        pass
+
+    @abc.abstractmethod
+    def embed_batch(self, requests: List[EmbeddingRequest]) -> List[EmbeddingResponse]:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_health(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+
+@dataclass
+class SemanticQuery:
+    query_text: str
+    collection_name: str
+    filter_query: Optional[Dict[str, Any]] = None
+    limit: int = 5
+    score_threshold: Optional[float] = None
+    workspace_id: Optional[str] = None
+    project_id: Optional[str] = None
+    offset: int = 0
+
+
+@dataclass
+class SemanticResult:
+    id: str
+    text: str
+    score: float
+    metadata: Dict[str, Any]
+    source_collection: str
+
+
+class SemanticSearchService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def search(self, query: SemanticQuery) -> List[SemanticResult]:
+        pass
+
+    @abc.abstractmethod
+    def batch_search(self, queries: List[SemanticQuery]) -> List[List[SemanticResult]]:
+        pass
+
+    @abc.abstractmethod
+    def cross_collection_search(self, query: SemanticQuery, collections: List[str]) -> List[SemanticResult]:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_health(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+
 class VectorMemoryRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:

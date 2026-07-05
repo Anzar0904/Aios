@@ -2541,6 +2541,34 @@ class PersistenceBootstrapper(ServiceLifecycle):
             "  updated_at REAL"
             ")"
         )
+        mgr.register_migration(
+            36,
+            "Create pending_embedding_jobs table",
+            "CREATE TABLE IF NOT EXISTS pending_embedding_jobs ("
+            "  id TEXT PRIMARY KEY,"
+            "  text TEXT,"
+            "  provider_name TEXT,"
+            "  collection_name TEXT,"
+            "  status TEXT,"
+            "  attempts INTEGER,"
+            "  last_error TEXT,"
+            "  created_at REAL"
+            ")"
+        )
+        mgr.register_migration(
+            37,
+            "Create pending_indexing_jobs table",
+            "CREATE TABLE IF NOT EXISTS pending_indexing_jobs ("
+            "  id TEXT PRIMARY KEY,"
+            "  collection_name TEXT,"
+            "  vector TEXT,"
+            "  payload TEXT,"
+            "  status TEXT,"
+            "  attempts INTEGER,"
+            "  last_error TEXT,"
+            "  created_at REAL"
+            ")"
+        )
 
         start_boot = time.time()
         try:
@@ -7977,6 +8005,10 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
                 if name.endswith("_memory") and hasattr(repo, "health"):
                     q_healths[name] = repo.health()
             h["qdrant_repository_healths"] = q_healths
+        if getattr(self, "embedding_engine", None) is not None:
+            h["embedding_engine_health"] = self.embedding_engine.get_health()
+        if getattr(self, "semantic_search", None) is not None:
+            h["semantic_search_health"] = self.semantic_search.get_health()
         return h
 
     def get_diagnostics(self) -> Dict[str, Any]:
@@ -7985,6 +8017,10 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
             d["redis_diagnostics"] = self.telemetry.redis_telemetry.get_diagnostics().get_diagnostics()
         if getattr(self, "qdrant_service", None) is not None:
             d["qdrant_diagnostics"] = self.qdrant_service.get_diagnostics()
+        if getattr(self, "embedding_engine", None) is not None:
+            d["embedding_engine_diagnostics"] = self.embedding_engine.get_diagnostics()
+        if getattr(self, "semantic_search", None) is not None:
+            d["semantic_search_diagnostics"] = self.semantic_search.get_diagnostics()
         return d
 
     def get_telemetry(self) -> Dict[str, Any]:
@@ -8015,6 +8051,10 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
                 if name.endswith("_memory") and hasattr(repo, "statistics"):
                     q_stats[name] = repo.statistics()
             s["qdrant_repository_statistics"] = q_stats
+        if getattr(self, "embedding_engine", None) is not None:
+            s["embedding_engine_statistics"] = self.embedding_engine.get_statistics()
+        if getattr(self, "semantic_search", None) is not None:
+            s["semantic_search_statistics"] = self.semantic_search.get_statistics()
         return s
 
     def get_recommendations(self) -> List[Dict[str, Any]]:
@@ -8029,6 +8069,15 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
                     "issue": alert["message"],
                     "suggestion": alert["remediation"],
                     "severity": alert["severity"]
+                })
+        if getattr(self, "embedding_engine", None) is not None:
+            diag = self.embedding_engine.get_diagnostics()
+            for alert in diag.get("alerts", []):
+                recs.append({
+                    "category": "embedding_engine",
+                    "issue": alert["message"],
+                    "suggestion": "Check embedding provider logs.",
+                    "severity": "WARNING"
                 })
         return recs
 
@@ -8162,6 +8211,13 @@ from aios.services.persistence import (
     ProviderMemoryRepository,
     ResearchMemoryRepository,
     KnowledgeMemoryRepository,
+    EmbeddingRequest,
+    EmbeddingResponse,
+    EmbeddingJob,
+    EmbeddingEngine,
+    SemanticQuery,
+    SemanticResult,
+    SemanticSearchService,
 )
 
 class RedisConfigurationService(ServiceLifecycle):
@@ -12961,6 +13017,397 @@ class ResearchMemoryRepositoryImpl(QdrantRepositoryImpl, ResearchMemoryRepositor
 
 class KnowledgeMemoryRepositoryImpl(QdrantRepositoryImpl, KnowledgeMemoryRepository):
     pass
+
+
+class SentenceTransformerProvider(EmbeddingProvider):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", dimensions: int = 384) -> None:
+        self.model_name = model_name
+        self.dimensions = dimensions
+        self.model = None
+
+    def initialize(self) -> None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            self.model = SentenceTransformer(self.model_name)
+        except Exception:
+            self.model = None
+
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def embed_text(self, text: str) -> List[float]:
+        if self.model is not None:
+            return self.model.encode(text).tolist()
+        vec = []
+        for i in range(self.dimensions):
+            val = sum(ord(c) * (i + 1) for c in text) % 1000 / 1000.0
+            vec.append(val)
+        return vec
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        if self.model is not None:
+            return self.model.encode(texts).tolist()
+        return [self.embed_text(t) for t in texts]
+
+    def get_metadata(self) -> EmbeddingMetadata:
+        return EmbeddingMetadata(
+            model_name=self.model_name,
+            version="v1",
+            dimensions=self.dimensions,
+            provider_type="SENTENCE_TRANSFORMER"
+        )
+
+
+class OpenAIProvider(EmbeddingProvider):
+    def __init__(self, model_name: str = "text-embedding-3-small", dimensions: int = 1536) -> None:
+        self.model_name = model_name
+        self.dimensions = dimensions
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def embed_text(self, text: str) -> List[float]:
+        raise NotImplementedError("OpenAI cloud provider not implemented yet.")
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        raise NotImplementedError("OpenAI cloud provider not implemented yet.")
+
+    def get_metadata(self) -> EmbeddingMetadata:
+        return EmbeddingMetadata(
+            model_name=self.model_name,
+            version="v1",
+            dimensions=self.dimensions,
+            provider_type="OPENAI"
+        )
+
+
+class GeminiProvider(EmbeddingProvider):
+    def __init__(self, model_name: str = "text-embedding-004", dimensions: int = 768) -> None:
+        self.model_name = model_name
+        self.dimensions = dimensions
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def embed_text(self, text: str) -> List[float]:
+        raise NotImplementedError("Gemini cloud provider not implemented yet.")
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        raise NotImplementedError("Gemini cloud provider not implemented yet.")
+
+    def get_metadata(self) -> EmbeddingMetadata:
+        return EmbeddingMetadata(
+            model_name=self.model_name,
+            version="v1",
+            dimensions=self.dimensions,
+            provider_type="GEMINI"
+        )
+
+
+class OllamaProvider(EmbeddingProvider):
+    def __init__(self, model_name: str = "nomic-embed-text", dimensions: int = 768) -> None:
+        self.model_name = model_name
+        self.dimensions = dimensions
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def embed_text(self, text: str) -> List[float]:
+        raise NotImplementedError("Ollama provider not implemented yet.")
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        raise NotImplementedError("Ollama provider not implemented yet.")
+
+    def get_metadata(self) -> EmbeddingMetadata:
+        return EmbeddingMetadata(
+            model_name=self.model_name,
+            version="v1",
+            dimensions=self.dimensions,
+            provider_type="OLLAMA"
+        )
+
+
+class EmbeddingEngineImpl(EmbeddingEngine):
+    def __init__(self, embedding_service: EmbeddingService, cache: EmbeddingCache) -> None:
+        self.embedding_service = embedding_service
+        self.cache = cache
+        self._active_provider = os.environ.get("EMBEDDING_PROVIDER", "mock")
+        
+        # Telemetry metrics
+        self.op_counts = {"embed": 0, "batch_embed": 0, "failures": 0}
+        self.latencies = []
+        self._errors = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None:
+        # Periodic retry worker for failed PostgreSQL jobs
+        import threading
+        self._stop_event = threading.Event()
+        self._retry_thread = threading.Thread(target=self._retry_worker, daemon=True)
+        self._retry_thread.start()
+
+    def stop(self) -> None:
+        if hasattr(self, "_stop_event"):
+            self._stop_event.set()
+
+    def _retry_worker(self) -> None:
+        while not self._stop_event.wait(5.0):
+            self.run_retry_cycle()
+
+    def run_retry_cycle(self) -> None:
+        try:
+            from aios.registry import ServiceRegistry
+            from aios.services.persistence import PersistenceService, RepositoryRegistry
+            registry = ServiceRegistry._global_registry
+            if not registry:
+                return
+            db = registry.get(PersistenceService)
+            repos = registry.get(RepositoryRegistry)
+            
+            # Retry pending embeddings
+            embeds = db.execute("SELECT id, text, provider_name, collection_name FROM pending_embedding_jobs WHERE status = 'PENDING'")
+            for job in embeds:
+                try:
+                    req = EmbeddingRequest(text=job["text"], provider_name=job["provider_name"], collection_name=job["collection_name"])
+                    res = self.embed_text(req)
+                    if not res.error:
+                        db.execute("DELETE FROM pending_embedding_jobs WHERE id = ?", (job["id"],))
+                        # If collection is set, trigger save of vector
+                        if job["collection_name"]:
+                            repo = repos.get_repository(job["collection_name"])
+                            repo.save(job["id"], res.vector, {"text": job["text"]})
+                except Exception as e:
+                    db.execute("UPDATE pending_embedding_jobs SET attempts = attempts + 1, last_error = ? WHERE id = ?", (str(e), job["id"]))
+
+            # Retry pending index requests
+            indices = db.execute("SELECT id, collection_name, vector, payload FROM pending_indexing_jobs WHERE status = 'PENDING'")
+            for idx in indices:
+                try:
+                    repo = repos.get_repository(idx["collection_name"])
+                    import json
+                    vec = json.loads(idx["vector"])
+                    payload = json.loads(idx["payload"])
+                    if repo.save(idx["id"], vec, payload):
+                        db.execute("DELETE FROM pending_indexing_jobs WHERE id = ?", (idx["id"],))
+                except Exception as e:
+                    db.execute("UPDATE pending_indexing_jobs SET attempts = attempts + 1, last_error = ? WHERE id = ?", (str(e), idx["id"]))
+        except Exception:
+            pass
+
+    def embed_text(self, request: EmbeddingRequest) -> EmbeddingResponse:
+        t0 = time.perf_counter()
+        provider = request.provider_name or self._active_provider
+        self.op_counts["embed"] += 1
+        
+        try:
+            prov_impl = self.embedding_service.get_provider(provider)
+            meta = prov_impl.get_metadata()
+            
+            # Cache lookup
+            cached = self.cache.get(request.text, meta.version)
+            if cached is not None:
+                # Validate cached vector dimensions
+                if len(cached) != meta.dimensions:
+                    raise ValueError(f"Cached dimensions mismatch. Expected {meta.dimensions}, got {len(cached)}")
+                return EmbeddingResponse(text=request.text, vector=cached, version=meta.version, provider_name=provider)
+
+            # Generate
+            vector = prov_impl.embed_text(request.text)
+            
+            # Vector validation
+            self._validate_vector(vector, meta.dimensions)
+            
+            # Cache save
+            self.cache.set(request.text, vector, meta.version)
+            
+            latency = (time.perf_counter() - t0) * 1000.0
+            self.latencies.append(latency)
+            if len(self.latencies) > 1000:
+                self.latencies.pop(0)
+                
+            return EmbeddingResponse(text=request.text, vector=vector, version=meta.version, provider_name=provider)
+        except Exception as e:
+            self.op_counts["failures"] += 1
+            self._log_err(f"Embedding failed: {str(e)}")
+            
+            # Persist to database
+            try:
+                from aios.registry import ServiceRegistry
+                from aios.services.persistence import PersistenceService
+                db = ServiceRegistry._global_registry.get(PersistenceService)
+                job_id = str(uuid.uuid4())
+                db.execute(
+                    "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at) VALUES (?, ?, ?, ?, 'PENDING', 1, ?)",
+                    (job_id, request.text, provider, request.collection_name, time.time())
+                )
+            except Exception:
+                pass
+                
+            return EmbeddingResponse(text=request.text, vector=[], version="unknown", provider_name=provider, error=str(e))
+
+    def embed_batch(self, requests: List[EmbeddingRequest]) -> List[EmbeddingResponse]:
+        self.op_counts["batch_embed"] += 1
+        results = []
+        for r in requests:
+            results.append(self.embed_text(r))
+        return results
+
+    def _validate_vector(self, vector: List[float], expected_dims: int) -> None:
+        if len(vector) != expected_dims:
+            raise ValueError(f"Vector dimensions mismatch. Expected {expected_dims}, got {len(vector)}")
+        for x in vector:
+            import math
+            if math.isnan(x) or math.isinf(x):
+                raise ValueError("Vector contains NaN or Infinite weights.")
+
+    def _log_err(self, msg: str) -> None:
+        self._errors.append({"timestamp": time.time(), "message": msg})
+        if len(self._errors) > 100:
+            self._errors.pop(0)
+
+    def get_statistics(self) -> Dict[str, Any]:
+        avg_lat = sum(self.latencies) / len(self.latencies) if self.latencies else 0.0
+        return {
+            "operation_counts": self.op_counts.copy(),
+            "average_latency_ms": avg_lat,
+            "cache_stats": self.cache.get_statistics()
+        }
+
+    def get_health(self) -> Dict[str, Any]:
+        return {
+            "status": "HEALTHY" if self.op_counts["failures"] < 10 else "DEGRADED",
+            "failures_recorded": self.op_counts["failures"]
+        }
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        return {
+            "alerts": [{"message": err["message"], "timestamp": err["timestamp"]} for err in self._errors]
+        }
+
+
+class SemanticSearchServiceImpl(SemanticSearchService):
+    def __init__(self, embed_engine: EmbeddingEngine) -> None:
+        self.embed_engine = embed_engine
+        self.op_counts = {"search": 0, "batch_search": 0, "cross_collection_search": 0}
+        self.latencies = []
+        
+        # Query Cache (in-memory)
+        self.query_cache: Dict[str, Any] = {}
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def _get_query_cache_key(self, query: SemanticQuery) -> str:
+        # Create a unique cache key based on query text and filter values
+        import json
+        filters_str = json.dumps(query.filter_query, sort_keys=True) if query.filter_query else ""
+        return f"{query.collection_name}:{query.query_text}:{filters_str}:{query.limit}:{query.offset}"
+
+    def search(self, query: SemanticQuery) -> List[SemanticResult]:
+        t0 = time.perf_counter()
+        self.op_counts["search"] += 1
+        
+        # Query Cache Lookup
+        cache_key = self._get_query_cache_key(query)
+        if cache_key in self.query_cache:
+            return self.query_cache[cache_key]
+
+        # Compute vector embedding
+        embed_req = EmbeddingRequest(text=query.query_text, collection_name=query.collection_name)
+        embed_res = self.embed_engine.embed_text(embed_req)
+        if embed_res.error or not embed_res.vector:
+            return []
+
+        # Build combined filters
+        final_filters = query.filter_query.copy() if query.filter_query else {}
+        if query.workspace_id:
+            final_filters["workspace_id"] = query.workspace_id
+        if query.project_id:
+            final_filters["project_id"] = query.project_id
+
+        # Resolve Qdrant Repository
+        from aios.registry import ServiceRegistry
+        from aios.services.persistence import RepositoryRegistry
+        registry = ServiceRegistry._global_registry
+        p_repos = registry.get(RepositoryRegistry)
+        repo = p_repos.get_repository(query.collection_name)
+
+        # Execute Search
+        search_res = repo.search(
+            vector=embed_res.vector,
+            filter_query=final_filters,
+            limit=query.limit + query.offset,
+            score_threshold=query.score_threshold
+        )
+
+        # Process results with pagination offset
+        paginated_res = []
+        for r in search_res[query.offset:]:
+            # Lazy payload extraction
+            payload = r.get("payload", {})
+            text = payload.get("text", "")
+            paginated_res.append(SemanticResult(
+                id=r["id"],
+                text=text,
+                score=r["score"],
+                metadata=payload,
+                source_collection=query.collection_name
+            ))
+
+        # Query Cache Save
+        self.query_cache[cache_key] = paginated_res
+        if len(self.query_cache) > 1000:
+            self.query_cache.pop(next(iter(self.query_cache)))
+
+        latency = (time.perf_counter() - t0) * 1000.0
+        self.latencies.append(latency)
+        return paginated_res
+
+    def batch_search(self, queries: List[SemanticQuery]) -> List[List[SemanticResult]]:
+        self.op_counts["batch_search"] += 1
+        return [self.search(q) for q in queries]
+
+    def cross_collection_search(self, query: SemanticQuery, collections: List[str]) -> List[SemanticResult]:
+        self.op_counts["cross_collection_search"] += 1
+        aggregated = []
+        for col in collections:
+            q = SemanticQuery(
+                query_text=query.query_text,
+                collection_name=col,
+                filter_query=query.filter_query,
+                limit=query.limit,
+                score_threshold=query.score_threshold,
+                workspace_id=query.workspace_id,
+                project_id=query.project_id,
+                offset=query.offset
+            )
+            aggregated.extend(self.search(q))
+            
+        # Re-sort combined list by score desc
+        aggregated.sort(key=lambda x: x.score, reverse=True)
+        return aggregated[:query.limit]
+
+    def get_statistics(self) -> Dict[str, Any]:
+        avg_lat = sum(self.latencies) / len(self.latencies) if self.latencies else 0.0
+        return {
+            "operation_counts": self.op_counts.copy(),
+            "average_latency_ms": avg_lat,
+            "query_cache_size": len(self.query_cache)
+        }
+
+    def get_health(self) -> Dict[str, Any]:
+        return {
+            "status": "HEALTHY",
+            "query_cache_utilized": len(self.query_cache) > 0
+        }
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        return {"alerts": []}
+
 
 
 

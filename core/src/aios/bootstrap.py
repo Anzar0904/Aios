@@ -1272,6 +1272,48 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(ResearchMemoryRepository, res_mem_repo)
     registry.register(KnowledgeMemoryRepository, know_mem_repo)
 
+    # Register additional embedding providers
+    from aios.services.persistence_impl import (
+        SentenceTransformerProvider, OpenAIProvider, GeminiProvider, OllamaProvider,
+        EmbeddingEngineImpl, SemanticSearchServiceImpl
+    )
+    from aios.services.persistence import EmbeddingEngine, SemanticSearchService
+
+    st_provider = SentenceTransformerProvider()
+    st_provider.initialize()
+    embedding_service.register_provider("sentence_transformer", st_provider)
+
+    openai_provider = OpenAIProvider()
+    openai_provider.initialize()
+    embedding_service.register_provider("openai", openai_provider)
+
+    gemini_provider = GeminiProvider()
+    gemini_provider.initialize()
+    embedding_service.register_provider("gemini", gemini_provider)
+
+    ollama_provider = OllamaProvider()
+    ollama_provider.initialize()
+    embedding_service.register_provider("ollama", ollama_provider)
+
+    # Instantiate EmbeddingEngine and SemanticSearchService
+    embedding_engine = EmbeddingEngineImpl(embedding_service, embedding_cache)
+    semantic_search = SemanticSearchServiceImpl(embedding_engine)
+
+    # Link into global RuntimeIntelligenceService
+    ri_service.embedding_engine = embedding_engine
+    ri_service.semantic_search = semantic_search
+
+    # Initialize and start
+    embedding_engine.initialize()
+    embedding_engine.start()
+    semantic_search.initialize()
+    semantic_search.start()
+
+    # Register in DI container
+    registry.register(EmbeddingEngine, embedding_engine)
+    registry.register(SemanticSearchService, semantic_search)
+
+
 
 
 
