@@ -13362,14 +13362,26 @@ class EmbeddingEngineImpl(EmbeddingEngine):
     def __init__(self, embedding_service: EmbeddingService, cache: EmbeddingCache) -> None:
         self.embedding_service = embedding_service
         self.cache = cache
-        self._active_provider = os.environ.get("EMBEDDING_PROVIDER", "mock")
+        self._active_provider = os.environ.get("EMBEDDING_PROVIDER", "sentence_transformer")
         
         # Telemetry metrics
         self.op_counts = {"embed": 0, "batch_embed": 0, "failures": 0}
         self.latencies = []
         self._errors = []
 
-    def initialize(self) -> None: pass
+    def initialize(self) -> None:
+        # Validate that the configured provider is actually registered.
+        # This prevents production from silently using MockEmbeddingProvider
+        # when EMBEDDING_PROVIDER is unset or misspelled.
+        registered = list(self.embedding_service.providers.keys()) if hasattr(self.embedding_service, "providers") else []
+        if registered and self._active_provider not in registered:
+            raise ValueError(
+                f"Embedding provider '{self._active_provider}' is not registered. "
+                f"Available providers: {registered}. "
+                f"Set EMBEDDING_PROVIDER environment variable to one of the available providers, "
+                f"or set EMBEDDING_PROVIDER=mock for testing."
+            )
+
     def start(self) -> None:
         # Periodic retry worker for failed PostgreSQL jobs
         import threading
