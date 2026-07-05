@@ -12764,7 +12764,10 @@ class EmbeddingVersionManagerImpl(EmbeddingVersionManager):
 
 class EmbeddingCacheImpl(EmbeddingCache):
     def __init__(self) -> None:
-        self._cache: Dict[str, List[float]] = {}
+        from collections import OrderedDict
+        self.max_size = int(os.environ.get("EMBEDDING_CACHE_MAX_SIZE", "1000"))
+        self.ttl = float(os.environ.get("EMBEDDING_CACHE_TTL", "3600"))  # in seconds
+        self._cache: OrderedDict = OrderedDict()
         self.hits = 0
         self.misses = 0
 
@@ -12778,14 +12781,27 @@ class EmbeddingCacheImpl(EmbeddingCache):
     def get(self, text: str, version: str) -> Optional[List[float]]:
         key = self._get_key(text, version)
         if key in self._cache:
+            vector, expiry = self._cache[key]
+            if expiry is not None and time.time() > expiry:
+                del self._cache[key]
+                self.misses += 1
+                return None
+            self._cache.move_to_end(key)
             self.hits += 1
-            return self._cache[key]
+            return vector
         self.misses += 1
         return None
 
     def set(self, text: str, vector: List[float], version: str) -> None:
+        if self.max_size <= 0:
+            return
         key = self._get_key(text, version)
-        self._cache[key] = vector
+        expiry = time.time() + self.ttl if self.ttl > 0 else None
+        if key in self._cache:
+            del self._cache[key]
+        self._cache[key] = (vector, expiry)
+        while len(self._cache) > self.max_size:
+            self._cache.popitem(last=False)
 
     def invalidate(self, text: str, version: str) -> None:
         key = self._get_key(text, version)
@@ -12798,6 +12814,14 @@ class EmbeddingCacheImpl(EmbeddingCache):
         self.misses = 0
 
     def get_statistics(self) -> Dict[str, Any]:
+        now = time.time()
+        expired_keys = [
+            k for k, (_, exp) in self._cache.items()
+            if exp is not None and now > exp
+        ]
+        for k in expired_keys:
+            del self._cache[k]
+
         total = self.hits + self.misses
         ratio = self.hits / total if total > 0 else 0.0
         return {
