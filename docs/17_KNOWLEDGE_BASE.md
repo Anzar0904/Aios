@@ -793,7 +793,20 @@ This section maps the essential runtime components of the operating system:
   * `AIMemoryStatistics`: Compiles telemetry and status metrics.
   * `AIMemoryHealthMonitor`: Evaluates current provider availability ratings.
   * `AIMemoryReportGenerator`: Produces operational audit logs.
-* **Current Status**: Completed.
+* **Current Status**: Production Certified (Sprint 5 Milestone 8 Live Validation Complete).
+* **Validation Reports**:
+  - [REDIS_PRODUCTION_VALIDATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_PRODUCTION_VALIDATION_REPORT.md) - Executive Certification and connection checks
+  - [REDIS_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_HEALTH.md) - Health status scorer
+  - [REDIS_PERFORMANCE_BASELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_PERFORMANCE_BASELINE.md) - Baseline latency tracker (100 iterations)
+  - [REDIS_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_DIAGNOSTICS.md) - Diagnostics alert parser
+  - [REDIS_CAPACITY_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_CAPACITY_REPORT.md) - Capacity utilization profile
+  - [REDIS_CACHE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_CACHE_VALIDATION.md) - SET/GET/DELETE correctness tests
+  - [REDIS_SESSION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_SESSION_VALIDATION.md) - Session registry/store sliding updates
+  - [REDIS_COORDINATION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_COORDINATION_VALIDATION.md) - Exclusive/shared reentrancy lease checks
+  - [REDIS_QUEUE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_QUEUE_VALIDATION.md) - Priority and delayed job validations
+  - [REDIS_RATE_LIMIT_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RATE_LIMIT_VALIDATION.md) - Token bucket/sliding window quota checks
+  - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
+  - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
 ### 3.9 Runtime Intelligence Platform (Sprint 4 Milestone 6)
 * **Purpose**: Self-monitoring and unified observability consumer for the Persistence Platform, recording repository latencies, execution throughputs, transaction depths, connection pool capacities, and migration history.
@@ -811,7 +824,20 @@ This section maps the essential runtime components of the operating system:
   * `RuntimeLifecycleMonitor`: Tracks boot durations, database migration history, and provider hot swaps.
   * `RuntimeCorrelationManager`: Injects a thread-local correlation context (`CorrelationID`, `WorkspaceID`, `ProjectID`, `Repository`, `Operation`) without modifying Repository APIs.
   * `RuntimeReportGenerator`: Compiles operational dashboards to Markdown status reports in `docs/persistence/`.
-* **Current Status**: Completed.
+* **Current Status**: Production Certified (Sprint 5 Milestone 8 Live Validation Complete).
+* **Validation Reports**:
+  - [REDIS_PRODUCTION_VALIDATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_PRODUCTION_VALIDATION_REPORT.md) - Executive Certification and connection checks
+  - [REDIS_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_HEALTH.md) - Health status scorer
+  - [REDIS_PERFORMANCE_BASELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_PERFORMANCE_BASELINE.md) - Baseline latency tracker (100 iterations)
+  - [REDIS_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_DIAGNOSTICS.md) - Diagnostics alert parser
+  - [REDIS_CAPACITY_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_CAPACITY_REPORT.md) - Capacity utilization profile
+  - [REDIS_CACHE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_CACHE_VALIDATION.md) - SET/GET/DELETE correctness tests
+  - [REDIS_SESSION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_SESSION_VALIDATION.md) - Session registry/store sliding updates
+  - [REDIS_COORDINATION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_COORDINATION_VALIDATION.md) - Exclusive/shared reentrancy lease checks
+  - [REDIS_QUEUE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_QUEUE_VALIDATION.md) - Priority and delayed job validations
+  - [REDIS_RATE_LIMIT_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RATE_LIMIT_VALIDATION.md) - Token bucket/sliding window quota checks
+  - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
+  - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
 ### 3.10 PostgreSQL Production Live Validation (Sprint 4 Milestone 7)
 * **Purpose**: Production live validation of all 30 repositories against the relational database engine, auditing connection lifecycles, connection pool recovery, schema migrations, policy behaviors, and runtime diagnostics.
@@ -826,7 +852,7 @@ This section maps the essential runtime components of the operating system:
   * `POSTGRESQL_MIGRATION_VALIDATION.md`
 * **Current Status**: Production Validated.
 
-### 3.11 Redis Platform (Sprint 5 Milestones 1, 2, 3, 4, 5, 6 & 7)
+### 3.11 Redis Platform (Sprint 5 Milestones 1, 2, 3, 4, 5, 6, 7 & 8)
 * **Purpose**: Implements high-performance runtime cache acceleration, session storage, distributed coordination, job scheduling, rate limiting, and runtime telemetry intelligence. Ephemeral states, dialog sessions, rate limits, lookup caches, lock leases, wait graphs, reentrancy states, priority job schedules, backoff timers, token/window quotas, and telemetry analytics are stored/processed in Redis to accelerate read/write performance. Zero-downtime grace fallback is achieved via Simulated FakeRedisClient, local in-memory session dictionaries, local fallback lock tables, local queue buffers, and 50% capacity degraded rate limiters if Redis is offline.
 * **Core Interfaces & Classes**:
   - `RedisRuntimeService` / `RedisRuntimeServiceImpl`: Coordinator orchestrating status, health, and reporting.
@@ -855,7 +881,20 @@ This section maps the essential runtime components of the operating system:
   - `QueueStatisticsCollectorImpl` / `QueueHealthMonitorImpl` / `QueueDiagnosticsImpl` / `QueueRecommendationEngineImpl`: Telemetry capturing scheduling latency, processing durations, warning indicators, and structural performance recommendations.
   - `RedisRateLimitServiceImpl` / `RateLimitManagerImpl` / `TokenBucketManagerImpl` / `SlidingWindowManagerImpl` / `FixedWindowManagerImpl`: Enforces quota limits across 7 default categories, supporting Token Bucket, Sliding Window, and Fixed Window algorithms with 50% capacity local fallbacks.
   - `RedisRuntimeTelemetryImpl` / `RedisRuntimeAggregatorImpl` / `RedisRuntimeHealthAnalyzerImpl` / `RedisCapacityAnalyzerImpl` / `RedisPerformanceAnalyzerImpl` / `RedisRecommendationEngineImpl` / `RedisRuntimeDiagnosticsImpl`: Observes, aggregates, scores, and forwards structured telemetry into the global Runtime Intelligence Platform.
-* **Current Status**: Completed.
+* **Current Status**: Production Certified (Sprint 5 Milestone 8 Live Validation Complete).
+* **Validation Reports**:
+  - [REDIS_PRODUCTION_VALIDATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_PRODUCTION_VALIDATION_REPORT.md) - Executive Certification and connection checks
+  - [REDIS_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_HEALTH.md) - Health status scorer
+  - [REDIS_PERFORMANCE_BASELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_PERFORMANCE_BASELINE.md) - Baseline latency tracker (100 iterations)
+  - [REDIS_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_DIAGNOSTICS.md) - Diagnostics alert parser
+  - [REDIS_CAPACITY_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_CAPACITY_REPORT.md) - Capacity utilization profile
+  - [REDIS_CACHE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_CACHE_VALIDATION.md) - SET/GET/DELETE correctness tests
+  - [REDIS_SESSION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_SESSION_VALIDATION.md) - Session registry/store sliding updates
+  - [REDIS_COORDINATION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_COORDINATION_VALIDATION.md) - Exclusive/shared reentrancy lease checks
+  - [REDIS_QUEUE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_QUEUE_VALIDATION.md) - Priority and delayed job validations
+  - [REDIS_RATE_LIMIT_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RATE_LIMIT_VALIDATION.md) - Token bucket/sliding window quota checks
+  - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
+  - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
 ---
 
