@@ -2051,6 +2051,7 @@ class RedisRuntimeReporter(ServiceLifecycle, abc.ABC):
         pass
 
 
+
 class RedisRuntimeValidator(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def validate_telemetry(self, data: Dict[str, Any]) -> bool:
@@ -2097,6 +2098,280 @@ class RedisRuntimeIntelligenceService(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def get_validator(self) -> RedisRuntimeValidator:
         pass
+
+
+from dataclasses import dataclass, field
+
+class QdrantTransport(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def execute_command(self, cmd: str, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def is_connected(self) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def connect(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def disconnect(self) -> None:
+        pass
+
+
+class QdrantProvider(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_transport(self) -> QdrantTransport:
+        pass
+
+    @abc.abstractmethod
+    def create_collection(
+        self,
+        name: str,
+        vector_size: int,
+        distance: str,
+        on_disk_payload: bool = True,
+        quantization_config: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete_collection(self, name: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def collection_exists(self, name: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def upsert_points(self, collection: str, points: List[Dict[str, Any]]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete_points(self, collection: str, point_ids: List[Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def search_vectors(
+        self,
+        collection: str,
+        vector: List[float],
+        filter_query: Optional[Dict[str, Any]] = None,
+        limit: int = 5,
+        score_threshold: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def get_collection_info(self, name: str) -> Dict[str, Any]:
+        pass
+
+
+class CollectionManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def create_collection(self, name: str, dimensions: int, distance: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete_collection(self, name: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def exists(self, name: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def validate_schema(self, name: str, schema: Dict[str, Any]) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def create_index(self, collection_name: str, field_name: str, field_type: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self, name: str) -> Dict[str, Any]:
+        pass
+
+
+class QdrantRuntimeService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_provider(self) -> QdrantProvider:
+        pass
+
+    @abc.abstractmethod
+    def get_collection_manager(self) -> CollectionManager:
+        pass
+
+    @abc.abstractmethod
+    def get_telemetry(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_health(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, msg: str, severity: str = "ERROR", remediation: str = "") -> None:
+        pass
+
+
+@dataclass
+class EmbeddingMetadata:
+    model_name: str
+    version: str
+    dimensions: int
+    provider_type: str
+    additional: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class EmbeddingBatchRequest:
+    texts: List[str]
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class EmbeddingBatchResponse:
+    embeddings: List[List[float]]
+    dimensions: int
+    usage_tokens: int = 0
+
+
+class EmbeddingProvider(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def embed_text(self, text: str) -> List[float]:
+        pass
+
+    @abc.abstractmethod
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        pass
+
+    @abc.abstractmethod
+    def get_metadata(self) -> EmbeddingMetadata:
+        pass
+
+
+class EmbeddingService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_provider(self, provider_name: str) -> EmbeddingProvider:
+        pass
+
+    @abc.abstractmethod
+    def register_provider(self, provider_name: str, provider: EmbeddingProvider) -> None:
+        pass
+
+    @abc.abstractmethod
+    def embed(self, text: str, provider_name: str) -> List[float]:
+        pass
+
+
+class EmbeddingVersionManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_active_version(self, collection_name: str) -> str:
+        pass
+
+    @abc.abstractmethod
+    def set_active_version(self, collection_name: str, version: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def requires_migration(self, collection_name: str, current_version: str) -> bool:
+        pass
+
+
+class EmbeddingCache(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get(self, text: str, version: str) -> Optional[List[float]]:
+        pass
+
+    @abc.abstractmethod
+    def set(self, text: str, vector: List[float], version: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def invalidate(self, text: str, version: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def clear(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+
+@dataclass
+class ChunkMetadata:
+    index: int
+    char_start: int
+    char_end: int
+    token_estimate: int
+    additional: Dict[str, Any] = field(default_factory=dict)
+
+
+class ChunkStrategy(enum.Enum):
+    FIXED_SIZE = "fixed_size"
+    PARAGRAPH = "paragraph"
+    SLIDING_WINDOW = "sliding_window"
+    TOKEN_AWARE = "token_aware"
+
+
+@dataclass
+class ChunkResult:
+    text: str
+    metadata: ChunkMetadata
+    strategy: ChunkStrategy
+
+
+class ChunkingService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def chunk_text(self, text: str, strategy: ChunkStrategy, **kwargs: Any) -> List[ChunkResult]:
+        pass
+
+
+@dataclass
+class ContextCandidate:
+    text: str
+    score: float
+    metadata: Dict[str, Any]
+    source_collection: str
+    point_id: str
+
+
+@dataclass
+class ContextRanking:
+    candidate: ContextCandidate
+    rank_score: float
+    relevance_reasons: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ContextAssembly:
+    assembled_text: str
+    candidates_used: List[ContextCandidate]
+    total_tokens: int
+    budget_respected: bool
+
+
+class ContextBuilder(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def rank_candidates(self, candidates: List[ContextCandidate], objective: str) -> List[ContextRanking]:
+        pass
+
+    @abc.abstractmethod
+    def deduplicate(self, candidates: List[ContextCandidate]) -> List[ContextCandidate]:
+        pass
+
+    @abc.abstractmethod
+    def assemble_context(self, candidates: List[ContextCandidate], token_budget: int) -> ContextAssembly:
+        pass
+
 
 
 

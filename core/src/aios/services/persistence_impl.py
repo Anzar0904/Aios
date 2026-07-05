@@ -7968,12 +7968,16 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
         h = self.health_monitor.check_health()
         if hasattr(self.telemetry, "redis_telemetry") and self.telemetry.redis_telemetry is not None:
             h["redis_health"] = self.telemetry.redis_telemetry.get_health_analyzer().analyze_health()
+        if getattr(self, "qdrant_service", None) is not None:
+            h["qdrant_health"] = self.qdrant_service.get_health()
         return h
 
     def get_diagnostics(self) -> Dict[str, Any]:
         d = self.diag_engine.get_diagnostics()
         if hasattr(self.telemetry, "redis_telemetry") and self.telemetry.redis_telemetry is not None:
             d["redis_diagnostics"] = self.telemetry.redis_telemetry.get_diagnostics().get_diagnostics()
+        if getattr(self, "qdrant_service", None) is not None:
+            d["qdrant_diagnostics"] = self.qdrant_service.get_diagnostics()
         return d
 
     def get_telemetry(self) -> Dict[str, Any]:
@@ -7985,18 +7989,33 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
         }
         if hasattr(self.telemetry, "redis_telemetry") and self.telemetry.redis_telemetry is not None:
             t["redis_telemetry"] = self.telemetry.redis_telemetry.get_telemetry_service().get_telemetry()
+        if getattr(self, "qdrant_service", None) is not None:
+            t["qdrant_telemetry"] = self.qdrant_service.get_telemetry()
         return t
 
     def get_statistics(self) -> Dict[str, Any]:
         s = self.stats_engine.get_statistics()
         if hasattr(self.telemetry, "redis_telemetry") and self.telemetry.redis_telemetry is not None:
             s["redis_statistics"] = self.telemetry.redis_telemetry.get_stats_collector().get_statistics()
+        if getattr(self, "qdrant_service", None) is not None:
+            s["qdrant_statistics"] = self.qdrant_service.get_telemetry()
+        if getattr(self, "embedding_cache", None) is not None:
+            s["embedding_cache_statistics"] = self.embedding_cache.get_statistics()
         return s
 
     def get_recommendations(self) -> List[Dict[str, Any]]:
         recs = self.recommend.generate_recommendations()
         if hasattr(self.telemetry, "redis_telemetry") and self.telemetry.redis_telemetry is not None:
             recs.extend(self.telemetry.redis_telemetry.get_recommendation_engine().generate_recommendations())
+        if getattr(self, "qdrant_service", None) is not None:
+            diag = self.qdrant_service.get_diagnostics()
+            for alert in diag.get("alerts", []):
+                recs.append({
+                    "category": "qdrant",
+                    "issue": alert["message"],
+                    "suggestion": alert["remediation"],
+                    "severity": alert["severity"]
+                })
         return recs
 
     def get_learning_payload(self) -> Dict[str, Any]:
@@ -8016,6 +8035,8 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
         }
         if hasattr(self.telemetry, "redis_telemetry") and self.telemetry.redis_telemetry is not None:
             payload["redis_learning"] = self.telemetry.redis_telemetry.get_stats_collector().get_statistics().get("learning_metadata", {})
+        if getattr(self, "qdrant_service", None) is not None:
+            payload["qdrant_telemetry"] = self.qdrant_service.get_telemetry()
         return payload
 
     def generate_reports(self) -> None:
@@ -8098,6 +8119,25 @@ from aios.services.persistence import (
     RedisRuntimeReporter,
     RedisRuntimeValidator,
     RedisRuntimeIntelligenceService,
+    QdrantTransport,
+    QdrantProvider,
+    CollectionManager,
+    QdrantRuntimeService,
+    EmbeddingMetadata,
+    EmbeddingBatchRequest,
+    EmbeddingBatchResponse,
+    EmbeddingProvider,
+    EmbeddingService,
+    EmbeddingVersionManager,
+    EmbeddingCache,
+    ChunkMetadata,
+    ChunkStrategy,
+    ChunkResult,
+    ChunkingService,
+    ContextCandidate,
+    ContextRanking,
+    ContextAssembly,
+    ContextBuilder,
 )
 
 class RedisConfigurationService(ServiceLifecycle):
@@ -11945,6 +11985,680 @@ class RedisRuntimeIntelligenceServiceImpl(RedisRuntimeIntelligenceService):
 
     def get_validator(self) -> RedisRuntimeValidator:
         return self.validator
+
+
+class QdrantConfigurationService(ServiceLifecycle):
+    def __init__(self) -> None:
+        self.host = os.environ.get("QDRANT_HOST", "127.0.0.1")
+        try:
+            self.port = int(os.environ.get("QDRANT_PORT", 6333))
+        except ValueError:
+            self.port = 6333
+        try:
+            self.grpc_port = int(os.environ.get("QDRANT_GRPC_PORT", 6334))
+        except ValueError:
+            self.grpc_port = 6334
+        self.api_key = os.environ.get("QDRANT_API_KEY", None)
+        self.https = os.environ.get("QDRANT_HTTPS", "false").lower() == "true"
+        try:
+            self.timeout = float(os.environ.get("QDRANT_TIMEOUT", 5.0))
+        except ValueError:
+            self.timeout = 5.0
+        try:
+            self.retry_count = int(os.environ.get("QDRANT_RETRY_COUNT", 3))
+        except ValueError:
+            self.retry_count = 3
+        try:
+            self.default_vector_dimensions = int(os.environ.get("QDRANT_DEFAULT_DIMENSIONS", 1536))
+        except ValueError:
+            self.default_vector_dimensions = 1536
+        self.default_distance_metric = os.environ.get("QDRANT_DEFAULT_DISTANCE", "cosine").upper()
+        self.on_disk_payload = os.environ.get("QDRANT_ON_DISK_PAYLOAD", "true").lower() == "true"
+        self.quantization = os.environ.get("QDRANT_QUANTIZATION", "false").lower() == "true"
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+
+class QdrantConnectionManager(ServiceLifecycle):
+    def __init__(self, config: QdrantConfigurationService) -> None:
+        self.config = config
+        self._client = None
+        self._connected = False
+        self._failures = 0
+
+    def initialize(self) -> None:
+        pass
+
+    def start(self) -> None:
+        self.connect()
+
+    def stop(self) -> None:
+        self.disconnect()
+
+    def connect(self) -> None:
+        if self._connected:
+            return
+        try:
+            from qdrant_client import QdrantClient
+            self._client = QdrantClient(
+                host=self.config.host,
+                port=self.config.port,
+                grpc_port=self.config.grpc_port,
+                api_key=self.config.api_key,
+                https=self.config.https,
+                timeout=self.config.timeout,
+                prefer_grpc=False
+            )
+            self._client.get_collections()
+            self._connected = True
+            self._failures = 0
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self._connected = False
+            self._failures += 1
+
+    def disconnect(self) -> None:
+        if self._client:
+            try:
+                self._client.close()
+            except Exception:
+                pass
+            self._client = None
+        self._connected = False
+
+    def is_connected(self) -> bool:
+        return self._connected
+
+    def get_client(self) -> Any:
+        if not self._connected or not self._client:
+            self.connect()
+        return self._client
+
+
+class QdrantTransportImpl(QdrantTransport):
+    def __init__(self, config: QdrantConfigurationService, connection_manager: QdrantConnectionManager) -> None:
+        self.config = config
+        self.connection_manager = connection_manager
+        self.query_latencies: List[float] = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def is_connected(self) -> bool:
+        return self.connection_manager.is_connected()
+
+    def connect(self) -> None:
+        self.connection_manager.connect()
+
+    def disconnect(self) -> None:
+        self.connection_manager.disconnect()
+
+    def execute_command(self, cmd: str, *args: Any, **kwargs: Any) -> Any:
+        client = self.connection_manager.get_client()
+        if not client:
+            raise RuntimeError("Qdrant client not available (disconnected)")
+
+        last_err = None
+        retries = self.config.retry_count
+        for attempt in range(retries + 1):
+            t0 = time.perf_counter()
+            try:
+                method = getattr(client, cmd, None)
+                if not method:
+                    raise AttributeError(f"QdrantClient has no method '{cmd}'")
+                res = method(*args, **kwargs)
+                latency_ms = (time.perf_counter() - t0) * 1000.0
+                self.query_latencies.append(latency_ms)
+                if len(self.query_latencies) > 1000:
+                    self.query_latencies.pop(0)
+                return res
+            except Exception as e:
+                last_err = e
+                if attempt < retries:
+                    time.sleep(0.05 * (2 ** attempt))
+                else:
+                    break
+        raise RuntimeError(f"Qdrant command '{cmd}' failed after {retries} retries: {str(last_err)}")
+
+
+class QdrantProviderImpl(QdrantProvider):
+    def __init__(self, transport: QdrantTransport) -> None:
+        self.transport = transport
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_transport(self) -> QdrantTransport:
+        return self.transport
+
+    def create_collection(
+        self,
+        name: str,
+        vector_size: int,
+        distance: str,
+        on_disk_payload: bool = True,
+        quantization_config: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        from qdrant_client.models import VectorParams, Distance
+        dist_enum = Distance.COSINE
+        if distance.upper() == "EUCLID":
+            dist_enum = Distance.EUCLID
+        elif distance.upper() == "DOT":
+            dist_enum = Distance.DOT
+        elif distance.upper() == "MANHATTAN":
+            dist_enum = Distance.MANHATTAN
+
+        try:
+            self.transport.execute_command(
+                "create_collection",
+                collection_name=name,
+                vectors_config=VectorParams(size=vector_size, distance=dist_enum),
+                on_disk_payload=on_disk_payload,
+                quantization_config=quantization_config
+            )
+            return True
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def delete_collection(self, name: str) -> bool:
+        try:
+            self.transport.execute_command("delete_collection", collection_name=name)
+            return True
+        except Exception:
+            return False
+
+    def collection_exists(self, name: str) -> bool:
+        try:
+            return self.transport.execute_command("collection_exists", collection_name=name)
+        except Exception:
+            return False
+
+    def upsert_points(self, collection: str, points: List[Dict[str, Any]]) -> bool:
+        from qdrant_client.models import PointStruct
+        pts = []
+        for p in points:
+            pts.append(PointStruct(id=p["id"], vector=p["vector"], payload=p.get("payload", {})))
+        try:
+            self.transport.execute_command("upsert", collection_name=collection, points=pts)
+            return True
+        except Exception:
+            return False
+
+    def delete_points(self, collection: str, point_ids: List[Any]) -> bool:
+        from qdrant_client.models import PointIdsList
+        try:
+            self.transport.execute_command("delete", collection_name=collection, points_selector=PointIdsList(points=point_ids))
+            return True
+        except Exception:
+            return False
+
+    def search_vectors(
+        self,
+        collection: str,
+        vector: List[float],
+        filter_query: Optional[Dict[str, Any]] = None,
+        limit: int = 5,
+        score_threshold: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
+        try:
+            res = self.transport.execute_command(
+                "query_points",
+                collection_name=collection,
+                query=vector,
+                query_filter=filter_query,
+                limit=limit,
+                score_threshold=score_threshold
+            )
+            out = []
+            for p in res.points:
+                out.append({
+                    "id": p.id,
+                    "score": p.score,
+                    "payload": p.payload,
+                    "vector": p.vector
+                })
+            return out
+        except Exception:
+            return []
+
+    def get_collection_info(self, name: str) -> Dict[str, Any]:
+        try:
+            info = self.transport.execute_command("get_collection", collection_name=name)
+            return {
+                "status": str(info.status),
+                "vectors_count": getattr(info, "indexed_vectors_count", 0) or getattr(info, "vectors_count", 0) or 0,
+                "points_count": getattr(info, "points_count", 0) or 0,
+                "config": str(info.config)
+            }
+        except Exception as e:
+            return {"status": "ERROR", "error": str(e), "vectors_count": 0, "points_count": 0}
+
+
+class CollectionManagerImpl(CollectionManager):
+    def __init__(self, provider: QdrantProvider, config: QdrantConfigurationService) -> None:
+        self.provider = provider
+        self.config = config
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def create_collection(self, name: str, dimensions: int, distance: str) -> bool:
+        quant_config = None
+        if self.config.quantization:
+            from qdrant_client.models import ScalarQuantization, ScalarQuantizationConfig, ScalarType
+            quant_config = ScalarQuantization(
+                scalar=ScalarQuantizationConfig(
+                    type=ScalarType.INT8,
+                    always_ram=True
+                )
+            )
+        return self.provider.create_collection(
+            name=name,
+            vector_size=dimensions,
+            distance=distance,
+            on_disk_payload=self.config.on_disk_payload,
+            quantization_config=quant_config
+        )
+
+    def delete_collection(self, name: str) -> bool:
+        return self.provider.delete_collection(name)
+
+    def exists(self, name: str) -> bool:
+        return self.provider.collection_exists(name)
+
+    def validate_schema(self, name: str, schema: Dict[str, Any]) -> bool:
+        if not self.exists(name):
+            return False
+        info = self.provider.get_collection_info(name)
+        if info.get("status") == "ERROR":
+            return False
+        return True
+
+    def create_index(self, collection_name: str, field_name: str, field_type: str) -> bool:
+        from qdrant_client.models import PayloadSchemaType
+        ptype = PayloadSchemaType.KEYWORD
+        if field_type.upper() == "INTEGER":
+            ptype = PayloadSchemaType.INTEGER
+        elif field_type.upper() == "FLOAT":
+            ptype = PayloadSchemaType.FLOAT
+        elif field_type.upper() == "TEXT":
+            ptype = PayloadSchemaType.TEXT
+        elif field_type.upper() == "BOOL":
+            ptype = PayloadSchemaType.BOOL
+
+        try:
+            self.provider.get_transport().execute_command(
+                "create_payload_index",
+                collection_name=collection_name,
+                field_name=field_name,
+                field_schema=ptype
+            )
+            return True
+        except Exception:
+            return False
+
+    def get_statistics(self, name: str) -> Dict[str, Any]:
+        info = self.provider.get_collection_info(name)
+        return {
+            "vectors_count": info.get("vectors_count", 0),
+            "points_count": info.get("points_count", 0),
+            "status": info.get("status", "UNKNOWN")
+        }
+
+
+class QdrantRuntimeServiceImpl(QdrantRuntimeService):
+    def __init__(
+        self,
+        provider: QdrantProvider,
+        collection_manager: CollectionManager,
+        config: QdrantConfigurationService
+    ) -> None:
+        self.provider = provider
+        self.collection_manager = collection_manager
+        self.config = config
+        self._errors: List[Dict[str, Any]] = []
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_provider(self) -> QdrantProvider:
+        return self.provider
+
+    def get_collection_manager(self) -> CollectionManager:
+        return self.collection_manager
+
+    def get_telemetry(self) -> Dict[str, Any]:
+        transport = self.provider.get_transport()
+        latencies = getattr(transport, "query_latencies", [])
+        avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
+        return {
+            "connection_healthy": transport.is_connected(),
+            "average_query_latency_ms": avg_latency,
+            "queries_recorded": len(latencies),
+            "host": self.config.host,
+            "port": self.config.port
+        }
+
+    def get_health(self) -> Dict[str, Any]:
+        transport = self.provider.get_transport()
+        is_up = transport.is_connected()
+        return {
+            "status": "HEALTHY" if is_up else "OFFLINE",
+            "reachable": is_up,
+            "latency_score": "GOOD" if not getattr(transport, "query_latencies", []) or sum(transport.query_latencies[-5:]) / 5.0 < 50.0 else "DEGRADED"
+        }
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        transport = self.provider.get_transport()
+        alerts = []
+        if not transport.is_connected():
+            alerts.append({
+                "code": "QDRANT_UNREACHABLE",
+                "severity": "CRITICAL",
+                "message": "Cannot establish TCP connection to Qdrant server",
+                "remediation": "Ensure local native Qdrant service is running at 127.0.0.1:6333."
+            })
+        return {
+            "errors": self._errors,
+            "alerts": alerts
+        }
+
+    def log_error(self, msg: str, severity: str = "ERROR", remediation: str = "") -> None:
+        self._errors.append({
+            "timestamp": time.time(),
+            "message": msg,
+            "severity": severity,
+            "remediation": remediation
+        })
+        if len(self._errors) > 100:
+            self._errors.pop(0)
+
+
+class MockEmbeddingProvider(EmbeddingProvider):
+    def __init__(self, model_name: str = "mock-embedding-model", dimensions: int = 1536) -> None:
+        self.model_name = model_name
+        self.dimensions = dimensions
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def embed_text(self, text: str) -> List[float]:
+        h = hash(text) % 1000 / 1000.0
+        return [h] * self.dimensions
+
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        return [self.embed_text(t) for t in texts]
+
+    def get_metadata(self) -> EmbeddingMetadata:
+        return EmbeddingMetadata(
+            model_name=self.model_name,
+            version="v1",
+            dimensions=self.dimensions,
+            provider_type="MOCK"
+        )
+
+
+class EmbeddingServiceImpl(EmbeddingService):
+    def __init__(self) -> None:
+        self.providers: Dict[str, EmbeddingProvider] = {}
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_provider(self, provider_name: str) -> EmbeddingProvider:
+        if provider_name not in self.providers:
+            raise KeyError(f"Embedding provider '{provider_name}' not registered")
+        return self.providers[provider_name]
+
+    def register_provider(self, provider_name: str, provider: EmbeddingProvider) -> None:
+        self.providers[provider_name] = provider
+
+    def embed(self, text: str, provider_name: str) -> List[float]:
+        return self.get_provider(provider_name).embed_text(text)
+
+
+class EmbeddingVersionManagerImpl(EmbeddingVersionManager):
+    def __init__(self) -> None:
+        self.versions: Dict[str, str] = {}
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_active_version(self, collection_name: str) -> str:
+        return self.versions.get(collection_name, "v1")
+
+    def set_active_version(self, collection_name: str, version: str) -> None:
+        self.versions[collection_name] = version
+
+    def requires_migration(self, collection_name: str, current_version: str) -> bool:
+        return self.get_active_version(collection_name) != current_version
+
+
+class EmbeddingCacheImpl(EmbeddingCache):
+    def __init__(self) -> None:
+        self._cache: Dict[str, List[float]] = {}
+        self.hits = 0
+        self.misses = 0
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def _get_key(self, text: str, version: str) -> str:
+        return f"{version}:{text}"
+
+    def get(self, text: str, version: str) -> Optional[List[float]]:
+        key = self._get_key(text, version)
+        if key in self._cache:
+            self.hits += 1
+            return self._cache[key]
+        self.misses += 1
+        return None
+
+    def set(self, text: str, vector: List[float], version: str) -> None:
+        key = self._get_key(text, version)
+        self._cache[key] = vector
+
+    def invalidate(self, text: str, version: str) -> None:
+        key = self._get_key(text, version)
+        if key in self._cache:
+            del self._cache[key]
+
+    def clear(self) -> None:
+        self._cache.clear()
+        self.hits = 0
+        self.misses = 0
+
+    def get_statistics(self) -> Dict[str, Any]:
+        total = self.hits + self.misses
+        ratio = self.hits / total if total > 0 else 0.0
+        return {
+            "cache_size": len(self._cache),
+            "hits": self.hits,
+            "misses": self.misses,
+            "hit_ratio": ratio
+        }
+
+
+class ChunkingServiceImpl(ChunkingService):
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def chunk_text(self, text: str, strategy: ChunkStrategy, **kwargs: Any) -> List[ChunkResult]:
+        results = []
+        if strategy == ChunkStrategy.FIXED_SIZE:
+            size = kwargs.get("chunk_size", 200)
+            overlap = kwargs.get("overlap", 20)
+            start = 0
+            idx = 0
+            while start < len(text):
+                end = min(start + size, len(text))
+                chunk_str = text[start:end]
+                results.append(ChunkResult(
+                    text=chunk_str,
+                    metadata=ChunkMetadata(
+                        index=idx,
+                        char_start=start,
+                        char_end=end,
+                        token_estimate=len(chunk_str) // 4
+                    ),
+                    strategy=strategy
+                ))
+                idx += 1
+                start += (size - overlap)
+                if size - overlap <= 0:
+                    break
+        elif strategy == ChunkStrategy.PARAGRAPH:
+            paragraphs = text.split("\n\n")
+            idx = 0
+            char_pos = 0
+            for p in paragraphs:
+                p_clean = p.strip()
+                if not p_clean:
+                    continue
+                start = text.find(p, char_pos)
+                if start == -1:
+                    start = char_pos
+                end = start + len(p)
+                results.append(ChunkResult(
+                    text=p_clean,
+                    metadata=ChunkMetadata(
+                        index=idx,
+                        char_start=start,
+                        char_end=end,
+                        token_estimate=len(p_clean) // 4
+                    ),
+                    strategy=strategy
+                ))
+                char_pos = end
+                idx += 1
+        elif strategy == ChunkStrategy.SLIDING_WINDOW:
+            window_size = kwargs.get("window_size", 500)
+            step = kwargs.get("step", 250)
+            idx = 0
+            start = 0
+            while start < len(text):
+                end = min(start + window_size, len(text))
+                chunk_str = text[start:end]
+                results.append(ChunkResult(
+                    text=chunk_str,
+                    metadata=ChunkMetadata(
+                        index=idx,
+                        char_start=start,
+                        char_end=end,
+                        token_estimate=len(chunk_str) // 4
+                    ),
+                    strategy=strategy
+                ))
+                idx += 1
+                start += step
+        elif strategy == ChunkStrategy.TOKEN_AWARE:
+            max_tokens = kwargs.get("max_tokens", 100)
+            words = text.split(" ")
+            current_words = []
+            idx = 0
+            char_start = 0
+            for w in words:
+                current_words.append(w)
+                est_tokens = len(" ".join(current_words)) // 4
+                if est_tokens >= max_tokens:
+                    chunk_str = " ".join(current_words)
+                    results.append(ChunkResult(
+                        text=chunk_str,
+                        metadata=ChunkMetadata(
+                            index=idx,
+                            char_start=char_start,
+                            char_end=char_start + len(chunk_str),
+                            token_estimate=est_tokens
+                        ),
+                        strategy=strategy
+                    ))
+                    char_start += len(chunk_str) + 1
+                    current_words = []
+                    idx += 1
+            if current_words:
+                chunk_str = " ".join(current_words)
+                results.append(ChunkResult(
+                    text=chunk_str,
+                    metadata=ChunkMetadata(
+                        index=idx,
+                        char_start=char_start,
+                        char_end=char_start + len(chunk_str),
+                        token_estimate=len(chunk_str) // 4
+                    ),
+                    strategy=strategy
+                ))
+        return results
+
+
+class ContextBuilderImpl(ContextBuilder):
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def rank_candidates(self, candidates: List[ContextCandidate], objective: str) -> List[ContextRanking]:
+        rankings = []
+        obj_words = set(objective.lower().split())
+        for c in candidates:
+            c_text_lower = c.text.lower()
+            matches = sum(1 for w in obj_words if w in c_text_lower)
+            rank_score = c.score + (matches * 0.05)
+            reasons = [f"Cosine similarity score: {c.score:.3f}"]
+            if matches > 0:
+                reasons.append(f"Matched {matches} query terms")
+            rankings.append(ContextRanking(
+                candidate=c,
+                rank_score=rank_score,
+                relevance_reasons=reasons
+            ))
+        rankings.sort(key=lambda x: x.rank_score, reverse=True)
+        return rankings
+
+    def deduplicate(self, candidates: List[ContextCandidate]) -> List[ContextCandidate]:
+        seen_texts = set()
+        unique = []
+        for c in candidates:
+            if c.text not in seen_texts:
+                seen_texts.add(c.text)
+                unique.append(c)
+        return unique
+
+    def assemble_context(self, candidates: List[ContextCandidate], token_budget: int) -> ContextAssembly:
+        used = []
+        total_tokens = 0
+        assembled = []
+        budget_respected = True
+
+        candidates = self.deduplicate(candidates)
+
+        for c in candidates:
+            tokens = len(c.text) // 4
+            if total_tokens + tokens <= token_budget:
+                used.append(c)
+                assembled.append(c.text)
+                total_tokens += tokens
+            else:
+                budget_respected = False
+        return ContextAssembly(
+            assembled_text="\n\n---\n\n".join(assembled),
+            candidates_used=used,
+            total_tokens=total_tokens,
+            budget_respected=budget_respected
+        )
+
 
 
 

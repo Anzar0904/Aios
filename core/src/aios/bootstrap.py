@@ -1150,6 +1150,73 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(RedisRuntimeValidator, redis_validator)
     registry.register(RedisRuntimeIntelligenceService, redis_intelligence_service)
 
+    # Wire and register Qdrant/Vector platform classes
+    from aios.services.persistence import (
+        QdrantTransport, QdrantProvider, CollectionManager, QdrantRuntimeService,
+        EmbeddingMetadata, EmbeddingBatchRequest, EmbeddingBatchResponse,
+        EmbeddingProvider, EmbeddingService, EmbeddingVersionManager, EmbeddingCache,
+        ChunkMetadata, ChunkStrategy, ChunkResult, ChunkingService,
+        ContextCandidate, ContextRanking, ContextAssembly, ContextBuilder
+    )
+    from aios.services.persistence_impl import (
+        QdrantConfigurationService, QdrantConnectionManager, QdrantTransportImpl, QdrantProviderImpl,
+        CollectionManagerImpl, QdrantRuntimeServiceImpl,
+        MockEmbeddingProvider, EmbeddingServiceImpl, EmbeddingVersionManagerImpl, EmbeddingCacheImpl,
+        ChunkingServiceImpl, ContextBuilderImpl
+    )
+
+    qdrant_cfg = QdrantConfigurationService()
+    qdrant_conn = QdrantConnectionManager(qdrant_cfg)
+    qdrant_transport = QdrantTransportImpl(qdrant_cfg, qdrant_conn)
+    qdrant_provider = QdrantProviderImpl(qdrant_transport)
+    col_manager = CollectionManagerImpl(qdrant_provider, qdrant_cfg)
+    qdrant_service = QdrantRuntimeServiceImpl(qdrant_provider, col_manager, qdrant_cfg)
+
+    # Instantiate embedding cache, services and providers
+    embedding_cache = EmbeddingCacheImpl()
+    embedding_service = EmbeddingServiceImpl()
+    mock_embed_provider = MockEmbeddingProvider()
+    embedding_service.register_provider("mock", mock_embed_provider)
+    embed_ver_manager = EmbeddingVersionManagerImpl()
+
+    # Chunking and Context Builder
+    chunking_service = ChunkingServiceImpl()
+    context_builder = ContextBuilderImpl()
+
+    # Link Qdrant service and embedding cache into the global RuntimeIntelligenceService (ri_service)
+    ri_service.qdrant_service = qdrant_service
+    ri_service.embedding_cache = embedding_cache
+
+    # Initialize all new components
+    qdrant_cfg.initialize()
+    qdrant_conn.initialize()
+    qdrant_transport.initialize()
+    qdrant_provider.initialize()
+    col_manager.initialize()
+    qdrant_service.initialize()
+    embedding_cache.initialize()
+    embedding_service.initialize()
+    mock_embed_provider.initialize()
+    embed_ver_manager.initialize()
+    chunking_service.initialize()
+
+    # Start the connection manager (which does the actual qdrant connect)
+    qdrant_conn.start()
+
+    # Register in DI container
+    registry.register(QdrantConfigurationService, qdrant_cfg)
+    registry.register(QdrantConnectionManager, qdrant_conn)
+    registry.register(QdrantTransport, qdrant_transport)
+    registry.register(QdrantProvider, qdrant_provider)
+    registry.register(CollectionManager, col_manager)
+    registry.register(QdrantRuntimeService, qdrant_service)
+    registry.register(EmbeddingCache, embedding_cache)
+    registry.register(EmbeddingService, embedding_service)
+    registry.register(EmbeddingVersionManager, embed_ver_manager)
+    registry.register(ChunkingService, chunking_service)
+    registry.register(ContextBuilder, context_builder)
+
+
 
 
 
