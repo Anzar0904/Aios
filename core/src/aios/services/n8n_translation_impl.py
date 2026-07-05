@@ -4,6 +4,7 @@ import time
 import logging
 from typing import Dict, List, Any, Optional
 
+from aios.services.persistence import PersistenceStatus, WorkflowTranslationRepository, PersistenceService
 from aios.services.model import LLMRequest, ModelService
 from aios.services.memory import MemoryService, MemoryType
 from aios.services.knowledge_hub import (
@@ -252,6 +253,12 @@ class LocalWorkflowTranslator(WorkflowTranslator):
 
         self._reports: Dict[str, List[TranslationReport]] = {}
         self._session_reports: Dict[str, TranslationReport] = {}
+        self._trans_repo: Optional[WorkflowTranslationRepository] = None
+        if registry:
+            try:
+                self._trans_repo = registry.get(WorkflowTranslationRepository)
+            except Exception:
+                pass
 
     def initialize(self) -> None:
         logger.info("Initializing LocalWorkflowTranslator")
@@ -345,6 +352,35 @@ class LocalWorkflowTranslator(WorkflowTranslator):
             timestamp=time.time()
         )
 
+        if self._trans_repo:
+            try:
+                self._trans_repo.save({
+                    "id": report.report_id,
+                    "workflow_id": definition.workflow_id,
+                    "workflow_metadata": {
+                        "name": definition.name,
+                        "description": definition.metadata.description if definition.metadata else ""
+                    },
+                    "translation_metadata": {
+                        "workspace_id": workspace_id,
+                        "session_id": session_id,
+                        "n8n_json_file_path": json_path
+                    },
+                    "ir_version": "v1",
+                    "translation_statistics": {
+                        "node_count": report.node_count,
+                        "connection_count": report.connection_count,
+                        "warnings_count": len(report.warnings)
+                    },
+                    "compilation_summaries": {
+                        "overview": overview,
+                        "warnings": report.warnings
+                    },
+                    "timestamp": report.timestamp
+                })
+            except Exception:
+                pass
+
         if workspace_id not in self._reports:
             self._reports[workspace_id] = []
         self._reports[workspace_id].append(report)
@@ -368,10 +404,56 @@ class LocalWorkflowTranslator(WorkflowTranslator):
         return report
 
     def get_history(self, workspace_id: str) -> List[TranslationReport]:
+        if self._trans_repo:
+            try:
+                p_service = self._registry.get(PersistenceService)
+                res = p_service.execute("SELECT * FROM workflow_translations")
+                reports = []
+                for row in res:
+                    t_meta = json.loads(row["translation_metadata"] or "{}")
+                    if t_meta.get("workspace_id") == workspace_id:
+                        stats = json.loads(row["translation_statistics"] or "{}")
+                        comp = json.loads(row["compilation_summaries"] or "{}")
+                        reports.append(
+                            TranslationReport(
+                                report_id=row["id"],
+                                session_id=t_meta.get("session_id", ""),
+                                workspace_id=workspace_id,
+                                node_count=stats.get("node_count", 0),
+                                connection_count=stats.get("connection_count", 0),
+                                warnings=comp.get("warnings", []),
+                                n8n_json_file_path=t_meta.get("n8n_json_file_path", ""),
+                                timestamp=row.get("timestamp") or time.time()
+                            )
+                        )
+                self._reports[workspace_id] = reports
+                return reports
+            except Exception:
+                pass
         return self._reports.get(workspace_id, [])
 
     def store_translation_summary(self, report_id: str) -> None:
         report = self._session_reports.get(report_id)
+        if not report and self._trans_repo:
+            try:
+                res = self._trans_repo.get(report_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    payload = res.payload
+                    t_meta = payload.get("translation_metadata") or {}
+                    stats = payload.get("translation_statistics") or {}
+                    comp = payload.get("compilation_summaries") or {}
+                    report = TranslationReport(
+                        report_id=payload["id"],
+                        session_id=t_meta.get("session_id", ""),
+                        workspace_id=t_meta.get("workspace_id", ""),
+                        node_count=stats.get("node_count", 0),
+                        connection_count=stats.get("connection_count", 0),
+                        warnings=comp.get("warnings", []),
+                        n8n_json_file_path=t_meta.get("n8n_json_file_path", ""),
+                        timestamp=payload.get("timestamp") or time.time()
+                    )
+            except Exception:
+                pass
         if not report:
             return
 

@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Dict, List, Any, Optional
 
+from aios.services.persistence import PersistenceStatus, WorkflowVersionRepository, PersistenceService
+
 from aios.services.model import LLMRequest, ModelService
 from aios.services.memory import MemoryService, MemoryType
 from aios.services.knowledge_hub import (
@@ -35,9 +37,15 @@ logger = logging.getLogger(__name__)
 class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
     """Immutable version catalogs catalog tracking graphs."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._versions: Dict[str, WorkflowVersion] = {}
         self._graphs: Dict[str, WorkflowVersionGraph] = {}
+        self._repo: Optional[WorkflowVersionRepository] = None
+        if registry:
+            try:
+                self._repo = registry.get(WorkflowVersionRepository)
+            except Exception:
+                pass
 
     def register_version(self, version: WorkflowVersion) -> None:
         self._versions[version.version_id] = version
@@ -46,17 +54,106 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
             self._graphs[w_id] = WorkflowVersionGraph(workflow_id=w_id)
         self._graphs[w_id].versions[version.version_id] = version
 
-        # Update previous parent's child pointer
         if version.previous_version_id:
             parent = self._versions.get(version.previous_version_id)
             if parent and version.version_id not in parent.children_ids:
                 parent.children_ids.append(version.version_id)
 
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": version.version_id,
+                    "workflow_id": version.workflow_id,
+                    "version_metadata": {
+                        "author": version.metadata.author,
+                        "version_tag": version.metadata.version_tag,
+                        "semantic_version": version.metadata.semantic_version,
+                        "description": version.metadata.description,
+                        "status": version.metadata.status
+                    },
+                    "migration_metadata": {
+                        "previous_version_id": version.previous_version_id,
+                        "children_ids": version.children_ids
+                    },
+                    "compatibility_metadata": {
+                        "compatibility": version.compatibility,
+                        "migration_notes": version.migration_notes
+                    },
+                    "rollback_metadata": {},
+                    "version_graph_references": {
+                        "workflow_ir_ref": version.workflow_ir_ref,
+                        "translation_ref": version.translation_ref,
+                        "optimization_ref": version.optimization_ref,
+                        "approval_ref": version.approval_ref,
+                        "telemetry_ref": version.telemetry_ref
+                    },
+                    "timestamp": version.creation_timestamp
+                })
+            except Exception:
+                pass
+
     def get_version(self, version_id: str) -> Optional[WorkflowVersion]:
-        return self._versions.get(version_id)
+        if version_id in self._versions:
+            return self._versions[version_id]
+
+        if self._repo:
+            try:
+                res = self._repo.get(version_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    payload = res.payload
+                    v_meta = payload.get("version_metadata") or {}
+                    mig_meta = payload.get("migration_metadata") or {}
+                    comp_meta = payload.get("compatibility_metadata") or {}
+                    graph_refs = payload.get("version_graph_references") or {}
+                    
+                    from aios.services.workflow_versioning import WorkflowVersion, WorkflowVersionMetadata
+                    metadata = WorkflowVersionMetadata(
+                        author=v_meta.get("author", ""),
+                        version_tag=v_meta.get("version_tag", ""),
+                        semantic_version=v_meta.get("semantic_version", "1.0.0"),
+                        description=v_meta.get("description", ""),
+                        status=v_meta.get("status", "draft")
+                    )
+                    version = WorkflowVersion(
+                        version_id=payload["id"],
+                        workflow_id=payload.get("workflow_id", ""),
+                        workflow_ir_ref=graph_refs.get("workflow_ir_ref", ""),
+                        translation_ref=graph_refs.get("translation_ref", ""),
+                        optimization_ref=graph_refs.get("optimization_ref", ""),
+                        approval_ref=graph_refs.get("approval_ref", ""),
+                        telemetry_ref=graph_refs.get("telemetry_ref", ""),
+                        creation_timestamp=payload.get("timestamp") or time.time(),
+                        metadata=metadata,
+                        compatibility=comp_meta.get("compatibility", "compatible"),
+                        migration_notes=comp_meta.get("migration_notes", ""),
+                        previous_version_id=mig_meta.get("previous_version_id"),
+                        children_ids=mig_meta.get("children_ids", [])
+                    )
+                    self._versions[version_id] = version
+                    return version
+            except Exception:
+                pass
+        return None
 
     def get_graph(self, workflow_id: str) -> Optional[WorkflowVersionGraph]:
-        return self._graphs.get(workflow_id)
+        if workflow_id in self._graphs:
+            return self._graphs[workflow_id]
+
+        if self._repo:
+            try:
+                p_service = self._repo.service
+                rows = p_service.execute("SELECT id FROM workflow_versions WHERE workflow_id = ?", (workflow_id,))
+                graph = WorkflowVersionGraph(workflow_id=workflow_id)
+                for r in rows:
+                    v = self.get_version(r["id"])
+                    if v:
+                        graph.versions[v.version_id] = v
+                if graph.versions:
+                    self._graphs[workflow_id] = graph
+                    return graph
+            except Exception:
+                pass
+        return None
 
 
 class LocalWorkflowCompatibilityAnalyzer(WorkflowCompatibilityAnalyzer):
@@ -165,7 +262,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
         self._model = model_service
         self._registry = registry
 
-        self._ver_registry = LocalWorkflowVersionRegistry()
+        self._ver_registry = LocalWorkflowVersionRegistry(registry)
         self._compat_analyzer = LocalWorkflowCompatibilityAnalyzer()
         self._migration_planner = LocalWorkflowMigrationPlanner()
         self._validator = LocalWorkflowVersionValidator()

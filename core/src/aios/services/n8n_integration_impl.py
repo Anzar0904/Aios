@@ -4,6 +4,7 @@ import time
 import logging
 from typing import Dict, List, Any, Optional
 
+from aios.services.persistence import PersistenceStatus, WorkflowIntegrationRepository, PersistenceService
 from aios.services.model import LLMRequest, ModelService
 from aios.services.memory import MemoryService, MemoryType
 from aios.services.knowledge_hub import (
@@ -166,24 +167,65 @@ class LocalN8NClient(N8NClient):
 class LocalN8NWorkflowRepository(N8NWorkflowRepository):
     """Workflow metadata catalog."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._metadata: Dict[str, Dict[str, Any]] = {}
+        self._repo = None
+        if registry:
+            try:
+                self._repo = registry.get(WorkflowIntegrationRepository)
+            except Exception:
+                pass
 
     def save_workflow_metadata(self, workflow_id: str, metadata: Dict[str, Any]) -> None:
         self._metadata[workflow_id] = metadata
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": f"wf_meta_{workflow_id}",
+                    "workflow_id": workflow_id,
+                    "server_metadata": metadata
+                })
+            except Exception:
+                pass
 
     def get_workflow_metadata(self, workflow_id: str) -> Optional[Dict[str, Any]]:
-        return self._metadata.get(workflow_id)
+        if workflow_id in self._metadata:
+            return self._metadata[workflow_id]
+        if self._repo:
+            try:
+                res = self._repo.get(f"wf_meta_{workflow_id}")
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    metadata = res.payload.get("server_metadata") or {}
+                    self._metadata[workflow_id] = metadata
+                    return metadata
+            except Exception:
+                pass
+        return None
 
 
 class LocalN8NExecutionRepository(N8NExecutionRepository):
     """Executions metadata catalog."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._metadata: Dict[str, Dict[str, Any]] = {}
+        self._repo = None
+        if registry:
+            try:
+                self._repo = registry.get(WorkflowIntegrationRepository)
+            except Exception:
+                pass
 
     def save_execution_metadata(self, execution_id: str, metadata: Dict[str, Any]) -> None:
         self._metadata[execution_id] = metadata
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": f"exec_meta_{execution_id}",
+                    "execution_id": execution_id,
+                    "server_metadata": metadata
+                })
+            except Exception:
+                pass
 
 
 class LocalN8NCredentialRepository(N8NCredentialRepository):
@@ -276,8 +318,8 @@ class LocalN8NIntegrationService(N8NIntegrationService):
         self._registry = registry
 
         self._client = LocalN8NClient()
-        self._wf_repo = LocalN8NWorkflowRepository()
-        self._exec_repo = LocalN8NExecutionRepository()
+        self._wf_repo = LocalN8NWorkflowRepository(registry)
+        self._exec_repo = LocalN8NExecutionRepository(registry)
         self._cred_repo = LocalN8NCredentialRepository()
         self._health_monitor = LocalN8NHealthMonitor()
         self._workspace_mapper = LocalN8NWorkspaceMapper()
@@ -285,6 +327,12 @@ class LocalN8NIntegrationService(N8NIntegrationService):
 
         self._reports: Dict[str, List[N8NIntegrationReport]] = {}
         self._session_reports: Dict[str, N8NIntegrationReport] = {}
+        self._repo: Optional[WorkflowIntegrationRepository] = None
+        if registry:
+            try:
+                self._repo = registry.get(WorkflowIntegrationRepository)
+            except Exception:
+                pass
 
     def initialize(self) -> None:
         logger.info("Initializing LocalN8NIntegrationService")
@@ -380,11 +428,53 @@ class LocalN8NIntegrationService(N8NIntegrationService):
             uploaded_workflows_count=len(self._client.list_workflows()),
             timestamp=time.time()
         )
+
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": report_id,
+                    "connection_metadata": {
+                        "connectivity_status": report.connectivity_status,
+                        "latency_ms": report.latency_ms
+                    },
+                    "server_metadata": {
+                        "server_version": report.server_version,
+                        "uploaded_workflows_count": report.uploaded_workflows_count
+                    },
+                    "health_metadata": health,
+                    "capability_discovery": health.get("capabilities", []),
+                    "timestamp": report.timestamp
+                })
+            except Exception:
+                pass
         
         self._session_reports[report_id] = report
         return report
 
     def get_history(self, workspace_id: str) -> List[N8NIntegrationReport]:
+        if self._repo:
+            try:
+                p_service = self._registry.get(PersistenceService)
+                res = p_service.execute("SELECT * FROM workflow_integrations WHERE id LIKE 'rep_int_%'")
+                reports = []
+                for row in res:
+                    conn_m = json.loads(row["connection_metadata"] or "{}")
+                    srv_m = json.loads(row["server_metadata"] or "{}")
+                    reports.append(
+                        N8NIntegrationReport(
+                            report_id=row["id"],
+                            workspace_id=workspace_id,
+                            server_version=srv_m.get("server_version", "1.25.0"),
+                            connectivity_status=conn_m.get("connectivity_status", "online"),
+                            latency_ms=conn_m.get("latency_ms", 12.5),
+                            uploaded_workflows_count=srv_m.get("uploaded_workflows_count", 0),
+                            timestamp=row.get("timestamp") or time.time()
+                        )
+                    )
+                self._reports[workspace_id] = reports
+                return reports
+            except Exception:
+                pass
         return self._reports.get(workspace_id, [])
 
     def store_integration_summary(self, report_id: str) -> None:

@@ -1,0 +1,28 @@
+[skill]
+id = "runtime"
+name = "Runtime Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "System skill to start, monitor, list watchers, show task pools, and view health status checks."
+category = "System"
+commands = [
+    "runtime start",
+    "runtime stop",
+    "runtime restart",
+    "runtime status",
+    "runtime health",
+    "runtime events",
+    "runtime watchers",
+    "runtime tasks"
+]
+capabilities = [
+    "runtime",
+    "tasks",
+    "watchers",
+    "health",
+    "events"
+]
+required_tools = []
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

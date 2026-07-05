@@ -22,6 +22,8 @@ from aios.services.test_execution import (
     TestExecutor,
     TestExecutionService,
 )
+from aios.services.persistence import PersistenceStatus, PersistencePolicy, TestSessionRepository, TestResultRepository
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -214,9 +216,25 @@ class LocalTestExecutionService(TestExecutionService):
         self._registry = registry
         
         self._executor = LocalTestExecutor()
+        self._session_repo = None
+        self._result_repo = None
 
     def initialize(self) -> None:
         logger.info("Initializing LocalTestExecutionService")
+        if self._registry:
+            try:
+                self._session_repo = self._registry.get(TestSessionRepository)
+                self._result_repo = self._registry.get(TestResultRepository)
+            except Exception as e:
+                logger.warning(f"Failed to load Test Session/Result Repositories: {e}")
+        else:
+            self._session_repo = None
+            self._result_repo = None
+
+    def _get_policy(self) -> PersistencePolicy:
+        if self._session_repo and hasattr(self._session_repo, "service") and self._session_repo.service.config:
+            return self._session_repo.service.config.policy
+        return PersistencePolicy.STRICT
 
     def start(self) -> None:
         pass
@@ -233,6 +251,63 @@ class LocalTestExecutionService(TestExecutionService):
         logger.info(f"Executing workspace tests for workspace: '{workspace_id}'")
         summary = self._executor.execute(workspace_root, targets)
         summary.workspace_id = workspace_id
+
+        if self._session_repo and self._result_repo:
+            policy = self._get_policy()
+            try:
+                # Save test session
+                session_mapped = {
+                    "id": summary.summary_id,
+                    "workspace_id": summary.workspace_id,
+                    "status": "PASSED" if summary.overall_success else "FAILED",
+                    "pass_count": summary.total_passed,
+                    "fail_count": summary.total_failed,
+                    "coverage_summary": json.dumps({"skipped": summary.total_skipped}),
+                    "execution_time": summary.total_duration,
+                    "failure_categories": json.dumps({}),
+                    "environment_metadata": json.dumps({"workspace_root": workspace_root}),
+                    "operation_results": json.dumps({}),
+                    "timestamp": summary.timestamp
+                }
+                res = self._session_repo.save(session_mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+
+                # Save individual target results
+                for r in summary.results:
+                    result_mapped = {
+                        "id": f"res_{summary.summary_id}_{r.target.target_id}",
+                        "session_id": summary.summary_id,
+                        "suite_id": r.target.target_id,
+                        "name": r.target.file_path,
+                        "category": "pytest",
+                        "passed": 1 if r.success else 0,
+                        "execution_time": r.metrics.duration,
+                        "error_message": "\n".join(r.errors) if r.errors else "",
+                        "metadata": json.dumps({
+                            "exit_code": r.exit_code,
+                            "metrics": {
+                                "total": r.metrics.total_tests,
+                                "passed": r.metrics.passed_tests,
+                                "failed": r.metrics.failed_tests,
+                                "skipped": r.metrics.skipped_tests
+                            }
+                        })
+                    }
+                    res_r = self._result_repo.save(result_mapped)
+                    if res_r.status != PersistenceStatus.SUCCESS:
+                        if policy == PersistencePolicy.STRICT:
+                            raise RuntimeError(f"Strict persistence save failure: {res_r.message}")
+                        else:
+                            logger.warning(f"Persistence best-effort fallback: {res_r.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving test session/results: {e}.")
+
         return summary
 
     def store_execution_summary(self, summary: ExecutionSummary) -> None:

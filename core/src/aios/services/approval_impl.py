@@ -28,6 +28,7 @@ from aios.services.approval import (
     ApprovalManager,
     ApprovalEngineService,
 )
+from aios.services.persistence import PersistenceStatus, PersistencePolicy, ApprovalRepository, ReviewRepository
 
 logger = logging.getLogger(__name__)
 
@@ -310,9 +311,25 @@ class LocalApprovalEngineService(ApprovalEngineService):
         
         self._sessions: Dict[str, ApprovalSession] = {}
         self._histories: Dict[str, ApprovalHistory] = {}
+        self._approval_repo = None
+        self._review_repo = None
 
     def initialize(self) -> None:
         logger.info("Initializing LocalApprovalEngineService")
+        if self._registry:
+            try:
+                self._approval_repo = self._registry.get(ApprovalRepository)
+                self._review_repo = self._registry.get(ReviewRepository)
+            except Exception as e:
+                logger.warning(f"Failed to load M3 repositories in LocalApprovalEngineService: {e}")
+        else:
+            self._approval_repo = None
+            self._review_repo = None
+
+    def _get_policy(self) -> PersistencePolicy:
+        if self._approval_repo and hasattr(self._approval_repo, "service") and self._approval_repo.service.config:
+            return self._approval_repo.service.config.policy
+        return PersistencePolicy.STRICT
 
     def start(self) -> None:
         pass
@@ -421,17 +438,146 @@ class LocalApprovalEngineService(ApprovalEngineService):
 
         session.status = "closed"
         session.closed_at = time.time()
+
+        # Convert/serialize session to dict and save in DB
+        if self._approval_repo:
+            policy = self._get_policy()
+            try:
+                mapped = {
+                    "id": session.session_id,
+                    "workspace_id": request.workspace_id,
+                    "metadata": {
+                        "request": {
+                            "request_id": request.request_id,
+                            "workspace_id": request.workspace_id,
+                            "target_version": request.target_version,
+                            "policy_id": request.policy_id,
+                            "timestamp": request.timestamp
+                        },
+                        "overall_health": package.overall_health,
+                        "confidence_score": package.confidence_score,
+                    },
+                    "decision_outcome": decision.status.value,
+                    "confidence": package.confidence_score,
+                    "policy_used": {
+                        "name": "default",
+                        "rules": decision.reasoning
+                    },
+                    "review_status": session.status,
+                    "approver": request.policy_id,
+                    "timeline_metadata": {
+                        "created_at": session.created_at,
+                        "closed_at": session.closed_at
+                    },
+                    "operation_results": {},
+                    "created_at": session.created_at,
+                    "closed_at": session.closed_at
+                }
+                res = self._approval_repo.save(mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving approval session {session.session_id}: {e}.")
+
         return session
 
     def get_session(self, session_id: str) -> Optional[ApprovalSession]:
-        return self._sessions.get(session_id)
+        if session_id in self._sessions:
+            return self._sessions[session_id]
+
+        if self._approval_repo:
+            try:
+                res = self._approval_repo.get(session_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    row = res.payload
+                    req_meta = row.get("metadata", {}).get("request", {})
+                    req = ApprovalRequest(
+                        request_id=req_meta.get("request_id", ""),
+                        workspace_id=req_meta.get("workspace_id", ""),
+                        target_version=req_meta.get("target_version", ""),
+                        policy_id=req_meta.get("policy_id", ""),
+                        evidence=[],
+                        timestamp=req_meta.get("timestamp", 0.0)
+                    )
+                    
+                    dec_outcome = row.get("decision_outcome")
+                    policy_used = row.get("policy_used", {})
+                    dec = ApprovalDecision(
+                        status=ApprovalStatus(dec_outcome) if dec_outcome else ApprovalStatus.PENDING,
+                        reasoning=policy_used.get("rules", ""),
+                        timestamp=row.get("closed_at", 0.0)
+                    )
+                    
+                    pack_meta = row.get("metadata", {})
+                    pack = ApprovalPackage(
+                        package_id=f"pkg_{session_id}",
+                        workspace_id=row.get("workspace_id", ""),
+                        engineering_summary="",
+                        validation_summary={},
+                        documentation_summary={},
+                        risk_summary={},
+                        affected_files=[],
+                        affected_components=[],
+                        coverage_summary={},
+                        failure_summary={},
+                        recommendations=[],
+                        policy=ApprovalPolicy(policy_id="default", name="Default Policy"),
+                        reviewer_notes=[],
+                        approval_history=[],
+                        confidence_score=row.get("confidence", 1.0),
+                        overall_health=pack_meta.get("overall_health", "healthy")
+                    )
+                    
+                    session = ApprovalSession(
+                        session_id=row.get("id"),
+                        request=req,
+                        package=pack,
+                        decision=dec,
+                        status=row.get("review_status", "closed"),
+                        created_at=row.get("created_at", 0.0),
+                        closed_at=row.get("closed_at")
+                    )
+                    self._sessions[session_id] = session
+                    return session
+            except Exception as e:
+                policy = self._get_policy()
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence load failure: {e}") from e
+                logger.warning(f"Database error getting approval session {session_id}: {e}.")
+
+        return None
 
     def get_history(self, workspace_id: str) -> ApprovalHistory:
         if workspace_id not in self._histories:
+            records = []
+            if self._approval_repo:
+                try:
+                    q = "SELECT id, workspace_id, confidence, overall_health, closed_at, decision_outcome FROM approval_sessions WHERE workspace_id = ?"
+                    rows = self._approval_repo.service.execute(q, (workspace_id,))
+                    for row in rows:
+                        records.append(
+                            ApprovalSummary(
+                                summary_id=f"sum_{row['id']}",
+                                session_id=row['id'],
+                                workspace_id=row['workspace_id'],
+                                status=ApprovalStatus(row['decision_outcome']),
+                                confidence_score=row['confidence'],
+                                overall_health=row['overall_health'],
+                                timestamp=row['closed_at'] or time.time()
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to load approval history for {workspace_id} from DB: {e}")
+            
             self._histories[workspace_id] = ApprovalHistory(
                 history_id=f"hist_{workspace_id}",
                 workspace_id=workspace_id,
-                records=[]
+                records=records
             )
         return self._histories[workspace_id]
 

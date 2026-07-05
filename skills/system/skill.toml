@@ -1,0 +1,24 @@
+[skill]
+id = "system"
+name = "System Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Kernel status tools, task executor steps orchestration, and action engine planning/execution pipeline."
+category = "System"
+commands = [
+    "system status",
+    "run task",
+    "task status",
+    "task history",
+    "task resume",
+    "plan",
+    "approve",
+    "reject",
+    "execute",
+    "rollback",
+    "execution history"
+]
+required_tools = []
+required_models = []
+required_memory = []
+prompt_directory = "prompts"

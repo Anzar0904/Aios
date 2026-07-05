@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Dict, List, Optional, Any
 
 from aios.providers.models import (
@@ -7,13 +8,22 @@ from aios.providers.models import (
     ProviderStatus,
     DIInitializeMixin,
 )
+from aios.services.persistence import PersistenceStatus, AIProviderRepository, ProviderCapabilityRepository
 
 
 class ProviderRegistry(DIInitializeMixin):
     """Production provider registry storing metadata, capabilities, and configurations."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._providers: Dict[str, ProviderMetadata] = {}
+        self._repo = None
+        self._cap_repo = None
+        if registry:
+            try:
+                self._repo = registry.get(AIProviderRepository)
+                self._cap_repo = registry.get(ProviderCapabilityRepository)
+            except Exception:
+                pass
         self._initialize_defaults()
 
     def _initialize_defaults(self) -> None:
@@ -185,6 +195,43 @@ class ProviderRegistry(DIInitializeMixin):
 
     def register_provider(self, metadata: ProviderMetadata) -> None:
         self._providers[metadata.name] = metadata
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": metadata.name,
+                    "name": metadata.name,
+                    "version": metadata.version,
+                    "priority": metadata.priority,
+                    "status": metadata.status.value if hasattr(metadata.status, "value") else str(metadata.status),
+                    "context_window": metadata.context_window,
+                    "cost_per_million_input": metadata.cost_per_million_input,
+                    "cost_per_million_output": metadata.cost_per_million_output,
+                    "auth_type": metadata.auth_type,
+                    "supported_models": metadata.supported_models,
+                    "is_local": metadata.is_local
+                })
+            except Exception:
+                pass
+        if self._cap_repo:
+            try:
+                self._cap_repo.save({
+                    "id": f"cap_{metadata.name}",
+                    "provider_name": metadata.name,
+                    "capabilities": {
+                        "streaming": metadata.capabilities.streaming,
+                        "vision": metadata.capabilities.vision,
+                        "function_calling": metadata.capabilities.function_calling,
+                        "tools": metadata.capabilities.tools,
+                        "structured_output": metadata.capabilities.structured_output,
+                        "code_generation": metadata.capabilities.code_generation,
+                        "editing": metadata.capabilities.editing,
+                        "reasoning": metadata.capabilities.reasoning,
+                        "long_context": metadata.capabilities.long_context
+                    },
+                    "timestamp": time.time()
+                })
+            except Exception:
+                pass
 
     def get_provider(self, name: str) -> Optional[ProviderMetadata]:
         # Handle aliases like 'anthropic' -> 'claude_code'
@@ -192,7 +239,50 @@ class ProviderRegistry(DIInitializeMixin):
             name = "claude_code"
         elif name == "gemini":
             name = "gemini_cli"
-        return self._providers.get(name)
+
+        if name in self._providers:
+            return self._providers[name]
+
+        if self._repo:
+            try:
+                res = self._repo.get(name)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    p = res.payload
+                    caps = ProviderCapabilities()
+                    if self._cap_repo:
+                        cap_res = self._cap_repo.get(f"cap_{name}")
+                        if cap_res.status == PersistenceStatus.SUCCESS and cap_res.payload:
+                            c_data = cap_res.payload.get("capabilities", {})
+                            caps = ProviderCapabilities(
+                                streaming=c_data.get("streaming", False),
+                                vision=c_data.get("vision", False),
+                                function_calling=c_data.get("function_calling", False),
+                                tools=c_data.get("tools", False),
+                                structured_output=c_data.get("structured_output", False),
+                                code_generation=c_data.get("code_generation", False),
+                                editing=c_data.get("editing", False),
+                                reasoning=c_data.get("reasoning", False),
+                                long_context=c_data.get("long_context", False)
+                            )
+                    metadata = ProviderMetadata(
+                        name=p["name"],
+                        version=p["version"],
+                        priority=p["priority"],
+                        status=ProviderStatus(p["status"]) if hasattr(ProviderStatus, p["status"]) else ProviderStatus.ONLINE,
+                        context_window=p["context_window"],
+                        cost_per_million_input=p["cost_per_million_input"],
+                        cost_per_million_output=p["cost_per_million_output"],
+                        auth_type=p["auth_type"],
+                        supported_models=p["supported_models"],
+                        is_local=p["is_local"],
+                        capabilities=caps
+                    )
+                    self._providers[name] = metadata
+                    return metadata
+            except Exception:
+                pass
+
+        return None
 
     def list_providers(self) -> List[ProviderMetadata]:
         return list(self._providers.values())

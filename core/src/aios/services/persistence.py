@@ -1053,3 +1053,67 @@ class RuntimeIntelligenceService(ServiceLifecycle, abc.ABC):
     def generate_reports(self) -> None:
         pass
 
+
+class RedisTransport(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def connect(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def disconnect(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def is_connected(self) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def execute_command(self, cmd: str, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+
+class RedisProvider(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get(self, key: str) -> Optional[str]:
+        pass
+
+    @abc.abstractmethod
+    def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete(self, key: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def exists(self, key: str) -> bool:
+        pass
+
+
+class RedisRuntimeService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_health(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_telemetry(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def generate_reports(self) -> None:
+        pass
+
+
+

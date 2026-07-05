@@ -1,0 +1,36 @@
+[skill]
+id = "career"
+name = "Career Agent Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Composes Research, Personal Profile, and n8n skills to provide end-to-end Career Assistance."
+category = "Career"
+commands = [
+    "career analyze",
+    "career jobs",
+    "career resume",
+    "career optimize",
+    "career cover-letter",
+    "career score",
+    "career interview",
+    "career roadmap",
+    "career applications",
+    "career workflow",
+    "career report"
+]
+capabilities = [
+    "career",
+    "resume",
+    "ats",
+    "cover-letter",
+    "jobs",
+    "internships",
+    "applications",
+    "interview",
+    "portfolio",
+    "learning-plan"
+]
+required_tools = []
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

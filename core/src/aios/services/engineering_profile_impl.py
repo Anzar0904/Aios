@@ -10,6 +10,7 @@ from aios.services.knowledge_hub import (
     KnowledgeDocument,
     KnowledgeMetadata as KHMetadata,
 )
+from aios.services.persistence import EngineeringProfileRepository, PersistencePolicy, PersistenceStatus
 from aios.services.engineering_profile import (
     ProjectProfile,
     CodingProfile,
@@ -206,28 +207,46 @@ class LocalProfileManager(ProfileManager):
 
 
 class LocalEngineeringProfileService(EngineeringProfileService):
-    """Concrete profile service orchestrating serializer, registry, loader, and manager tools."""
+    """Concrete profile service orchestrating database persistence and verification checks."""
 
     def __init__(
         self,
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[Any] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
+        profile_repo: Optional[EngineeringProfileRepository] = None
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
         self._model = model_service
         self._registry = registry
+        self._profile_repo = profile_repo
 
         self._in_memory_registry = ProfileRegistry()
         self._serializer = LocalProfileSerializer()
         self._loader = LocalProfileLoader()
         self._manager = LocalProfileManager()
 
+    def _get_policy(self) -> PersistencePolicy:
+        policy = PersistencePolicy.STRICT
+        if self._registry:
+            try:
+                from aios.services.persistence import PersistenceService
+                p_svc = self._registry.get(PersistenceService)
+                if p_svc and p_svc.config:
+                    return p_svc.config.policy
+            except Exception:
+                pass
+        if self._profile_repo and hasattr(self._profile_repo, "service"):
+            try:
+                return self._profile_repo.service.config.policy
+            except Exception:
+                pass
+        return policy
+
     def initialize(self) -> None:
         logger.info("Initializing LocalEngineeringProfileService")
-        # Load default profile
         default_dict = {
             "profile_id": "default",
             "project": {
@@ -303,7 +322,42 @@ class LocalEngineeringProfileService(EngineeringProfileService):
         }
         
         default_profile = self._serializer.deserialize(default_dict)
-        self._in_memory_registry.register("default", default_profile)
+        policy = self._get_policy()
+        if self._profile_repo:
+            try:
+                existing = self._profile_repo.get("default")
+                if not existing:
+                    res = self._profile_repo.save(self._serializer.serialize(default_profile))
+                    if res.status != PersistenceStatus.SUCCESS:
+                        is_awaiting = (res.status == PersistenceStatus.AWAITING_RUNTIME_CONFIGURATION)
+                        if policy == PersistencePolicy.STRICT and not is_awaiting:
+                            raise RuntimeError(f"Strict initialization failure: {res.message}")
+                        else:
+                            logger.warning(f"Database error during initialize(): {res.message}. Using in-memory.")
+                            self._in_memory_registry.register("default", default_profile)
+                    else:
+                        self._in_memory_registry.register("default", default_profile)
+                else:
+                    db_default = self.get_profile("default")
+                    if db_default:
+                        self._in_memory_registry.register("default", db_default)
+            except Exception as e:
+                is_awaiting = False
+                if self._profile_repo and hasattr(self._profile_repo, "service"):
+                    try:
+                        status_res = self._profile_repo.service.check_status()
+                        if status_res.status == PersistenceStatus.AWAITING_RUNTIME_CONFIGURATION:
+                            is_awaiting = True
+                    except Exception:
+                        pass
+
+                if policy == PersistencePolicy.STRICT and not is_awaiting:
+                    logger.error("Strict initialization database error.")
+                    raise
+                logger.warning(f"Database error during initialize(): {e}. Using in-memory fallback.")
+                self._in_memory_registry.register("default", default_profile)
+        else:
+            self._in_memory_registry.register("default", default_profile)
 
     def start(self) -> None:
         pass
@@ -312,10 +366,221 @@ class LocalEngineeringProfileService(EngineeringProfileService):
         pass
 
     def get_profile(self, profile_id: str) -> Optional[EngineeringProfile]:
+        policy = self._get_policy()
+        if self._profile_repo:
+            try:
+                data = self._profile_repo.get(profile_id)
+                if not data:
+                    return self._in_memory_registry.get(profile_id)
+
+                mapped = {
+                    "profile_id": data["id"],
+                    "project": {
+                        "project_name": data.get("project_name", ""),
+                        "version": data.get("project_version", "1.0.0"),
+                        "description": data.get("project_description", "")
+                    },
+                    "coding": {
+                        "language": data.get("language", "python"),
+                        "coding_standards": data.get("coding_standards", []),
+                        "naming_conventions": data.get("naming_conventions", {})
+                    },
+                    "testing": {
+                        "framework": data.get("testing_framework", "pytest"),
+                        "min_statement_coverage": data.get("min_statement_coverage", 80.0),
+                        "min_branch_coverage": data.get("min_branch_coverage", 75.0)
+                    },
+                    "execution": {
+                        "max_timeout_seconds": data.get("max_timeout_seconds", 300),
+                        "sandbox_enabled": data.get("sandbox_enabled", True)
+                    },
+                    "documentation": {
+                        "format": data.get("documentation_format", "markdown"),
+                        "generate_api_docs": data.get("generate_api_docs", True),
+                        "release_formatting_rules": data.get("release_formatting_rules", {}),
+                        "markdown_preferences": data.get("markdown_preferences", {}),
+                        "section_ordering": data.get("section_ordering", []),
+                        "naming_conventions": data.get("doc_naming_conventions", {}),
+                        "versioning_preferences": data.get("doc_versioning_preferences", {})
+                    },
+                    "github": {
+                        "org_name": data.get("github_org", ""),
+                        "repo_name": data.get("github_repo", ""),
+                        "default_branch": data.get("github_default_branch", "main")
+                    },
+                    "release": {
+                        "auto_release": data.get("auto_release", False),
+                        "versioning_scheme": data.get("versioning_scheme", "semver")
+                    },
+                    "automation": {
+                        "cron_expression": data.get("cron_expression", ""),
+                        "max_retries": data.get("max_retries", 3)
+                    },
+                    "workspace": {
+                        "workspace_root": data.get("workspace_root", ""),
+                        "exclude_patterns": data.get("exclude_patterns", [])
+                    },
+                    "timestamp": data.get("timestamp", time.time())
+                }
+                profile = self._serializer.deserialize(mapped)
+                self._in_memory_registry.register(profile_id, profile)
+                return profile
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise
+                logger.warning(f"Database error getting profile {profile_id}: {e}. Falling back to in-memory.")
+                return self._in_memory_registry.get(profile_id)
+
         return self._in_memory_registry.get(profile_id)
 
     def save_profile(self, profile: EngineeringProfile) -> None:
-        self._in_memory_registry.register(profile.profile_id, profile)
+        errors = self._manager.validate(profile)
+        if errors:
+            raise ValueError(f"Profile validation failed: {errors}")
+
+        policy = self._get_policy()
+
+        if self._profile_repo:
+            mapped = {
+                "id": profile.profile_id,
+                "workspace_id": profile.workspace.workspace_root,
+                "project_name": profile.project.project_name,
+                "project_version": profile.project.version,
+                "project_description": profile.project.description,
+                "language": profile.coding.language,
+                "coding_standards": profile.coding.coding_standards,
+                "naming_conventions": profile.coding.naming_conventions,
+                "testing_framework": profile.testing.framework,
+                "min_statement_coverage": profile.testing.min_statement_coverage,
+                "min_branch_coverage": profile.testing.min_branch_coverage,
+                "max_timeout_seconds": profile.execution.max_timeout_seconds,
+                "sandbox_enabled": profile.execution.sandbox_enabled,
+                "documentation_format": profile.documentation.format,
+                "generate_api_docs": profile.documentation.generate_api_docs,
+                "release_formatting_rules": profile.documentation.release_formatting_rules,
+                "markdown_preferences": profile.documentation.markdown_preferences,
+                "section_ordering": profile.documentation.section_ordering,
+                "doc_naming_conventions": profile.documentation.naming_conventions,
+                "doc_versioning_preferences": profile.documentation.versioning_preferences,
+                "github_org": profile.github.org_name,
+                "github_repo": profile.github.repo_name,
+                "github_default_branch": profile.github.default_branch,
+                "auto_release": profile.release.auto_release,
+                "versioning_scheme": profile.release.versioning_scheme,
+                "cron_expression": profile.automation.cron_expression,
+                "max_retries": profile.automation.max_retries,
+                "workspace_root": profile.workspace.workspace_root,
+                "exclude_patterns": profile.workspace.exclude_patterns,
+                "timestamp": profile.timestamp
+            }
+            try:
+                res = self._profile_repo.save(mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+                self._in_memory_registry.register(profile.profile_id, profile)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving profile {profile.profile_id}: {e}.")
+                self._in_memory_registry.register(profile.profile_id, profile)
+        else:
+            self._in_memory_registry.register(profile.profile_id, profile)
+
+    def delete_profile(self, profile_id: str) -> None:
+        policy = self._get_policy()
+        if self._profile_repo:
+            try:
+                res = self._profile_repo.delete(profile_id)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence delete failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+                self._in_memory_registry._profiles.pop(profile_id, None)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence delete failure: {e}") from e
+                logger.warning(f"Database error deleting profile {profile_id}: {e}.")
+                self._in_memory_registry._profiles.pop(profile_id, None)
+        else:
+            self._in_memory_registry._profiles.pop(profile_id, None)
+
+    def get_profile_history(self, profile_id: str) -> List[Dict[str, Any]]:
+        policy = self._get_policy()
+        if self._profile_repo:
+            try:
+                return self._profile_repo.get_history(profile_id)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise
+                logger.warning(f"Database error getting history for profile {profile_id}: {e}.")
+        return []
+
+    def rollback_profile(self, profile_id: str, version: int) -> None:
+        policy = self._get_policy()
+        if not self._profile_repo:
+            return
+        try:
+            history = self.get_profile_history(profile_id)
+            target = None
+            for record in history:
+                if record.get("version") == version:
+                    target = record
+                    break
+            if not target:
+                raise ValueError(f"Version {version} not found in profile history.")
+            
+            mapped = {
+                "id": target["id"],
+                "workspace_id": target.get("workspace_id", ""),
+                "project_name": target.get("project_name", ""),
+                "project_version": target.get("project_version", ""),
+                "project_description": target.get("project_description", ""),
+                "language": target.get("language", ""),
+                "coding_standards": target.get("coding_standards", []),
+                "naming_conventions": target.get("naming_conventions", {}),
+                "testing_framework": target.get("testing_framework", ""),
+                "min_statement_coverage": target.get("min_statement_coverage", 80.0),
+                "min_branch_coverage": target.get("min_branch_coverage", 75.0),
+                "max_timeout_seconds": target.get("max_timeout_seconds", 300),
+                "sandbox_enabled": bool(target.get("sandbox_enabled", True)),
+                "documentation_format": target.get("documentation_format", ""),
+                "generate_api_docs": bool(target.get("generate_api_docs", True)),
+                "release_formatting_rules": target.get("release_formatting_rules", {}),
+                "markdown_preferences": target.get("markdown_preferences", {}),
+                "section_ordering": target.get("section_ordering", []),
+                "doc_naming_conventions": target.get("doc_naming_conventions", {}),
+                "doc_versioning_preferences": target.get("doc_versioning_preferences", {}),
+                "github_org": target.get("github_org", ""),
+                "github_repo": target.get("github_repo", ""),
+                "github_default_branch": target.get("github_default_branch", ""),
+                "auto_release": bool(target.get("auto_release", False)),
+                "versioning_scheme": target.get("versioning_scheme", ""),
+                "cron_expression": target.get("cron_expression", ""),
+                "max_retries": target.get("max_retries", 3),
+                "workspace_root": target.get("workspace_root", ""),
+                "exclude_patterns": target.get("exclude_patterns", []),
+                "timestamp": time.time()
+            }
+            res = self._profile_repo.save(mapped)
+            if res.status != PersistenceStatus.SUCCESS:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence rollback failure: {res.message}")
+                else:
+                    logger.warning(f"Persistence best-effort rollback fallback: {res.message}")
+            
+            p = self.get_profile(profile_id)
+            if p:
+                self._in_memory_registry.register(profile_id, p)
+        except Exception as e:
+            if policy == PersistencePolicy.STRICT:
+                raise RuntimeError(f"Strict persistence rollback failure: {e}") from e
+            logger.warning(f"Database error rolling back profile {profile_id}: {e}.")
+            if isinstance(e, ValueError):
+                raise
 
     def store_profile_summary(self, profile: EngineeringProfile) -> None:
         content = (

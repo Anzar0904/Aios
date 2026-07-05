@@ -26,6 +26,7 @@ from aios.services.software_engineer import (
     ImplementationPlanner,
     SoftwareEngineerService,
 )
+from aios.services.persistence import PersistenceStatus, PersistencePolicy, EngineeringTaskRepository, PlanningRepository
 
 logger = logging.getLogger(__name__)
 
@@ -315,9 +316,25 @@ class LocalSoftwareEngineerService(SoftwareEngineerService):
         self._registry = registry
 
         self._planner = LocalImplementationPlanner(model_service)
+        self._task_repo = None
+        self._planning_repo = None
 
     def initialize(self) -> None:
         logger.info("Initializing LocalSoftwareEngineerService")
+        if self._registry:
+            try:
+                self._task_repo = self._registry.get(EngineeringTaskRepository)
+                self._planning_repo = self._registry.get(PlanningRepository)
+            except Exception as e:
+                logger.warning(f"Failed to load M3 repositories: {e}")
+        else:
+            self._task_repo = None
+            self._planning_repo = None
+
+    def _get_policy(self) -> PersistencePolicy:
+        if self._task_repo and hasattr(self._task_repo, "service") and self._task_repo.service.config:
+            return self._task_repo.service.config.policy
+        return PersistencePolicy.STRICT
 
     def start(self) -> None:
         pass
@@ -327,7 +344,66 @@ class LocalSoftwareEngineerService(SoftwareEngineerService):
 
     def create_development_plan(self, objective: str, engineering_report: EngineeringReport) -> SoftwareEngineeringPlan:
         logger.info(f"Creating development plan for: '{objective}'")
-        return self._planner.plan_implementation(objective, engineering_report)
+        plan = self._planner.plan_implementation(objective, engineering_report)
+
+        if self._planning_repo and self._task_repo:
+            policy = self._get_policy()
+            try:
+                # Save planning session
+                plan_mapped = {
+                    "id": plan.plan_id if hasattr(plan, "plan_id") else f"plan_{int(plan.timestamp)}",
+                    "execution_plan": {
+                        "objective": plan.objective,
+                        "rollback_strategy": plan.rollback_strategy,
+                        "testing_strategy": plan.testing_strategy,
+                        "verification_strategy": plan.verification_strategy,
+                        "timestamp": plan.timestamp
+                    },
+                    "decision_tree": {},
+                    "architecture_decisions": {},
+                    "dependency_graph": {},
+                    "planning_statistics": {},
+                    "planning_version": 1,
+                    "timestamp": plan.timestamp
+                }
+                res_plan = self._planning_repo.save(plan_mapped)
+                if res_plan.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res_plan.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res_plan.message}")
+
+                # Save individual tasks
+                for phase in plan.phases:
+                    for task in phase.tasks:
+                        task_mapped = {
+                            "id": task.task_id,
+                            "name": task.title,
+                            "description": task.description,
+                            "priority": task.priority,
+                            "status": "pending",
+                            "creation_time": plan.timestamp,
+                            "update_time": plan.timestamp,
+                            "completion_time": 0.0,
+                            "workspace": "default_workspace",
+                            "current_phase": phase.name,
+                            "assigned_agent": "ai_software_engineer",
+                            "dependencies": json.dumps([]),
+                            "retry_count": 0,
+                            "operation_results": json.dumps({})
+                        }
+                        res_task = self._task_repo.save(task_mapped)
+                        if res_task.status != PersistenceStatus.SUCCESS:
+                            if policy == PersistencePolicy.STRICT:
+                                raise RuntimeError(f"Strict persistence save failure: {res_task.message}")
+                            else:
+                                logger.warning(f"Persistence best-effort fallback: {res_task.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving development plan/tasks: {e}.")
+
+        return plan
 
     def store_development_plan(self, plan: SoftwareEngineeringPlan) -> None:
         task_details = []

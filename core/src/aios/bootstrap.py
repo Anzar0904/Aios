@@ -124,6 +124,9 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         AIMemoryRepository,
         AIMemoryPersistenceService,
         RuntimeIntelligenceService,
+        RedisTransport,
+        RedisProvider,
+        RedisRuntimeService,
     )
     from aios.services.persistence_impl import (
         PostgreSQLProvider,
@@ -203,6 +206,17 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         RuntimeLifecycleMonitor,
         RuntimeCorrelationManager,
         RuntimeReportGenerator,
+        RedisConfigurationService,
+        RedisConnectionManager,
+        RedisTransportImpl,
+        RedisProviderImpl,
+        RedisTelemetry,
+        RedisStatistics,
+        RedisDiagnostics,
+        RedisHealthMonitor,
+        RedisValidator,
+        RedisReportGenerator,
+        RedisRuntimeServiceImpl,
     )
 
     p_config = PersistenceConfigurationService()
@@ -599,6 +613,57 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(RuntimeHealthMonitor, ri_health)
     registry.register(RuntimeReportGenerator, ri_report)
     registry.register(RuntimeIntelligenceService, ri_service)
+
+    # Instantiate Redis Platform foundation classes
+    redis_cfg = RedisConfigurationService()
+    redis_conn = RedisConnectionManager(redis_cfg)
+    redis_transport = RedisTransportImpl(redis_cfg, redis_conn)
+    redis_provider = RedisProviderImpl(redis_transport)
+    redis_telem = RedisTelemetry()
+    redis_stats = RedisStatistics(redis_telem)
+    redis_diag = RedisDiagnostics(redis_conn)
+    redis_health = RedisHealthMonitor(redis_transport)
+    redis_validator = RedisValidator()
+    redis_report = RedisReportGenerator(os.getcwd(), None)
+
+    redis_service = RedisRuntimeServiceImpl(
+        redis_cfg,
+        redis_transport,
+        redis_provider,
+        redis_health,
+        redis_diag,
+        redis_telem,
+        redis_stats,
+        redis_validator,
+        redis_report
+    )
+    redis_report.runtime_service = redis_service
+
+    # Initialize all Redis Platform classes
+    redis_cfg.initialize()
+    redis_conn.initialize()
+    redis_transport.initialize()
+    redis_provider.initialize()
+    redis_telem.initialize()
+    redis_stats.initialize()
+    redis_diag.initialize()
+    redis_health.initialize()
+    redis_validator.initialize()
+    redis_report.initialize()
+    redis_service.initialize()
+
+    # Register in DI container
+    registry.register(RedisConfigurationService, redis_cfg)
+    registry.register(RedisConnectionManager, redis_conn)
+    registry.register(RedisTransport, redis_transport)
+    registry.register(RedisProvider, redis_provider)
+    registry.register(RedisTelemetry, redis_telem)
+    registry.register(RedisStatistics, redis_stats)
+    registry.register(RedisDiagnostics, redis_diag)
+    registry.register(RedisHealthMonitor, redis_health)
+    registry.register(RedisValidator, redis_validator)
+    registry.register(RedisReportGenerator, redis_report)
+    registry.register(RedisRuntimeService, redis_service)
 
     session_service = LocalSessionService(event_bus)
     context_service = LocalContextService(event_bus)

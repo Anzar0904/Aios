@@ -1,0 +1,17 @@
+[skill]
+id = "research"
+name = "Research Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Structured technical research and markdown report generation service."
+category = "Research"
+commands = [
+    "research topic",
+    "search web",
+    "generate research report"
+]
+capabilities = ["research", "search", "technical-research"]
+required_tools = []
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

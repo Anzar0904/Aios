@@ -23,6 +23,7 @@ from aios.services.ai_workspace import (
     WorkspaceCleaner,
     AIWorkspaceService,
 )
+from aios.services.persistence import PersistenceStatus, PersistencePolicy, WorkspaceRepository, WorkspaceSessionRepository
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +97,72 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         self._sessions: Dict[str, WorkspaceSession] = {}
         self._snapshots: Dict[str, List[WorkspaceSnapshot]] = {}
         self._changes: Dict[str, List[WorkspaceChange]] = {}
+        self._workspace_repo = None
+        self._session_repo = None
 
     def initialize(self) -> None:
         logger.info("Initializing LocalAIWorkspaceService")
+        if self._registry:
+            try:
+                self._workspace_repo = self._registry.get(WorkspaceRepository)
+                self._session_repo = self._registry.get(WorkspaceSessionRepository)
+            except Exception as e:
+                logger.warning(f"Failed to load Workspace Persistence components: {e}")
+        else:
+            self._workspace_repo = None
+            self._session_repo = None
+
+    def _get_policy(self) -> PersistencePolicy:
+        if self._workspace_repo and hasattr(self._workspace_repo, "service") and self._workspace_repo.service.config:
+            return self._workspace_repo.service.config.policy
+        return PersistencePolicy.STRICT
+
+    def _get_workspace_meta(self, workspace_id: str) -> Optional[WorkspaceMetadata]:
+        if workspace_id in self._workspaces:
+            return self._workspaces[workspace_id]
+        if self._workspace_repo:
+            try:
+                row = self._workspace_repo.get(workspace_id)
+                if row:
+                    meta_details = json.loads(row.get("metadata") or "{}")
+                    meta = WorkspaceMetadata(
+                        workspace_id=row.get("id"),
+                        created_at=row.get("created_at", time.time()),
+                        original_repo_root=meta_details.get("original_repo_root", ""),
+                        workspace_root=meta_details.get("workspace_root", ""),
+                        status=row.get("status", "active")
+                    )
+                    self._workspaces[workspace_id] = meta
+                    return meta
+            except Exception as e:
+                policy = self._get_policy()
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence load failure: {e}") from e
+                logger.warning(f"Database error loading workspace {workspace_id}: {e}.")
+        return None
+
+    def _get_session(self, workspace_id: str) -> Optional[WorkspaceSession]:
+        if workspace_id in self._sessions:
+            return self._sessions[workspace_id]
+        if self._session_repo:
+            try:
+                row = self._session_repo.get(f"sess_{workspace_id}")
+                if row:
+                    session = WorkspaceSession(
+                        session_id=row.get("id"),
+                        workspace_id=row.get("workspace_id"),
+                        status=row.get("state", "closed"),
+                        created_at=row.get("start_time", time.time()),
+                        closed_at=row.get("end_time")
+                    )
+                    self._sessions[workspace_id] = session
+                    return session
+            except Exception as e:
+                policy = self._get_policy()
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence load failure: {e}") from e
+                logger.warning(f"Database error loading workspace session: {e}.")
+        return None
 
     def start(self) -> None:
         pass
@@ -166,18 +230,65 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             created_at=time.time()
         )
         self._sessions[workspace_id] = session
+
+        # Save to WorkspaceRepository and WorkspaceSessionRepository
+        if self._workspace_repo and self._session_repo:
+            policy = self._get_policy()
+            try:
+                workspace_mapped = {
+                    "id": workspace_id,
+                    "name": workspace_id,
+                    "metadata": json.dumps({
+                        "original_repo_root": original_repo_root,
+                        "workspace_root": workspace_root
+                    }),
+                    "state": "active",
+                    "created_at": meta.created_at,
+                    "last_accessed": time.time(),
+                    "version": "1.0",
+                    "status": "active",
+                    "health": "healthy"
+                }
+                res_ws = self._workspace_repo.save(workspace_mapped)
+                if res_ws.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res_ws.message}")
+                
+                session_mapped = {
+                    "id": session.session_id,
+                    "workspace_id": session.workspace_id,
+                    "start_time": session.created_at,
+                    "end_time": session.closed_at or 0.0,
+                    "state": session.status,
+                    "current_task": "",
+                    "current_branch": "",
+                    "current_agent": "",
+                    "current_provider": "",
+                    "metrics": json.dumps({}),
+                    "health": "healthy",
+                    "checkpoints": json.dumps([]),
+                    "resume_metadata": json.dumps({})
+                }
+                res_sess = self._session_repo.save(session_mapped)
+                if res_sess.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res_sess.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving workspace/session: {e}.")
         
         logger.info(f"Created workspace {workspace_id} in {workspace_root}")
         return session
 
     def validate_workspace(self, workspace_id: str) -> tuple[bool, str]:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if not meta:
             return False, f"Workspace {workspace_id} not registered."
         return self._validator.validate_workspace(meta.workspace_root)
 
     def open_workspace(self, workspace_id: str) -> WorkspaceSession:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if not meta:
             raise ValueError(f"Workspace {workspace_id} not found.")
 
@@ -190,26 +301,109 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             created_at=time.time()
         )
         self._sessions[workspace_id] = session
+
+        # Save to database
+        if self._workspace_repo and self._session_repo:
+            policy = self._get_policy()
+            try:
+                workspace_mapped = {
+                    "id": workspace_id,
+                    "name": workspace_id,
+                    "metadata": json.dumps({
+                        "original_repo_root": meta.original_repo_root,
+                        "workspace_root": meta.workspace_root
+                    }),
+                    "state": "active",
+                    "created_at": meta.created_at,
+                    "last_accessed": time.time(),
+                    "version": "1.0",
+                    "status": "active",
+                    "health": "healthy"
+                }
+                self._workspace_repo.save(workspace_mapped)
+
+                session_mapped = {
+                    "id": session.session_id,
+                    "workspace_id": session.workspace_id,
+                    "start_time": session.created_at,
+                    "end_time": session.closed_at or 0.0,
+                    "state": session.status,
+                    "current_task": "",
+                    "current_branch": "",
+                    "current_agent": "",
+                    "current_provider": "",
+                    "metrics": json.dumps({}),
+                    "health": "healthy",
+                    "checkpoints": json.dumps([]),
+                    "resume_metadata": json.dumps({})
+                }
+                self._session_repo.save(session_mapped)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving workspace/session: {e}.")
+
         return session
 
     def close_workspace(self, workspace_id: str) -> None:
-        session = self._sessions.get(workspace_id)
+        session = self._get_session(workspace_id)
         if session:
             session.status = "closed"
             session.closed_at = time.time()
             
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if meta:
             meta.status = "closed"
 
+        # Save to database
+        if self._workspace_repo and self._session_repo and meta and session:
+            policy = self._get_policy()
+            try:
+                workspace_mapped = {
+                    "id": workspace_id,
+                    "name": workspace_id,
+                    "metadata": json.dumps({
+                        "original_repo_root": meta.original_repo_root,
+                        "workspace_root": meta.workspace_root
+                    }),
+                    "state": "closed",
+                    "created_at": meta.created_at,
+                    "last_accessed": time.time(),
+                    "version": "1.0",
+                    "status": "closed",
+                    "health": "healthy"
+                }
+                self._workspace_repo.save(workspace_mapped)
+
+                session_mapped = {
+                    "id": session.session_id,
+                    "workspace_id": session.workspace_id,
+                    "start_time": session.created_at,
+                    "end_time": session.closed_at or 0.0,
+                    "state": session.status,
+                    "current_task": "",
+                    "current_branch": "",
+                    "current_agent": "",
+                    "current_provider": "",
+                    "metrics": json.dumps({}),
+                    "health": "healthy",
+                    "checkpoints": json.dumps([]),
+                    "resume_metadata": json.dumps({})
+                }
+                self._session_repo.save(session_mapped)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving workspace/session: {e}.")
+
     def cleanup_workspace(self, workspace_id: str) -> int:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if not meta:
             return 0
         return self._cleaner.cleanup_temp_files(meta.workspace_root)
 
     def archive_workspace(self, workspace_id: str) -> str:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if not meta:
             raise ValueError(f"Workspace {workspace_id} not found.")
 
@@ -221,6 +415,30 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         
         meta.status = "archived"
         self.close_workspace(workspace_id)
+
+        # Save archived status to database
+        if self._workspace_repo:
+            policy = self._get_policy()
+            try:
+                workspace_mapped = {
+                    "id": workspace_id,
+                    "name": workspace_id,
+                    "metadata": json.dumps({
+                        "original_repo_root": meta.original_repo_root,
+                        "workspace_root": meta.workspace_root
+                    }),
+                    "state": "archived",
+                    "created_at": meta.created_at,
+                    "last_accessed": time.time(),
+                    "version": "1.0",
+                    "status": "archived",
+                    "health": "healthy"
+                }
+                self._workspace_repo.save(workspace_mapped)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving archived workspace: {e}.")
         
         return archive_path
 
@@ -251,18 +469,84 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             created_at=time.time()
         )
         self._sessions[workspace_id] = session
+
+        # Save restored workspace and session to DB
+        if self._workspace_repo and self._session_repo:
+            policy = self._get_policy()
+            try:
+                workspace_mapped = {
+                    "id": workspace_id,
+                    "name": workspace_id,
+                    "metadata": json.dumps({
+                        "original_repo_root": meta.original_repo_root,
+                        "workspace_root": meta.workspace_root
+                    }),
+                    "state": "active",
+                    "created_at": meta.created_at,
+                    "last_accessed": time.time(),
+                    "version": "1.0",
+                    "status": "active",
+                    "health": "healthy"
+                }
+                self._workspace_repo.save(workspace_mapped)
+
+                session_mapped = {
+                    "id": session.session_id,
+                    "workspace_id": session.workspace_id,
+                    "start_time": session.created_at,
+                    "end_time": session.closed_at or 0.0,
+                    "state": session.status,
+                    "current_task": "",
+                    "current_branch": "",
+                    "current_agent": "",
+                    "current_provider": "",
+                    "metrics": json.dumps({}),
+                    "health": "healthy",
+                    "checkpoints": json.dumps([]),
+                    "resume_metadata": json.dumps({})
+                }
+                self._session_repo.save(session_mapped)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving restored workspace/session: {e}.")
+
         return session
 
     def destroy_workspace(self, workspace_id: str) -> None:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if meta:
             self._cleaner.purge_workspace(meta.workspace_root)
             meta.status = "destroyed"
             
         self.close_workspace(workspace_id)
 
+        # Update status to destroyed in DB
+        if self._workspace_repo and meta:
+            policy = self._get_policy()
+            try:
+                workspace_mapped = {
+                    "id": workspace_id,
+                    "name": workspace_id,
+                    "metadata": json.dumps({
+                        "original_repo_root": meta.original_repo_root,
+                        "workspace_root": meta.workspace_root
+                    }),
+                    "state": "destroyed",
+                    "created_at": meta.created_at,
+                    "last_accessed": time.time(),
+                    "version": "1.0",
+                    "status": "destroyed",
+                    "health": "healthy"
+                }
+                self._workspace_repo.save(workspace_mapped)
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving destroyed workspace: {e}.")
+
     def create_snapshot(self, workspace_id: str, description: str) -> WorkspaceSnapshot:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if not meta:
             raise ValueError(f"Workspace {workspace_id} not found.")
 
@@ -289,11 +573,13 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             metadata={"description": description}
         )
         
+        if workspace_id not in self._snapshots:
+            self._snapshots[workspace_id] = []
         self._snapshots[workspace_id].append(snapshot)
         return snapshot
 
     def restore_snapshot(self, workspace_id: str, snapshot_id: str) -> WorkspaceRecovery:
-        meta = self._workspaces.get(workspace_id)
+        meta = self._get_workspace_meta(workspace_id)
         if not meta:
             raise ValueError(f"Workspace {workspace_id} not found.")
 

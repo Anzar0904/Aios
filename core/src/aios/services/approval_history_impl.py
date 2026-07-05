@@ -26,6 +26,8 @@ from aios.services.approval_history import (
     ApprovalHistoryAnalyzer,
     ApprovalHistoryService,
 )
+from aios.services.persistence import PersistenceStatus, PersistencePolicy, ReviewRepository
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -195,9 +197,22 @@ class LocalApprovalHistoryService(ApprovalHistoryService):
 
         self._entries: Dict[str, ApprovalHistoryEntry] = {}
         self._records: Dict[str, List[ApprovalDecisionRecord]] = {}
+        self._review_repo = None
 
     def initialize(self) -> None:
         logger.info("Initializing LocalApprovalHistoryService")
+        if self._registry:
+            try:
+                self._review_repo = self._registry.get(ReviewRepository)
+            except Exception as e:
+                logger.warning(f"Failed to load ReviewRepository in LocalApprovalHistoryService: {e}")
+        else:
+            self._review_repo = None
+
+    def _get_policy(self) -> PersistencePolicy:
+        if self._review_repo and hasattr(self._review_repo, "service") and self._review_repo.service.config:
+            return self._review_repo.service.config.policy
+        return PersistencePolicy.STRICT
 
     def start(self) -> None:
         pass
@@ -249,6 +264,39 @@ class LocalApprovalHistoryService(ApprovalHistoryService):
             metadata={}
         )
         self._entries[session_id] = entry
+
+        # Save to review repo
+        if self._review_repo:
+            policy = self._get_policy()
+            try:
+                mapped = {
+                    "id": entry.entry_id,
+                    "session_id": entry.session_id,
+                    "workspace_id": entry.workspace_id,
+                    "state_transitions": [
+                        {
+                            "transition_id": t.transition_id,
+                            "from_state": t.from_state.value,
+                            "to_state": t.to_state.value,
+                            "actor": t.actor,
+                            "reason": t.reason,
+                            "timestamp": t.timestamp
+                        }
+                        for t in entry.state_transitions
+                    ],
+                    "metadata": entry.metadata
+                }
+                res = self._review_repo.save(mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving review session {entry.entry_id}: {e}.")
+
         return entry
 
     def transition_state(self, workspace_id: str, session_id: str, target_state: ApprovalState, actor: str, reason: str) -> ApprovalHistoryEntry:
@@ -270,6 +318,39 @@ class LocalApprovalHistoryService(ApprovalHistoryService):
             timestamp=time.time()
         )
         entry.state_transitions.append(new_transition)
+
+        # Save to review repo
+        if self._review_repo:
+            policy = self._get_policy()
+            try:
+                mapped = {
+                    "id": entry.entry_id,
+                    "session_id": entry.session_id,
+                    "workspace_id": entry.workspace_id,
+                    "state_transitions": [
+                        {
+                            "transition_id": t.transition_id,
+                            "from_state": t.from_state.value,
+                            "to_state": t.to_state.value,
+                            "actor": t.actor,
+                            "reason": t.reason,
+                            "timestamp": t.timestamp
+                        }
+                        for t in entry.state_transitions
+                    ],
+                    "metadata": entry.metadata
+                }
+                res = self._review_repo.save(mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving review session {entry.entry_id}: {e}.")
+
         return entry
 
     def record_decision(self, record: ApprovalDecisionRecord) -> None:
@@ -278,11 +359,110 @@ class LocalApprovalHistoryService(ApprovalHistoryService):
             self._records[ws_id] = []
         self._records[ws_id].append(record)
 
+        # Save to review repo as a decision record
+        if self._review_repo:
+            policy = self._get_policy()
+            try:
+                mapped = {
+                    "id": f"rec_{record.session_id}",
+                    "session_id": record.session_id,
+                    "workspace_id": record.workspace_id,
+                    "state_transitions": [],
+                    "metadata": {
+                        "record_id": record.record_id,
+                        "final_state": record.final_state.value,
+                        "confidence_score": record.confidence_score,
+                        "validation_score": record.validation_score,
+                        "coverage_pct": record.coverage_pct,
+                        "has_critical_failures": record.has_critical_failures,
+                        "reviewer_count": record.reviewer_count,
+                        "timestamp": record.timestamp,
+                        "type": "decision_record"
+                    }
+                }
+                res = self._review_repo.save(mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving decision record for session {record.session_id}: {e}.")
+
     def get_history_entry(self, session_id: str) -> Optional[ApprovalHistoryEntry]:
-        return self._entries.get(session_id)
+        if session_id in self._entries:
+            return self._entries[session_id]
+
+        if self._review_repo:
+            try:
+                res = self._review_repo.get(f"ent_{session_id}")
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    row = res.payload
+                    transitions = []
+                    for t in row.get("state_transitions", []):
+                        transitions.append(
+                            ApprovalStateTransition(
+                                transition_id=t.get("transition_id"),
+                                from_state=ApprovalState(t.get("from_state")),
+                                to_state=ApprovalState(t.get("to_state")),
+                                actor=t.get("actor"),
+                                reason=t.get("reason"),
+                                timestamp=t.get("timestamp", 0.0)
+                            )
+                        )
+                    entry = ApprovalHistoryEntry(
+                        entry_id=row.get("id"),
+                        session_id=row.get("session_id"),
+                        workspace_id=row.get("workspace_id"),
+                        state_transitions=transitions,
+                        metadata=row.get("metadata", {})
+                    )
+                    self._entries[session_id] = entry
+                    return entry
+            except Exception as e:
+                policy = self._get_policy()
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence load failure: {e}") from e
+                logger.warning(f"Database error getting history entry for session {session_id}: {e}.")
+
+        return None
 
     def get_decision_records(self, workspace_id: str) -> List[ApprovalDecisionRecord]:
-        return self._records.get(workspace_id, [])
+        records = []
+        if self._review_repo:
+            try:
+                q = "SELECT * FROM review_sessions WHERE workspace_id = ? AND id LIKE 'rec_%'"
+                rows = self._review_repo.service.execute(q, (workspace_id,))
+                for row in rows:
+                    meta = json.loads(row["metadata"] or "{}")
+                    if meta.get("type") == "decision_record":
+                        records.append(
+                            ApprovalDecisionRecord(
+                                record_id=meta["record_id"],
+                                session_id=row["session_id"],
+                                workspace_id=row["workspace_id"],
+                                final_state=ApprovalState(meta["final_state"]),
+                                confidence_score=meta["confidence_score"],
+                                validation_score=meta["validation_score"],
+                                coverage_pct=meta["coverage_pct"],
+                                has_critical_failures=meta["has_critical_failures"],
+                                reviewer_count=meta["reviewer_count"],
+                                timestamp=meta["timestamp"]
+                            )
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to load decision records for {workspace_id} from DB: {e}")
+        
+        # Merge with in-memory records
+        existing_ids = {r.record_id for r in records}
+        for r in self._records.get(workspace_id, []):
+            if r.record_id not in existing_ids:
+                records.append(r)
+        
+        self._records[workspace_id] = records
+        return self._records[workspace_id]
 
     def run_history_analysis(self, workspace_id: str) -> ApprovalHistoryReport:
         records = self.get_decision_records(workspace_id)

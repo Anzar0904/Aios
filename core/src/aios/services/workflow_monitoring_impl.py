@@ -1,7 +1,10 @@
 import os
 import time
 import logging
+import json
 from typing import Dict, List, Any, Optional
+
+from aios.services.persistence import PersistenceStatus, WorkflowMonitoringRepository, WorkflowExecutionRepository, PersistenceService
 
 from aios.services.model import LLMRequest, ModelService
 from aios.services.memory import MemoryService, MemoryType
@@ -156,6 +159,14 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
 
         self._reports: Dict[str, List[WorkflowMonitoringReport]] = {}
         self._session_reports: Dict[str, WorkflowMonitoringReport] = {}
+        self._mon_repo: Optional[WorkflowMonitoringRepository] = None
+        self._exec_repo: Optional[WorkflowExecutionRepository] = None
+        if registry:
+            try:
+                self._mon_repo = registry.get(WorkflowMonitoringRepository)
+                self._exec_repo = registry.get(WorkflowExecutionRepository)
+            except Exception:
+                pass
 
     def initialize(self) -> None:
         logger.info("Initializing LocalWorkflowMonitoringService")
@@ -202,6 +213,27 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
         errs = self._validator.validate_telemetry([record])
         if errs:
             logger.warning(f"Telemetry validation anomalies found: {errs}")
+
+        if self._exec_repo:
+            try:
+                self._exec_repo.save({
+                    "id": record.execution_id,
+                    "workflow_id": record.workflow_id,
+                    "workspace_id": record.workspace_id,
+                    "status": record.state.value if hasattr(record.state, "value") else str(record.state),
+                    "success": 1 if (record.state.value if hasattr(record.state, "value") else str(record.state)) == "success" else 0,
+                    "error_summary": record.error_message,
+                    "execution_time": record.metrics.duration_seconds if record.metrics else 0.0,
+                    "created_at": record.start_time,
+                    "closed_at": record.end_time,
+                    "metadata": {
+                        "retry_count": record.metrics.retry_count if record.metrics else 0,
+                        "cpu_usage_pct": record.metrics.cpu_usage_pct if record.metrics else 0.0,
+                        "memory_usage_mb": record.metrics.memory_usage_mb if record.metrics else 0.0
+                    }
+                })
+            except Exception:
+                pass
 
     def get_telemetry_report(self, workspace_id: str) -> WorkflowMonitoringReport:
         # Collate all workflow IDs for this workspace
@@ -295,6 +327,26 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
             timestamp=time.time()
         )
 
+        if self._mon_repo:
+            try:
+                self._mon_repo.save({
+                    "id": report.report_id,
+                    "workflow_id": list(statistics.keys())[0] if statistics else "system",
+                    "execution_summaries": {w_id: {"runs": s.total_runs} for w_id, s in statistics.items()},
+                    "health_summaries": {w_id: {"score": h.score, "status": h.status} for w_id, h in health_scores.items()},
+                    "performance_summaries": {w_id: {"avg_duration": s.average_duration, "p95": s.p95_duration} for w_id, s in statistics.items()},
+                    "alert_summaries": [
+                        {"alert_id": a.alert_id, "alert_type": a.alert_type, "severity": a.severity, "message": a.message}
+                        for a in alerts
+                    ],
+                    "success_rates": {w_id: s.success_rate for w_id, s in statistics.items()},
+                    "latency_summaries": {w_id: s.average_duration for w_id, s in statistics.items()},
+                    "retry_summaries": {w_id: s.retry_rate for w_id, s in statistics.items()},
+                    "timestamp": report.timestamp
+                })
+            except Exception:
+                pass
+
         if workspace_id not in self._reports:
             self._reports[workspace_id] = []
         self._reports[workspace_id].append(report)
@@ -358,6 +410,68 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
         return reports[-1].alerts
 
     def get_history(self, workspace_id: str) -> List[WorkflowMonitoringReport]:
+        if self._mon_repo:
+            try:
+                p_service = self._registry.get(PersistenceService)
+                res = p_service.execute("SELECT * FROM workflow_monitoring")
+                reports = []
+                for row in res:
+                    r_id = row["id"]
+                    exec_sums = json.loads(row["execution_summaries"] or "{}")
+                    health_sums = json.loads(row["health_summaries"] or "{}")
+                    perf_sums = json.loads(row["performance_summaries"] or "{}")
+                    alerts_data = json.loads(row["alert_summaries"] or "[]")
+                    success_rates = json.loads(row["success_rates"] or "{}")
+                    latency_sums = json.loads(row["latency_summaries"] or "{}")
+                    retry_sums = json.loads(row["retry_summaries"] or "{}")
+                    
+                    statistics = {}
+                    health_scores = {}
+                    alerts = []
+                    
+                    for w_id in exec_sums.keys():
+                        statistics[w_id] = WorkflowStatistics(
+                            total_runs=exec_sums.get(w_id, {}).get("runs", 0),
+                            success_rate=success_rates.get(w_id, 1.0),
+                            failure_rate=1.0 - success_rates.get(w_id, 1.0),
+                            retry_rate=retry_sums.get(w_id, 0.0),
+                            average_duration=latency_sums.get(w_id, 0.0),
+                            median_duration=latency_sums.get(w_id, 0.0),
+                            p95_duration=perf_sums.get(w_id, {}).get("p95", 0.0),
+                            timeout_count=0, cancelled_count=0, skipped_count=0
+                        )
+                        h_data = health_sums.get(w_id, {})
+                        health_scores[w_id] = WorkflowHealthScore(
+                            workflow_id=w_id,
+                            score=h_data.get("score", 100.0),
+                            reliability=success_rates.get(w_id, 1.0),
+                            status=h_data.get("status", "healthy")
+                        )
+                    for a in alerts_data:
+                        alerts.append(
+                            WorkflowAlert(
+                                alert_id=a.get("alert_id", ""),
+                                workflow_id=a.get("workflow_id", ""),
+                                alert_type=a.get("alert_type", ""),
+                                severity=a.get("severity", ""),
+                                message=a.get("message", ""),
+                                timestamp=row.get("timestamp") or time.time()
+                            )
+                        )
+                    reports.append(
+                        WorkflowMonitoringReport(
+                            report_id=r_id,
+                            workspace_id=workspace_id,
+                            statistics=statistics,
+                            health_scores=health_scores,
+                            alerts=alerts,
+                            timestamp=row.get("timestamp") or time.time()
+                        )
+                    )
+                self._reports[workspace_id] = reports
+                return reports
+            except Exception:
+                pass
         return self._reports.get(workspace_id, [])
 
     def store_monitoring_summary(self, workspace_id: str) -> None:

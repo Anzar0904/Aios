@@ -1,0 +1,32 @@
+[skill]
+id = "developer"
+name = "Developer Mode Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Repository scanning, architecture auditing, code smell detection, and git review tools."
+category = "Developer"
+capabilities = ["code-review", "refactoring", "vcs", "static-analysis"]
+commands = [
+    "review repository",
+    "review architecture",
+    "review security",
+    "analyze dependencies",
+    "detect dead code",
+    "analyze todos",
+    "review tests",
+    "review git changes",
+    "generate release notes",
+    "generate commit message",
+    "investigate bug",
+    "explain stack trace",
+    "detect code smells",
+    "detect duplicate code",
+    "suggest refactoring",
+    "analyze repository",
+    "explain file",
+    "summarize architecture"
+]
+required_tools = ["filesystem", "git"]
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

@@ -19,3 +19,43 @@ env/
 dist/
 build/
 egg-info/
+
+# OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Agent & IDE metadata
+.aios_project_intelligence.json
+core/.aios_project_intelligence.json
+
+# Local runtime & service databases/caches
+personal_profiles.json
+core/personal_profiles.json
+n8n_workflows.json
+core/n8n_workflows.json
+missions.json
+core/missions.json
+research_cache.json
+core/research_cache.json
+test_research_cache.json
+test_custom_research_cache.json
+
+# Temporary directories
+temp/
+core/temp/
+
+# Temporary mock documents / local files
+job.pdf
+resume.pdf
+mvp.pdf
+
+# Test-generated broken MagicMock paths
+MagicMock/
+core/MagicMock/
+
+

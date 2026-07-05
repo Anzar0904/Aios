@@ -1,0 +1,14 @@
+[skill]
+id = "memory"
+name = "Memory Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Workspace fact-remembering and memory retention tool."
+category = "Memory"
+commands = [
+    "remember"
+]
+required_tools = []
+required_models = []
+required_memory = []
+prompt_directory = "prompts"

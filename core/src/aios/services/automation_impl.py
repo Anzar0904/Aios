@@ -1,8 +1,10 @@
 import os
 import time
 import logging
+import json
 from typing import Dict, List, Any, Optional
 
+from aios.services.persistence import PersistenceStatus, WorkflowRepository, WorkflowExecutionRepository, PersistenceService
 from aios.services.model import LLMRequest, ModelService
 from aios.services.memory import MemoryService, MemoryType
 from aios.services.knowledge_hub import (
@@ -126,14 +128,114 @@ class LocalTemporalProvider(TemporalProvider):
 class LocalAutomationRegistry(AutomationRegistry):
     """Concrete workflow catalog container storing workflow definitions."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._definitions: Dict[str, WorkflowDefinition] = {}
+        self._repo: Optional[WorkflowRepository] = None
+        if registry:
+            try:
+                self._repo = registry.get(WorkflowRepository)
+            except Exception:
+                pass
 
     def register_workflow(self, definition: WorkflowDefinition) -> None:
         self._definitions[definition.workflow_id] = definition
+        if self._repo:
+            try:
+                wf_data = {
+                    "id": definition.workflow_id,
+                    "name": definition.name,
+                    "description": definition.metadata.description if definition.metadata else "",
+                    "metadata": {
+                        "tags": definition.metadata.tags if definition.metadata else [],
+                        "labels": definition.metadata.labels if definition.metadata else {}
+                    },
+                    "triggers": [
+                        {"trigger_id": t.trigger_id, "trigger_type": t.trigger_type, "config": t.config}
+                        for t in definition.triggers
+                    ],
+                    "actions": [
+                        {"action_id": a.action_id, "action_type": a.action_type, "config": a.config}
+                        for a in definition.actions
+                    ],
+                    "conditions": [
+                        {"condition_id": c.condition_id, "expression": c.expression, "config": c.config}
+                        for c in definition.conditions
+                    ],
+                    "variables": [
+                        {"name": v.name, "value_type": v.value_type, "default_value": v.default_value}
+                        for v in definition.variables
+                    ],
+                    "policy": {
+                        "max_retries": definition.policy.max_retries if definition.policy else 3,
+                        "retry_delay_seconds": definition.policy.retry_delay_seconds if definition.policy else 10,
+                        "timeout_seconds": definition.policy.timeout_seconds if definition.policy else 600,
+                        "concurrency_limit": definition.policy.concurrency_limit if definition.policy else 1
+                    } if definition.policy else {}
+                }
+                self._repo.save(wf_data)
+            except Exception:
+                pass
 
     def get_workflow(self, workflow_id: str) -> Optional[WorkflowDefinition]:
-        return self._definitions.get(workflow_id)
+        if workflow_id in self._definitions:
+            return self._definitions[workflow_id]
+
+        if self._repo:
+            try:
+                res = self._repo.get(workflow_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    payload = res.payload
+                    from aios.services.automation import (
+                        WorkflowGraph, WorkflowDefinition, WorkflowMetadata,
+                        WorkflowExecutionPolicy, WorkflowTrigger, WorkflowAction,
+                        WorkflowCondition, WorkflowVariable
+                    )
+                    metadata = WorkflowMetadata(
+                        tags=payload.get("metadata", {}).get("tags", []),
+                        labels=payload.get("metadata", {}).get("labels", {}),
+                        description=payload.get("description", "")
+                    )
+                    triggers = [
+                        WorkflowTrigger(t["trigger_id"], t["trigger_type"], t.get("config", {}))
+                        for t in payload.get("triggers", [])
+                    ]
+                    actions = [
+                        WorkflowAction(a["action_id"], a["action_type"], a.get("config", {}))
+                        for a in payload.get("actions", [])
+                    ]
+                    conditions = [
+                        WorkflowCondition(c["condition_id"], c["expression"], c.get("config", {}))
+                        for c in payload.get("conditions", [])
+                    ]
+                    variables = [
+                        WorkflowVariable(v["name"], v["value_type"], v.get("default_value"))
+                        for v in payload.get("variables", [])
+                    ]
+                    policy = None
+                    p_data = payload.get("policy")
+                    if p_data:
+                        policy = WorkflowExecutionPolicy(
+                            max_retries=p_data.get("max_retries", 3),
+                            retry_delay_seconds=p_data.get("retry_delay_seconds", 10),
+                            timeout_seconds=p_data.get("timeout_seconds", 600),
+                            concurrency_limit=p_data.get("concurrency_limit", 1)
+                        )
+                    definition = WorkflowDefinition(
+                        workflow_id=payload["id"],
+                        name=payload.get("name", ""),
+                        graph=WorkflowGraph(),
+                        triggers=triggers,
+                        actions=actions,
+                        conditions=conditions,
+                        variables=variables,
+                        policy=policy,
+                        metadata=metadata
+                    )
+                    self._definitions[workflow_id] = definition
+                    return definition
+            except Exception:
+                pass
+        return None
 
 
 class LocalAutomationValidator(AutomationValidator):
@@ -287,12 +389,18 @@ class LocalAutomationService(AutomationService):
         self._registry = registry
 
         self._providers = AutomationProviderRegistry()
-        self._workflow_registry = LocalAutomationRegistry()
+        self._workflow_registry = LocalAutomationRegistry(registry)
         self._validator = LocalAutomationValidator()
         self._manager = LocalAutomationManager(self._providers, self._workflow_registry)
 
         self._sessions: Dict[str, AutomationSession] = {}
         self._reports: Dict[str, List[AutomationReport]] = {}
+        self._exec_repo: Optional[WorkflowExecutionRepository] = None
+        if registry:
+            try:
+                self._exec_repo = registry.get(WorkflowExecutionRepository)
+            except Exception:
+                pass
 
         # Register default stubs
         self.register_provider(LocalN8NProvider())
@@ -375,9 +483,39 @@ class LocalAutomationService(AutomationService):
         # 2. Instantiates session
         session = self._manager.create_session(workflow_id, workspace_id)
         self._sessions[session.session_id] = session
+        if self._exec_repo:
+            try:
+                self._exec_repo.save({
+                    "id": session.session_id,
+                    "workflow_id": session.workflow_id,
+                    "workspace_id": session.workspace_id,
+                    "status": session.status,
+                    "created_at": session.created_at
+                })
+            except Exception:
+                pass
 
         # 3. Execute Workflow run
         result = self._manager.execute_session(session, provider_id)
+        if self._exec_repo:
+            try:
+                self._exec_repo.save({
+                    "id": session.session_id,
+                    "workflow_id": session.workflow_id,
+                    "workspace_id": session.workspace_id,
+                    "status": session.status,
+                    "success": 1 if result.success else 0,
+                    "error_summary": ", ".join(result.errors) if result.errors else None,
+                    "execution_time": result.execution_time,
+                    "created_at": session.created_at,
+                    "closed_at": session.closed_at,
+                    "metadata": {
+                        "provider": provider_id,
+                        "output_data": result.output_data
+                    }
+                })
+            except Exception:
+                pass
 
         # 4. AI Overview Refinement if active
         overview = f"Workflow '{workflow.name}' run completed using provider '{provider_id}'."
@@ -434,9 +572,53 @@ class LocalAutomationService(AutomationService):
         return session
 
     def get_session(self, session_id: str) -> Optional[AutomationSession]:
-        return self._sessions.get(session_id)
+        if session_id in self._sessions:
+            return self._sessions[session_id]
+        if self._exec_repo:
+            try:
+                res = self._exec_repo.get(session_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    payload = res.payload
+                    session = AutomationSession(
+                        session_id=payload["id"],
+                        workflow_id=payload.get("workflow_id", ""),
+                        workspace_id=payload.get("workspace_id", ""),
+                        status=payload.get("status", ""),
+                        created_at=payload.get("created_at", time.time()),
+                        closed_at=payload.get("closed_at")
+                    )
+                    self._sessions[session_id] = session
+                    return session
+            except Exception:
+                pass
+        return None
 
     def get_history(self, workspace_id: str) -> List[AutomationReport]:
+        if self._exec_repo:
+            try:
+                p_service = self._registry.get(PersistenceService)
+                res = p_service.execute(
+                    "SELECT * FROM workflow_executions WHERE workspace_id = ? AND status != 'telemetry'",
+                    (workspace_id,)
+                )
+                reports = []
+                for row in res:
+                    r_id = f"rep_aut_{row['id']}"
+                    reports.append(
+                        AutomationReport(
+                            report_id=r_id,
+                            workspace_id=workspace_id,
+                            session_id=row["id"],
+                            workflow_name=row.get("workflow_id", ""),
+                            status=row.get("status", ""),
+                            error_summary=row.get("error_summary"),
+                            timestamp=row.get("closed_at") or row.get("created_at") or time.time()
+                        )
+                    )
+                self._reports[workspace_id] = reports
+                return reports
+            except Exception:
+                pass
         return self._reports.get(workspace_id, [])
 
     def store_automation_summary(self, session_id: str) -> None:

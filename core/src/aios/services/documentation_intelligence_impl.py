@@ -23,6 +23,7 @@ from aios.services.documentation_intelligence import (
     DocumentationRegistry,
     DocumentationService,
 )
+from aios.services.persistence import PersistenceStatus, PersistencePolicy, DocumentationMetadataRepository
 
 logger = logging.getLogger(__name__)
 
@@ -78,9 +79,22 @@ class LocalDocumentationService(DocumentationService):
 
         self._in_memory_registry = DocumentationRegistry()
         self._planner = LocalDocumentationPlanner()
+        self._doc_repo = None
 
     def initialize(self) -> None:
         logger.info("Initializing LocalDocumentationService")
+        if self._registry:
+            try:
+                self._doc_repo = self._registry.get(DocumentationMetadataRepository)
+            except Exception as e:
+                logger.warning(f"Failed to load DocumentationMetadataRepository: {e}")
+        else:
+            self._doc_repo = None
+
+    def _get_policy(self) -> PersistencePolicy:
+        if self._doc_repo and hasattr(self._doc_repo, "service") and self._doc_repo.service.config:
+            return self._doc_repo.service.config.policy
+        return PersistencePolicy.STRICT
 
     def start(self) -> None:
         pass
@@ -118,8 +132,66 @@ class LocalDocumentationService(DocumentationService):
         logger.info(f"Registering documentation artifact: '{artifact.artifact_id}'")
         self._in_memory_registry.register_artifact(artifact)
 
+        if self._doc_repo:
+            policy = self._get_policy()
+            try:
+                mapped = {
+                    "id": artifact.artifact_id,
+                    "workspace_id": artifact.metadata.doc_id,
+                    "session_id": "default_session",
+                    "category": artifact.metadata.category.value,
+                    "status": "registered",
+                    "generation_time": artifact.metadata.timestamp,
+                    "author": artifact.metadata.author,
+                    "publication_status": "published",
+                    "knowledge_references": [artifact.metadata.source.value],
+                    "checksums": {"md5": hash(artifact.content)},
+                    "version": int(artifact.metadata.version) if artifact.metadata.version.isdigit() else 1
+                }
+                res = self._doc_repo.save(mapped)
+                if res.status != PersistenceStatus.SUCCESS:
+                    if policy == PersistencePolicy.STRICT:
+                        raise RuntimeError(f"Strict persistence save failure: {res.message}")
+                    else:
+                        logger.warning(f"Persistence best-effort fallback: {res.message}")
+            except Exception as e:
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence save failure: {e}") from e
+                logger.warning(f"Database error saving documentation artifact {artifact.artifact_id}: {e}.")
+
     def get_artifact(self, artifact_id: str) -> Optional[DocumentArtifact]:
-        return self._in_memory_registry.get_artifact(artifact_id)
+        cached = self._in_memory_registry.get_artifact(artifact_id)
+        if cached:
+            return cached
+            
+        if self._doc_repo:
+            try:
+                res = self._doc_repo.get(artifact_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    row = res.payload
+                    meta = DocumentMetadata(
+                        doc_id=row.get("workspace_id", ""),
+                        category=DocumentCategory(row.get("category", "Architecture")),
+                        source=DocumentSource(row.get("knowledge_references", ["notion"])[0] if row.get("knowledge_references") else "notion"),
+                        title=artifact_id,
+                        version=str(row.get("version", "1")),
+                        author=row.get("author", "AI OS"),
+                        timestamp=row.get("generation_time", time.time())
+                    )
+                    artifact = DocumentArtifact(
+                        artifact_id=row.get("id"),
+                        metadata=meta,
+                        content=""
+                    )
+                    self._in_memory_registry.register_artifact(artifact)
+                    return artifact
+            except Exception as e:
+                policy = self._get_policy()
+                if policy == PersistencePolicy.STRICT:
+                    raise RuntimeError(f"Strict persistence load failure: {e}") from e
+                logger.warning(f"Database error getting documentation artifact {artifact_id}: {e}.")
+                
+        return None
 
     def store_documentation_summary(self, result: DocumentationResult) -> None:
         content = (

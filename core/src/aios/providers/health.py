@@ -2,22 +2,51 @@ import time
 from typing import Dict, List, Optional, Any
 
 from aios.providers.models import ProviderStatus, DIInitializeMixin
+from aios.services.persistence import (
+    PersistenceStatus,
+    ProviderHealthRepository,
+    ProviderTelemetryRepository,
+    ProviderStatisticsRepository,
+    ProviderQuotaRepository,
+    AIUsageStatisticsRepository,
+)
 
 
 class ProviderTokenUsageTracker(DIInitializeMixin):
     """Tracks daily and monthly input/output token counts."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._daily_input: Dict[str, int] = {}
         self._daily_output: Dict[str, int] = {}
         self._monthly_input: Dict[str, int] = {}
         self._monthly_output: Dict[str, int] = {}
+        self._repo = None
+        if registry:
+            try:
+                self._repo = registry.get(AIUsageStatisticsRepository)
+            except Exception:
+                pass
 
     def record_tokens(self, provider_name: str, input_tokens: int, output_tokens: int) -> None:
         self._daily_input[provider_name] = self._daily_input.get(provider_name, 0) + input_tokens
         self._daily_output[provider_name] = self._daily_output.get(provider_name, 0) + output_tokens
         self._monthly_input[provider_name] = self._monthly_input.get(provider_name, 0) + input_tokens
         self._monthly_output[provider_name] = self._monthly_output.get(provider_name, 0) + output_tokens
+
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": f"usage_{provider_name}",
+                    "provider_name": provider_name,
+                    "daily_input_tokens": self._daily_input[provider_name],
+                    "daily_output_tokens": self._daily_output[provider_name],
+                    "monthly_input_tokens": self._monthly_input[provider_name],
+                    "monthly_output_tokens": self._monthly_output[provider_name],
+                    "total_cost": 0.0,
+                    "timestamp": time.time()
+                })
+            except Exception:
+                pass
 
     def get_usage(self, provider_name: str) -> Dict[str, int]:
         return {
@@ -134,16 +163,37 @@ class ProviderRateLimitManager(DIInitializeMixin):
 class ProviderQuotaManager(DIInitializeMixin):
     """Monitors daily/monthly budget quotas and raises failover triggers."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._quota_limits: Dict[str, float] = {
             "openai": 10.0,
             "claude_code": 10.0,
             "gemini_cli": 10.0,
         }
         self._quota_used: Dict[str, float] = {}
+        self._repo = None
+        if registry:
+            try:
+                self._repo = registry.get(ProviderQuotaRepository)
+            except Exception:
+                pass
 
     def record_cost(self, provider_name: str, cost: float) -> None:
         self._quota_used[provider_name] = self._quota_used.get(provider_name, 0.0) + cost
+        if self._repo:
+            try:
+                limit = self._quota_limits.get(provider_name, 10.0)
+                used = self._quota_used[provider_name]
+                self._repo.save({
+                    "id": f"quota_{provider_name}",
+                    "provider_name": provider_name,
+                    "quota_limit": limit,
+                    "quota_used": used,
+                    "remaining_quota": max(0.0, limit - used),
+                    "is_exhausted": 1 if used >= limit else 0,
+                    "timestamp": time.time()
+                })
+            except Exception:
+                pass
 
     def is_quota_exhausted(self, provider_name: str) -> bool:
         limit = self._quota_limits.get(provider_name, 10.0)
@@ -160,20 +210,70 @@ class ProviderHealthMonitor(DIInitializeMixin):
     """Consolidated provider health, latency, rate limits, and quota manager."""
 
     def __init__(self, registry: Optional[Any] = None) -> None:
+        self._registry = registry
         self.latency_analyzer = ProviderLatencyAnalyzer()
         self.cost_analyzer = ProviderCostAnalyzer(registry)
         self.success_analyzer = ProviderSuccessAnalyzer()
         self.failure_analyzer = ProviderFailureAnalyzer()
         self.rate_limit_manager = ProviderRateLimitManager()
-        self.quota_manager = ProviderQuotaManager()
-        self.token_usage = ProviderTokenUsageTracker()
+        self.quota_manager = ProviderQuotaManager(registry)
+        self.token_usage = ProviderTokenUsageTracker(registry)
+
+        self._health_repo = None
+        self._telem_repo = None
+        self._stats_repo = None
+        if registry:
+            try:
+                self._health_repo = registry.get(ProviderHealthRepository)
+                self._telem_repo = registry.get(ProviderTelemetryRepository)
+                self._stats_repo = registry.get(ProviderStatisticsRepository)
+            except Exception:
+                pass
 
     def record_success(self, provider_name: str, latency: float) -> None:
         self.latency_analyzer.record_latency(provider_name, latency)
         self.success_analyzer.record_success(provider_name)
 
+        if self._telem_repo:
+            try:
+                self._telem_repo.save({
+                    "id": f"telem_{provider_name}",
+                    "provider_name": provider_name,
+                    "average_latency": self.latency_analyzer.get_average_latency(provider_name),
+                    "p95_latency": self.latency_analyzer.get_p95_latency(provider_name),
+                    "query_latencies": self.latency_analyzer._latencies.get(provider_name, [])
+                })
+            except Exception:
+                pass
+
+        if self._stats_repo:
+            try:
+                self._stats_repo.save({
+                    "id": f"stats_{provider_name}",
+                    "provider_name": provider_name,
+                    "total_requests": self.success_analyzer.get_success_count(provider_name) + self.failure_analyzer.get_failure_count(provider_name),
+                    "success_count": self.success_analyzer.get_success_count(provider_name),
+                    "failure_count": self.failure_analyzer.get_failure_count(provider_name),
+                    "error_summary": None
+                })
+            except Exception:
+                pass
+
     def record_failure(self, provider_name: str, error_message: str = "Unknown error") -> None:
         self.failure_analyzer.record_failure(provider_name, error_message)
+
+        if self._stats_repo:
+            try:
+                self._stats_repo.save({
+                    "id": f"stats_{provider_name}",
+                    "provider_name": provider_name,
+                    "total_requests": self.success_analyzer.get_success_count(provider_name) + self.failure_analyzer.get_failure_count(provider_name),
+                    "success_count": self.success_analyzer.get_success_count(provider_name),
+                    "failure_count": self.failure_analyzer.get_failure_count(provider_name),
+                    "error_summary": error_message
+                })
+            except Exception:
+                pass
 
     def get_average_latency(self, provider_name: str) -> float:
         return self.latency_analyzer.get_average_latency(provider_name)
@@ -190,8 +290,25 @@ class ProviderHealthMonitor(DIInitializeMixin):
         return self.get_success_rate(provider_name) * 100.0
 
     def is_healthy(self, provider_name: str) -> bool:
-        if self.rate_limit_manager.is_rate_limited(provider_name):
-            return False
-        if self.quota_manager.is_quota_exhausted(provider_name):
-            return False
-        return self.get_success_rate(provider_name) >= 0.5
+        rate_limited = self.rate_limit_manager.is_rate_limited(provider_name)
+        quota_exhausted = self.quota_manager.is_quota_exhausted(provider_name)
+        success_rate = self.get_success_rate(provider_name)
+        healthy = (not rate_limited) and (not quota_exhausted) and (success_rate >= 0.5)
+
+        if self._health_repo:
+            try:
+                self._health_repo.save({
+                    "id": f"health_{provider_name}",
+                    "provider_name": provider_name,
+                    "is_healthy": 1 if healthy else 0,
+                    "availability_pct": self.get_availability_pct(provider_name),
+                    "success_rate": success_rate,
+                    "rate_limited_until": self.rate_limit_manager._cooldowns.get(provider_name, 0.0),
+                    "circuit_breaker_state": "open" if rate_limited or quota_exhausted or success_rate < 0.5 else "closed",
+                    "cooldown_until": self.rate_limit_manager._cooldowns.get(provider_name, 0.0),
+                    "timestamp": time.time()
+                })
+            except Exception:
+                pass
+
+        return healthy

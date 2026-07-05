@@ -1,0 +1,30 @@
+[skill]
+id = "n8n"
+name = "n8n Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Translates natural language requests into complex workflow graphs and deploys them to local n8n instances."
+category = "Automation"
+commands = [
+    "workflow create",
+    "workflow edit",
+    "workflow validate",
+    "workflow execute",
+    "workflow stop",
+    "workflow list",
+    "workflow search",
+    "workflow delete",
+    "workflow export",
+    "workflow import",
+    "workflow clone",
+    "workflow explain",
+    "workflow optimize",
+    "workflow monitor",
+    "workflow logs",
+    "workflow health"
+]
+capabilities = ["automation", "workflow", "n8n", "orchestration", "integration", "scheduling", "monitoring"]
+required_tools = []
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

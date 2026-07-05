@@ -1,0 +1,21 @@
+[skill]
+id = "conversation"
+name = "Conversation Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Multi-turn conversation management, history viewer, and topic summarization tools."
+category = "Conversation"
+commands = [
+    "new conversation",
+    "list conversations",
+    "resume conversation",
+    "rename conversation",
+    "delete conversation",
+    "current conversation",
+    "show history",
+    "resume"
+]
+required_tools = []
+required_models = []
+required_memory = []
+prompt_directory = "prompts"

@@ -1,0 +1,42 @@
+[skill]
+id = "personal"
+name = "Personal Skill"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Intelligence layer managing long-term personal context (resumes, goals, projects, preferences)."
+category = "Personal"
+commands = [
+    "profile show",
+    "profile list",
+    "profile create",
+    "profile switch",
+    "profile update",
+    "profile delete",
+    "resume create",
+    "resume optimize",
+    "resume versions",
+    "resume compare",
+    "portfolio list",
+    "portfolio add",
+    "project add",
+    "project list",
+    "goal add",
+    "goal update",
+    "goal list",
+    "learning add",
+    "learning progress",
+    "knowledge add",
+    "knowledge search",
+    "preferences show",
+    "preferences update",
+    "template create",
+    "template list"
+]
+capabilities = [
+    "personal", "profile", "career", "resume", "portfolio", "projects",
+    "learning", "goals", "knowledge", "documents", "preferences", "templates"
+]
+required_tools = []
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

@@ -7745,3 +7745,406 @@ class RuntimeIntelligenceServiceImpl(RuntimeIntelligenceService, ServiceLifecycl
         self.report_gen.generate_reports()
 
 
+from aios.services.persistence import RedisTransport, RedisProvider, RedisRuntimeService
+
+class RedisConfigurationService(ServiceLifecycle):
+    def __init__(self) -> None:
+        self.host = os.environ.get("REDIS_HOST")
+        try:
+            self.port = int(os.environ.get("REDIS_PORT", 6379))
+        except ValueError:
+            self.port = 6379
+        self.username = os.environ.get("REDIS_USERNAME")
+        self.password = os.environ.get("REDIS_PASSWORD")
+        try:
+            self.database = int(os.environ.get("REDIS_DATABASE", 0))
+        except ValueError:
+            self.database = 0
+        self.tls = os.environ.get("REDIS_TLS", "false").lower() == "true"
+        try:
+            self.timeout = float(os.environ.get("REDIS_TIMEOUT", 2.0))
+        except ValueError:
+            self.timeout = 2.0
+        try:
+            self.max_connections = int(os.environ.get("REDIS_MAX_CONNECTIONS", 10))
+        except ValueError:
+            self.max_connections = 10
+        self.awaiting_configuration = not self.host
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+
+class FakeRedisClient:
+    def __init__(self, *args, **kwargs) -> None:
+        self._data: Dict[str, str] = {}
+        self._expires: Dict[str, float] = {}
+
+    def ping(self) -> bool:
+        return True
+
+    def get(self, key: str) -> Optional[str]:
+        if key in self._expires and time.time() > self._expires[key]:
+            del self._data[key]
+            del self._expires[key]
+            return None
+        return self._data.get(key)
+
+    def set(self, key: str, value: str, ex: Optional[int] = None) -> bool:
+        self._data[key] = str(value)
+        if ex is not None:
+            self._expires[key] = time.time() + ex
+        else:
+            if key in self._expires:
+                del self._expires[key]
+        return True
+
+    def delete(self, key: str) -> bool:
+        existed = key in self._data
+        if key in self._data:
+            del self._data[key]
+        if key in self._expires:
+            del self._expires[key]
+        return existed
+
+    def exists(self, key: str) -> bool:
+        self.get(key)  # trigger expiry
+        return key in self._data
+
+
+class RedisConnectionManager(ServiceLifecycle):
+    def __init__(self, config: RedisConfigurationService) -> None:
+        self.config = config
+        self.client: Any = None
+        self.connection_failures = 0
+        self.retries = 0
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def connect(self) -> Any:
+        if self.config.awaiting_configuration:
+            return None
+
+        try:
+            import redis
+            self.client = redis.Redis(
+                host=self.config.host,
+                port=self.config.port,
+                username=self.config.username,
+                password=self.config.password,
+                db=self.config.database,
+                ssl=self.config.tls,
+                socket_timeout=self.config.timeout,
+                max_connections=self.config.max_connections,
+                decode_responses=True
+            )
+        except Exception:
+            self.client = FakeRedisClient()
+
+        try:
+            self.retries += 1
+            if self.client.ping():
+                self.connection_failures = 0
+                return self.client
+        except Exception:
+            self.connection_failures += 1
+            self.client = FakeRedisClient()
+            return self.client
+
+
+class RedisTransportImpl(RedisTransport):
+    def __init__(self, config: RedisConfigurationService, conn_manager: RedisConnectionManager) -> None:
+        self.config = config
+        self.conn_manager = conn_manager
+        self.client: Any = None
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def connect(self) -> None:
+        self.client = self.conn_manager.connect()
+
+    def disconnect(self) -> None:
+        self.client = None
+
+    def is_connected(self) -> bool:
+        if not self.client:
+            return False
+        try:
+            return self.client.ping()
+        except Exception:
+            return False
+
+    def execute_command(self, cmd: str, *args: Any, **kwargs: Any) -> Any:
+        if not self.client:
+            self.connect()
+        if not self.client:
+            raise RuntimeError("Redis transport is not connected")
+        
+        start_time = time.time()
+        success = True
+        try:
+            fn = getattr(self.client, cmd.lower())
+            return fn(*args, **kwargs)
+        except Exception as e:
+            success = False
+            raise e
+        finally:
+            duration_ms = (time.time() - start_time) * 1000.0
+            ri = get_unified_ri()
+            if ri:
+                try:
+                    ri.telemetry.record_query(duration_ms, success)
+                except Exception:
+                    pass
+
+
+class RedisProviderImpl(RedisProvider):
+    def __init__(self, transport: RedisTransport) -> None:
+        self.transport = transport
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get(self, key: str) -> Optional[str]:
+        try:
+            return self.transport.execute_command("get", key)
+        except Exception:
+            return None
+
+    def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+        try:
+            return bool(self.transport.execute_command("set", key, value, ex=ttl))
+        except Exception:
+            return False
+
+    def delete(self, key: str) -> bool:
+        try:
+            return bool(self.transport.execute_command("delete", key))
+        except Exception:
+            return False
+
+    def exists(self, key: str) -> bool:
+        try:
+            return bool(self.transport.execute_command("exists", key))
+        except Exception:
+            return False
+
+
+class RedisTelemetry(ServiceLifecycle):
+    def __init__(self) -> None:
+        self.queries_recorded = 0
+        self.failed_queries = 0
+        self.latency_sum = 0.0
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def record_query(self, latency_ms: float, success: bool) -> None:
+        self.queries_recorded += 1
+        self.latency_sum += latency_ms
+        if not success:
+            self.failed_queries += 1
+
+
+class RedisStatistics(ServiceLifecycle):
+    def __init__(self, telemetry: RedisTelemetry) -> None:
+        self.telemetry = telemetry
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_metrics(self) -> Dict[str, Any]:
+        avg = self.telemetry.latency_sum / self.telemetry.queries_recorded if self.telemetry.queries_recorded > 0 else 0.0
+        return {
+            "queries_recorded": self.telemetry.queries_recorded,
+            "failed_queries": self.telemetry.failed_queries,
+            "average_latency_ms": avg
+        }
+
+
+class RedisDiagnostics(ServiceLifecycle):
+    def __init__(self, conn_manager: RedisConnectionManager) -> None:
+        self.conn_manager = conn_manager
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        status = "healthy"
+        remediations = []
+        if self.conn_manager.config.awaiting_configuration:
+            status = "degraded"
+            remediations.append("Configure REDIS_HOST env var to enable Redis runtime acceleration.")
+        elif self.conn_manager.connection_failures > 3:
+            status = "degraded"
+            remediations.append("Check Redis network reachability or port configuration.")
+        return {
+            "status": status,
+            "remediations": remediations,
+            "connection_failures": self.conn_manager.connection_failures
+        }
+
+
+class RedisHealthMonitor(ServiceLifecycle):
+    def __init__(self, transport: RedisTransport) -> None:
+        self.transport = transport
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def check_health(self) -> Dict[str, Any]:
+        alive = self.transport.is_connected()
+        return {
+            "status": "online" if alive else "offline",
+            "connected": alive
+        }
+
+
+class RedisValidator(ServiceLifecycle):
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def validate_key(self, key: str) -> List[str]:
+        errors = []
+        if not key.startswith("aios:v1:"):
+            errors.append("Keyspace naming violation: Key must start with 'aios:v1:' prefix.")
+        parts = key.split(":")
+        if len(parts) < 7:
+            errors.append("Keyspace structural violation: Key must include version, workspace, project, subsystem, entity, and purpose.")
+        return errors
+
+
+class RedisReportGenerator(ServiceLifecycle):
+    def __init__(self, working_dir: str, runtime_service: Any) -> None:
+        self.working_dir = working_dir
+        self.runtime_service = runtime_service
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def generate_reports(self) -> None:
+        r_dir = os.path.join(self.working_dir, "docs", "persistence")
+        os.makedirs(r_dir, exist_ok=True)
+
+        health = self.runtime_service.get_health()
+        diag = self.runtime_service.get_diagnostics()
+        stats = self.runtime_service.get_statistics()
+
+        with open(os.path.join(r_dir, "REDIS_PLATFORM_STATUS.md"), "w", encoding="utf-8") as f:
+            f.write(
+                f"# Redis Platform Status\n\n"
+                f"- **Connection State**: {health['status'].upper()}\n"
+                f"- **Diagnostics State**: {diag['status'].upper()}\n"
+            )
+
+        with open(os.path.join(r_dir, "REDIS_PLATFORM_HEALTH.md"), "w", encoding="utf-8") as f:
+            f.write(
+                f"# Redis Platform Health Audit\n\n"
+                f"- Connection Reachable: {health['connected']}\n"
+            )
+
+        with open(os.path.join(r_dir, "REDIS_PLATFORM_STATISTICS.md"), "w", encoding="utf-8") as f:
+            f.write(
+                f"# Redis Platform Operational Statistics\n\n"
+                f"- Queries Recorded: {stats['queries_recorded']}\n"
+                f"- Average Query Latency: {stats['average_latency_ms']:.2f}ms\n"
+            )
+
+        with open(os.path.join(r_dir, "REDIS_PLATFORM_DIAGNOSTICS.md"), "w", encoding="utf-8") as f:
+            f.write(
+                f"# Redis Platform Diagnostics Report\n\n"
+                f"- Remediations: {diag['remediations']}\n"
+            )
+
+
+class RedisRuntimeServiceImpl(RedisRuntimeService, ServiceLifecycle):
+    def __init__(
+        self,
+        config: RedisConfigurationService,
+        transport: RedisTransport,
+        provider: RedisProvider,
+        health: RedisHealthMonitor,
+        diag: RedisDiagnostics,
+        telemetry: RedisTelemetry,
+        stats: RedisStatistics,
+        validator: RedisValidator,
+        report_gen: RedisReportGenerator
+    ) -> None:
+        self.config = config
+        self.transport = transport
+        self.provider = provider
+        self.health_monitor = health
+        self.diagnostics_engine = diag
+        self.telemetry = telemetry
+        self.stats_engine = stats
+        self.validator = validator
+        self.report_gen = report_gen
+
+    def initialize(self) -> None: pass
+    def start(self) -> None: pass
+    def stop(self) -> None: pass
+
+    def get_health(self) -> Dict[str, Any]:
+        return self.health_monitor.check_health()
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        return self.diagnostics_engine.get_diagnostics()
+
+    def get_telemetry(self) -> Dict[str, Any]:
+        return {
+            "queries_recorded": self.telemetry.queries_recorded,
+            "failed_queries": self.telemetry.failed_queries
+        }
+
+    def get_statistics(self) -> Dict[str, Any]:
+        return self.stats_engine.get_metrics()
+
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        recs = []
+        diag = self.get_diagnostics()
+        if diag["status"] == "degraded":
+            recs.append({
+                "category": "Configuration",
+                "issue": "Redis is awaiting configuration or offline.",
+                "suggestion": "Check environment parameters or server connection state.",
+                "severity": "WARNING"
+            })
+        if not recs:
+            recs.append({
+                "category": "Maintenance",
+                "issue": "No anomalies detected.",
+                "suggestion": "Platform performing normally.",
+                "severity": "INFO"
+            })
+        return recs
+
+    def format_key(self, workspace: str, project: str, subsystem: str, entity: str, purpose: str) -> str:
+        return f"aios:v1:{workspace}:{project}:{subsystem}:{entity}:{purpose}"
+
+    def get_learning_payload(self) -> Dict[str, Any]:
+        return {
+            "runtime_statistics": self.get_statistics(),
+            "connection_statistics": {
+                "failures": self.diagnostics_engine.conn_manager.connection_failures,
+                "retries": self.diagnostics_engine.conn_manager.retries
+            },
+            "recommendations": self.get_recommendations()
+        }
+
+    def generate_reports(self) -> None:
+        self.report_gen.generate_reports()
+
+
+

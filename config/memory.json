@@ -2745,5 +2745,159 @@
             "importance": 1,
             "additional": {}
         }
+    },
+    {
+        "memory_id": "5525175a-a91c-4b70-8d85-04e3008bf3ff",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783198097.7001758,
+        "updated_at": 1783198097.7001758,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "4588f14e-12a8-4908-a7d3-e104f8fdc5c1",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "c452f37f-22f6-4f5b-8ed0-f4de1c361545",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783237624.7086341,
+        "updated_at": 1783237624.7086341,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "5ca3aa72-c51d-41a8-9cb3-1fd260ec2366",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "e37112bb-d3dd-4f0f-955e-b47f2b15c0ad",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783237903.230081,
+        "updated_at": 1783237903.230081,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "49e8b68b-80d5-4d33-86d0-989bb33f410b",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "0cf6e2b1-c514-47b9-8e26-9526d215deef",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783238860.0165818,
+        "updated_at": 1783238860.0165818,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "ac6c1dbc-a19d-48eb-8beb-13720d381ef3",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "6fab2dc6-b86d-4e1b-a631-0fd49e6a5895",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783239588.934565,
+        "updated_at": 1783239588.934565,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "86981de1-a150-481d-87b9-1e1c752cb93b",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "bfb06e95-54fa-4749-9b29-5e9a19d8850c",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783239666.647948,
+        "updated_at": 1783239666.647948,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "f6fa0703-0e8d-44f2-b5b5-9d0ee30f1f13",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "238ff02d-4ae5-4477-b1f5-8fa95c86d0c4",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783240365.6083682,
+        "updated_at": 1783240365.6083682,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "707ce7cb-2917-48bf-9670-dac8f130c359",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "b06f5778-2ee8-4746-8dfa-32c5ec2f76e7",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783240861.141639,
+        "updated_at": 1783240861.141639,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "cb6d1b51-8e7f-41ec-9ffa-541d9fde60d4",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "9df1c15d-ac84-4a79-97fe-9f0f43ffdbdb",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783241619.981689,
+        "updated_at": 1783241619.981689,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "4e0cd236-16a1-4066-969a-be6557477962",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "23f440f2-94fa-4c2e-bca0-119db16ad885",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783241854.261514,
+        "updated_at": 1783241854.261514,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "18976207-a513-4d2f-8207-06a77595138c",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "45cca3f3-a488-452c-a578-105daa88a777",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783242147.161742,
+        "updated_at": 1783242147.161742,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "98673e69-36fa-42d6-a90d-870964f82e45",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
     }
 ]

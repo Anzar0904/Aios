@@ -1,0 +1,28 @@
+[skill]
+id = "github"
+name = "GitHub Skill Pro"
+version = "1.0.0"
+author = "Personal AI OS"
+description = "Deep integration with GitHub for repositories, pull requests, issues, releases, and CI/CD workflows."
+category = "Automation"
+capabilities = ["git", "vcs", "code-review", "github-api"]
+commands = [
+    "github login",
+    "github status",
+    "list repositories",
+    "clone repository",
+    "review pull request",
+    "review issue",
+    "summarize repository",
+    "compare branches",
+    "generate release notes",
+    "create issue",
+    "create pull request",
+    "list workflows",
+    "workflow status",
+    "latest release"
+]
+required_tools = ["filesystem", "git"]
+required_models = ["claude-3-5-sonnet"]
+required_memory = []
+prompt_directory = "prompts"

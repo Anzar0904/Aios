@@ -862,7 +862,7 @@ class LocalModelService(ModelService):
     across multiple registered providers via registries and factories.
     """
 
-    def __init__(self, default_model: str = None, config_path: str = "config/config.toml") -> None:
+    def __init__(self, default_model: str = None, config_path: str = "config/config.toml", registry: Optional[Any] = None) -> None:
         self.registry = ModelRegistry()
         self.factory = ProviderFactory()
         self._default_model = default_model
@@ -877,8 +877,8 @@ class LocalModelService(ModelService):
         )
 
         self.provider_config = ProviderConfig()
-        self.provider_registry = ProviderRegistry()
-        self.provider_health = ProviderHealthMonitor(registry=self.provider_registry)
+        self.provider_registry = ProviderRegistry(registry)
+        self.provider_health = ProviderHealthMonitor(registry)
         self.provider_metrics = ProviderMetricsCollector()
         self.provider_router = ProviderRouter(
             self.provider_config,
@@ -886,6 +886,7 @@ class LocalModelService(ModelService):
             self.provider_health,
             self.provider_metrics,
             self.factory,
+            di_registry=registry,
         )
 
     def initialize(self) -> None:

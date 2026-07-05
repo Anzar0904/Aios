@@ -1,7 +1,10 @@
 import os
 import time
 import logging
+import json
 from typing import Dict, List, Any, Optional
+
+from aios.services.persistence import PersistenceStatus, WorkflowOptimizationRepository, PersistenceService
 
 from aios.services.model import LLMRequest, ModelService
 from aios.services.memory import MemoryService, MemoryType
@@ -347,6 +350,12 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         self._planner = LocalWorkflowOptimizationPlanner()
         self._reports: Dict[str, List[WorkflowOptimizationReport]] = {}
         self._session_reports: Dict[str, WorkflowOptimizationReport] = {}
+        self._opt_repo: Optional[WorkflowOptimizationRepository] = None
+        if registry:
+            try:
+                self._opt_repo = registry.get(WorkflowOptimizationRepository)
+            except Exception:
+                pass
 
     def initialize(self) -> None:
         logger.info("Initializing LocalWorkflowOptimizationService")
@@ -444,6 +453,59 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
             timestamp=time.time()
         )
 
+        if self._opt_repo:
+            try:
+                plans_serialized = {}
+                for w_id, p in plans.items():
+                    plans_serialized[w_id] = {
+                        "overall_automation_quality_score": p.overall_automation_quality_score,
+                        "estimated_time_savings_seconds": p.estimated_time_savings_seconds,
+                        "estimated_cost_savings_dollars": p.estimated_cost_savings_dollars,
+                        "score_before": p.score_before,
+                        "score_after": p.score_after,
+                        "recommendations": [
+                            {
+                                "recommendation_id": r.recommendation_id,
+                                "category": r.category.value if hasattr(r.category, "value") else str(r.category),
+                                "priority": r.priority.value if hasattr(r.priority, "value") else str(r.priority),
+                                "expected_impact": r.expected_impact.value if hasattr(r.expected_impact, "value") else str(r.expected_impact),
+                                "confidence": r.confidence,
+                                "reasoning": r.reasoning,
+                                "supporting_evidence": r.supporting_evidence,
+                                "affected_nodes": r.affected_nodes,
+                                "affected_branches": r.affected_branches,
+                                "expected_time_savings_seconds": r.expected_time_savings_seconds,
+                                "expected_cost_savings_dollars": r.expected_cost_savings_dollars,
+                                "estimated_risk": r.estimated_risk,
+                                "implementation_difficulty": r.implementation_difficulty,
+                                "rollback_considerations": r.rollback_considerations,
+                                "pattern_ids": r.pattern_ids
+                            }
+                            for r in p.recommendations
+                        ]
+                    }
+                self._opt_repo.save({
+                    "id": report.report_id,
+                    "workflow_id": list(plans.keys())[0] if plans else "system",
+                    "optimization_plans": plans_serialized,
+                    "detected_patterns": list(set(pat for p in plans.values() for r in p.recommendations for pat in r.pattern_ids)),
+                    "complexity_scores": {w_id: p.overall_automation_quality_score for w_id, p in plans.items()},
+                    "recommendation_metadata": {
+                        "workspace_id": workspace_id,
+                        "optimization_score": report.optimization_score,
+                        "total_time_savings_seconds": report.total_time_savings_seconds,
+                        "total_cost_savings_dollars": report.total_cost_savings_dollars
+                    },
+                    "optimization_statistics": {
+                        "plans_count": len(plans),
+                        "avg_score_before": avg_score_before,
+                        "avg_score_after": avg_score_after
+                    },
+                    "timestamp": report.timestamp
+                })
+            except Exception:
+                pass
+
         if workspace_id not in self._reports:
             self._reports[workspace_id] = []
         self._reports[workspace_id].append(report)
@@ -504,6 +566,64 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         return reports[-1] if reports else None
 
     def get_history(self, workspace_id: str) -> List[WorkflowOptimizationReport]:
+        if self._opt_repo:
+            try:
+                p_service = self._registry.get(PersistenceService)
+                res = p_service.execute("SELECT * FROM workflow_optimizations")
+                reports = []
+                for row in res:
+                    rec_meta = json.loads(row["recommendation_metadata"] or "{}")
+                    if rec_meta.get("workspace_id") == workspace_id:
+                        r_id = row["id"]
+                        plans_data = json.loads(row["optimization_plans"] or "{}")
+                        
+                        plans = {}
+                        for w_id, p_data in plans_data.items():
+                            recs = []
+                            for r in p_data.get("recommendations", []):
+                                recs.append(
+                                    WorkflowOptimizationRecommendation(
+                                        recommendation_id=r.get("recommendation_id", ""),
+                                        category=WorkflowOptimizationCategory(r["category"]) if "category" in r else WorkflowOptimizationCategory.CACHING,
+                                        priority=WorkflowOptimizationPriority(r["priority"]) if "priority" in r else WorkflowOptimizationPriority.MEDIUM,
+                                        expected_impact=WorkflowOptimizationImpact(r["expected_impact"]) if "expected_impact" in r else WorkflowOptimizationImpact.MEDIUM,
+                                        confidence=r.get("confidence", 1.0),
+                                        reasoning=r.get("reasoning", ""),
+                                        supporting_evidence=r.get("supporting_evidence", ""),
+                                        affected_nodes=r.get("affected_nodes", []),
+                                        affected_branches=r.get("affected_branches", []),
+                                        expected_time_savings_seconds=r.get("expected_time_savings_seconds", 0.0),
+                                        expected_cost_savings_dollars=r.get("expected_cost_savings_dollars", 0.0),
+                                        estimated_risk=r.get("estimated_risk", 0.0),
+                                        implementation_difficulty=r.get("implementation_difficulty", "easy"),
+                                        rollback_considerations=r.get("rollback_considerations", ""),
+                                        pattern_ids=r.get("pattern_ids", [])
+                                    )
+                                )
+                            plans[w_id] = WorkflowOptimizationPlan(
+                                workflow_id=w_id,
+                                recommendations=recs,
+                                score_before=p_data.get("score_before", 100.0),
+                                score_after=p_data.get("score_after", 100.0),
+                                overall_automation_quality_score=p_data.get("overall_automation_quality_score", 100.0),
+                                estimated_time_savings_seconds=p_data.get("estimated_time_savings_seconds", 0.0),
+                                estimated_cost_savings_dollars=p_data.get("estimated_cost_savings_dollars", 0.0)
+                            )
+                        reports.append(
+                            WorkflowOptimizationReport(
+                                report_id=r_id,
+                                workspace_id=workspace_id,
+                                plans=plans,
+                                optimization_score=rec_meta.get("optimization_score", 100.0),
+                                total_time_savings_seconds=rec_meta.get("total_time_savings_seconds", 0.0),
+                                total_cost_savings_dollars=rec_meta.get("total_cost_savings_dollars", 0.0),
+                                timestamp=row.get("timestamp") or time.time()
+                            )
+                        )
+                self._reports[workspace_id] = reports
+                return reports
+            except Exception:
+                pass
         return self._reports.get(workspace_id, [])
 
     def store_optimization_summary(self, workspace_id: str) -> None:

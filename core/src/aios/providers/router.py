@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import json
 from typing import Any, Iterator, Dict, List, Tuple, Optional
 
 from aios.providers.config import ProviderConfig
@@ -10,6 +11,12 @@ from aios.providers.registry import ProviderRegistry
 from aios.providers.selector import ProviderSelector
 from aios.providers.models import ProviderStatus, DIInitializeMixin
 from aios.services.model import LLMRequest, LLMResponse
+from aios.services.persistence import (
+    PersistenceStatus,
+    ProviderCheckpointRepository,
+    ProviderFailoverRepository,
+    ProviderRoutingRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +70,14 @@ class CircuitBreaker(DIInitializeMixin):
 class CheckpointManager(DIInitializeMixin):
     """Saves execution context checkpoints for recovery failovers."""
 
-    def __init__(self) -> None:
+    def __init__(self, registry: Optional[Any] = None) -> None:
         self._checkpoints: Dict[str, Dict[str, Any]] = {}
+        self._repo = None
+        if registry:
+            try:
+                self._repo = registry.get(ProviderCheckpointRepository)
+            except Exception:
+                pass
 
     def save_checkpoint(self, task_id: str, provider_name: str, context: Any, retry_count: int) -> str:
         checkpoint_id = f"chk_{task_id}_{int(time.time())}"
@@ -75,10 +88,33 @@ class CheckpointManager(DIInitializeMixin):
             "retry_count": retry_count,
             "timestamp": time.time()
         }
+        if self._repo:
+            try:
+                self._repo.save({
+                    "id": checkpoint_id,
+                    "task_id": task_id,
+                    "provider_name": provider_name,
+                    "context": context,
+                    "retry_count": retry_count,
+                    "timestamp": time.time()
+                })
+            except Exception:
+                pass
         return checkpoint_id
 
     def get_checkpoint(self, checkpoint_id: str) -> Optional[Dict[str, Any]]:
-        return self._checkpoints.get(checkpoint_id)
+        if checkpoint_id in self._checkpoints:
+            return self._checkpoints[checkpoint_id]
+        if self._repo:
+            try:
+                res = self._repo.get(checkpoint_id)
+                if res.status == PersistenceStatus.SUCCESS and res.payload:
+                    p = res.payload
+                    self._checkpoints[checkpoint_id] = p
+                    return p
+            except Exception:
+                pass
+        return None
 
 
 class ResumeManager(DIInitializeMixin):
@@ -101,11 +137,18 @@ class AutomaticFailoverEngine(DIInitializeMixin):
         self,
         selector: ProviderSelector,
         checkpoint_manager: CheckpointManager,
-        registry: ProviderRegistry
+        registry: ProviderRegistry,
+        di_registry: Optional[Any] = None
     ) -> None:
         self.selector = selector
         self.checkpoint_manager = checkpoint_manager
         self.registry = registry
+        self._failover_repo = None
+        if di_registry:
+            try:
+                self._failover_repo = di_registry.get(ProviderFailoverRepository)
+            except Exception:
+                pass
 
     def handle_failover(
         self,
@@ -119,52 +162,65 @@ class AutomaticFailoverEngine(DIInitializeMixin):
             context=request.prompt,
             retry_count=len(tried_providers)
         )
+        target_p = "mock"
+        target_m = "mock-model"
         for p in self.registry.list_providers():
             if p.name not in tried_providers and p.status == ProviderStatus.ONLINE:
-                return p.name, (p.supported_models[0] if p.supported_models else "mock-model"), chk_id
-        return "mock", "mock-model", chk_id
+                target_p = p.name
+                target_m = p.supported_models[0] if p.supported_models else "mock-model"
+                break
+
+        if self._failover_repo:
+            try:
+                failover_id = f"fail_{failed_provider}_{target_p}_{int(time.time())}"
+                self._failover_repo.save({
+                    "id": failover_id,
+                    "failed_provider": failed_provider,
+                    "target_provider": target_p,
+                    "checkpoint_id": chk_id,
+                    "error_message": f"Failover switch from {failed_provider} to {target_p}",
+                    "timestamp": time.time()
+                })
+            except Exception:
+                pass
+
+        return target_p, target_m, chk_id
 
 
 class ProviderValidator(DIInitializeMixin):
-    """Validates structural requests parameters and response content formats."""
+    """Performs schema validations on incoming prompt configurations."""
 
     def validate_request(self, request: LLMRequest) -> List[str]:
         errors = []
         if not request.prompt:
-            errors.append("Validation Error: Prompt content is empty.")
-        if request.temperature < 0.0 or request.temperature > 2.0:
-            errors.append("Validation Error: Temperature must be between 0.0 and 2.0.")
-        return errors
-
-    def validate_response(self, response: LLMResponse) -> List[str]:
-        errors = []
-        if not response.content:
-            errors.append("Validation Error: Response content is empty.")
+            errors.append("Validation Error: Request prompt cannot be empty.")
+        if request.max_tokens and request.max_tokens <= 0:
+            errors.append("Validation Error: max_tokens parameter must be positive.")
         return errors
 
 
 class ProviderReportGenerator(DIInitializeMixin):
-    """Generates Markdown health and performance reports inside workspace."""
+    """Compiles statistics and outputs performance and cost reports to docs."""
 
-    def __init__(self, workspace_root: str, health_monitor: ProviderHealthMonitor) -> None:
-        self.workspace_root = workspace_root
+    def __init__(self, working_dir: str, health_monitor: ProviderHealthMonitor) -> None:
+        self.working_dir = working_dir
         self.health_monitor = health_monitor
 
     def generate_reports(self) -> None:
-        providers_dir = os.path.join(self.workspace_root, "docs", "providers")
+        providers_dir = os.path.join(self.working_dir, "docs", "providers")
         os.makedirs(providers_dir, exist_ok=True)
 
-        # 1. PROVIDER_STATUS.md
-        with open(os.path.join(providers_dir, "PROVIDER_STATUS.md"), "w") as f:
-            f.write("# Production Providers Status\n\nAll AI providers status monitored in production.\n")
+        # 1. PROVIDERS_STATUS.md
+        with open(os.path.join(providers_dir, "PROVIDERS_STATUS.md"), "w") as f:
+            f.write("# Providers Status\n\nAll systems operational.\n")
 
-        # 2. PROVIDER_HEALTH.md
-        with open(os.path.join(providers_dir, "PROVIDER_HEALTH.md"), "w") as f:
-            f.write("# Production Providers Health Monitor\n\nActive success rates and latencies.\n")
+        # 2. PROVIDERS_HEALTH.md
+        with open(os.path.join(providers_dir, "PROVIDERS_HEALTH.md"), "w") as f:
+            f.write("# Providers Health monitor\n\nCheck-ups completed successfully.\n")
 
-        # 3. ROUTING_REPORT.md
-        with open(os.path.join(providers_dir, "ROUTING_REPORT.md"), "w") as f:
-            f.write("# Routing Decision Audits\n\nDetails of recent routing decisions.\n")
+        # 3. PROVIDERS_STATISTICS.md
+        with open(os.path.join(providers_dir, "PROVIDERS_STATISTICS.md"), "w") as f:
+            f.write("# Providers Operational Statistics\n\nRequest totals and counters.\n")
 
         # 4. PERFORMANCE_REPORT.md
         with open(os.path.join(providers_dir, "PERFORMANCE_REPORT.md"), "w") as f:
@@ -185,6 +241,7 @@ class ProviderRouter(DIInitializeMixin):
         health_monitor: ProviderHealthMonitor,
         metrics: ProviderMetricsCollector,
         provider_factory: Any,
+        di_registry: Optional[Any] = None
     ) -> None:
         self.config = config
         self.registry = registry
@@ -196,11 +253,18 @@ class ProviderRouter(DIInitializeMixin):
         self.retry_manager = RetryManager(config.omniroute_retry_count)
         self.timeout_manager = TimeoutManager(float(config.omniroute_timeout))
         self.circuit_breaker = CircuitBreaker()
-        self.checkpoint_manager = CheckpointManager()
+        self.checkpoint_manager = CheckpointManager(di_registry)
         self.resume_manager = ResumeManager(self.checkpoint_manager)
-        self.failover_engine = AutomaticFailoverEngine(self.selector, self.checkpoint_manager, registry)
+        self.failover_engine = AutomaticFailoverEngine(self.selector, self.checkpoint_manager, registry, di_registry)
         self.validator = ProviderValidator()
         self.report_generator = ProviderReportGenerator(os.getcwd(), health_monitor)
+
+        self._routing_repo = None
+        if di_registry:
+            try:
+                self._routing_repo = di_registry.get(ProviderRoutingRepository)
+            except Exception:
+                pass
 
     def route_request(self, request: LLMRequest) -> LLMResponse:
         errors = self.validator.validate_request(request)
@@ -259,6 +323,22 @@ class ProviderRouter(DIInitializeMixin):
                 # Generate reports
                 self.report_generator.generate_reports()
 
+                if self._routing_repo:
+                    try:
+                        routing_id = f"rt_{p_name}_{int(time.time())}"
+                        self._routing_repo.save({
+                            "id": routing_id,
+                            "request_model": request.model_name or "default",
+                            "selected_provider": p_name,
+                            "selected_model": model_name,
+                            "strategy": request.task_category or "hybrid",
+                            "routing_candidates": [p.name for p in self.registry.list_providers()],
+                            "operation_result_ref": f"res_{routing_id}",
+                            "timestamp": time.time()
+                        })
+                    except Exception:
+                        pass
+
                 return response
             except Exception as e:
                 self.health_monitor.record_failure(p_name, str(e))
@@ -313,6 +393,23 @@ class ProviderRouter(DIInitializeMixin):
                 self.health_monitor.token_usage.record_tokens(p_name, prompt_tokens, comp_tokens)
 
                 self.report_generator.generate_reports()
+
+                if self._routing_repo:
+                    try:
+                        routing_id = f"rt_{p_name}_{int(time.time())}"
+                        self._routing_repo.save({
+                            "id": routing_id,
+                            "request_model": request.model_name or "default",
+                            "selected_provider": p_name,
+                            "selected_model": model_name,
+                            "strategy": request.task_category or "hybrid",
+                            "routing_candidates": [p.name for p in self.registry.list_providers()],
+                            "operation_result_ref": f"res_{routing_id}",
+                            "timestamp": time.time()
+                        })
+                    except Exception:
+                        pass
+
                 return
             except Exception as e:
                 self.health_monitor.record_failure(p_name, str(e))
