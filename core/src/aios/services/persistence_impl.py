@@ -70,7 +70,9 @@ class PostgreSQLTransport(DatabaseTransport):
     def __init__(self, config: PersistenceConfigurationService) -> None:
         super().__init__(config)
         self.is_connected_state = False
-        self.connection = None
+        self.pool = None
+        self.active_conn = None
+        self.tx_depth = 0
         self.awaiting_configuration = len(self.validate_configuration()) > 0
 
     def validate_configuration(self) -> List[str]:
@@ -94,12 +96,19 @@ class PostgreSQLTransport(DatabaseTransport):
 
         try:
             import psycopg2
+            try:
+                from psycopg2.pool import ThreadedConnectionPool
+            except ImportError:
+                # Fallback if psycopg2 module is mocked and doesn't have pool
+                ThreadedConnectionPool = getattr(psycopg2, "pool", MagicMock()).ThreadedConnectionPool
         except ImportError:
             logger.error("psycopg2 driver not installed.")
             raise RuntimeError("PostgreSQL database driver psycopg2 is missing.") from None
 
         try:
-            self.connection = psycopg2.connect(
+            self.pool = ThreadedConnectionPool(
+                minconn=self.config.pool_min_size,
+                maxconn=self.config.pool_max_size,
                 host=self.config.host,
                 port=self.config.port,
                 dbname=self.config.database,
@@ -108,48 +117,72 @@ class PostgreSQLTransport(DatabaseTransport):
                 sslmode=self.config.sslmode,
                 connect_timeout=self.config.connection_timeout
             )
-            self.connection.autocommit = True
             self.is_connected_state = True
         except Exception as e:
             self.is_connected_state = False
-            logger.error(f"Failed to connect to PostgreSQL database: {e}")
+            logger.error(f"Failed to initialize PostgreSQL ThreadedConnectionPool: {e}")
             raise
 
     def disconnect(self) -> None:
-        if self.connection:
+        if self.pool:
             try:
-                self.connection.close()
+                self.pool.closeall()
             except Exception:
                 pass
-            self.connection = None
+            self.pool = None
+        self.active_conn = None
+        self.tx_depth = 0
         self.is_connected_state = False
 
     def execute(self, query: str, params: Optional[tuple] = None) -> TransportResult:
         if self.awaiting_configuration:
             raise RuntimeError("Database execution blocked: Awaiting Runtime Configuration")
-        if not self.is_connected_state or not self.connection:
+        if not self.is_connected_state or not self.pool:
             raise RuntimeError("PostgreSQL database is not connected")
 
-        cursor = self.connection.cursor()
-        try:
-            cursor.execute(query, params or ())
+        # If inside a transaction, use the active transaction connection
+        if self.active_conn:
+            cursor = self.active_conn.cursor()
             try:
-                desc = cursor.description
-                if desc:
-                    colnames = [d[0] for d in desc]
-                    rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
-                else:
-                    rows = []
-                return TransportResult(rows=rows, rows_affected=cursor.rowcount)
-            except Exception:
-                return TransportResult(rows=[], rows_affected=cursor.rowcount)
+                cursor.execute(query, params or ())
+                try:
+                    desc = cursor.description
+                    if desc:
+                        colnames = [d[0] for d in desc]
+                        rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+                    else:
+                        rows = []
+                    return TransportResult(rows=rows, rows_affected=cursor.rowcount)
+                except Exception:
+                    return TransportResult(rows=[], rows_affected=cursor.rowcount)
+            finally:
+                cursor.close()
+
+        # Otherwise, acquire from pool, execute, and release back
+        conn = self.pool.getconn()
+        try:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(query, params or ())
+                try:
+                    desc = cursor.description
+                    if desc:
+                        colnames = [d[0] for d in desc]
+                        rows = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+                    else:
+                        rows = []
+                    return TransportResult(rows=rows, rows_affected=cursor.rowcount)
+                except Exception:
+                    return TransportResult(rows=[], rows_affected=cursor.rowcount)
+            finally:
+                cursor.close()
         finally:
-            cursor.close()
+            self.pool.putconn(conn)
 
     def execute_many(self, query: str, params_list: List[tuple]) -> List[TransportResult]:
         if self.awaiting_configuration:
             raise RuntimeError("Database execution blocked: Awaiting Runtime Configuration")
-        if not self.is_connected_state or not self.connection:
+        if not self.is_connected_state or not self.pool:
             raise RuntimeError("PostgreSQL database is not connected")
         results = []
         for params in params_list:
@@ -159,22 +192,61 @@ class PostgreSQLTransport(DatabaseTransport):
     def begin_transaction(self) -> TransportTransaction:
         if self.awaiting_configuration:
             raise RuntimeError("Database transaction blocked: Awaiting Runtime Configuration")
-        self.execute("BEGIN")
+        if not self.is_connected_state or not self.pool:
+            raise RuntimeError("PostgreSQL database is not connected")
+
+        if self.tx_depth == 0:
+            self.active_conn = self.pool.getconn()
+            self.active_conn.autocommit = False  # disable autocommit for transaction
+
+            # Execute BEGIN on the acquired active connection
+            cursor = self.active_conn.cursor()
+            try:
+                cursor.execute("BEGIN")
+            finally:
+                cursor.close()
+
+        self.tx_depth += 1
 
         class PsycopgTransaction(TransportTransaction):
             def __init__(self, transport: PostgreSQLTransport) -> None:
                 self.transport = transport
+
             def commit(self) -> None:
-                self.transport.execute("COMMIT")
+                self.transport.tx_depth = max(0, self.transport.tx_depth - 1)
+                if self.transport.tx_depth == 0:
+                    cursor = self.transport.active_conn.cursor()
+                    try:
+                        cursor.execute("COMMIT")
+                    finally:
+                        cursor.close()
+                    # Reset connection and return to pool
+                    self.transport.active_conn.autocommit = True
+                    self.transport.pool.putconn(self.transport.active_conn)
+                    self.transport.active_conn = None
+
             def rollback(self) -> None:
-                self.transport.execute("ROLLBACK")
+                self.transport.tx_depth = max(0, self.transport.tx_depth - 1)
+                if self.transport.tx_depth == 0:
+                    try:
+                        cursor = self.transport.active_conn.cursor()
+                        try:
+                            cursor.execute("ROLLBACK")
+                        finally:
+                            cursor.close()
+                    except Exception:
+                        pass
+                    # Reset connection and return to pool
+                    self.transport.active_conn.autocommit = True
+                    self.transport.pool.putconn(self.transport.active_conn)
+                    self.transport.active_conn = None
 
         return PsycopgTransaction(self)
 
     def health(self) -> TransportHealth:
         if self.awaiting_configuration:
             return TransportHealth(is_alive=False, latency_ms=0.0, error_message="Awaiting Runtime Configuration")
-        if not self.is_connected_state:
+        if not self.is_connected_state or not self.pool:
             return TransportHealth(is_alive=False, latency_ms=0.0, error_message="Not connected")
         start = time.time()
         try:
