@@ -174,6 +174,20 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         QueueDiagnostics,
         QueueRecommendationEngine,
         RedisQueueService,
+        JobState,
+        JobStateMachine,
+        QuotaRegistry,
+        RateLimitManager,
+        TokenBucketManager,
+        SlidingWindowManager,
+        FixedWindowManager,
+        QuotaSynchronizationManager,
+        RateLimitRecoveryManager,
+        RateLimitStatisticsCollector,
+        RateLimitHealthMonitor,
+        RateLimitDiagnostics,
+        RateLimitRecommendationEngine,
+        RedisRateLimitService,
     )
     from aios.services.persistence_impl import (
         PostgreSQLProvider,
@@ -307,6 +321,19 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         QueueRecoveryManagerImpl,
         QueueManagerImpl,
         RedisQueueServiceImpl,
+        JobStateMachineImpl,
+        QuotaRegistryImpl,
+        TokenBucketManagerImpl,
+        SlidingWindowManagerImpl,
+        FixedWindowManagerImpl,
+        QuotaSynchronizationManagerImpl,
+        RateLimitRecoveryManagerImpl,
+        RateLimitStatisticsCollectorImpl,
+        RateLimitDiagnosticsImpl,
+        RateLimitHealthMonitorImpl,
+        RateLimitRecommendationEngineImpl,
+        RateLimitManagerImpl,
+        RedisRateLimitServiceImpl,
     )
 
     p_config = PersistenceConfigurationService()
@@ -960,6 +987,68 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(QueueManager, queue_manager)
     registry.register(QueueScheduler, queue_scheduler)
     registry.register(RedisQueueService, redis_queue_service)
+
+    # Instantiate Rate Limiting & Job State Machine classes
+    job_state_machine = JobStateMachineImpl(redis_provider)
+    quota_registry = QuotaRegistryImpl()
+    token_bucket_mgr = TokenBucketManagerImpl(redis_provider)
+    sliding_window_mgr = SlidingWindowManagerImpl(redis_provider)
+    fixed_window_mgr = FixedWindowManagerImpl(redis_provider)
+    quota_sync_mgr = QuotaSynchronizationManagerImpl()
+    rate_limit_recovery_mgr = RateLimitRecoveryManagerImpl()
+    rate_limit_stats = RateLimitStatisticsCollectorImpl()
+    rate_limit_diag = RateLimitDiagnosticsImpl(redis_provider)
+    rate_limit_health = RateLimitHealthMonitorImpl(redis_provider)
+    rate_limit_recommend = RateLimitRecommendationEngineImpl(rate_limit_stats, rate_limit_diag)
+    
+    rate_limit_manager = RateLimitManagerImpl(
+        redis_provider,
+        quota_registry,
+        token_bucket_mgr,
+        sliding_window_mgr,
+        fixed_window_mgr,
+        quota_sync_mgr,
+        rate_limit_recovery_mgr,
+        rate_limit_stats,
+        rate_limit_diag
+    )
+    redis_rate_limit_service = RedisRateLimitServiceImpl(
+        redis_provider,
+        quota_registry,
+        rate_limit_manager,
+        rate_limit_stats
+    )
+
+    # Initialize all Rate Limiting classes
+    job_state_machine.initialize()
+    quota_registry.initialize()
+    token_bucket_mgr.initialize()
+    sliding_window_mgr.initialize()
+    fixed_window_mgr.initialize()
+    quota_sync_mgr.initialize()
+    rate_limit_recovery_mgr.initialize()
+    rate_limit_stats.initialize()
+    rate_limit_diag.initialize()
+    rate_limit_health.initialize()
+    rate_limit_recommend.initialize()
+    rate_limit_manager.initialize()
+    redis_rate_limit_service.initialize()
+
+    # Register Rate Limiting in DI container
+    registry.register(JobStateMachine, job_state_machine)
+    registry.register(QuotaRegistry, quota_registry)
+    registry.register(TokenBucketManager, token_bucket_mgr)
+    registry.register(SlidingWindowManager, sliding_window_mgr)
+    registry.register(FixedWindowManager, fixed_window_mgr)
+    registry.register(QuotaSynchronizationManager, quota_sync_mgr)
+    registry.register(RateLimitRecoveryManager, rate_limit_recovery_mgr)
+    registry.register(RateLimitStatisticsCollector, rate_limit_stats)
+    registry.register(RateLimitDiagnostics, rate_limit_diag)
+    registry.register(RateLimitHealthMonitor, rate_limit_health)
+    registry.register(RateLimitRecommendationEngine, rate_limit_recommend)
+    registry.register(RateLimitManager, rate_limit_manager)
+    registry.register(RedisRateLimitService, redis_rate_limit_service)
+
 
 
 

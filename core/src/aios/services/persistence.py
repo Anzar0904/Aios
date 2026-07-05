@@ -1857,6 +1857,143 @@ class RedisQueueService(ServiceLifecycle, abc.ABC):
         pass
 
 
+class JobState(enum.Enum):
+    CREATED = "CREATED"
+    QUEUED = "QUEUED"
+    SCHEDULED = "SCHEDULED"
+    RUNNING = "RUNNING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    RETRYING = "RETRYING"
+    DEAD_LETTER = "DEAD_LETTER"
+
+
+class JobStateMachine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def transition_to(self, job_id: str, new_state: JobState, metadata: Optional[Dict[str, Any]] = None) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def get_state(self, job_id: str) -> Optional[JobState]:
+        pass
+
+
+class QuotaRegistry(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def register_quota(
+        self,
+        quota_type: str,
+        owner_service: str,
+        algorithm: str,
+        capacity: int,
+        refill_rate: float,
+        burst_size: int,
+        window_duration: float,
+        fallback_strategy: str,
+        sync_policy: str
+    ) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_configuration(self, quota_type: str) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_all_types(self) -> List[str]:
+        pass
+
+
+class RateLimitManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def allow_request(self, quota_type: str, resource_id: str, tokens: int = 1) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def get_quota_status(self, quota_type: str, resource_id: str) -> Dict[str, Any]:
+        pass
+
+
+class TokenBucketManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def consume(self, key: str, capacity: int, refill_rate: float, tokens: int) -> bool:
+        pass
+
+
+class SlidingWindowManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def consume(self, key: str, limit: int, window: float, tokens: int) -> bool:
+        pass
+
+
+class FixedWindowManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def consume(self, key: str, limit: int, window: float, tokens: int) -> bool:
+        pass
+
+
+class QuotaSynchronizationManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def sync_quota_to_db(self, quota_type: str, resource_id: str, current_usage: int) -> None:
+        pass
+
+
+class RateLimitRecoveryManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def recover_limits(self) -> int:
+        pass
+
+
+class RateLimitStatisticsCollector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def record_request(self, quota_type: str, allowed: bool, burst_used: bool = False) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_sync(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_metrics(self) -> Dict[str, Any]:
+        pass
+
+
+class RateLimitHealthMonitor(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def check_health(self) -> Dict[str, Any]:
+        pass
+
+
+class RateLimitDiagnostics(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Check quota settings") -> None:
+        pass
+
+
+class RateLimitRecommendationEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class RedisRateLimitService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_manager(self) -> RateLimitManager:
+        pass
+
+    @abc.abstractmethod
+    def get_registry(self) -> QuotaRegistry:
+        pass
+
+    @abc.abstractmethod
+    def get_stats(self) -> RateLimitStatisticsCollector:
+        pass
+
+
+
 
 
 
