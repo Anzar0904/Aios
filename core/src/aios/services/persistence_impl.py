@@ -13556,6 +13556,19 @@ class EmbeddingEngineImpl(EmbeddingEngine):
         except Exception:
             pass
 
+    def _persist_failed_job(self, text: str, provider_name: str, collection_name: Optional[str]) -> None:
+        try:
+            from aios.registry import ServiceRegistry
+            from aios.services.persistence import PersistenceService
+            db = ServiceRegistry._global_registry.get(PersistenceService)
+            job_id = str(uuid.uuid4())
+            db.execute(
+                "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at) VALUES (?, ?, ?, ?, 'PENDING', 1, ?)",
+                (job_id, text, provider_name, collection_name, time.time())
+            )
+        except Exception:
+            pass
+
     def embed_text(self, request: EmbeddingRequest) -> EmbeddingResponse:
         t0 = time.perf_counter()
         provider = request.provider_name or self._active_provider
@@ -13591,28 +13604,83 @@ class EmbeddingEngineImpl(EmbeddingEngine):
         except Exception as e:
             self.op_counts["failures"] += 1
             self._log_err(f"Embedding failed: {str(e)}")
-            
-            # Persist to database
-            try:
-                from aios.registry import ServiceRegistry
-                from aios.services.persistence import PersistenceService
-                db = ServiceRegistry._global_registry.get(PersistenceService)
-                job_id = str(uuid.uuid4())
-                db.execute(
-                    "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at) VALUES (?, ?, ?, ?, 'PENDING', 1, ?)",
-                    (job_id, request.text, provider, request.collection_name, time.time())
-                )
-            except Exception:
-                pass
-                
+            self._persist_failed_job(request.text, provider, request.collection_name)
             return EmbeddingResponse(text=request.text, vector=[], version="unknown", provider_name=provider, error=str(e))
 
     def embed_batch(self, requests: List[EmbeddingRequest]) -> List[EmbeddingResponse]:
+        t0 = time.perf_counter()
         self.op_counts["batch_embed"] += 1
-        results = []
-        for r in requests:
-            results.append(self.embed_text(r))
-        return results
+        results: List[Optional[EmbeddingResponse]] = [None] * len(requests)
+        
+        # Group uncached requests by provider
+        uncached_by_provider: Dict[str, List[tuple]] = {}
+        
+        for idx, req in enumerate(requests):
+            provider = req.provider_name or self._active_provider
+            try:
+                prov_impl = self.embedding_service.get_provider(provider)
+                meta = prov_impl.get_metadata()
+                
+                cached = self.cache.get(req.text, meta.version)
+                if cached is not None:
+                    if len(cached) != meta.dimensions:
+                        raise ValueError(f"Cached dimensions mismatch. Expected {meta.dimensions}, got {len(cached)}")
+                    results[idx] = EmbeddingResponse(text=req.text, vector=cached, version=meta.version, provider_name=provider)
+                    continue
+            except Exception as e:
+                self.op_counts["failures"] += 1
+                self._log_err(f"Batch embedding cache lookup failed for '{req.text}': {str(e)}")
+                self._persist_failed_job(req.text, provider, req.collection_name)
+                results[idx] = EmbeddingResponse(text=req.text, vector=[], version="unknown", provider_name=provider, error=str(e))
+                continue
+                
+            uncached_by_provider.setdefault(provider, []).append((idx, req))
+            
+        for provider, group in uncached_by_provider.items():
+            try:
+                prov_impl = self.embedding_service.get_provider(provider)
+                meta = prov_impl.get_metadata()
+            except Exception as e:
+                self.op_counts["failures"] += len(group)
+                self._log_err(f"Batch provider lookup failed for {provider}: {str(e)}")
+                for idx, req in group:
+                    self._persist_failed_job(req.text, provider, req.collection_name)
+                    results[idx] = EmbeddingResponse(text=req.text, vector=[], version="unknown", provider_name=provider, error=str(e))
+                continue
+
+            indices = [item[0] for item in group]
+            group_requests = [item[1] for item in group]
+            texts = [req.text for req in group_requests]
+            
+            try:
+                vectors = prov_impl.embed_batch(texts)
+                for text, vector, idx, req in zip(texts, vectors, indices, group_requests):
+                    try:
+                        self._validate_vector(vector, meta.dimensions)
+                        self.cache.set(text, vector, meta.version)
+                        results[idx] = EmbeddingResponse(text=text, vector=vector, version=meta.version, provider_name=provider)
+                    except Exception as e:
+                        self.op_counts["failures"] += 1
+                        self._log_err(f"Batch vector validation/cache save failed for '{text}': {str(e)}")
+                        self._persist_failed_job(text, provider, req.collection_name)
+                        results[idx] = EmbeddingResponse(text=text, vector=[], version="unknown", provider_name=provider, error=str(e))
+            except NotImplementedError:
+                # Fall back to sequential processing
+                for idx, req in group:
+                    results[idx] = self.embed_text(req)
+            except Exception as e:
+                self.op_counts["failures"] += len(group)
+                self._log_err(f"Batch embedding failed for provider {provider}: {str(e)}")
+                for idx, req in group:
+                    self._persist_failed_job(req.text, provider, req.collection_name)
+                    results[idx] = EmbeddingResponse(text=req.text, vector=[], version="unknown", provider_name=provider, error=str(e))
+                    
+        latency = (time.perf_counter() - t0) * 1000.0
+        self.latencies.append(latency)
+        if len(self.latencies) > 1000:
+            self.latencies.pop(0)
+
+        return [res for res in results if res is not None]
 
     def _validate_vector(self, vector: List[float], expected_dims: int) -> None:
         if len(vector) != expected_dims:
