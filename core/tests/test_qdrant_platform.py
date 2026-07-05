@@ -473,3 +473,272 @@ def test_embedding_engine_and_semantic_search():
     repo.clear()
 
 
+def test_hybrid_retrieval_pipeline():
+    from aios.services.persistence import (
+        QueryAnalysisService, CollectionSelector, CandidateRanker, ContextOptimizer,
+        RetrievalCache, HybridRetrievalService, RetrievalCandidate, EngineeringMemoryRepository
+    )
+    import time
+
+    config_path = Path("aios.toml")
+    kernel = bootstrap_kernel(config_path)
+    registry = kernel.registry
+
+    query_analyzer = registry.get(QueryAnalysisService)
+    selector = registry.get(CollectionSelector)
+    ranker = registry.get(CandidateRanker)
+    optimizer = registry.get(ContextOptimizer)
+    cache = registry.get(RetrievalCache)
+    hybrid_retrieval = registry.get(HybridRetrievalService)
+    from aios.services.persistence import SemanticSearchService
+    search_service = registry.get(SemanticSearchService)
+
+    # Test Query Analysis intent detection
+    analysis = query_analyzer.analyze_query("def optimize_context_query(): pass")
+    assert analysis.intent == "code_search"
+    assert "engineering" in analysis.domains
+
+    # Test Collection Selector
+    cols = selector.select_collections(analysis)
+    assert "engineering_memory" in cols
+
+    # Test Candidate Ranker score weighting and decay
+    c1 = RetrievalCandidate(
+        id="cand-1", text="some source code block", score=0.0, metadata={},
+        source_collection="engineering_memory", similarity_score=0.8,
+        importance_score=0.9, freshness_score=0.7
+    )
+    c2 = RetrievalCandidate(
+        id="cand-2", text="older code documentation", score=0.0, metadata={},
+        source_collection="engineering_memory", similarity_score=0.9,
+        importance_score=0.4, freshness_score=0.3
+    )
+
+    ranked = ranker.rank_candidates([c2, c1])
+    # c1 has higher combined score (0.8*0.5 + 0.9*0.3 + 0.7*0.2 = 0.81) vs c2 (0.9*0.5 + 0.4*0.3 + 0.3*0.2 = 0.63)
+    assert ranked[0].id == "cand-1"
+
+    # Test Context Optimizer token budgeting and duplicate elimination
+    # token budget 20 tokens (approx 80 characters)
+    c_opt_1 = RetrievalCandidate(
+        id="cand-opt-1", text="A very long text chunk that should exceed the token budget if combined with other chunks.",
+        score=0.9, metadata={}, source_collection="engineering_memory", similarity_score=0.9, importance_score=0.8, freshness_score=0.8
+    )
+    c_opt_2 = RetrievalCandidate(
+        id="cand-opt-2", text="Short text", score=0.8, metadata={}, source_collection="engineering_memory",
+        similarity_score=0.8, importance_score=0.8, freshness_score=0.8
+    )
+    res = optimizer.optimize_context([c_opt_1, c_opt_2], token_budget=15)
+    # The first candidate (len // 4 = 90 // 4 = 22 tokens) exceeds budget 15, so it is skipped.
+    # The second candidate (len // 4 = 10 // 4 = 2 tokens) fits within budget 15!
+    assert len(res.candidates_included) == 1
+    assert res.candidates_included[0].id == "cand-opt-2"
+
+    # Test Retrieval Cache statistics
+    cache_key = "test_retrieval_cache_key"
+    cache.set_query_results(cache_key, [c1])
+    retrieved = cache.get_query_results(cache_key)
+    assert len(retrieved) == 1
+    assert retrieved[0].id == "cand-1"
+    stats = cache.get_statistics()
+    assert stats["hits"] == 1
+
+    # Populate Qdrant repository for end-to-end pipeline test
+    repo = registry.get(EngineeringMemoryRepository)
+    repo.clear()
+    
+    # Save test item
+    import uuid
+    from aios.services.persistence import EmbeddingEngine, EmbeddingRequest
+    engine = registry.get(EmbeddingEngine)
+    res_embed = engine.embed_text(EmbeddingRequest(text="def hello_world_func(): print(123)"))
+    
+    # Save record with metadata
+    memory_id = "test-retrieval-query-1"
+    repo.save(memory_id, res_embed.vector, {
+        "text": "def hello_world_func(): print(123)",
+        "importance": 9,
+        "created_at": time.time()
+    })
+
+    # Test Hybrid retrieval service execution
+    pipeline_res = hybrid_retrieval.retrieve(
+        query_text="def hello_world_func",
+        token_budget=1000
+    )
+    assert len(pipeline_res.candidates_included) == 1
+    assert "def hello_world_func" in pipeline_res.context_text
+
+    # Test Fallback Behaviour (Database Lexical Fallback)
+    # We simulate semantic search failure by calling retrieve with a non-existent mock collection
+    # causing Qdrant query to fail and fallback to look up PG database ai_memory table.
+    from aios.services.persistence import PersistenceService
+    from test_persistence import SQLiteTransportForTests
+    db = registry.get(PersistenceService)
+    
+    # Swap to test SQLite db
+    test_transport = SQLiteTransportForTests(db.config)
+    db.active_provider.transport = test_transport
+    db.on_ready()
+    
+    # Create schema and populate mock record
+    db.execute("CREATE TABLE IF NOT EXISTS ai_memory (id TEXT PRIMARY KEY, key TEXT, value TEXT, metadata TEXT, created_at REAL, updated_at REAL)")
+    db.execute(
+        "INSERT INTO ai_memory (id, key, value, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        ("fallback-id-123", "lexical_key", "lexical fallback text message content match", "{}", time.time(), time.time())
+    )
+
+    # Force SemanticSearch to raise an exception by mocking it
+    # which will trigger lexical fallback lookup against ai_memory table
+    original_search = search_service.search
+    from unittest.mock import MagicMock
+    search_service.search = MagicMock(side_effect=Exception("Mocked Qdrant Offline"))
+    
+    try:
+        fallback_res = hybrid_retrieval.retrieve(
+            query_text="lexical fallback text message",
+            token_budget=1000
+        )
+        assert len(fallback_res.candidates_included) >= 1
+        assert "lexical fallback text message content match" in fallback_res.context_text
+    finally:
+        search_service.search = original_search
+
+    # Clean up
+    repo.clear()
+
+
+def test_qdrant_runtime_intelligence():
+    from aios.services.persistence import (
+        QdrantRuntimeTelemetry, QdrantHealthAnalyzer, QdrantCapacityAnalyzer,
+        QdrantPerformanceAnalyzer, QdrantRecommendationEngine, QdrantDiagnosticsEngine,
+        QdrantStatisticsCollector, QdrantRuntimeReporter, QdrantRuntimeValidator,
+        QdrantRuntimeCoordinator, RuntimeIntelligenceService
+    )
+    from pathlib import Path
+
+    config_path = Path("aios.toml")
+    kernel = bootstrap_kernel(config_path)
+    registry = kernel.registry
+
+    # 1. DI check
+    telemetry = registry.get(QdrantRuntimeTelemetry)
+    health = registry.get(QdrantHealthAnalyzer)
+    capacity = registry.get(QdrantCapacityAnalyzer)
+    performance = registry.get(QdrantPerformanceAnalyzer)
+    diagnostics = registry.get(QdrantDiagnosticsEngine)
+    recommendations = registry.get(QdrantRecommendationEngine)
+    statistics = registry.get(QdrantStatisticsCollector)
+    reporter = registry.get(QdrantRuntimeReporter)
+    validator = registry.get(QdrantRuntimeValidator)
+    coordinator = registry.get(QdrantRuntimeCoordinator)
+    global_ri = registry.get(RuntimeIntelligenceService)
+
+    assert telemetry is not None
+    assert health is not None
+    assert capacity is not None
+    assert performance is not None
+    assert diagnostics is not None
+    assert recommendations is not None
+    assert statistics is not None
+    assert reporter is not None
+    assert validator is not None
+    assert coordinator is not None
+
+    # 2. Telemetry and validator check
+    telem_data = telemetry.get_telemetry()
+    assert isinstance(telem_data, dict)
+    assert validator.validate_telemetry(telem_data) is True
+
+    # 3. Health check
+    health_data = health.analyze_health()
+    assert "overall_score" in health_data
+    assert "status" in health_data
+    assert health_data["status"] in ["HEALTHY", "DEGRADED", "OFFLINE"]
+    assert "components" in health_data
+    for comp in ["collection", "embedding", "search", "transport", "provider", "retry_queue", "cache"]:
+        assert comp in health_data["components"]
+        assert "score" in health_data["components"][comp]
+        assert "status" in health_data["components"][comp]
+
+    # 4. Capacity check
+    capacity_data = capacity.analyze_capacity()
+    assert "vector_count" in capacity_data
+    assert "memory_usage" in capacity_data
+    assert "disk_usage" in capacity_data
+    assert "payload_storage" in capacity_data
+    assert "embedding_queue" in capacity_data
+    assert "retry_backlog" in capacity_data
+    assert "cache_utilisation" in capacity_data
+    assert "collection_sizes" in capacity_data
+
+    # 5. Performance check
+    perf_data = performance.analyze_performance()
+    assert "latencies" in perf_data
+    assert "throughput" in perf_data
+    assert "p50" in perf_data
+    assert "p95" in perf_data
+    assert "p99" in perf_data
+    for l_key in ["embedding_latency", "batch_embedding_latency", "search_latency", "retrieval_latency"]:
+        assert l_key in perf_data["latencies"]
+
+    # 6. Diagnostics check
+    diagnostics.log_error("Test diagnostics alert", "WARNING", "No remediation action required")
+    diag_data = diagnostics.get_diagnostics()
+    assert len(diag_data["errors"]) > 0
+    assert diag_data["errors"][0]["message"] == "Test diagnostics alert"
+
+    # 7. Recommendations check
+    recs_list = recommendations.generate_recommendations()
+    assert isinstance(recs_list, list)
+    if recs_list:
+        assert "category" in recs_list[0]
+        assert "issue" in recs_list[0]
+        assert "suggestion" in recs_list[0]
+
+    # 8. Report checks
+    report_md = reporter.generate_report()
+    assert "# Qdrant Runtime Intelligence Report" in report_md
+    assert "Capacity Utilization" in report_md
+
+    # 9. Coordinator getters checks
+    assert coordinator.get_telemetry_service() == telemetry
+    assert coordinator.get_health_analyzer() == health
+    assert coordinator.get_capacity_analyzer() == capacity
+    assert coordinator.get_performance_analyzer() == performance
+    assert coordinator.get_diagnostics() == diagnostics
+    assert coordinator.get_recommendation_engine() == recommendations
+    assert coordinator.get_stats_collector() == statistics
+    assert coordinator.get_reporter() == reporter
+    assert coordinator.get_validator() == validator
+
+    # 10. Global forwarding check
+    global_health = global_ri.get_health()
+    assert "qdrant_health" in global_health
+    assert global_health["qdrant_health"]["status"] == health_data["status"]
+
+    global_telemetry = global_ri.get_telemetry()
+    assert "qdrant_telemetry" in global_telemetry
+    assert "qdrant_capacity" in global_telemetry
+
+    global_stats = global_ri.get_statistics()
+    assert "qdrant_statistics" in global_stats
+
+    global_diag = global_ri.get_diagnostics()
+    assert "qdrant_diagnostics" in global_diag
+
+    global_recs = global_ri.get_recommendations()
+    # Check if our logged error alert is forwarded
+    found_custom_alert = False
+    for r in global_recs:
+        if r.get("issue") == "Test diagnostics alert":
+            found_custom_alert = True
+            break
+    assert found_custom_alert is True
+
+    global_learning = global_ri.get_learning_payload()
+    assert "qdrant_learning" in global_learning
+
+
+
+

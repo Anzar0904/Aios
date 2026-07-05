@@ -896,12 +896,12 @@ This section maps the essential runtime components of the operating system:
   - [REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry aggregator and advisor
   - [REDIS_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/REDIS_FAILURE_RECOVERY.md) - Graceful degradation and rebuild sync tests
 
-### 3.12 Qdrant Platform (Sprint 6 Milestones 1-4)
+### 3.12 Qdrant Platform (Sprint 6 Milestones 1-6)
 * **Purpose**: Implements the semantic memory layer and vector search engine using Qdrant. Manages embeddings generation, HNSW collection indexing, metadata payload pre-filtering (by workspace, project, category, etc.), semantic similarity queries, and telemetry diagnostics. Fallback retrieval degrades to PostgreSQL lexical searches if Qdrant is offline.
 * **Core Implemented Classes**:
   - `QdrantConfigurationService`: Stores host, ports, dimensions, distance metrics, and quantization parameters.
   - `QdrantConnectionManager`: Manages native connection pools and reconnections.
-  - `QdrantTransportImpl`: Executes command endpoints with retries, timeouts, and latency tracking.
+  - `QdrantTransportImpl`: Executes command endpoints with retries, timeouts, and logic check.
   - `QdrantProviderImpl`: Implements collection creation, point upsert, and vector query search.
   - `CollectionManagerImpl`: Manages schemas, statistics, and keyword/boolean indices for pre-filtering.
   - `QdrantRuntimeServiceImpl`: Aggregates health, statistics, and parsed diagnostic alerts.
@@ -913,11 +913,24 @@ This section maps the essential runtime components of the operating system:
   - `EmbeddingEngineImpl`, `EmbeddingRequest`, `EmbeddingResponse`: Main embedding generation engine supporting version validation boundaries and batching.
   - `SentenceTransformerProvider`, `OpenAIProvider`, `GeminiProvider`, `OllamaProvider`: Decoupled configuration-driven local and cloud providers.
   - `SemanticSearchServiceImpl`, `SemanticQuery`, `SemanticResult`: Multi-collection semantic search engine supporting top-k ranking, query caching, and workspace filtering.
-* **Current Status**: Embedding Engine & Semantic Search Platform Implemented.
+  - `QueryAnalysisServiceImpl` / `CollectionSelectorImpl` / `CandidateRankerImpl` / `ContextOptimizerImpl` / `RetrievalCacheImpl` / `HybridRetrievalServiceImpl`: Intent detection, multi-collection routing, multi-signal candidate ranking, Jaccard overlaps chunk merging, multi-tier cache, and overall pipeline coordination.
+  - `QdrantRuntimeTelemetryImpl` / `QdrantHealthAnalyzerImpl` / `QdrantCapacityAnalyzerImpl` / `QdrantPerformanceAnalyzerImpl` / `QdrantRecommendationEngineImpl` / `QdrantDiagnosticsEngineImpl` / `QdrantStatisticsCollectorImpl` / `QdrantRuntimeReporterImpl` / `QdrantRuntimeValidatorImpl` / `QdrantRuntimeCoordinatorImpl`: Fully observable self-monitoring platform components providing connection telemetry, composite health scoring, resource storage capacity analysis, latency percentiles mapping, custom/system diagnostic alerts execution, safety-preserving maintenance recommendations generation, and global forward integration.
+* **Current Status**: Qdrant Runtime Intelligence Platform Implemented.
 * **Platform Reports**:
   - [QDRANT_PLATFORM_DISCOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_DISCOVERY.md) - Vector memory engine analysis and collections strategy
   - [QDRANT_PLATFORM_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_ARCHITECTURE.md) - Components design diagram and pipeline flows
   - [QDRANT_PLATFORM_STATUS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_STATUS.md) - ADR records and roadmap schedule
+  - [QDRANT_PLATFORM_M5_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_M5_REPORT.md) - Milestone 5 Hybrid Retrieval & Context Pipeline certification report
+  - [QDRANT_PLATFORM_M6_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_M6_REPORT.md) - Milestone 6 Qdrant Runtime Intelligence platform certification report
+  - [QDRANT_RUNTIME_INTELLIGENCE_ARCHITECTURE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_INTELLIGENCE_ARCHITECTURE.md) - Platform component design diagrams and flows
+  - [QDRANT_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_HEALTH.md) - Subsystem component health scores and mappings
+  - [QDRANT_RUNTIME_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_STATISTICS.md) - Telemetry metrics counts and cache states
+  - [QDRANT_RUNTIME_CAPACITY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_CAPACITY.md) - Database growth trends and RAM footprints
+  - [QDRANT_RUNTIME_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_DIAGNOSTICS.md) - Diagnostics alarm codes and remediations
+  - [QDRANT_RUNTIME_RECOMMENDATIONS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_RECOMMENDATIONS.md) - Retrieval, cache, and capacity tuning suggestions
+  - [QDRANT_RUNTIME_REPORTING.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_REPORTING.md) - Markdown reporting structures and interfaces
+  - [RETRIEVAL_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/RETRIEVAL_STATISTICS.md) - Cache statistics and pipeline telemetry
+  - [RETRIEVAL_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/RETRIEVAL_DIAGNOSTICS.md) - Health indicators, fallback triggers, and troubleshooting recommendations - Health indicators, fallback triggers, and troubleshooting recommendations
   - [QDRANT_PLATFORM_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_HEALTH.md) - Health indicators and failure paths
   - [QDRANT_PLATFORM_STATISTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_STATISTICS.md) - Statistics collectors and telemetry design
   - [QDRANT_PLATFORM_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_DIAGNOSTICS.md) - Diagnostics alert parser and remediations list

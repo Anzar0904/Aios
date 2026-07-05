@@ -1313,6 +1313,134 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(EmbeddingEngine, embedding_engine)
     registry.register(SemanticSearchService, semantic_search)
 
+    # Instantiate Hybrid Retrieval platform classes
+    from aios.services.persistence import (
+        QueryAnalysisService, CollectionSelector, CandidateRanker, ContextOptimizer,
+        RetrievalCache, HybridRetrievalService
+    )
+    from aios.services.persistence_impl import (
+        QueryAnalysisServiceImpl, CollectionSelectorImpl, CandidateRankerImpl,
+        ContextOptimizerImpl, RetrievalCacheImpl, HybridRetrievalServiceImpl
+    )
+
+    query_analyzer = QueryAnalysisServiceImpl()
+    if hasattr(query_analyzer, "load_config_file"):
+        query_analyzer.load_config_file(config_path)
+
+    col_selector = CollectionSelectorImpl()
+    if hasattr(col_selector, "load_config_file"):
+        col_selector.load_config_file(config_path)
+
+    ranker = CandidateRankerImpl()
+    optimizer = ContextOptimizerImpl()
+
+    # Pass global redis_provider for distributed retrieval caching if available
+    retrieval_cache = RetrievalCacheImpl(redis_provider)
+
+    hybrid_retrieval = HybridRetrievalServiceImpl(
+        query_analyzer, col_selector, semantic_search, ranker, optimizer, retrieval_cache
+    )
+
+    # Initialize and start
+    query_analyzer.initialize()
+    query_analyzer.start()
+    col_selector.initialize()
+    col_selector.start()
+    ranker.initialize()
+    ranker.start()
+    optimizer.initialize()
+    optimizer.start()
+    retrieval_cache.initialize()
+    retrieval_cache.start()
+    hybrid_retrieval.initialize()
+    hybrid_retrieval.start()
+
+    # Link into global RuntimeIntelligenceService
+    ri_service.hybrid_retrieval = hybrid_retrieval
+
+    # Register in DI container
+    registry.register(QueryAnalysisService, query_analyzer)
+    registry.register(CollectionSelector, col_selector)
+    registry.register(CandidateRanker, ranker)
+    registry.register(ContextOptimizer, optimizer)
+    registry.register(RetrievalCache, retrieval_cache)
+    registry.register(HybridRetrievalService, hybrid_retrieval)
+
+    # Instantiate Qdrant Runtime Intelligence Platform components
+    from aios.services.persistence import (
+        QdrantRuntimeTelemetry, QdrantHealthAnalyzer, QdrantCapacityAnalyzer,
+        QdrantPerformanceAnalyzer, QdrantRecommendationEngine, QdrantDiagnosticsEngine,
+        QdrantStatisticsCollector, QdrantRuntimeReporter, QdrantRuntimeValidator,
+        QdrantRuntimeCoordinator
+    )
+    from aios.services.persistence_impl import (
+        QdrantRuntimeTelemetryImpl, QdrantHealthAnalyzerImpl, QdrantCapacityAnalyzerImpl,
+        QdrantPerformanceAnalyzerImpl, QdrantRecommendationEngineImpl, QdrantDiagnosticsEngineImpl,
+        QdrantStatisticsCollectorImpl, QdrantRuntimeReporterImpl, QdrantRuntimeValidatorImpl,
+        QdrantRuntimeCoordinatorImpl
+    )
+
+    qdrant_telemetry_service = QdrantRuntimeTelemetryImpl(registry)
+    qdrant_health_analyzer = QdrantHealthAnalyzerImpl(qdrant_telemetry_service)
+    qdrant_capacity_analyzer = QdrantCapacityAnalyzerImpl(qdrant_telemetry_service)
+    qdrant_performance_analyzer = QdrantPerformanceAnalyzerImpl(qdrant_telemetry_service)
+    qdrant_diagnostics = QdrantDiagnosticsEngineImpl(qdrant_telemetry_service)
+    qdrant_recommendation_engine = QdrantRecommendationEngineImpl(qdrant_diagnostics, qdrant_capacity_analyzer, qdrant_performance_analyzer)
+    qdrant_stats_collector = QdrantStatisticsCollectorImpl(qdrant_telemetry_service)
+    qdrant_validator = QdrantRuntimeValidatorImpl()
+    
+    qdrant_coordinator = QdrantRuntimeCoordinatorImpl(
+        qdrant_telemetry_service,
+        qdrant_health_analyzer,
+        qdrant_capacity_analyzer,
+        qdrant_performance_analyzer,
+        qdrant_recommendation_engine,
+        qdrant_diagnostics,
+        qdrant_stats_collector,
+        None,
+        qdrant_validator
+    )
+    qdrant_reporter = QdrantRuntimeReporterImpl(qdrant_coordinator)
+    qdrant_coordinator.reporter = qdrant_reporter
+
+    # Initialize and start
+    qdrant_telemetry_service.initialize()
+    qdrant_telemetry_service.start()
+    qdrant_health_analyzer.initialize()
+    qdrant_health_analyzer.start()
+    qdrant_capacity_analyzer.initialize()
+    qdrant_capacity_analyzer.start()
+    qdrant_performance_analyzer.initialize()
+    qdrant_performance_analyzer.start()
+    qdrant_diagnostics.initialize()
+    qdrant_diagnostics.start()
+    qdrant_recommendation_engine.initialize()
+    qdrant_recommendation_engine.start()
+    qdrant_stats_collector.initialize()
+    qdrant_stats_collector.start()
+    qdrant_reporter.initialize()
+    qdrant_reporter.start()
+    qdrant_validator.initialize()
+    qdrant_validator.start()
+    qdrant_coordinator.initialize()
+    qdrant_coordinator.start()
+
+    # Link into global RuntimeIntelligenceService
+    ri_service.qdrant_telemetry = qdrant_coordinator
+
+    # Register in DI container
+    registry.register(QdrantRuntimeTelemetry, qdrant_telemetry_service)
+    registry.register(QdrantHealthAnalyzer, qdrant_health_analyzer)
+    registry.register(QdrantCapacityAnalyzer, qdrant_capacity_analyzer)
+    registry.register(QdrantPerformanceAnalyzer, qdrant_performance_analyzer)
+    registry.register(QdrantRecommendationEngine, qdrant_recommendation_engine)
+    registry.register(QdrantDiagnosticsEngine, qdrant_diagnostics)
+    registry.register(QdrantStatisticsCollector, qdrant_stats_collector)
+    registry.register(QdrantRuntimeReporter, qdrant_reporter)
+    registry.register(QdrantRuntimeValidator, qdrant_validator)
+    registry.register(QdrantRuntimeCoordinator, qdrant_coordinator)
+
+
 
 
 

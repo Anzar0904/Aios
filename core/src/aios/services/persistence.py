@@ -2220,6 +2220,102 @@ class QdrantRuntimeService(ServiceLifecycle, abc.ABC):
         pass
 
 
+class QdrantRuntimeTelemetry(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_telemetry(self) -> Dict[str, Any]:
+        pass
+
+
+class QdrantHealthAnalyzer(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def analyze_health(self) -> Dict[str, Any]:
+        pass
+
+
+class QdrantCapacityAnalyzer(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def analyze_capacity(self) -> Dict[str, Any]:
+        pass
+
+
+class QdrantPerformanceAnalyzer(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def analyze_performance(self) -> Dict[str, Any]:
+        pass
+
+
+class QdrantRecommendationEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def generate_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class QdrantDiagnosticsEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Check Qdrant configuration") -> None:
+        pass
+
+
+class QdrantStatisticsCollector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+
+class QdrantRuntimeReporter(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def generate_report(self) -> str:
+        pass
+
+
+class QdrantRuntimeValidator(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def validate_telemetry(self, data: Dict[str, Any]) -> bool:
+        pass
+
+
+class QdrantRuntimeCoordinator(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_telemetry_service(self) -> QdrantRuntimeTelemetry:
+        pass
+
+    @abc.abstractmethod
+    def get_health_analyzer(self) -> QdrantHealthAnalyzer:
+        pass
+
+    @abc.abstractmethod
+    def get_capacity_analyzer(self) -> QdrantCapacityAnalyzer:
+        pass
+
+    @abc.abstractmethod
+    def get_performance_analyzer(self) -> QdrantPerformanceAnalyzer:
+        pass
+
+    @abc.abstractmethod
+    def get_recommendation_engine(self) -> QdrantRecommendationEngine:
+        pass
+
+    @abc.abstractmethod
+    def get_diagnostics(self) -> QdrantDiagnosticsEngine:
+        pass
+
+    @abc.abstractmethod
+    def get_stats_collector(self) -> QdrantStatisticsCollector:
+        pass
+
+    @abc.abstractmethod
+    def get_reporter(self) -> QdrantRuntimeReporter:
+        pass
+
+    @abc.abstractmethod
+    def get_validator(self) -> QdrantRuntimeValidator:
+        pass
+
+
 @dataclass
 class EmbeddingMetadata:
     model_name: str
@@ -2464,6 +2560,165 @@ class SemanticSearchService(ServiceLifecycle, abc.ABC):
 
     @abc.abstractmethod
     def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+
+@dataclass
+class QueryAnalysis:
+    intent: str                              # question|documentation|code|engineering|research|conversation|automation|configuration
+    domains: List[str]                       # list of matching domain names
+    complexity: str                          # simple|moderate|complex
+    workspace_id: Optional[str] = None
+    project_id: Optional[str] = None
+    strategy: Dict[str, Any] = field(default_factory=dict)
+    # Enhanced fields for Milestone 5 Hybrid Retrieval
+    search_scope: str = "global"            # global|workspace|project|collection
+    collection_candidates: List[str] = field(default_factory=list)
+    retrieval_strategy: str = "hybrid"      # hybrid|semantic|lexical|ensemble
+    confidence: float = 1.0                 # 0.0-1.0 classification confidence
+    estimated_complexity: str = "standard"  # quick|standard|deep
+    intent_signals: List[str] = field(default_factory=list)  # raw signals
+
+
+class QueryAnalysisService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def analyze_query(self, query_text: str, context_metadata: Optional[Dict[str, Any]] = None) -> QueryAnalysis:
+        pass
+
+    @abc.abstractmethod
+    def get_supported_intents(self) -> List[str]:
+        pass
+
+
+class CollectionSelector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def select_collections(self, analysis: QueryAnalysis) -> Dict[str, float]:
+        pass
+
+
+@dataclass
+class RetrievalCandidate:
+    id: str
+    text: str
+    score: float
+    metadata: Dict[str, Any]
+    source_collection: str
+    similarity_score: float
+    importance_score: float
+    freshness_score: float
+    # Extended ranking signals for Milestone 5
+    workspace_relevance_score: float = 0.0
+    project_relevance_score: float = 0.0
+    source_quality_score: float = 0.5
+    engineering_priority_score: float = 0.0
+    metadata_confidence_score: float = 1.0
+    duplicate_penalty: float = 0.0
+
+
+class CandidateRanker(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def rank_candidates(self, candidates: List[RetrievalCandidate], weights: Optional[Dict[str, float]] = None) -> List[RetrievalCandidate]:
+        pass
+
+    @abc.abstractmethod
+    def get_default_weights(self) -> Dict[str, float]:
+        pass
+
+    @abc.abstractmethod
+    def set_weights(self, weights: Dict[str, float]) -> None:
+        pass
+
+
+@dataclass
+class ContextAssemblyResult:
+    context_text: str
+    candidates_included: List[RetrievalCandidate]
+    total_tokens: int
+    token_budget: int
+
+
+class ContextOptimizer(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def optimize_context(self, candidates: List[RetrievalCandidate], token_budget: int) -> ContextAssemblyResult:
+        pass
+
+    @abc.abstractmethod
+    def merge_overlapping_chunks(self, candidates: List[RetrievalCandidate]) -> List[RetrievalCandidate]:
+        pass
+
+    @abc.abstractmethod
+    def compress_context(self, text: str, max_tokens: int) -> str:
+        pass
+
+
+class RetrievalCache(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_query_results(self, cache_key: str) -> Optional[List[RetrievalCandidate]]:
+        pass
+
+    @abc.abstractmethod
+    def set_query_results(self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_candidate_results(self, cache_key: str) -> Optional[List[RetrievalCandidate]]:
+        pass
+
+    @abc.abstractmethod
+    def set_candidate_results(self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_ranking_results(self, cache_key: str) -> Optional[List[RetrievalCandidate]]:
+        pass
+
+    @abc.abstractmethod
+    def set_ranking_results(self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_context_result(self, cache_key: str) -> Optional[str]:
+        pass
+
+    @abc.abstractmethod
+    def set_context_result(self, cache_key: str, context: str, ttl: int = 300) -> None:
+        pass
+
+    @abc.abstractmethod
+    def invalidate(self, pattern: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+
+class HybridRetrievalService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def retrieve(
+        self,
+        query_text: str,
+        workspace_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+        token_budget: int = 4000,
+        filter_query: Optional[Dict[str, Any]] = None
+    ) -> ContextAssemblyResult:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_health(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
         pass
 
 
