@@ -100,7 +100,12 @@ class PostgreSQLTransport(DatabaseTransport):
                 from psycopg2.pool import ThreadedConnectionPool
             except ImportError:
                 # Fallback if psycopg2 module is mocked and doesn't have pool
-                ThreadedConnectionPool = getattr(psycopg2, "pool", MagicMock()).ThreadedConnectionPool
+                pool_mod = getattr(psycopg2, "pool", None)
+                if pool_mod is not None:
+                    ThreadedConnectionPool = pool_mod.ThreadedConnectionPool
+                else:
+                    class ThreadedConnectionPool:
+                        def __init__(self, *args, **kwargs): pass
         except ImportError:
             logger.error("psycopg2 driver not installed.")
             raise RuntimeError("PostgreSQL database driver psycopg2 is missing.") from None
@@ -160,6 +165,7 @@ class PostgreSQLTransport(DatabaseTransport):
 
         # Otherwise, acquire from pool, execute, and release back
         conn = self.pool.getconn()
+        conn.autocommit = True
         try:
             cursor = conn.cursor()
             try:
@@ -184,10 +190,41 @@ class PostgreSQLTransport(DatabaseTransport):
             raise RuntimeError("Database execution blocked: Awaiting Runtime Configuration")
         if not self.is_connected_state or not self.pool:
             raise RuntimeError("PostgreSQL database is not connected")
-        results = []
-        for params in params_list:
-            results.append(self.execute(query, params))
-        return results
+        if not params_list:
+            return []
+
+        try:
+            from psycopg2.extras import execute_batch
+        except ImportError:
+            execute_batch = None
+
+        def run_batch(cursor):
+            if execute_batch:
+                execute_batch(cursor, query, params_list)
+            else:
+                cursor.executemany(query, params_list)
+
+        # If inside a transaction, use the active transaction connection
+        if self.active_conn:
+            cursor = self.active_conn.cursor()
+            try:
+                run_batch(cursor)
+                return [TransportResult(rows=[], rows_affected=cursor.rowcount)] * len(params_list)
+            finally:
+                cursor.close()
+
+        # Otherwise, acquire from pool, execute, and release back
+        conn = self.pool.getconn()
+        conn.autocommit = True
+        try:
+            cursor = conn.cursor()
+            try:
+                run_batch(cursor)
+                return [TransportResult(rows=[], rows_affected=cursor.rowcount)] * len(params_list)
+            finally:
+                cursor.close()
+        finally:
+            self.pool.putconn(conn)
 
     def begin_transaction(self) -> TransportTransaction:
         if self.awaiting_configuration:
