@@ -1,0 +1,26 @@
+{
+  "id": "9e02662d-4a88-4e57-9c14-a1f1853e4a79",
+  "title": "Test Semantic Dialog Unique",
+  "created_time": 1783266694.652952,
+  "updated_time": 1783266695.392378,
+  "active_agent": "test_agent",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How do I query the database dialog semantic?",
+      "timestamp": 1783266694.653354
+    },
+    {
+      "role": "user",
+      "content": "How do we initialize a Vite app?",
+      "timestamp": 1783266695.38276
+    },
+    {
+      "role": "assistant",
+      "content": "Mock agent reasoning response.",
+      "timestamp": 1783266695.392378
+    }
+  ],
+  "summary": null,
+  "archived": false
+}

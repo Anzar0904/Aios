@@ -347,6 +347,33 @@ class DeveloperAgent(Agent):
                 context.project_root if context else "default"
             )
 
+            # Retrieve relevant semantic memories before reasoning
+            class SemanticMemoryWrapper:
+                class MockType:
+                    def __init__(self, val: str) -> None:
+                        self.value = val
+                def __init__(self, content: str, mtype: str) -> None:
+                    self.content = content
+                    self.memory_type = self.MockType(mtype)
+
+            try:
+                from aios.registry import ServiceRegistry
+                from aios.services.persistence import SemanticMemoryManager
+                registry = ServiceRegistry._global_registry
+                if registry:
+                    sem_mgr = registry.get(SemanticMemoryManager)
+                    if sem_mgr:
+                        for repo in ["engineering_memory", "workspace_memory", "documentation_memory"]:
+                            mems = sem_mgr.retrieve_memories(repo, raw_query, limit=3)
+                            for m in mems:
+                                payload = m.get("payload", {})
+                                text = payload.get("text", "")
+                                if text:
+                                    wrapped = SemanticMemoryWrapper(text, f"semantic_{repo}")
+                                    ranked_memories.append(wrapped)
+            except Exception as e:
+                logger.warning(f"DeveloperAgent: Failed to retrieve semantic memories: {e}")
+
             # 4. Tool Selector
             selected_tools = ToolSelector().select_tools(intent)
 
@@ -379,6 +406,38 @@ class DeveloperAgent(Agent):
                     model_name="claude-3-5-sonnet",
                 )
             )
+
+            # Store useful knowledge after reasoning
+            try:
+                from aios.registry import ServiceRegistry
+                from aios.services.persistence import SemanticMemoryManager
+                import time
+                registry = ServiceRegistry._global_registry
+                if registry:
+                    sem_mgr = registry.get(SemanticMemoryManager)
+                    if sem_mgr:
+                        summary_text = (
+                            f"Developer Agent Executed Action: {action}\n"
+                            f"Query: {raw_query}\n"
+                            f"Response Summary: {llm_res.content[:500]}..."
+                        )
+                        metadata = {
+                            "action": action,
+                            "query": raw_query,
+                            "timestamp": time.time(),
+                            "type": "developer_agent_reasoning"
+                        }
+                        import uuid
+                        know_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"dev_agent_{time.time()}_{raw_query[:10]}"))
+                        sem_mgr.index_memory(
+                            repository_name="knowledge_memory",
+                            entity_id=know_uuid,
+                            text=summary_text,
+                            metadata=metadata,
+                            tags=["developer_agent", "reasoning_knowledge", action]
+                        )
+            except Exception as e:
+                logger.warning(f"DeveloperAgent: Failed to store reasoning knowledge: {e}")
 
             # Append Assistant Message to Conversation
             conv_manager.add_message(conv.id, "assistant", llm_res.content)

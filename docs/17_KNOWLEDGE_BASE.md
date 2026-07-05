@@ -959,6 +959,61 @@ This section maps the essential runtime components of the operating system:
   - [SEMANTIC_SEARCH_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/SEMANTIC_SEARCH_HEALTH.md) - Active status indicators and queue diagnostics
   - [SEMANTIC_SEARCH_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/SEMANTIC_SEARCH_DIAGNOSTICS.md) - Generation error alerts and retry configuration remediations
 
+### 3.13 AI OS Semantic Memory Integration (Sprint 6 Milestones 7 & 8)
+* **Purpose**: Integrates the Qdrant semantic search and vector indexing pipeline directly into all major runtime and persistent subsystems of the AI OS. This enables zero-developer-effort semantic memory recording and context enrichment across workspace configurations, dialogues, agent reasoning logs, research reports, documentation artifacts, automated operations, and project plans.
+* **Key Subsystem Integrations**:
+  - `WorkspacePersistenceService`: Indexes repository layouts, outlines, and workspace metadata inside `workspace_memory`.
+  - `ContextService`: Aggregates active states, conversation logs, workspace designs, and documentation into unified token-budgeted prompts.
+  - `ConversationManager`: Indexes user and assistant messages, decisions, and action items inside `conversation_memory`.
+  - `DeveloperAgent`: Queries contextual memories before reasoning and stores generated insights inside `knowledge_memory`.
+  - `ResearchService`: Indexes web search summaries, technical reports, and sources inside `research_memory`.
+  - `DocumentationService`: Indexes architecture documents, PRDs, and manuals inside `documentation_memory`.
+  - `LocalAutomationService`: Indexes execution session scripts and reports inside `automation_memory`.
+  - `LocalFilePlanner`: Indexes multi-phase plans and task dependencies inside `project_memory`.
+  - `KnowledgeHubService`: Auto-indexes future external sync documents inside `knowledge_memory`.
+  - `OmniRouteProvider`: Injects enriched semantic context before LLM routing decisions.
+* **Integration Reports**:
+  - [QDRANT_PLATFORM_M7_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PLATFORM_M7_REPORT.md) - Milestone 7 Integration & Certification Summary
+  - [QDRANT_PRODUCTION_VALIDATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PRODUCTION_VALIDATION_REPORT.md) - Executive Certification and connectivity checks
+  - [QDRANT_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_HEALTH.md) - Health status scorer
+  - [QDRANT_PERFORMANCE_BASELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PERFORMANCE_BASELINE.md) - Baseline latency tracker (100 iterations)
+  - [QDRANT_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_DIAGNOSTICS.md) - Diagnostics alert parser
+  - [QDRANT_CAPACITY_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_CAPACITY_REPORT.md) - Capacity utilization profile
+  - [QDRANT_COLLECTION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_VALIDATION.md) - Default collections schema check
+  - [QDRANT_SEARCH_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_SEARCH_VALIDATION.md) - Pre-filtering and workspace searches
+  - [QDRANT_EMBEDDING_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_EMBEDDING_VALIDATION.md) - Local SentenceTransformer dimension check
+  - [QDRANT_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_FAILURE_RECOVERY.md) - Reconnect and offline fallback queue checks
+  - [QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry analytics and advisory
+  - [QDRANT_PRODUCTION_VALIDATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PRODUCTION_VALIDATION_REPORT.md) - Executive Certification and connectivity checks
+  - [QDRANT_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_HEALTH.md) - Health status scorer
+  - [QDRANT_PERFORMANCE_BASELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PERFORMANCE_BASELINE.md) - Baseline latency tracker (100 iterations)
+  - [QDRANT_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_DIAGNOSTICS.md) - Diagnostics alert parser
+  - [QDRANT_CAPACITY_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_CAPACITY_REPORT.md) - Capacity utilization profile
+  - [QDRANT_COLLECTION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_VALIDATION.md) - Default collections schema check
+  - [QDRANT_SEARCH_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_SEARCH_VALIDATION.md) - Pre-filtering and workspace searches
+  - [QDRANT_EMBEDDING_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_EMBEDDING_VALIDATION.md) - Local SentenceTransformer dimension check
+  - [QDRANT_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_FAILURE_RECOVERY.md) - Reconnect and offline fallback queue checks
+  - [QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry analytics and advisory
+  - [QDRANT_PRODUCTION_VALIDATION_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PRODUCTION_VALIDATION_REPORT.md) - Executive Certification and connectivity checks
+  - [QDRANT_RUNTIME_HEALTH.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_HEALTH.md) - Health status scorer
+  - [QDRANT_PERFORMANCE_BASELINE.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_PERFORMANCE_BASELINE.md) - Baseline latency tracker (100 iterations)
+  - [QDRANT_DIAGNOSTICS.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_DIAGNOSTICS.md) - Diagnostics alert parser
+  - [QDRANT_CAPACITY_REPORT.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_CAPACITY_REPORT.md) - Capacity utilization profile
+  - [QDRANT_COLLECTION_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_COLLECTION_VALIDATION.md) - Default collections schema check
+  - [QDRANT_SEARCH_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_SEARCH_VALIDATION.md) - Pre-filtering and workspace searches
+  - [QDRANT_EMBEDDING_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_EMBEDDING_VALIDATION.md) - Local SentenceTransformer dimension check
+  - [QDRANT_FAILURE_RECOVERY.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_FAILURE_RECOVERY.md) - Reconnect and offline fallback queue checks
+  - [QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md](file:///Users/anzarakhtar/aios/docs/persistence/QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md) - Telemetry analytics and advisory
+  - [ENGINEERING_MEMORY_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/ENGINEERING_MEMORY_INTEGRATION.md) - Engineering task and decision indexing
+  - [WORKSPACE_SERVICE_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/WORKSPACE_SERVICE_INTEGRATION.md) - Active workspace and repo configuration indexing
+  - [CONTEXT_SERVICE_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/CONTEXT_SERVICE_INTEGRATION.md) - Parallel context retrieval and prompt assembly
+  - [CONVERSATION_ENGINE_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/CONVERSATION_ENGINE_INTEGRATION.md) - Dialog messages and automatic summarization indexing
+  - [DEVELOPER_AGENT_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/DEVELOPER_AGENT_INTEGRATION.md) - Pre-reasoning lookups and execution knowledge indexing
+  - [RESEARCH_SKILL_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/RESEARCH_SKILL_INTEGRATION.md) - Search reports and citations indexing
+  - [DOCUMENTATION_ENGINE_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/DOCUMENTATION_ENGINE_INTEGRATION.md) - PRDs, specifications, and architecture manuals indexing
+  - [AUTOMATION_ENGINE_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/AUTOMATION_ENGINE_INTEGRATION.md) - Automated session logs and operations indexing
+  - [PLANNING_ENGINE_INTEGRATION.md](file:///Users/anzarakhtar/aios/docs/persistence/PLANNING_ENGINE_INTEGRATION.md) - Milestones, dependencies, and project plan indexing
+
 ---
 
 ## 4. Planned & Future Subsystems

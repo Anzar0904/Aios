@@ -303,6 +303,28 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
             )
         )
 
+        try:
+            if self._registry:
+                from aios.services.persistence import SemanticMemoryManager
+                import time
+                sem_mgr = self._registry.get(SemanticMemoryManager)
+                if sem_mgr:
+                    ws_id = "default_workspace"
+                    metadata = {
+                        "workspace_id": ws_id,
+                        "timestamp": time.time(),
+                        "type": "repository_summary"
+                    }
+                    sem_mgr.index_memory(
+                        repository_name="workspace_memory",
+                        entity_id=summary.summary_id,
+                        text=summary_content,
+                        metadata=metadata,
+                        tags=["repository_summary", "architecture_summary"]
+                    )
+        except Exception:
+            pass
+
     def publish_to_knowledge_hub(self, summary: RepositorySummary) -> None:
         if not self._knowledge_hub:
             logger.warning("Knowledge Hub not registered. Skipping publish.")

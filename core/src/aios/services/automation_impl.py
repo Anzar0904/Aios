@@ -569,6 +569,27 @@ class LocalAutomationService(AutomationService):
         )
         self._write_to_workspace(workspace_id, f"AUTOMATION_REPORT_{session.session_id}.md", report_md)
 
+        try:
+            from aios.services.persistence import SemanticMemoryManager
+            sem_mgr = self._registry.get(SemanticMemoryManager) if self._registry else None
+            if sem_mgr:
+                metadata = {
+                    "workspace_id": workspace_id,
+                    "session_id": session.session_id,
+                    "workflow_name": workflow.name,
+                    "timestamp": time.time(),
+                    "type": "automation_execution"
+                }
+                sem_mgr.index_memory(
+                    repository_name="automation_memory",
+                    entity_id=session.session_id,
+                    text=report_md,
+                    metadata=metadata,
+                    tags=["automation", "run_report", workflow.name]
+                )
+        except Exception:
+            pass
+
         return session
 
     def get_session(self, session_id: str) -> Optional[AutomationSession]:

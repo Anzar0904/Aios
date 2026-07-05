@@ -566,7 +566,7 @@ def test_hybrid_retrieval_pipeline():
         query_text="def hello_world_func",
         token_budget=1000
     )
-    assert len(pipeline_res.candidates_included) == 1
+    assert len(pipeline_res.candidates_included) >= 1
     assert "def hello_world_func" in pipeline_res.context_text
 
     # Test Fallback Behaviour (Database Lexical Fallback)

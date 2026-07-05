@@ -154,6 +154,35 @@ class LocalDocumentationService(DocumentationService):
                         raise RuntimeError(f"Strict persistence save failure: {res.message}")
                     else:
                         logger.warning(f"Persistence best-effort fallback: {res.message}")
+                else:
+                    try:
+                        if self._registry:
+                            from aios.services.persistence import SemanticMemoryManager
+                            sem_mgr = self._registry.get(SemanticMemoryManager)
+                            if sem_mgr:
+                                text_summary = (
+                                    f"Documentation [{artifact.metadata.category.value}] Title: {artifact.metadata.title}\n"
+                                    f"Artifact ID: {artifact.artifact_id}\n"
+                                    f"Author: {artifact.metadata.author}\n"
+                                    f"Version: {artifact.metadata.version}\n"
+                                    f"Content:\n{artifact.content}"
+                                )
+                                metadata = {
+                                    "artifact_id": artifact.artifact_id,
+                                    "category": artifact.metadata.category.value,
+                                    "author": artifact.metadata.author,
+                                    "timestamp": time.time(),
+                                    "type": "documentation_artifact"
+                                }
+                                sem_mgr.index_memory(
+                                    repository_name="documentation_memory",
+                                    entity_id=artifact.artifact_id,
+                                    text=text_summary,
+                                    metadata=metadata,
+                                    tags=["documentation", artifact.metadata.category.value, artifact.metadata.title]
+                                )
+                    except Exception as e:
+                        logger.warning(f"LocalDocumentationService: Failed to index artifact: {e}")
             except Exception as e:
                 if policy == PersistencePolicy.STRICT:
                     raise RuntimeError(f"Strict persistence save failure: {e}") from e

@@ -43,3 +43,15 @@ class ContextService(ServiceLifecycle, abc.ABC):
     def get_current_context(self) -> WorkspaceContext | None:
         """Returns the currently active workspace context."""
         pass
+
+    @abc.abstractmethod
+    def build_enriched_context(
+        self,
+        query: str,
+        token_budget: int = 4000
+    ) -> Dict[str, Any]:
+        """Assembles enriched context from runtime, workspace, conversation,
+
+        engineering, research, documentation memories, and recent retrievals.
+        """
+        pass

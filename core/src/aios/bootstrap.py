@@ -1440,6 +1440,15 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(QdrantRuntimeValidator, qdrant_validator)
     registry.register(QdrantRuntimeCoordinator, qdrant_coordinator)
 
+    # Instantiate and register Semantic Memory Manager
+    from aios.services.persistence import SemanticMemoryManager
+    from aios.services.persistence_impl import SemanticMemoryManagerImpl
+    semantic_mem_mgr = SemanticMemoryManagerImpl(registry)
+    semantic_mem_mgr.initialize()
+    semantic_mem_mgr.start()
+    ri_service.semantic_mem_mgr = semantic_mem_mgr
+    registry.register(SemanticMemoryManager, semantic_mem_mgr)
+
 
 
 

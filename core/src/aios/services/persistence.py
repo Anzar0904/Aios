@@ -2814,6 +2814,59 @@ class KnowledgeMemoryRepository(VectorMemoryRepository, abc.ABC):
     pass
 
 
+class SemanticMemoryManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def index_memory(
+        self,
+        repository_name: str,
+        entity_id: str,
+        text: str,
+        metadata: Dict[str, Any],
+        tags: List[str],
+        importance_override: Optional[float] = None
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def retrieve_memories(
+        self,
+        repository_name: str,
+        query_text: str,
+        filter_query: Optional[Dict[str, Any]] = None,
+        limit: int = 5,
+        score_threshold: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def archive_memory(self, repository_name: str, entity_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def delete_memory(self, repository_name: str, entity_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def reindex_memory(self, repository_name: str, entity_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def re_embed_memory(self, repository_name: str, entity_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def merge_memories(self, repository_name: str, primary_id: str, secondary_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def run_background_cleanup(self, repository_name: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def get_statistics(self) -> Dict[str, Any]:
+        pass
+
+
 
 
 

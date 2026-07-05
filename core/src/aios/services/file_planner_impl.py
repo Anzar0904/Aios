@@ -344,6 +344,27 @@ class LocalFilePlanner(FilePlanner):
             )
         )
 
+        try:
+            from aios.services.persistence import SemanticMemoryManager
+            import time
+            sem_mgr = self._registry.get(SemanticMemoryManager) if self._registry else None
+            if sem_mgr:
+                ws_id = result.scope.workspace_id or "default"
+                metadata = {
+                    "workspace_id": ws_id,
+                    "timestamp": time.time(),
+                    "type": "planning_result"
+                }
+                sem_mgr.index_memory(
+                    repository_name="project_memory",
+                    entity_id=f"plan_{ws_id}_{int(time.time())}",
+                    text=summary,
+                    metadata=metadata,
+                    tags=["file_planning", "dependency_analysis", result.objective]
+                )
+        except Exception:
+            pass
+
     def publish_planning_result(self, result: PlanningResult) -> None:
         if not self._knowledge_hub:
             logger.warning("Knowledge Hub not registered. Skipping publish.")

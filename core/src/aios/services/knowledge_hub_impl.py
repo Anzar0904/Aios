@@ -379,6 +379,34 @@ class LocalKnowledgeHub(KnowledgeHubService):
                 reg_entry["sync_status"] = "synced"
                 self._save_sync_registry()
 
+                try:
+                    from aios.registry import ServiceRegistry
+                    from aios.services.persistence import SemanticMemoryManager
+                    registry = self._registry or ServiceRegistry._global_registry
+                    if registry:
+                        sem_mgr = registry.get(SemanticMemoryManager)
+                        if sem_mgr:
+                            text_summary = (
+                                f"Notion Sync Update: [{doc.metadata.category}] Title: {doc.title}\n"
+                                f"Document ID: {doc.document_id}\n"
+                                f"Content:\n{doc.content}"
+                            )
+                            metadata = {
+                                "document_id": doc.document_id,
+                                "category": doc.metadata.category,
+                                "timestamp": time.time(),
+                                "type": "notion_sync"
+                            }
+                            sem_mgr.index_memory(
+                                repository_name="knowledge_memory",
+                                entity_id=doc.document_id,
+                                text=text_summary,
+                                metadata=metadata,
+                                tags=["knowledge_hub", "notion_sync", doc.metadata.category]
+                            )
+                except Exception:
+                    pass
+
                 return KnowledgeSyncResult(
                     document_id=doc.document_id,
                     provider=provider_name,
@@ -424,6 +452,34 @@ class LocalKnowledgeHub(KnowledgeHubService):
                     url=created.url,
                 )
             )
+
+            try:
+                from aios.registry import ServiceRegistry
+                from aios.services.persistence import SemanticMemoryManager
+                registry = self._registry or ServiceRegistry._global_registry
+                if registry:
+                    sem_mgr = registry.get(SemanticMemoryManager)
+                    if sem_mgr:
+                        text_summary = (
+                            f"Notion Sync: [{doc.metadata.category}] Title: {doc.title}\n"
+                            f"Document ID: {doc.document_id}\n"
+                            f"Content:\n{doc.content}"
+                        )
+                        metadata = {
+                            "document_id": doc.document_id,
+                            "category": doc.metadata.category,
+                            "timestamp": time.time(),
+                            "type": "notion_sync"
+                        }
+                        sem_mgr.index_memory(
+                            repository_name="knowledge_memory",
+                            entity_id=doc.document_id,
+                            text=text_summary,
+                            metadata=metadata,
+                            tags=["knowledge_hub", "notion_sync", doc.metadata.category]
+                        )
+            except Exception:
+                pass
 
             return KnowledgeSyncResult(
                 document_id=doc.document_id,

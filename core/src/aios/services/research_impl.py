@@ -227,6 +227,40 @@ class LocalResearchService(ResearchService):
         except Exception:
             pass
 
+        # Automatically store in research_memory
+        try:
+            from aios.registry import ServiceRegistry
+            from aios.services.persistence import SemanticMemoryManager
+            registry = self._registry or ServiceRegistry._global_registry
+            if registry:
+                sem_mgr = registry.get(SemanticMemoryManager)
+                if sem_mgr:
+                    text_parts = [
+                        f"Research Query: {query}",
+                        f"Report:\n{result.report}",
+                        "\nSources/References:"
+                    ]
+                    for idx, s in enumerate(result.sources, 1):
+                        text_parts.append(f"[{idx}] {s.title} ({s.url}): {s.snippet}")
+                    
+                    full_research_text = "\n".join(text_parts)
+                    metadata = {
+                        "query": query,
+                        "timestamp": time.time(),
+                        "type": "research_report"
+                    }
+                    import uuid
+                    res_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"research_{time.time()}_{query[:10]}"))
+                    sem_mgr.index_memory(
+                        repository_name="research_memory",
+                        entity_id=res_uuid,
+                        text=full_research_text,
+                        metadata=metadata,
+                        tags=["research", "report", "crawled_knowledge"]
+                    )
+        except Exception:
+            pass
+
         return result
 
 

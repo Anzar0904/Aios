@@ -574,6 +574,24 @@ class OmniRouteProvider(LLMProvider):
         if not self.validate_request(request):
             raise LLMProviderError("Request validation failed.")
 
+        category, prefs = self._get_task_category_and_prefs(request)
+        enriched_text = ""
+        try:
+            from aios.registry import ServiceRegistry
+            from aios.services.context import ContextService
+            registry = ServiceRegistry._global_registry
+            if registry:
+                ctx_svc = registry.get(ContextService)
+                if ctx_svc:
+                    context_data = ctx_svc.build_enriched_context(request.prompt, token_budget=1000)
+                    enriched_text = context_data.get("assembled_text", "")
+        except Exception as e:
+            logger.warning(f"OmniRouteProvider: Context enrichment failed: {e}")
+
+        if enriched_text:
+            prefs["semantic_context"] = enriched_text[:1000]
+            request.prompt = f"Enriched Context:\n{enriched_text}\n\nTask Prompt:\n{request.prompt}"
+
         endpoint = f"{self._base_url}/chat/completions"
 
         messages = []
@@ -581,7 +599,6 @@ class OmniRouteProvider(LLMProvider):
             messages.append({"role": "system", "content": request.system_instruction})
         messages.append({"role": "user", "content": request.prompt})
 
-        category, prefs = self._get_task_category_and_prefs(request)
         model_to_use = self._map_model_name(request.model_name, category)
 
         payload = {
