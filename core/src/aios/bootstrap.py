@@ -160,6 +160,20 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         CoordinationRecommendationEngine,
         DistributedLockManager,
         RedisCoordinationService,
+        QueuePriority,
+        QueueRegistry,
+        QueueManager,
+        PriorityQueueManager,
+        DelayedQueueManager,
+        RetryQueueManager,
+        QueueScheduler,
+        QueueWorkerCoordinator,
+        QueueRecoveryManager,
+        QueueStatisticsCollector,
+        QueueHealthMonitor,
+        QueueDiagnostics,
+        QueueRecommendationEngine,
+        RedisQueueService,
     )
     from aios.services.persistence_impl import (
         PostgreSQLProvider,
@@ -280,6 +294,19 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
         MutexManagerImpl,
         DistributedLockManagerImpl,
         RedisCoordinationServiceImpl,
+        QueueRegistryImpl,
+        QueueStatisticsCollectorImpl,
+        QueueDiagnosticsImpl,
+        QueueHealthMonitorImpl,
+        QueueRecommendationEngineImpl,
+        PriorityQueueManagerImpl,
+        DelayedQueueManagerImpl,
+        RetryQueueManagerImpl,
+        QueueSchedulerImpl,
+        QueueWorkerCoordinatorImpl,
+        QueueRecoveryManagerImpl,
+        QueueManagerImpl,
+        RedisQueueServiceImpl,
     )
 
     p_config = PersistenceConfigurationService()
@@ -874,6 +901,66 @@ def bootstrap_kernel(config_path: Path) -> Kernel:
     registry.register(MutexManager, mutex_mgr)
     registry.register(DistributedLockManager, dist_lock_mgr)
     registry.register(RedisCoordinationService, redis_coordination_service)
+
+    # Instantiate Queue Platform classes
+    queue_registry = QueueRegistryImpl()
+    queue_stats = QueueStatisticsCollectorImpl()
+    queue_diag = QueueDiagnosticsImpl(redis_provider)
+    queue_health = QueueHealthMonitorImpl(redis_provider)
+    queue_recommend = QueueRecommendationEngineImpl(queue_stats, queue_diag)
+    priority_q_mgr = PriorityQueueManagerImpl()
+    delayed_q_mgr = DelayedQueueManagerImpl()
+    retry_q_mgr = RetryQueueManagerImpl(queue_registry, queue_stats)
+    queue_recovery_mgr = QueueRecoveryManagerImpl(queue_stats)
+    queue_worker_coordinator = QueueWorkerCoordinatorImpl()
+    
+    queue_manager = QueueManagerImpl(
+        redis_provider,
+        queue_registry,
+        priority_q_mgr,
+        delayed_q_mgr,
+        retry_q_mgr,
+        queue_stats,
+        queue_diag
+    )
+    queue_scheduler = QueueSchedulerImpl(queue_manager)
+    redis_queue_service = RedisQueueServiceImpl(
+        redis_provider,
+        queue_registry,
+        queue_manager,
+        queue_stats
+    )
+
+    # Initialize all Queue Platform classes
+    queue_registry.initialize()
+    queue_stats.initialize()
+    queue_diag.initialize()
+    queue_health.initialize()
+    queue_recommend.initialize()
+    priority_q_mgr.initialize()
+    delayed_q_mgr.initialize()
+    retry_q_mgr.initialize()
+    queue_recovery_mgr.initialize()
+    queue_worker_coordinator.initialize()
+    queue_manager.initialize()
+    queue_scheduler.initialize()
+    redis_queue_service.initialize()
+
+    # Register Queue Platform in DI container
+    registry.register(QueueRegistry, queue_registry)
+    registry.register(QueueStatisticsCollector, queue_stats)
+    registry.register(QueueDiagnostics, queue_diag)
+    registry.register(QueueHealthMonitor, queue_health)
+    registry.register(QueueRecommendationEngine, queue_recommend)
+    registry.register(PriorityQueueManager, priority_q_mgr)
+    registry.register(DelayedQueueManager, delayed_q_mgr)
+    registry.register(RetryQueueManager, retry_q_mgr)
+    registry.register(QueueRecoveryManager, queue_recovery_mgr)
+    registry.register(QueueWorkerCoordinator, queue_worker_coordinator)
+    registry.register(QueueManager, queue_manager)
+    registry.register(QueueScheduler, queue_scheduler)
+    registry.register(RedisQueueService, redis_queue_service)
+
 
 
 

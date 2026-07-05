@@ -1668,6 +1668,196 @@ class RedisCoordinationService(ServiceLifecycle, abc.ABC):
         pass
 
 
+class QueuePriority(enum.Enum):
+    CRITICAL = 5
+    HIGH = 4
+    NORMAL = 3
+    LOW = 2
+    BACKGROUND = 1
+
+
+class QueueRegistry(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def register_queue(
+        self,
+        queue_type: str,
+        owner_service: str,
+        priority: QueuePriority,
+        retry_policy: Dict[str, Any],
+        visibility_timeout: float,
+        retention_policy: float,
+        dlq_name: str,
+        worker_type: str,
+        concurrency_limit: int,
+        recovery_strategy: str
+    ) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_configuration(self, queue_type: str) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def get_all_types(self) -> List[str]:
+        pass
+
+
+class QueueManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def enqueue(
+        self,
+        queue_type: str,
+        job_id: str,
+        payload: Dict[str, Any],
+        priority: Optional[QueuePriority] = None,
+        delay: float = 0.0
+    ) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def dequeue(self, queue_type: str, worker_id: str) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def peek(self, queue_type: str) -> Optional[Dict[str, Any]]:
+        pass
+
+    @abc.abstractmethod
+    def cancel(self, queue_type: str, job_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def acknowledge(self, queue_type: str, job_id: str, worker_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def heartbeat(self, queue_type: str, job_id: str, worker_id: str) -> bool:
+        pass
+
+    @abc.abstractmethod
+    def pause(self, queue_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def resume(self, queue_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def purge(self, queue_type: str) -> None:
+        pass
+
+
+class PriorityQueueManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def sort_jobs(self, jobs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        pass
+
+
+class DelayedQueueManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def add_delayed_job(self, job: Dict[str, Any], delay_seconds: float) -> None:
+        pass
+
+    @abc.abstractmethod
+    def extract_ready_jobs(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class RetryQueueManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def handle_failure(self, job: Dict[str, Any], error: str) -> bool:
+        pass
+
+
+class QueueScheduler(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def poll_schedule(self) -> None:
+        pass
+
+
+class QueueWorkerCoordinator(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def register_worker(self, worker_id: str, worker_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_worker_utilization(self) -> Dict[str, Any]:
+        pass
+
+
+class QueueRecoveryManager(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def recover_pending_jobs(self) -> int:
+        pass
+
+
+class QueueStatisticsCollector(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def record_enqueue(self, queue_type: str, priority: QueuePriority) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_dequeue(self, queue_type: str, success: bool) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_ack(self, queue_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_retry(self, queue_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_dlq(self, queue_type: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def record_duration(self, queue_type: str, duration_ms: float) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_metrics(self) -> Dict[str, Any]:
+        pass
+
+
+class QueueHealthMonitor(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def check_health(self) -> Dict[str, Any]:
+        pass
+
+
+class QueueDiagnostics(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_diagnostics(self) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
+    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify queue configurations") -> None:
+        pass
+
+
+class QueueRecommendationEngine(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_recommendations(self) -> List[Dict[str, Any]]:
+        pass
+
+
+class RedisQueueService(ServiceLifecycle, abc.ABC):
+    @abc.abstractmethod
+    def get_manager(self) -> QueueManager:
+        pass
+
+    @abc.abstractmethod
+    def get_registry(self) -> QueueRegistry:
+        pass
+
+    @abc.abstractmethod
+    def get_stats(self) -> QueueStatisticsCollector:
+        pass
+
+
+
 
 
 
