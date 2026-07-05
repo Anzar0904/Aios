@@ -2682,6 +2682,11 @@ class PersistenceBootstrapper(ServiceLifecycle):
             "ALTER TABLE pending_indexing_jobs ADD COLUMN failure_reason TEXT;"
             "ALTER TABLE pending_indexing_jobs ADD COLUMN updated_at REAL;"
         )
+        mgr.register_migration(
+            39,
+            "Enhance pending_embedding_jobs with updated_at",
+            "ALTER TABLE pending_embedding_jobs ADD COLUMN updated_at REAL;"
+        )
 
         start_boot = time.time()
         try:
@@ -13523,6 +13528,11 @@ class EmbeddingEngineImpl(EmbeddingEngine):
         while not self._stop_event.wait(5.0):
             self.run_retry_cycle()
 
+    def _should_retry(self, attempts: int, last_attempted: float, base_backoff: float) -> bool:
+        # Exponential backoff: base_backoff * (2 ** (attempts - 1))
+        backoff = base_backoff * (2 ** max(0, attempts - 1))
+        return (time.time() - last_attempted) >= backoff
+
     def run_retry_cycle(self) -> None:
         try:
             from aios.registry import ServiceRegistry
@@ -13532,53 +13542,96 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                 return
             db = registry.get(PersistenceService)
             repos = registry.get(RepositoryRegistry)
-            
-            # Retry pending embeddings
-            embeds = db.execute("SELECT id, text, provider_name, collection_name FROM pending_embedding_jobs WHERE status = 'PENDING'")
-            for job in embeds:
-                try:
-                    req = EmbeddingRequest(text=job["text"], provider_name=job["provider_name"], collection_name=job["collection_name"])
-                    res = self.embed_text(req)
-                    if not res.error:
-                        db.execute("DELETE FROM pending_embedding_jobs WHERE id = ?", (job["id"],))
-                        # If collection is set, trigger save of vector
-                        if job["collection_name"]:
-                            repo = repos.get_repository(job["collection_name"])
-                            repo.save(job["id"], res.vector, {"text": job["text"]})
-                except Exception as e:
-                    db.execute("UPDATE pending_embedding_jobs SET attempts = attempts + 1, last_error = ? WHERE id = ?", (str(e), job["id"]))
 
-            # Retry pending index requests (enhanced schema: entity_id, retry_count, updated_at)
-            indices = db.execute(
-                "SELECT id, entity_id, collection_name, vector, payload, retry_count "
-                "FROM pending_indexing_jobs WHERE status = 'PENDING' AND retry_count < 10"
+            base_backoff = float(os.environ.get("AIOS_RETRY_BASE_BACKOFF", "5.0"))
+            max_attempts = int(os.environ.get("AIOS_RETRY_MAX_ATTEMPTS", "10"))
+
+            # 1. Retry pending embeddings (batched)
+            embeds = db.execute(
+                "SELECT id, text, provider_name, collection_name, attempts, created_at, updated_at "
+                "FROM pending_embedding_jobs WHERE status = 'PENDING'"
             )
+            eligible_embeds = []
+            for job in embeds:
+                attempts = job.get("attempts") or 0
+                created_at = job.get("created_at") or 0.0
+                updated_at = job.get("updated_at") or created_at
+                if self._should_retry(attempts, updated_at, base_backoff) and attempts < max_attempts:
+                    eligible_embeds.append(job)
+
+            if eligible_embeds:
+                # Group by (provider_name, collection_name)
+                groups = {}
+                for job in eligible_embeds:
+                    key = (job["provider_name"], job["collection_name"])
+                    groups.setdefault(key, []).append(job)
+
+                for (provider, collection), group in groups.items():
+                    logger.info(f"Retrying batch of {len(group)} embedding jobs for provider {provider} (collection: {collection})")
+                    requests = [
+                        EmbeddingRequest(text=job["text"], provider_name=job["provider_name"], collection_name=job["collection_name"])
+                        for job in group
+                    ]
+                    responses = self.embed_batch(requests)
+                    for job, res in zip(group, responses):
+                        if not res.error:
+                            logger.info(f"Retry succeeded for embedding job {job['id']}")
+                            db.execute("DELETE FROM pending_embedding_jobs WHERE id = ?", (job["id"],))
+                            if job["collection_name"]:
+                                try:
+                                    repo = repos.get_repository(job["collection_name"])
+                                    repo.save(job["id"], res.vector, {"text": job["text"]})
+                                except Exception as e:
+                                    logger.error(f"Failed to save successfully retried vector to repository: {e}")
+                        else:
+                            next_attempts = (job["attempts"] or 0) + 1
+                            logger.warning(
+                                f"Retry failed (attempt {next_attempts}/{max_attempts}) for embedding job {job['id']}: {res.error}"
+                            )
+                            db.execute(
+                                "UPDATE pending_embedding_jobs SET attempts = ?, last_error = ?, updated_at = ? WHERE id = ?",
+                                (next_attempts, str(res.error), time.time(), job["id"])
+                            )
+
+            # 2. Retry pending index requests
+            indices = db.execute(
+                "SELECT id, entity_id, collection_name, vector, payload, attempts, created_at, updated_at "
+                "FROM pending_indexing_jobs WHERE status = 'PENDING'"
+            )
+            eligible_indices = []
             for idx in indices:
+                attempts = idx.get("attempts") or 0
+                created_at = idx.get("created_at") or 0.0
+                updated_at = idx.get("updated_at") or created_at
+                if self._should_retry(attempts, updated_at, base_backoff) and attempts < max_attempts:
+                    eligible_indices.append(idx)
+
+            for idx in eligible_indices:
+                next_attempts = (idx["attempts"] or 0) + 1
                 try:
+                    logger.info(f"Retrying indexing job {idx['id']} (attempt {next_attempts}/{max_attempts}) for collection {idx['collection_name']}")
                     repo = repos.get_repository(idx["collection_name"])
                     import json
                     vec = json.loads(idx["vector"])
                     payload = json.loads(idx["payload"])
-                    # Use entity_id if available, fall back to job id
                     entity_id = idx.get("entity_id") or idx["id"]
                     if repo.save(entity_id, vec, payload):
+                        logger.info(f"Retry succeeded for indexing job {idx['id']}")
                         db.execute("DELETE FROM pending_indexing_jobs WHERE id = ?", (idx["id"],))
                     else:
-                        now = time.time()
+                        logger.warning(f"Retry returned False for indexing job {idx['id']}")
                         db.execute(
-                            "UPDATE pending_indexing_jobs SET retry_count = retry_count + 1, "
-                            "attempts = attempts + 1, failure_reason = ?, updated_at = ? WHERE id = ?",
-                            ("Qdrant save returned False", now, idx["id"])
+                            "UPDATE pending_indexing_jobs SET attempts = ?, retry_count = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
+                            (next_attempts, next_attempts, "Qdrant save returned False", time.time(), idx["id"])
                         )
                 except Exception as e:
-                    now = time.time()
+                    logger.error(f"Retry failed (attempt {next_attempts}/{max_attempts}) for indexing job {idx['id']}: {str(e)}")
                     db.execute(
-                        "UPDATE pending_indexing_jobs SET retry_count = retry_count + 1, "
-                        "attempts = attempts + 1, last_error = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
-                        (str(e), str(e), now, idx["id"])
+                        "UPDATE pending_indexing_jobs SET attempts = ?, retry_count = ?, last_error = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
+                        (next_attempts, next_attempts, str(e), str(e), time.time(), idx["id"])
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Exception during background retry cycle: {e}")
 
     def _persist_failed_job(self, text: str, provider_name: str, collection_name: Optional[str]) -> None:
         try:
