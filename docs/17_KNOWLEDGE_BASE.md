@@ -813,6 +813,19 @@ This section maps the essential runtime components of the operating system:
   * `RuntimeReportGenerator`: Compiles operational dashboards to Markdown status reports in `docs/persistence/`.
 * **Current Status**: Completed.
 
+### 3.10 PostgreSQL Production Live Validation (Sprint 4 Milestone 7)
+* **Purpose**: Production live validation of all 30 repositories against the relational database engine, auditing connection lifecycles, connection pool recovery, schema migrations, policy behaviors, and runtime diagnostics.
+* **Validation Artifacts**:
+  * `POSTGRESQL_PRODUCTION_VALIDATION_REPORT.md`
+  * `POSTGRESQL_RUNTIME_HEALTH.md`
+  * `POSTGRESQL_PERFORMANCE_BASELINE.md`
+  * `POSTGRESQL_DIAGNOSTICS.md`
+  * `POSTGRESQL_CAPACITY_REPORT.md`
+  * `POSTGRESQL_REPOSITORY_VALIDATION.md`
+  * `POSTGRESQL_FAILURE_RECOVERY.md`
+  * `POSTGRESQL_MIGRATION_VALIDATION.md`
+* **Current Status**: Production Validated.
+
 ---
 
 ## 4. Planned & Future Subsystems

@@ -1,0 +1,32 @@
+# PostgreSQL Repository Validation Results
+
+- **workspaces**: PASSED
+- **workspace_sessions**: PASSED
+- **engineering_tasks**: PASSED
+- **planning**: PASSED
+- **approvals**: PASSED
+- **reviews**: PASSED
+- **documentation_metadata**: PASSED
+- **test_sessions**: PASSED
+- **test_results**: PASSED
+- **workflows**: PASSED
+- **workflow_executions**: PASSED
+- **workflow_monitoring**: PASSED
+- **workflow_optimization**: PASSED
+- **workflow_versions**: PASSED
+- **workflow_translations**: PASSED
+- **workflow_integrations**: PASSED
+- **automation_telemetry**: PASSED
+- **automation_statistics**: PASSED
+- **ai_providers**: PASSED
+- **provider_capabilities**: PASSED
+- **provider_health**: PASSED
+- **provider_telemetry**: PASSED
+- **provider_statistics**: PASSED
+- **provider_quota**: PASSED
+- **provider_routing**: PASSED
+- **provider_sessions**: PASSED
+- **provider_checkpoints**: PASSED
+- **provider_failovers**: PASSED
+- **ai_usage_statistics**: PASSED
+- **ai_memory**: PASSED
