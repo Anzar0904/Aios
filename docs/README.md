@@ -12,6 +12,7 @@ This is the canonical documentation index for the Personal AI OS monorepo. Every
 | I want to… | Go to… |
 |---|---|
 | View auto-generated catalogs | [Generated Documentation →](#generated-documentation) |
+| View detailed API reference | [API & Service Reference →](#api--service-reference) |
 | Understand the system | [Architecture →](#architecture) |
 | Learn individual services | [Services →](#services) |
 | Build or extend a skill | [Skills →](#skills) |
@@ -50,6 +51,28 @@ This is the canonical documentation index for the Personal AI OS monorepo. Every
 | [dependency_graph.md](generated/dependency_graph.md) | All 290 DI bindings with Mermaid visualization |
 
 To regenerate: `python -m aios.docgen`
+
+---
+
+## API & Service Reference
+
+> Detailed API documentation for all services with method signatures, parameters, return types, exceptions, and lifecycle methods.
+
+📁 [`docs/reference/`](reference/README.md)
+
+**⚠️ DO NOT EDIT MANUALLY** — these files are regenerated on every `python -m aios.docgen.refgen` invocation.
+
+| Reference | Description |
+|-----------|-------------|
+| [services.md](reference/services.md) | Complete service API reference with method signatures and parameters |
+| [interfaces.md](reference/interfaces.md) | Interface to implementation mappings |
+| [lifecycle.md](reference/lifecycle.md) | Service lifecycle methods (initialization, runtime, cleanup) |
+| [dependency_injection.md](reference/dependency_injection.md) | Constructor dependencies and DI bindings |
+| [api_reference.md](reference/api_reference.md) | Comprehensive API reference (all services in one file) |
+
+**Statistics**: 123 services · 496 public methods · 42 lifecycle methods · 5 services with DI dependencies
+
+To regenerate: `python -m aios.docgen.refgen`
 
 ---
 
