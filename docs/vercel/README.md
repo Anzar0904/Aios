@@ -31,21 +31,33 @@ docs/vercel/
 ├── capabilities.md              ← Hosting components and capabilities matrix
 ├── integration_strategy.md      ← Deployment hooks, local indexes, and caching rules
 ├── security_model.md            ← Token vault, environment variables, and domains check
-└── roadmap.md                   ← Sprint 13 milestones, timeline, and risk matrix
+├── roadmap.md                   ← Sprint 13 milestones, timeline, and risk matrix
+├── deployments/                 ← Milestone 2: Build logs, asset sizing, and rollback routing
+├── runtime/                     ← Milestone 3: timeouts configs, Deno Edge parameters, and cold starts
+├── environment/                 ← Milestone 4: secrets encryption keys, DNS checking, and promotions
+├── operations/                  ← Milestone 5: WebSockets logging drains, latencies, and alarms
+├── orchestration/               ← Milestone 6: Planning DAGs, DDL verifiers, and User Approvals
+└── certification/               ← Milestone 7: Compliance audits and Vercel Health scorecard
 ```
 
 ---
 
 ## Reading Order
 
-| Step | Document | When to Read |
-|------|----------|--------------|
+| Step | Document / Directory | When to Read |
+|------|----------------------|--------------|
 | 1 | [`vercel_intelligence.md`](file:///Users/anzarakhtar/aios/docs/vercel/vercel_intelligence.md) | First — Establish the conceptual vision, design tenets, and system paradigms. |
 | 2 | [`architecture.md`](file:///Users/anzarakhtar/aios/docs/vercel/architecture.md) | Before reviewing or implementing class models, API clients, or deploy adapters. |
 | 3 | [`capabilities.md`](file:///Users/anzarakhtar/aios/docs/vercel/capabilities.md) | Before writing deployment tools, build triggers, or environment variables syncs. |
 | 4 | [`integration_strategy.md`](file:///Users/anzarakhtar/aios/docs/vercel/integration_strategy.md) | Before coding deployment hooks, Qdrant indexing syncs, or log observers. |
 | 5 | [`security_model.md`](file:///Users/anzarakhtar/aios/docs/vercel/security_model.md) | Mandatory reading before handling deploy tokens, validating environment variables, or adding domains. |
 | 6 | [`roadmap.md`](file:///Users/anzarakhtar/aios/docs/vercel/roadmap.md) | To review sprint tasks, milestones, and mitigation plans. |
+| 7 | [Deployments Hub →](file:///Users/anzarakhtar/aios/docs/vercel/deployments/README.md) | To study compiler check logs, assets sizing limits, and rollback routing. |
+| 8 | [Runtime Hub →](file:///Users/anzarakhtar/aios/docs/vercel/runtime/README.md) | To study Node/Python timeouts, Edge Deno configurations, and warm-ups. |
+| 9 | [Environment Hub →](file:///Users/anzarakhtar/aios/docs/vercel/environment/README.md) | To study secrets encryption keys, DNS A/CNAME verifiers, and promotions. |
+| 10 | [Operations Hub →](file:///Users/anzarakhtar/aios/docs/vercel/operations/README.md) | To study log streams integration, performance check alerts, and warm-up crons. |
+| 11 | [Orchestration Hub →](file:///Users/anzarakhtar/aios/docs/vercel/orchestration/README.md) | To study release planning DAGs, context compilers, and User Approvals. |
+| 12 | [Certification Hub →](file:///Users/anzarakhtar/aios/docs/vercel/certification/README.md) | To review compliance verification sheets and health scorecards. |
 
 ---
 
