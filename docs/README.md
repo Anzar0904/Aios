@@ -11,6 +11,7 @@ This is the canonical documentation index for the Personal AI OS monorepo. Every
 
 | I want to… | Go to… |
 |---|---|
+| View auto-generated catalogs | [Generated Documentation →](#generated-documentation) |
 | Understand the system | [Architecture →](#architecture) |
 | Learn individual services | [Services →](#services) |
 | Build or extend a skill | [Skills →](#skills) |
@@ -27,6 +28,28 @@ This is the canonical documentation index for the Personal AI OS monorepo. Every
 | Review design decisions | [ADRs →](#adrs) |
 | Read engineering standards | [Guides →](#guides) |
 | Check milestone history | [Milestones →](#milestones) |
+
+---
+
+## Generated Documentation
+
+> Auto-generated catalogs of services, repositories, skills, providers, runtime components, database models, and dependency injection bindings.
+
+📁 [`docs/generated/`](generated/README.md)
+
+**⚠️ DO NOT EDIT MANUALLY** — these files are regenerated on every `python -m aios.docgen` invocation.
+
+| Catalog | Description |
+|---|---|
+| [services.md](generated/services.md) | All 123 service interfaces and implementations |
+| [repositories.md](generated/repositories.md) | All 104 repository implementations and entities |
+| [skills.md](generated/skills.md) | All 10 registered skills with metadata |
+| [providers.md](generated/providers.md) | All 7 AI providers with cost and capability matrices |
+| [runtime.md](generated/runtime.md) | All 221 runtime components and utilities |
+| [db_models.md](generated/db_models.md) | All 379 database models (enums and dataclasses) |
+| [dependency_graph.md](generated/dependency_graph.md) | All 290 DI bindings with Mermaid visualization |
+
+To regenerate: `python -m aios.docgen`
 
 ---
 
