@@ -13,6 +13,7 @@ This is the canonical documentation index for the Personal AI OS monorepo. Every
 |---|---|
 | View auto-generated catalogs | [Generated Documentation →](#generated-documentation) |
 | View detailed API reference | [API & Service Reference →](#api--service-reference) |
+| View architecture diagrams | [Architecture Diagrams →](#architecture-diagrams) |
 | Understand the system | [Architecture →](#architecture) |
 | Learn individual services | [Services →](#services) |
 | Build or extend a skill | [Skills →](#skills) |
@@ -73,6 +74,32 @@ To regenerate: `python -m aios.docgen`
 **Statistics**: 123 services · 496 public methods · 42 lifecycle methods · 5 services with DI dependencies
 
 To regenerate: `python -m aios.docgen.refgen`
+
+---
+
+## Architecture Diagrams
+
+> Mermaid diagrams visualizing system architecture, dependencies, lifecycle, and data flows.
+
+📁 [`docs/diagrams/`](diagrams/README.md)
+
+**⚠️ DO NOT EDIT MANUALLY** — these files are regenerated on every `python -m aios.docgen.diagram_main` invocation.
+
+| Diagram | Description |
+|---------|-------------|
+| [architecture.md](diagrams/architecture.md) | Overall AI OS architecture with component relationships |
+| [dependency_graph.md](diagrams/dependency_graph.md) | Service dependency graph showing inter-service relationships |
+| [lifecycle.md](diagrams/lifecycle.md) | Runtime lifecycle phases (initialization, runtime, cleanup) |
+| [runtime.md](diagrams/runtime.md) | Bootstrap sequence and system initialization flow |
+| [persistence.md](diagrams/persistence.md) | Multi-layer persistence architecture (SQLite, PostgreSQL, Redis, Qdrant) |
+| [semantic_memory.md](diagrams/semantic_memory.md) | Semantic memory pipeline with vector embeddings |
+| [hybrid_retrieval.md](diagrams/hybrid_retrieval.md) | Hybrid keyword and semantic search retrieval |
+| [omniroute.md](diagrams/omniroute.md) | OmniRoute model selection and routing architecture |
+| [agents.md](diagrams/agents.md) | Agent interaction and coordination flow |
+
+**Format**: Mermaid syntax (viewable in GitHub, VS Code, Mermaid Live Editor)
+
+To regenerate: `python -m aios.docgen.diagram_main`
 
 ---
 
