@@ -98,8 +98,9 @@ REQUIRED_OPS_SECTIONS: Dict[str, List[str]] = {
 }
 
 # Subdirectories under docs/ that should be excluded from orphan detection
-# (they are themselves indexes or well-known stand-alones)
+# (they are themselves indexes or well-known stand-alones, or legacy mirrors)
 ORPHAN_EXCLUDES: Set[str] = {
+    # Root-level index / status files
     "docs/README.md",
     "docs/INDEX.md",
     "docs/AI_CONTEXT.md",
@@ -107,10 +108,68 @@ ORPHAN_EXCLUDES: Set[str] = {
     "docs/VERSION.md",
     "docs/CHANGELOG.md",
     "docs/docs.json",
+    # Root-level numbered docs (pre-S7.M1 layout) — canonical copies live in subdirs;
+    # these are legacy mirrors intentionally preserved in place.
+    "docs/00_PROJECT_VISION.md",
+    "docs/01_ENGINEERING_GUIDELINES.md",
+    "docs/02_ARCHITECTURE_GUIDELINES.md",
+    "docs/03_IMPLEMENTATION_GUIDELINES.md",
+    "docs/04_AI_MODEL_STRATEGY.md",
+    "docs/05_SECURITY_GUIDELINES.md",
+    "docs/06_TESTING_GUIDELINES.md",
+    "docs/07_DOCUMENTATION_GUIDELINES.md",
+    "docs/08_CODING_STANDARDS.md",
+    "docs/09_ROADMAP.md",
+    "docs/10_DECISION_LOG.md",
+    "docs/11_CONTRIBUTING.md",
+    "docs/12_PRD.md",
+    "docs/13_DRD.md",
+    "docs/14_TECH_STACK.md",
+    "docs/15_SYSTEM_DESIGN.md",
+    "docs/16_ENGINEERING_BIBLE.md",
+    "docs/17_KNOWLEDGE_BASE.md",
+    "docs/18_INTERVIEW_GUIDE.md",
+    "docs/19_GLOSSARY.md",
+    "docs/20_OPERATIONS_MANUAL.md",
+    # Root-level milestone reports (linked from docs/milestones/ index)
+    "docs/APPROVAL_ENGINE_M1_REPORT.md",
+    "docs/APPROVAL_ENGINE_M2_REPORT.md",
+    "docs/APPROVAL_ENGINE_M3_REPORT.md",
+    "docs/APPROVAL_ENGINE_M4_REPORT.md",
+    "docs/ARCHITECTURE_EVOLUTION_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M1_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M2_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M3_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M4_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M5_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M6_REPORT.md",
+    "docs/AUTOMATION_INTELLIGENCE_M7_REPORT.md",
+    "docs/DOCUMENTATION_INTELLIGENCE_M6_REPORT.md",
+    "docs/N8N_PRODUCTION_M2_REPORT.md",
+    "docs/N8N_RUNTIME_INTEGRATION_REPORT.md",
+    "docs/PERSISTENCE_PLATFORM_M1_REPORT.md",
+    "docs/SOURCE_CONTROL_M1_REPORT.md",
 }
 
-# Directories to skip entirely (milestones / report dumps)
-SKIP_DIRS: Set[str] = {"milestones", "persistence", "adr", "troubleshooting"}
+# Directories to skip entirely (milestones / report dumps / certification output)
+SKIP_DIRS: Set[str] = {"milestones", "persistence", "adr", "troubleshooting", "certification"}
+
+# Generated catalog files that may legitimately have repeated method-level headings
+# (e.g. '### Methods', '#### `get_health`') across many service entries.
+# Also includes structured docs (CHANGELOG Keep-a-Changelog, SECURITY advisories)
+# where repeated section names are part of the format spec.
+DUPLICATE_EXCLUDE_FILES: Set[str] = {
+    # Auto-generated catalogs
+    "api_reference.md",
+    "services.md",
+    "db_models.md",
+    "dependency_graph.md",
+    "repositories.md",
+    "runtime.md",
+    # Structured docs with intentional repeated headings
+    "CHANGELOG.md",   # Keep-a-Changelog: each version has '### Added', '### Fixed', etc.
+    "SECURITY.md",    # Security advisory: each vulnerability has same sub-sections
+}
 
 
 # ---------------------------------------------------------------------------
@@ -142,27 +201,58 @@ def _extract_headings(content: str) -> List[Tuple[int, str, int]]:
     """
     Return list of (level, heading_text, line_number) from Markdown content.
     Only ATX headings (# Heading) are considered.
+    Headings inside fenced code blocks (``` or ~~~) are skipped.
     """
     results = []
+    in_fence = False
+    fence_char = ""
     for lineno, line in enumerate(content.splitlines(), start=1):
-        m = re.match(r"^(#{1,6})\s+(.*)", line)
-        if m:
-            level = len(m.group(1))
-            text = m.group(2).strip()
-            results.append((level, text, lineno))
+        stripped = line.strip()
+        if not in_fence:
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_fence = True
+                fence_char = stripped[:3]
+                continue
+            m = re.match(r"^(#{1,6})\s+(.*)", line)
+            if m:
+                level = len(m.group(1))
+                text = m.group(2).strip()
+                results.append((level, text, lineno))
+        else:
+            if stripped.startswith(fence_char):
+                in_fence = False
     return results
 
 
 def _extract_md_links(content: str) -> List[Tuple[str, str, int]]:
     """
     Return list of (link_text, link_target, line_number) for all Markdown links.
-    Skips http/https/mailto/file:/// absolute-path links and image links.
+    Skips http/https/mailto/file:/// absolute-path links.
+    Skips links inside fenced code blocks (``` or ~~~).
     Only relative file paths and anchor-only links are returned.
     """
     results = []
     pattern = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
+    in_fence = False
+    fence_char = ""
     for lineno, line in enumerate(content.splitlines(), start=1):
-        for m in pattern.finditer(line):
+        # Track fenced code blocks
+        stripped = line.strip()
+        if not in_fence:
+            if stripped.startswith("```") or stripped.startswith("~~~"):
+                in_fence = True
+                fence_char = stripped[:3]
+                continue
+        else:
+            if stripped.startswith(fence_char):
+                in_fence = False
+            continue  # Skip all lines inside code fence
+
+        # Skip inline code spans before searching for links
+        # Replace `...` spans with spaces to avoid matching inside them
+        clean_line = re.sub(r"`[^`]+`", lambda m: " " * len(m.group()), line)
+
+        for m in pattern.finditer(clean_line):
             text = m.group(1)
             target = m.group(2).strip()
             # Skip fully qualified external/absolute URIs
@@ -521,15 +611,35 @@ class CrossLinkAnalyzer:
     @staticmethod
     def _extract_anchors(content: str) -> Set[str]:
         """
-        GitHub-style anchor generation: lower, strip punctuation (except hyphens),
-        replace spaces with hyphens.
+        GitHub-style anchor generation.
+
+        GitHub's algorithm (as of 2024):
+          1. Lowercase the heading text
+          2. Strip all characters that are NOT alphanumeric, spaces, or hyphens
+             (this removes punctuation like &, /, ., etc.)
+          3. Replace each remaining space character with a hyphen
+             (spaces are replaced individually, NOT collapsed — so 'API & Service'
+              becomes 'api  service' after step 2, then 'api--service' after step 3)
+          4. Strip leading/trailing hyphens
+
+        We generate BOTH the collapsed variant (step 3 with ``\\s+`` collapse) AND the
+        per-space variant so that links using either style are accepted.
         """
         anchors: Set[str] = set()
         for _lvl, heading, _lineno in _extract_headings(content):
-            anchor = heading.lower()
-            anchor = re.sub(r"[^\w\s-]", "", anchor)
-            anchor = re.sub(r"\s+", "-", anchor).strip("-")
-            anchors.add(anchor)
+            h = heading.lower()
+            h = re.sub(r"[^\w\s-]", "", h)
+
+            # Per-space replacement (GitHub's actual behaviour — produces double-hyphens)
+            per_space = h.replace(" ", "-").strip("-")
+            # Collapsed variant (common alternative)
+            collapsed = re.sub(r"\s+", "-", h).strip("-")
+            # Also strip runs of hyphens variant
+            no_multi = re.sub(r"-+", "-", per_space).strip("-")
+
+            anchors.add(per_space)
+            anchors.add(collapsed)
+            anchors.add(no_multi)
         return anchors
 
 
@@ -702,6 +812,11 @@ class DuplicateSectionAnalyzer:
         duplicates: List[DuplicateSection] = []
 
         for md_file in _md_files(docs_root):
+            # Skip auto-generated catalog files that legitimately have repeated
+            # method-level headings (e.g. '### Methods' per service entry)
+            if md_file.name in DUPLICATE_EXCLUDE_FILES:
+                continue
+
             rel = str(md_file.relative_to(docs_root.parent))
             content = _read_text(md_file)
             headings = _extract_headings(content)

@@ -1,6 +1,6 @@
 # Documentation Completeness Report
 
-> *Generated: 2026-07-06T11:40:19Z*
+> *Generated: 2026-07-06T11:48:23Z*
 
 ---
 
@@ -89,7 +89,7 @@
 | Section | Status |
 |---------|--------|
 | Prerequisites | ⚠️ |
-| Production | ✅ |
+| Production | ⚠️ |
 
 ### local_setup.md
 
