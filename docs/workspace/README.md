@@ -31,21 +31,33 @@ docs/workspace/
 ├── capabilities.md              ← Repositories, files, compilers, terminals, and LSP mappings
 ├── integration_strategy.md      ← Filesystem watchers, code symbol chunking, and memory sync
 ├── security_model.md            ← Path containment, credentials isolation, and command guards
-└── roadmap.md                   ← Sprint 10 milestones, timeline, and risk matrix
+├── roadmap.md                   ← Sprint 10 milestones, timeline, and risk matrix
+├── project_discovery/           ← Milestone 2: Project discovery, classification, and VCS boundaries
+├── codebase/                    ← Milestone 3: Filesystem, AST, symbol DB, and code health
+├── source_control/              ← Milestone 4: Git status, commits DAG, conflicts, and metrics
+├── development_tools/           ← Milestone 5: IDE RPC, LSP proxies, DAP debuggers, and builds
+├── orchestration/               ← Milestone 6: Multi-repo planning, context, and resource scheduling
+└── certification/               ← Milestone 7: Compliance audits and Workspace Health dashboard
 ```
 
 ---
 
 ## Reading Order
 
-| Step | Document | When to Read |
-|------|----------|--------------|
+| Step | Document / Directory | When to Read |
+|------|----------------------|--------------|
 | 1 | [`workspace_intelligence.md`](file:///Users/anzarakhtar/aios/docs/workspace/workspace_intelligence.md) | First — Establish the conceptual vision, design tenets, and system paradigms. |
 | 2 | [`architecture.md`](file:///Users/anzarakhtar/aios/docs/workspace/architecture.md) | Before reviewing or implementing class models, background watchers, or process orchestration. |
 | 3 | [`capabilities.md`](file:///Users/anzarakhtar/aios/docs/workspace/capabilities.md) | Before designing editor/IDE integrations, compiler parsers, or terminal stream monitors. |
 | 4 | [`integration_strategy.md`](file:///Users/anzarakhtar/aios/docs/workspace/integration_strategy.md) | Before coding filesystem adapters, code chunkers, or vector memory indices. |
 | 5 | [`security_model.md`](file:///Users/anzarakhtar/aios/docs/workspace/security_model.md) | Mandatory reading before implementing workspace execution tools, shell containment, or token validation. |
 | 6 | [`roadmap.md`](file:///Users/anzarakhtar/aios/docs/workspace/roadmap.md) | To review sprint tasks, milestones, and mitigation plans. |
+| 7 | [Project Discovery Hub →](file:///Users/anzarakhtar/aios/docs/workspace/project_discovery/README.md) | To explore repository boundary scans and classification heuristics. |
+| 8 | [Codebase Hub →](file:///Users/anzarakhtar/aios/docs/workspace/codebase/README.md) | To explore AST compiling, Qdrant indexing, and static navigation. |
+| 9 | [Source Control Hub →](file:///Users/anzarakhtar/aios/docs/workspace/source_control/README.md) | To explore commit DAGs, merge conflict mapping, and symbol history. |
+| 10 | [Development Tools Hub →](file:///Users/anzarakhtar/aios/docs/workspace/development_tools/README.md) | To explore IDE RPC protocols, LSP/DAP adapters, and package manager support. |
+| 11 | [Orchestration Hub →](file:///Users/anzarakhtar/aios/docs/workspace/orchestration/README.md) | To explore multi-project execution planning, context sizing, and scheduling. |
+| 12 | [Certification Hub →](file:///Users/anzarakhtar/aios/docs/workspace/certification/README.md) | To review final compliance logs, scorecards, and engineering grades. |
 
 ---
 
