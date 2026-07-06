@@ -19,6 +19,7 @@ This is the canonical documentation index for the Personal AI OS monorepo. Every
 | Build or extend a skill | [Skills →](#skills) |
 | Understand the runtime/memory | [Runtime →](#runtime) |
 | Set up the project | [Deployment →](#deployment) |
+| Operations & runbooks | [Operations →](#operations--deployment-guides) |
 | Debug a problem | [Troubleshooting →](#troubleshooting) |
 | Understand data storage | [Database →](#database) |
 | Explore all persistence reports | [Persistence →](#persistence) |
@@ -264,6 +265,31 @@ Full persistence report suite (162 files): [`docs/persistence/`](persistence/REA
 
 ---
 
+## Operations & Deployment Guides
+
+> Auto-generated operational documentation: local setup, environment configuration, service deployment, startup sequence, monitoring, backup/restore, troubleshooting, and production checklists.
+
+📁 [`docs/operations/`](operations/README.md)
+
+**⚠️ DO NOT EDIT MANUALLY** — these files are regenerated on every `python -m aios.docgen.ops_main` invocation.
+
+| Guide | Description |
+|-------|-------------|
+| [local_setup.md](operations/local_setup.md) | Local development environment setup |
+| [configuration.md](operations/configuration.md) | All environment variables: PostgreSQL, Redis, Qdrant, n8n, OmniRoute |
+| [deployment.md](operations/deployment.md) | Production deployment procedures and rollback |
+| [startup.md](operations/startup.md) | Service startup order (matches bootstrap_kernel.py sequence) |
+| [monitoring.md](operations/monitoring.md) | Metrics, alert thresholds, health checks, log management |
+| [backup_restore.md](operations/backup_restore.md) | PostgreSQL and Qdrant backup/restore + disaster recovery |
+| [troubleshooting.md](operations/troubleshooting.md) | Common issues: database, Redis, Qdrant, n8n, OmniRoute |
+| [production_checklist.md](operations/production_checklist.md) | Pre-deployment verification checklist |
+
+**Statistics**: 9 guides · 42 KB · 7 services documented
+
+To regenerate: `python -m aios.docgen.ops_main`
+
+---
+
 ## Troubleshooting
 
 > Diagnostic guides and failure recovery playbooks.
@@ -359,7 +385,7 @@ Full persistence report suite (162 files): [`docs/persistence/`](persistence/REA
 |---|---|
 | S0 — Architecture | Persistence, Approval Engine, Automation Intelligence, Source Control |
 | S6 — Qdrant/Vector | Documentation Intelligence |
-| S7 — Documentation | M1: Documentation Foundation *(this milestone)* |
+| S7 — Documentation | M1: Foundation · M2: Generated Catalogs · M3: API Reference · M4: Diagrams · **M5: Operations Guides** |
 | n8n Integration | Production validation and runtime integration |
 
 ---
@@ -378,4 +404,4 @@ The following indexes are preserved for backward compatibility:
 
 ---
 
-*Documentation Architecture: Sprint 7 Milestone 1 · Personal AI OS · July 2026*
+*Documentation Architecture: Sprint 7 Milestone 5 · Personal AI OS · July 2026*
