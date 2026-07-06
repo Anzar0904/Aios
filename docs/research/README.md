@@ -31,21 +31,33 @@ docs/research/
 ├── capabilities.md              ← Source categories, validation, and reasoning maps
 ├── integration_strategy.md      ← Web crawlers, semantic schemas, and local caches
 ├── security_model.md            ← Path containment, sandbox runs, and key vaults
-└── roadmap.md                   ← Sprint 11 milestones, timeline, and risk matrix
+├── roadmap.md                   ← Sprint 11 milestones, timeline, and risk matrix
+├── source_discovery/            ← Milestone 2: Search discovery, sitemaps, and rate limits
+├── processing/                  ← Milestone 3: Markdown conversion, NER, and relationships
+├── validation/                  ... Milestone 4: SSL checks, confidence formulas, and contradictions
+├── memory/                      ← Milestone 5: Lifecycles, consolidation, and Qdrant collections
+├── orchestration/               ← Milestone 6: Planning DAGs, context compilation, and approvals
+└── certification/               ← Milestone 7: Compliance audits and Research Health scorecard
 ```
 
 ---
 
 ## Reading Order
 
-| Step | Document | When to Read |
-|------|----------|--------------|
+| Step | Document / Directory | When to Read |
+|------|----------------------|--------------|
 | 1 | [`research_intelligence.md`](file:///Users/anzarakhtar/aios/docs/research/research_intelligence.md) | First — Establish the conceptual vision, design tenets, and system paradigms. |
 | 2 | [`architecture.md`](file:///Users/anzarakhtar/aios/docs/research/architecture.md) | Before reviewing or implementing class models, crawler threads, or database tables. |
 | 3 | [`capabilities.md`](file:///Users/anzarakhtar/aios/docs/research/capabilities.md) | Before writing source parsers, validation rules, or cross-referencing concepts. |
 | 4 | [`integration_strategy.md`](file:///Users/anzarakhtar/aios/docs/research/integration_strategy.md) | Before coding scraping pipelines, Qdrant indexing collectors, or local memory caches. |
 | 5 | [`security_model.md`](file:///Users/anzarakhtar/aios/docs/research/security_model.md) | Mandatory reading before handling tokens, writing command wrappers, or modifying networking layers. |
 | 6 | [`roadmap.md`](file:///Users/anzarakhtar/aios/docs/research/roadmap.md) | To review sprint tasks, milestones, and mitigation plans. |
+| 7 | [Source Discovery Hub →](file:///Users/anzarakhtar/aios/docs/research/source_discovery/README.md) | To study target crawling, robots.txt compliance, and token rates. |
+| 8 | [Processing Hub →](file:///Users/anzarakhtar/aios/docs/research/processing/README.md) | To study element pruners, NER tagging, and dependency mappings. |
+| 9 | [Validation Hub →](file:///Users/anzarakhtar/aios/docs/research/validation/README.md) | To study SSL verifications, SSRF guards, and confidence scores. |
+| 10 | [Memory Hub →](file:///Users/anzarakhtar/aios/docs/research/memory/README.md) | To study SQLite, Qdrant vectors, and Redis invalidations. |
+| 11 | [Orchestration Hub →](file:///Users/anzarakhtar/aios/docs/research/orchestration/README.md) | To study planning DAGs, context loaders, and Approval constraints. |
+| 12 | [Certification Hub →](file:///Users/anzarakhtar/aios/docs/research/certification/README.md) | To review compliance verification sheets and health scorecards. |
 
 ---
 
