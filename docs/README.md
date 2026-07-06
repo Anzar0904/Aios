@@ -290,6 +290,27 @@ To regenerate: `python -m aios.docgen.ops_main`
 
 ---
 
+## Documentation Certification
+
+> Auto-generated certification reports: validation findings, completeness, consistency, broken links, orphan documents, and quality scores.
+
+📁 [`docs/certification/`](certification/README.md)
+
+**⚠️ DO NOT EDIT MANUALLY** — these files are regenerated on every `python -m aios.docgen.cert_main` invocation.
+
+| Report | Description |
+|--------|-------------|
+| [certification_report.md](certification/certification_report.md) | Full certification findings and validation results |
+| [completeness_report.md](certification/completeness_report.md) | Required files and section presence |
+| [consistency_report.md](certification/consistency_report.md) | Markdown formatting and Mermaid syntax |
+| [broken_links.md](certification/broken_links.md) | All broken internal cross-references |
+| [orphan_documents.md](certification/orphan_documents.md) | Unreferenced documentation files |
+| [quality_score.md](certification/quality_score.md) | Detailed quality scoring and grade |
+
+To regenerate: `python -m aios.docgen.cert_main`
+
+---
+
 ## Troubleshooting
 
 > Diagnostic guides and failure recovery playbooks.
@@ -385,7 +406,7 @@ To regenerate: `python -m aios.docgen.ops_main`
 |---|---|
 | S0 — Architecture | Persistence, Approval Engine, Automation Intelligence, Source Control |
 | S6 — Qdrant/Vector | Documentation Intelligence |
-| S7 — Documentation | M1: Foundation · M2: Generated Catalogs · M3: API Reference · M4: Diagrams · **M5: Operations Guides** |
+| S7 — Documentation | M1: Foundation · M2: Generated Catalogs · M3: API Reference · M4: Diagrams · M5: Operations Guides · **M6: Documentation Certification** |
 | n8n Integration | Production validation and runtime integration |
 
 ---
@@ -404,4 +425,4 @@ The following indexes are preserved for backward compatibility:
 
 ---
 
-*Documentation Architecture: Sprint 7 Milestone 5 · Personal AI OS · July 2026*
+*Documentation Architecture: Sprint 7 Milestone 6 · Personal AI OS · July 2026*
