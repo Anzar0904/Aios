@@ -31,21 +31,33 @@ docs/supabase/
 ├── capabilities.md              ← Infrastructure objects and capabilities matrix
 ├── integration_strategy.md      ← Synchronizations, local indexes, and caching rules
 ├── security_model.md            ← Credentials vault, SQL injection guards, and RLS checks
-└── roadmap.md                   ← Sprint 12 milestones, timeline, and risk matrix
+├── roadmap.md                   ← Sprint 12 milestones, timeline, and risk matrix
+├── database/                    ← Milestone 2: Schema discovery, foreign key mapping, and index scans
+├── security/                    ← Milestone 3: Auth configs, RLS validations, and compliance drift
+├── platform/                    ← Milestone 4: Deno edge scripts, storage buckets, and platform health
+├── operations/                  ← Milestone 5: WebSockets replication, WAL backups, and failovers
+├── orchestration/               ← Milestone 6: Planning DAGs, DDL checkers, and User Approvals
+└── certification/               ← Milestone 7: Compliance audits and Supabase Health scorecard
 ```
 
 ---
 
 ## Reading Order
 
-| Step | Document | When to Read |
-|------|----------|--------------|
+| Step | Document / Directory | When to Read |
+|------|----------------------|--------------|
 | 1 | [`supabase_intelligence.md`](file:///Users/anzarakhtar/aios/docs/supabase/supabase_intelligence.md) | First — Establish the conceptual vision, design tenets, and system paradigms. |
 | 2 | [`architecture.md`](file:///Users/anzarakhtar/aios/docs/supabase/architecture.md) | Before reviewing or implementing class models, API clients, or database schemas. |
 | 3 | [`capabilities.md`](file:///Users/anzarakhtar/aios/docs/supabase/capabilities.md) | Before writing SQL query wrappers, migration executors, or RLS validators. |
 | 4 | [`integration_strategy.md`](file:///Users/anzarakhtar/aios/docs/supabase/integration_strategy.md) | Before coding schema diff loops, Qdrant indexing syncs, or offline buffers. |
 | 5 | [`security_model.md`](file:///Users/anzarakhtar/aios/docs/supabase/security_model.md) | Mandatory reading before handling service role tokens, validating policies, or running migrations. |
 | 6 | [`roadmap.md`](file:///Users/anzarakhtar/aios/docs/supabase/roadmap.md) | To review sprint tasks, milestones, and mitigation plans. |
+| 7 | [Database Hub →](file:///Users/anzarakhtar/aios/docs/supabase/database/README.md) | To study schema inspections, foreign key mapping, and query explain checks. |
+| 8 | [Security Hub →](file:///Users/anzarakhtar/aios/docs/supabase/security/README.md) | To study GoTrue auth config audits, RLS tests, and compliance drift. |
+| 9 | [Platform Hub →](file:///Users/anzarakhtar/aios/docs/supabase/platform/README.md) | To study Deno edge function bundles, bucket access rules, and platform monitoring. |
+| 10 | [Operations Hub →](file:///Users/anzarakhtar/aios/docs/supabase/operations/README.md) | To study WebSocket publications, pg_dump backups, and disaster failovers. |
+| 11 | [Orchestration Hub →](file:///Users/anzarakhtar/aios/docs/supabase/orchestration/README.md) | To study planning DAGs, DDL constraint checkers, and User Approvals. |
+| 12 | [Certification Hub →](file:///Users/anzarakhtar/aios/docs/supabase/certification/README.md) | To review compliance verification sheets and health scorecards. |
 
 ---
 
