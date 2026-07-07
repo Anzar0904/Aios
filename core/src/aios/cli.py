@@ -37,7 +37,9 @@ def handle_conversation_command(user_input: str, conv_manager: ConversationManag
         title = input("Enter conversation title (optional): ").strip()
         title = title if title else None
         conv = conv_manager.create_conversation(title=title, agent_name="developer_agent")
-        console.print(f"[green]✓ Created and switched to conversation: '{conv.title}' ({conv.id})[/green]")
+        console.print(
+            f"[green]✓ Created and switched to conversation: '{conv.title}' ({conv.id})[/green]"
+        )
         return True
 
     elif cmd == "list conversations":
@@ -54,12 +56,7 @@ def handle_conversation_command(user_input: str, conv_manager: ConversationManag
             current = conv_manager.active_conversation_id
             for c in convs:
                 active_marker = "*" if c["id"] == current else ""
-                table.add_row(
-                    active_marker,
-                    c["id"],
-                    c["title"],
-                    c["active_agent"] or "None"
-                )
+                table.add_row(active_marker, c["id"], c["title"], c["active_agent"] or "None")
             console.print(table)
         return True
 
@@ -144,7 +141,11 @@ def handle_conversation_command(user_input: str, conv_manager: ConversationManag
                 break
 
         if found_id:
-            confirm = input(f"Are you sure you want to delete conversation '{found_id}'? (y/n): ").strip().lower()
+            confirm = (
+                input(f"Are you sure you want to delete conversation '{found_id}'? (y/n): ")
+                .strip()
+                .lower()
+            )
             if confirm == "y":
                 conv_manager.delete_conversation(found_id)
                 console.print(f"[green]✓ Deleted conversation: {found_id}[/green]")
@@ -171,7 +172,13 @@ def handle_conversation_command(user_input: str, conv_manager: ConversationManag
             if conv.summary:
                 grid.add_row("Summary:", conv.summary.summary)
 
-            console.print(Panel(grid, title="[bold white]Active Conversation Details[/bold white]", border_style="cyan"))
+            console.print(
+                Panel(
+                    grid,
+                    title="[bold white]Active Conversation Details[/bold white]",
+                    border_style="cyan",
+                )
+            )
         return True
 
     elif cmd == "show history":
@@ -195,10 +202,18 @@ def print_help_table(registry: CommandRegistry) -> None:
     table.add_row("/help or /?", "Show this help registry", "/help")
     table.add_row("/conversation list", "List active dialogue sessions", "/conversation list")
     table.add_row("/conversation new", "Start a new conversation session", "/conversation new")
-    table.add_row("/conversation resume <id>", "Switch active conversation", "/conversation resume target-id")
-    table.add_row("/conversation delete", "Delete conversation history from disk", "/conversation delete")
-    table.add_row("/conversation rename", "Rename current dialogue session", "/conversation rename my-session")
-    table.add_row("/conversation active", "Show current conversation summary", "/conversation active")
+    table.add_row(
+        "/conversation resume <id>", "Switch active conversation", "/conversation resume target-id"
+    )
+    table.add_row(
+        "/conversation delete", "Delete conversation history from disk", "/conversation delete"
+    )
+    table.add_row(
+        "/conversation rename", "Rename current dialogue session", "/conversation rename my-session"
+    )
+    table.add_row(
+        "/conversation active", "Show current conversation summary", "/conversation active"
+    )
     table.add_row("/skills", "List loaded skills and capabilities", "/skills")
     table.add_row("/providers", "List active providers and models", "/providers")
     table.add_row("/model <name>", "Switch system default LLM model", "/model gpt-4o")
@@ -223,13 +238,9 @@ def print_skills_table(skill_registry: SkillRegistry) -> None:
         caps_str = ", ".join(caps) if caps else "None"
         cmds_str = ", ".join(skill.metadata.commands[:3])
         if len(skill.metadata.commands) > 3:
-            cmds_str += f" (+{len(skill.metadata.commands)-3} more)"
+            cmds_str += f" (+{len(skill.metadata.commands) - 3} more)"
         table.add_row(
-            skill.metadata.id,
-            skill.metadata.name,
-            skill.metadata.description,
-            caps_str,
-            cmds_str
+            skill.metadata.id, skill.metadata.name, skill.metadata.description, caps_str, cmds_str
         )
     console.print(table)
 
@@ -249,11 +260,7 @@ def print_providers_table(model_service: ModelService) -> None:
         providers[provider].append(model)
 
     for prov_name, models in providers.items():
-        table.add_row(
-            prov_name,
-            ", ".join(models),
-            "Active / Healthy"
-        )
+        table.add_row(prov_name, ", ".join(models), "Active / Healthy")
     console.print(table)
 
 
@@ -265,7 +272,11 @@ def handle_model_switch(model_service: ModelService, model_name: str) -> None:
     try:
         provider = model_service.registry.get_provider_for_model(model_name)
         model_service._default_model = model_name
-        console.print(f"[green]✓ Switched default model to: [bold]{model_name}[/bold] (Provider: {provider})[/green]")
+        msg = (
+            f"[green]✓ Switched default model to: "
+            f"[bold]{model_name}[/bold] (Provider: {provider})[/green]"
+        )
+        console.print(msg)
     except Exception:
         console.print(f"[red]✗ Model '{model_name}' is not registered. Available models:[/red]")
         console.print(", ".join(model_service.registry.list_supported_models()))
@@ -284,25 +295,52 @@ def print_conversation_history(conv_manager: ConversationManager) -> None:
     for m in conv.messages:
         role = m.role.upper()
         if role == "USER":
-            console.print(Panel(m.content, title="[bold green]User[/bold green]", border_style="green", expand=False))
+            console.print(
+                Panel(
+                    m.content,
+                    title="[bold green]User[/bold green]",
+                    border_style="green",
+                    expand=False,
+                )
+            )
         elif role == "ASSISTANT":
-            console.print(Panel(Markdown(m.content), title="[bold blue]Assistant[/bold blue]", border_style="blue", expand=False))
+            console.print(
+                Panel(
+                    Markdown(m.content),
+                    title="[bold blue]Assistant[/bold blue]",
+                    border_style="blue",
+                    expand=False,
+                )
+            )
         else:
-            console.print(Panel(m.content, title=f"[bold gray]{role}[/bold gray]", border_style="gray", expand=False))
+            console.print(
+                Panel(
+                    m.content,
+                    title=f"[bold gray]{role}[/bold gray]",
+                    border_style="gray",
+                    expand=False,
+                )
+            )
 
 
 def print_status_line(model_service: ModelService, conv_manager: ConversationManager) -> None:
-    model_name = getattr(model_service, "_default_model", "claude-3-5-sonnet")
     conv = conv_manager.get_current_conversation()
     conv_title = conv.title if conv else "None"
-    status_str = f"Model: [bold cyan]{model_name}[/bold cyan] | Conv: [bold green]{conv_title}[/bold green] | Mode: [bold yellow]Interactive[/bold yellow]"
-    console.print(f"[dim]{status_str}[/dim]")
+    agent_name = conv.active_agent if conv else "None"
+    status_text = (
+        f"Agent: [bold cyan]{agent_name}[/bold cyan] | "
+        f"Conv: [bold green]{conv_title}[/bold green] | "
+        f"Mode: [bold yellow]Interactive[/bold yellow]"
+    )
+    console.print(status_text)
 
 
 def read_input(multiline_mode: bool = False) -> str:
     """Reads input from the user, supporting multi-line formatting."""
     if multiline_mode:
-        console.print("[dim]Enter multi-line input (type '.' or press Ctrl+D on a new line to submit):[/dim]")
+        console.print(
+            "[dim]Enter multi-line input (type '.' or press Ctrl+D on a new line to submit):[/dim]"
+        )
         lines = []
         while True:
             try:
@@ -335,10 +373,14 @@ def read_input(multiline_mode: bool = False) -> str:
         raise
 
 
-def handle_general_chat(user_input: str, conv_manager: ConversationManager, model_service: ModelService) -> None:
+def handle_general_chat(
+    user_input: str, conv_manager: ConversationManager, model_service: ModelService
+) -> None:
     conv = conv_manager.get_current_conversation()
     if not conv:
-        conv = conv_manager.create_conversation(title="Active Dialogue", agent_name="developer_agent")
+        conv = conv_manager.create_conversation(
+            title="Active Dialogue", agent_name="developer_agent"
+        )
 
     conv_manager.add_message(conv.id, "user", user_input)
     conv = conv_manager.get_current_conversation()
@@ -358,11 +400,7 @@ def handle_general_chat(user_input: str, conv_manager: ConversationManager, mode
 
     prompt = f"Conversation History:\n{history_str}\n\nUser: {user_input}\nAssistant:"
     model_name = getattr(model_service, "_default_model", "claude-3-5-sonnet")
-    req = LLMRequest(
-        prompt=prompt,
-        system_instruction=system_instruction,
-        model_name=model_name
-    )
+    req = LLMRequest(prompt=prompt, system_instruction=system_instruction, model_name=model_name)
 
     console.print("\n[bold blue]Assistant:[/bold blue]")
     full_response = ""
@@ -385,7 +423,13 @@ def handle_general_chat(user_input: str, conv_manager: ConversationManager, mode
             full_response = "Generation cancelled."
 
     except Exception as e:
-        console.print(Panel(f"Error during streaming execution: {str(e)}", border_style="red", title="Stream Error"))
+        console.print(
+            Panel(
+                f"Error during streaming execution: {str(e)}",
+                border_style="red",
+                title="Stream Error",
+            )
+        )
         return
 
     conv_manager.add_message(conv.id, "assistant", full_response)
@@ -395,8 +439,348 @@ def handle_general_chat(user_input: str, conv_manager: ConversationManager, mode
     total_tokens = token_usage.get("total_tokens", p_tokens + c_tokens)
 
     console.print(
-        f"[dim]Model: {model_name} | Tokens: In={p_tokens}, Out={c_tokens}, Total={total_tokens}[/dim]\n"
+        f"[dim]Model: {model_name} | Tokens: "
+        f"In={p_tokens}, Out={c_tokens}, Total={total_tokens}[/dim]\n"
     )
+
+
+def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) -> bool:
+    from aios.providers.interface import (
+        OmniRouteRequest,
+        RoutingRequest,
+        universal_health_registry,
+        universal_model_registry,
+        universal_omniroute_engine,
+        universal_provider_registry,
+        universal_routing_engine,
+    )
+
+    cmd = " ".join(args).strip()
+
+    if cmd == "help":
+        print_help_table(None)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif cmd == "provider list":
+        table = Table(title="Registered LLM Providers", border_style="magenta")
+        table.add_column("Provider Name", style="bold magenta")
+        table.add_column("Models", style="white")
+        table.add_column("Status", style="green")
+
+        for p_name in universal_provider_registry.list_providers():
+            models = [m.model_id for m in universal_model_registry.list_models(p_name)]
+            if not models:
+                provider_inst = universal_provider_registry.lookup(p_name)
+                meta = getattr(provider_inst, "metadata", provider_inst)
+                models = getattr(meta, "supported_models", ["default"])
+
+            health = universal_health_registry.get_health(p_name)
+            status_str = "Healthy" if health.available else "Degraded/Offline"
+            table.add_row(p_name, ", ".join(models), status_str)
+
+        console.print(table)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif cmd == "model list":
+        table = Table(title="Registered LLM Models", border_style="cyan")
+        table.add_column("Model ID", style="bold cyan")
+        table.add_column("Provider", style="white")
+        table.add_column("Capabilities", style="green")
+        table.add_column("Status", style="green")
+
+        models = universal_model_registry.list_models()
+        if not models:
+            for p_name in universal_provider_registry.list_providers():
+                provider_inst = universal_provider_registry.lookup(p_name)
+                meta = getattr(provider_inst, "metadata", provider_inst)
+                supported = getattr(meta, "supported_models", ["default"])
+                for m_name in supported:
+                    table.add_row(m_name, p_name, "chat", "Active")
+        else:
+            for model in models:
+                caps = []
+                if model.supports_chat:
+                    caps.append("chat")
+                if model.supports_coding:
+                    caps.append("coding")
+                if model.supports_reasoning:
+                    caps.append("reasoning")
+                if model.supports_vision:
+                    caps.append("vision")
+                if model.supports_embeddings:
+                    caps.append("embeddings")
+                status_str = "Active" if model.enabled else "Disabled"
+                table.add_row(model.model_id, model.provider, ", ".join(caps), status_str)
+
+        console.print(table)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif cmd == "health":
+        table = Table(title="Provider Health & Telemetry Status", border_style="green")
+        table.add_column("Provider Name", style="bold green")
+        table.add_column("Available", style="white")
+        table.add_column("Latency (ms)", style="cyan")
+        table.add_column("Health Score", style="magenta")
+        table.add_column("Last Error", style="red")
+
+        for p_name in universal_provider_registry.list_providers():
+            health = universal_health_registry.get_health(p_name)
+            table.add_row(
+                p_name,
+                "Yes" if health.available else "No",
+                f"{health.latency_ms:.1f}",
+                f"{health.health_score:.1f}",
+                health.last_error or "None",
+            )
+
+        console.print(table)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "route":
+        task_type = args[1].strip().strip('"').strip("'") if len(args) > 1 else "chat"
+        routing_req = RoutingRequest(
+            task_type=task_type,
+            estimated_input_tokens=100,
+            estimated_output_tokens=100,
+        )
+        decision = universal_routing_engine.route(routing_req)
+        console.print(
+            Panel(
+                f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
+                f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
+                f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
+                f"Reasoning: {decision.reasoning}",
+                title=f"[white]Routing Decision for task type '{task_type}'[/white]",
+                border_style="blue",
+            )
+        )
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "chat":
+        prompt = " ".join(args[1:]) if len(args) > 1 else ""
+        if (prompt.startswith('"') and prompt.endswith('"')) or (
+            prompt.startswith("'") and prompt.endswith("'")
+        ):
+            prompt = prompt[1:-1]
+
+        if not prompt:
+            console.print("[yellow]Usage: aios chat <message>[/yellow]")
+            if exit_on_complete:
+                import sys
+
+                sys.exit(1)
+            return True
+
+        task_type = "chat"
+        is_coding = (
+            "python" in prompt.lower() or "code" in prompt.lower() or "function" in prompt.lower()
+        )
+        if is_coding:
+            task_type = "coding"
+
+        omni_req = OmniRouteRequest(
+            prompt=prompt,
+            task_type=task_type,
+            estimated_input_tokens=200,
+            estimated_output_tokens=200,
+        )
+
+        with console.status("[bold blue]Executing chat request via OmniRoute...", spinner="dots"):
+            response = universal_omniroute_engine.execute(omni_req)
+
+        title_str = f"[bold green]Response ({response.provider} - {response.model})[/bold green]"
+        subtitle_str = (
+            f"[dim]Cost: ${response.cost:.6f} | Latency: {response.latency_ms:.1f}ms[/dim]"
+        )
+
+        console.print(
+            Panel(
+                response.content,
+                title=title_str,
+                subtitle=subtitle_str,
+                border_style="green",
+            )
+        )
+    elif args and args[0] == "docs":
+        import os
+        import sys
+        subcommand = args[1] if len(args) > 1 else "help"
+        target_dir = "."
+
+        from aios.services.docintel.scanner import RepositoryScanner
+        from aios.services.docintel.indexer import DocumentationIndexer
+        from aios.services.docintel.graph import DependencyGraphBuilder
+        from aios.services.docintel.intelligence import DocumentationIntelligenceEngine
+        from aios.services.docintel.generator import MarkdownGenerator
+
+        if subcommand == "scan":
+            scanner = RepositoryScanner(target_dir)
+            with console.status("[bold blue]Scanning repository...", spinner="dots"):
+                res = scanner.scan()
+
+            table = Table(title="Repository Scan Results", border_style="cyan")
+            table.add_column("Category", style="bold cyan")
+            table.add_column("Count", style="white")
+
+            table.add_row("Packages", str(len(res["packages"])))
+            table.add_row("Modules", str(len(res["modules"])))
+            table.add_row("Services", str(len(res["services"])))
+            table.add_row("Providers", str(len(res["providers"])))
+            table.add_row("Registries", str(len(res["registries"])))
+            table.add_row("Tests", str(len(res["tests"])))
+
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "build":
+            scanner = RepositoryScanner(target_dir)
+            indexer = DocumentationIndexer()
+            graph_builder = DependencyGraphBuilder()
+            intel_engine = DocumentationIntelligenceEngine()
+            generator = MarkdownGenerator("docs")
+
+            with console.status("[bold blue]Generating complete documentation platform...", spinner="dots"):
+                scan_res = scanner.scan()
+                index_data = {}
+                for mod in scan_res["modules"]:
+                    parts = mod.split(".")
+                    possible_paths = [
+                        os.path.join("core", "src", *parts) + ".py",
+                        os.path.join(*parts) + ".py"
+                    ]
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            index_data[path] = indexer.parse_file(path)
+                            break
+
+                graph = graph_builder.build_graph(scan_res, index_data)
+                mermaid_graph = graph_builder.generate_mermaid(graph)
+                intel_report = intel_engine.analyze(index_data)
+                generator.generate(scan_res, intel_report, mermaid_graph)
+
+            console.print("[bold green]✓ Documentation built successfully inside /docs[/bold green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "graph":
+            scanner = RepositoryScanner(target_dir)
+            indexer = DocumentationIndexer()
+            graph_builder = DependencyGraphBuilder()
+
+            with console.status("[bold blue]Building dependency graph...", spinner="dots"):
+                scan_res = scanner.scan()
+                index_data = {}
+                for mod in scan_res["modules"]:
+                    parts = mod.split(".")
+                    possible_paths = [
+                        os.path.join("core", "src", *parts) + ".py",
+                        os.path.join(*parts) + ".py"
+                    ]
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            index_data[path] = indexer.parse_file(path)
+                            break
+                graph = graph_builder.build_graph(scan_res, index_data)
+                mermaid_graph = graph_builder.generate_mermaid(graph)
+
+            console.print(Panel(mermaid_graph, title="Dependency Flowchart (Mermaid)", border_style="magenta"))
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "report":
+            scanner = RepositoryScanner(target_dir)
+            indexer = DocumentationIndexer()
+            intel_engine = DocumentationIntelligenceEngine()
+
+            with console.status("[bold blue]Generating documentation report...", spinner="dots"):
+                scan_res = scanner.scan()
+                index_data = {}
+                for mod in scan_res["modules"]:
+                    parts = mod.split(".")
+                    possible_paths = [
+                        os.path.join("core", "src", *parts) + ".py",
+                        os.path.join(*parts) + ".py"
+                    ]
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            index_data[path] = indexer.parse_file(path)
+                            break
+                intel_report = intel_engine.analyze(index_data)
+
+            console.print(f"[bold green]Code Quality score: {intel_report['score']}/100[/bold green]")
+            console.print(f"Undocumented classes: {len(intel_report['undocumented_classes'])}")
+            console.print(f"Undocumented functions: {len(intel_report['undocumented_functions'])}")
+            console.print(f"Large classes (>200 lines): {len(intel_report['large_classes'])}")
+            console.print(f"Todos and Fixmes: {len(intel_report['todos_fixmes'])}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand in ["api", "architecture", "coverage", "debt"]:
+            console.print(f"[bold yellow]Command 'docs {subcommand}' is supported under Documentation Intelligence. Running analysis...[/bold yellow]")
+            scanner = RepositoryScanner(target_dir)
+            indexer = DocumentationIndexer()
+            intel_engine = DocumentationIntelligenceEngine()
+            with console.status("[bold blue]Analyzing...", spinner="dots"):
+                scan_res = scanner.scan()
+                index_data = {}
+                for mod in scan_res["modules"]:
+                    parts = mod.split(".")
+                    possible_paths = [
+                        os.path.join("core", "src", *parts) + ".py",
+                        os.path.join(*parts) + ".py"
+                    ]
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            index_data[path] = indexer.parse_file(path)
+                            break
+                intel_report = intel_engine.analyze(index_data)
+
+            if subcommand == "api":
+                console.print(f"API Classes indexed: {sum(len(d.get('classes', [])) for d in index_data.values())}")
+            elif subcommand == "architecture":
+                console.print(f"Service Modules: {len(scan_res['services'])}")
+            elif subcommand == "coverage":
+                console.print(f"Tests Suites scanned: {len(scan_res['tests'])}")
+            elif subcommand == "debt":
+                console.print(f"Large Classes: {len(intel_report['large_classes'])}")
+                console.print(f"Todos / Fixmes: {len(intel_report['todos_fixmes'])}")
+
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print("[yellow]Usage: aios docs <scan|build|graph|report|api|architecture|coverage|debt>[/yellow]")
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+    return False
 
 
 def main() -> None:
@@ -409,166 +793,8 @@ def main() -> None:
         try:
             kernel.boot()
 
-            from aios.providers.interface import (
-                OmniRouteRequest,
-                RoutingRequest,
-                universal_health_registry,
-                universal_model_registry,
-                universal_omniroute_engine,
-                universal_provider_registry,
-                universal_routing_engine,
-            )
-
-            cmd = " ".join(args).strip()
-
-            if cmd == "provider list":
-                table = Table(title="Registered LLM Providers", border_style="magenta")
-                table.add_column("Provider Name", style="bold magenta")
-                table.add_column("Models", style="white")
-                table.add_column("Status", style="green")
-
-                for p_name in universal_provider_registry.list_providers():
-                    models = [m.model_id for m in universal_model_registry.list_models(p_name)]
-                    if not models:
-                        provider_inst = universal_provider_registry.lookup(p_name)
-                        meta = getattr(provider_inst, "metadata", provider_inst)
-                        models = getattr(meta, "supported_models", ["default"])
-
-                    health = universal_health_registry.get_health(p_name)
-                    status_str = "Healthy" if health.available else "Degraded/Offline"
-                    table.add_row(p_name, ", ".join(models), status_str)
-
-                console.print(table)
-                sys.exit(0)
-
-            elif cmd == "model list":
-                table = Table(title="Registered LLM Models", border_style="cyan")
-                table.add_column("Model ID", style="bold cyan")
-                table.add_column("Provider", style="white")
-                table.add_column("Capabilities", style="green")
-                table.add_column("Status", style="green")
-
-                models = universal_model_registry.list_models()
-                if not models:
-                    for p_name in universal_provider_registry.list_providers():
-                        provider_inst = universal_provider_registry.lookup(p_name)
-                        meta = getattr(provider_inst, "metadata", provider_inst)
-                        supported = getattr(meta, "supported_models", ["default"])
-                        for m_name in supported:
-                            table.add_row(m_name, p_name, "chat", "Active")
-                else:
-                    for model in models:
-                        caps = []
-                        if model.supports_chat:
-                            caps.append("chat")
-                        if model.supports_coding:
-                            caps.append("coding")
-                        if model.supports_reasoning:
-                            caps.append("reasoning")
-                        if model.supports_vision:
-                            caps.append("vision")
-                        if model.supports_embeddings:
-                            caps.append("embeddings")
-                        status_str = "Active" if model.enabled else "Disabled"
-                        table.add_row(model.model_id, model.provider, ", ".join(caps), status_str)
-
-                console.print(table)
-                sys.exit(0)
-
-            elif cmd == "health":
-                table = Table(title="Provider Health & Telemetry Status", border_style="green")
-                table.add_column("Provider Name", style="bold green")
-                table.add_column("Available", style="white")
-                table.add_column("Latency (ms)", style="cyan")
-                table.add_column("Health Score", style="magenta")
-                table.add_column("Last Error", style="red")
-
-                for p_name in universal_provider_registry.list_providers():
-                    health = universal_health_registry.get_health(p_name)
-                    table.add_row(
-                        p_name,
-                        "Yes" if health.available else "No",
-                        f"{health.latency_ms:.1f}",
-                        f"{health.health_score:.1f}",
-                        health.last_error or "None",
-                    )
-
-                console.print(table)
-                sys.exit(0)
-
-            elif args[0] == "route":
-                task_type = args[1].strip().strip('"').strip("'") if len(args) > 1 else "chat"
-                routing_req = RoutingRequest(
-                    task_type=task_type,
-                    estimated_input_tokens=100,
-                    estimated_output_tokens=100,
-                )
-                decision = universal_routing_engine.route(routing_req)
-                console.print(
-                    Panel(
-                        f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
-                        f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
-                        f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
-                        f"Reasoning: {decision.reasoning}",
-                        title=f"[white]Routing Decision for task type '{task_type}'[/white]",
-                        border_style="blue",
-                    )
-                )
-                sys.exit(0)
-
-            elif args[0] == "chat":
-                prompt = args[1] if len(args) > 1 else ""
-                if (prompt.startswith('"') and prompt.endswith('"')) or (
-                    prompt.startswith("'") and prompt.endswith("'")
-                ):
-                    prompt = prompt[1:-1]
-
-                if not prompt:
-                    console.print("[yellow]Usage: aios chat <message>[/yellow]")
-                    sys.exit(1)
-
-                task_type = "chat"
-                is_coding = (
-                    "python" in prompt.lower()
-                    or "code" in prompt.lower()
-                    or "function" in prompt.lower()
-                )
-                if is_coding:
-                    task_type = "coding"
-
-                omni_req = OmniRouteRequest(
-                    prompt=prompt,
-                    task_type=task_type,
-                    estimated_input_tokens=200,
-                    estimated_output_tokens=200,
-                )
-
-                with console.status(
-                    "[bold blue]Executing chat request via OmniRoute...", spinner="dots"
-                ):
-                    response = universal_omniroute_engine.execute(omni_req)
-
-                title_str = (
-                    f"[bold green]Response ({response.provider} - "
-                    f"{response.model})[/bold green]"
-                )
-                subtitle_str = (
-                    f"[dim]Cost: ${response.cost:.6f} | "
-                    f"Latency: {response.latency_ms:.1f}ms[/dim]"
-                )
-
-                console.print(
-                    Panel(
-                        response.content,
-                        title=title_str,
-                        subtitle=subtitle_str,
-                        border_style="green",
-                    )
-                )
-                sys.exit(0)
-
-            else:
-                console.print(f"[red]✗ Unknown command line argument: {cmd}[/red]")
+            if not execute_builtin_cli_command(args):
+                console.print(f"[red]✗ Unknown command line argument: {' '.join(args)}[/red]")
                 sys.exit(1)
 
         except Exception as e:
@@ -672,6 +898,21 @@ def main() -> None:
                 if not user_input:
                     continue
 
+                # Intercept Built-in CLI commands in Interactive Mode
+                cmd_str = None
+                if user_input.startswith("aios "):
+                    cmd_str = user_input[5:].strip()
+                elif (
+                    user_input in ("help", "health", "provider list", "model list")
+                    or user_input.startswith("route ")
+                    or user_input.startswith("chat ")
+                ):
+                    cmd_str = user_input
+
+                if cmd_str:
+                    if execute_builtin_cli_command(cmd_str.split(), exit_on_complete=False):
+                        continue
+
                 # Handle Slash Commands
                 if user_input.startswith("/"):
                     parts = user_input.split(maxsplit=1)
@@ -697,7 +938,8 @@ def main() -> None:
                             handle_conversation_command("current conversation", conv_manager)
                         else:
                             console.print(
-                                "[yellow]Subcommands: list, new, resume, delete, rename, active[/yellow]"
+                                "[yellow]Subcommands: list, new, resume, "
+                                "delete, rename, active[/yellow]"
                             )
                     elif slash_cmd == "/skills":
                         print_skills_table(skill_registry)
@@ -711,14 +953,16 @@ def main() -> None:
                         console.clear()
                     elif slash_cmd == "/multiline":
                         multiline_mode = not multiline_mode
+                        mode_status = 'ENABLED' if multiline_mode else 'DISABLED'
                         console.print(
-                            f"[green]✓ Multiline mode: {'ENABLED' if multiline_mode else 'DISABLED'}[/green]"
+                            f"[green]✓ Multiline mode: {mode_status}[/green]"
                         )
                     elif slash_cmd in ("/exit", "/quit"):
                         break
                     else:
                         console.print(
-                            f"[red]✗ Unknown slash command: {slash_cmd}. Type /help for options.[/red]"
+                            f"[red]✗ Unknown slash command: {slash_cmd}. "
+                            "Type /help for options.[/red]"
                         )
                     continue
 
@@ -750,7 +994,9 @@ def main() -> None:
                     with console.status("[bold blue]Running reasoning pipeline...", spinner="dots"):
                         result = kernel.execute_intent(intent)
                     console.print(
-                        Panel(Markdown(result.message), border_style="blue", title="System Response")
+                        Panel(
+                            Markdown(result.message), border_style="blue", title="System Response"
+                        )
                     )
 
             except KeyboardInterrupt:
