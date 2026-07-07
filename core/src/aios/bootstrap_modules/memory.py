@@ -436,12 +436,8 @@ def bootstrap_memory(
     eng_mem_repo = EngineeringMemoryRepositoryImpl(
         "engineering_memory", qdrant_provider, col_manager
     )
-    work_mem_repo = WorkspaceMemoryRepositoryImpl(
-        "workspace_memory", qdrant_provider, col_manager
-    )
-    proj_mem_repo = ProjectMemoryRepositoryImpl(
-        "project_memory", qdrant_provider, col_manager
-    )
+    work_mem_repo = WorkspaceMemoryRepositoryImpl("workspace_memory", qdrant_provider, col_manager)
+    proj_mem_repo = ProjectMemoryRepositoryImpl("project_memory", qdrant_provider, col_manager)
     doc_mem_repo = DocumentationMemoryRepositoryImpl(
         "documentation_memory", qdrant_provider, col_manager
     )
@@ -495,6 +491,7 @@ def bootstrap_memory(
     registry.register(ContextBuilder, context_builder)
 
     from aios.bootstrap_modules.providers import bootstrap_providers
+
     bootstrap_providers(registry, embedding_service)
 
     embedding_engine = EmbeddingEngineImpl(embedding_service, embedding_cache)

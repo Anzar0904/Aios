@@ -236,7 +236,27 @@ logger = logging.getLogger(__name__)
 def bootstrap_infrastructure(registry, config_path: Path) -> dict:  # noqa: C901, ANN001
     """Wires, initializes and registers foundation infrastructure components."""
     # ── 1. SQL PERSISTENCE FOUNDATION ──
+    from aios.config import load_config
+
+    os_config = load_config(config_path)
+
     p_config = PersistenceConfigurationService()
+    if os_config.persistence.policy:
+        from aios.services.persistence import PersistencePolicy
+
+        p_config.policy = PersistencePolicy(os_config.persistence.policy.upper())
+    if os_config.persistence.provider_name:
+        p_config.provider_name = os_config.persistence.provider_name
+    if os_config.persistence.host:
+        p_config.host = os_config.persistence.host
+    if os_config.persistence.port:
+        p_config.port = os_config.persistence.port
+    if os_config.persistence.database:
+        p_config.database = os_config.persistence.database
+    if os_config.persistence.user:
+        p_config.user = os_config.persistence.user
+    if os_config.persistence.password:
+        p_config.password = os_config.persistence.password
     p_registry = PersistenceRegistry()
     p_repos = RepositoryRegistry()
 
@@ -259,12 +279,12 @@ def bootstrap_infrastructure(registry, config_path: Path) -> dict:  # noqa: C901
     p_report.initialize()
 
     # Connect to database for migrations
-    p_service.on_ready()
+    p_service.start()
 
     # Bootstrapper migrations
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # ── 2. RUNTIME INTELLIGENCE PLATFORM ──
     ri_telem = RuntimeTelemetryCollector()
@@ -387,9 +407,7 @@ def bootstrap_infrastructure(registry, config_path: Path) -> dict:  # noqa: C901
         redis_provider, cache_policy_mgr, cache_stats, cache_diag
     )
     cache_warmup = CacheWarmupServiceImpl(p_service, redis_cache_service, cache_stats)
-    cache_rebuild = CacheRebuildServiceImpl(
-        p_service, redis_provider, cache_stats, cache_warmup
-    )
+    cache_rebuild = CacheRebuildServiceImpl(p_service, redis_provider, cache_stats, cache_warmup)
 
     cache_policy_mgr.initialize()
     cache_stats.initialize()
@@ -433,9 +451,7 @@ def bootstrap_infrastructure(registry, config_path: Path) -> dict:  # noqa: C901
     session_diag = SessionDiagnosticsImpl(redis_provider)
     session_health = SessionHealthMonitorImpl(redis_provider)
     session_recommend = SessionRecommendationEngineImpl(session_stats, session_diag)
-    session_store = SessionStoreImpl(
-        redis_provider, session_registry, session_stats, session_diag
-    )
+    session_store = SessionStoreImpl(redis_provider, session_registry, session_stats, session_diag)
     session_expiration = SessionExpirationManagerImpl(session_store, session_registry)
     session_recovery = SessionRecoveryManagerImpl(p_service, redis_provider, session_stats)
     session_manager = SessionManagerImpl(

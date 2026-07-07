@@ -154,7 +154,6 @@ class ModelRegistry:
 universal_model_registry = ModelRegistry()
 
 
-
 class CapabilityRegistry:
     """Universal registry describing the capabilities of AI providers and models."""
 
@@ -443,8 +442,7 @@ class RoutingEngine:
                 ):
                     continue
                 if request.task_type == "embeddings" and not (
-                    model_info.supports_embeddings
-                    or (caps and getattr(caps, "embeddings", False))
+                    model_info.supports_embeddings or (caps and getattr(caps, "embeddings", False))
                 ):
                     continue
                 if request.task_type == "vision" and not (
@@ -452,8 +450,7 @@ class RoutingEngine:
                 ):
                     continue
                 if request.task_type == "reasoning" and not (
-                    model_info.supports_reasoning
-                    or (caps and getattr(caps, "reasoning", False))
+                    model_info.supports_reasoning or (caps and getattr(caps, "reasoning", False))
                 ):
                     continue
 
@@ -534,16 +531,14 @@ class RoutingEngine:
                             or getattr(caps, "code_generation", False)
                         ):
                             continue
-                        if (
-                            request.task_type == "embeddings"
-                            and not getattr(caps, "embeddings", False)
+                        if request.task_type == "embeddings" and not getattr(
+                            caps, "embeddings", False
                         ):
                             continue
                         if request.task_type == "vision" and not getattr(caps, "vision", False):
                             continue
-                        if (
-                            request.task_type == "reasoning"
-                            and not getattr(caps, "reasoning", False)
+                        if request.task_type == "reasoning" and not getattr(
+                            caps, "reasoning", False
                         ):
                             continue
 
@@ -824,8 +819,3 @@ class OmniRouteEngine:
 
 # Global singleton instance for system-wide access
 universal_omniroute_engine = OmniRouteEngine()
-
-
-
-
-

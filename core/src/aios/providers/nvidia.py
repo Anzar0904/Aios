@@ -110,9 +110,7 @@ class NVIDIAProviderAdapter:
 
                 # 5xx Server Error
                 elif response.status_code >= 500:
-                    logger.error(
-                        f"NVIDIA Server Error ({response.status_code}): {response.text}"
-                    )
+                    logger.error(f"NVIDIA Server Error ({response.status_code}): {response.text}")
                     raise RuntimeError(
                         "NVIDIA Inference server encountered an error. Please retry."
                     )

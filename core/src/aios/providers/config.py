@@ -26,4 +26,3 @@ class ProviderConfig:
     omniroute_timeout: int = 30
     omniroute_retry_count: int = 3
     omniroute_streaming_enabled: bool = True
-

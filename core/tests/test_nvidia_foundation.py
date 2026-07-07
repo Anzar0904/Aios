@@ -145,14 +145,17 @@ def test_nvidia_provider_timeout_failure():
 
 def test_cli_provider_list():
     """Verify that aios provider list routes correctly non-interactively."""
-    with patch("sys.argv", ["aios", "provider", "list"]), \
-         patch("aios.cli.bootstrap_kernel") as mock_bootstrap, \
-         patch("sys.exit", side_effect=SystemExit) as mock_exit:
+    with (
+        patch("sys.argv", ["aios", "provider", "list"]),
+        patch("aios.cli.bootstrap_kernel") as mock_bootstrap,
+        patch("sys.exit", side_effect=SystemExit) as mock_exit,
+    ):
         mock_kernel = MagicMock()
         mock_bootstrap.return_value = mock_kernel
 
         try:
             from aios.cli import main
+
             main()
         except SystemExit:
             pass
@@ -163,14 +166,17 @@ def test_cli_provider_list():
 
 def test_cli_model_list():
     """Verify that aios model list routes correctly non-interactively."""
-    with patch("sys.argv", ["aios", "model", "list"]), \
-         patch("aios.cli.bootstrap_kernel") as mock_bootstrap, \
-         patch("sys.exit", side_effect=SystemExit) as mock_exit:
+    with (
+        patch("sys.argv", ["aios", "model", "list"]),
+        patch("aios.cli.bootstrap_kernel") as mock_bootstrap,
+        patch("sys.exit", side_effect=SystemExit) as mock_exit,
+    ):
         mock_kernel = MagicMock()
         mock_bootstrap.return_value = mock_kernel
 
         try:
             from aios.cli import main
+
             main()
         except SystemExit:
             pass
@@ -181,14 +187,17 @@ def test_cli_model_list():
 
 def test_cli_health():
     """Verify that aios health routes correctly non-interactively."""
-    with patch("sys.argv", ["aios", "health"]), \
-         patch("aios.cli.bootstrap_kernel") as mock_bootstrap, \
-         patch("sys.exit", side_effect=SystemExit) as mock_exit:
+    with (
+        patch("sys.argv", ["aios", "health"]),
+        patch("aios.cli.bootstrap_kernel") as mock_bootstrap,
+        patch("sys.exit", side_effect=SystemExit) as mock_exit,
+    ):
         mock_kernel = MagicMock()
         mock_bootstrap.return_value = mock_kernel
 
         try:
             from aios.cli import main
+
             main()
         except SystemExit:
             pass
@@ -199,14 +208,17 @@ def test_cli_health():
 
 def test_cli_route():
     """Verify that aios route routes correctly non-interactively."""
-    with patch("sys.argv", ["aios", "route", "chat"]), \
-         patch("aios.cli.bootstrap_kernel") as mock_bootstrap, \
-         patch("sys.exit", side_effect=SystemExit) as mock_exit:
+    with (
+        patch("sys.argv", ["aios", "route", "chat"]),
+        patch("aios.cli.bootstrap_kernel") as mock_bootstrap,
+        patch("sys.exit", side_effect=SystemExit) as mock_exit,
+    ):
         mock_kernel = MagicMock()
         mock_bootstrap.return_value = mock_kernel
 
         try:
             from aios.cli import main
+
             main()
         except SystemExit:
             pass
