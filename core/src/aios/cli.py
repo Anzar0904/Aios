@@ -627,11 +627,11 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         subcommand = args[1] if len(args) > 1 else "help"
         target_dir = "."
 
-        from aios.services.docintel.scanner import RepositoryScanner
-        from aios.services.docintel.indexer import DocumentationIndexer
-        from aios.services.docintel.graph import DependencyGraphBuilder
-        from aios.services.docintel.intelligence import DocumentationIntelligenceEngine
         from aios.services.docintel.generator import MarkdownGenerator
+        from aios.services.docintel.graph import DependencyGraphBuilder
+        from aios.services.docintel.indexer import DocumentationIndexer
+        from aios.services.docintel.intelligence import DocumentationIntelligenceEngine
+        from aios.services.docintel.scanner import RepositoryScanner
 
         if subcommand == "scan":
             scanner = RepositoryScanner(target_dir)
@@ -642,12 +642,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             table.add_column("Category", style="bold cyan")
             table.add_column("Count", style="white")
 
-            table.add_row("Packages", str(len(res["packages"])))
-            table.add_row("Modules", str(len(res["modules"])))
-            table.add_row("Services", str(len(res["services"])))
-            table.add_row("Providers", str(len(res["providers"])))
-            table.add_row("Registries", str(len(res["registries"])))
-            table.add_row("Tests", str(len(res["tests"])))
+            table.add_row("Packages", str(len(res.get("packages", []))))
+            table.add_row("Modules", str(len(res.get("modules", []))))
+            table.add_row("Services", str(len(res.get("services", []))))
+            table.add_row("Providers", str(len(res.get("providers", []))))
+            table.add_row("Registries", str(len(res.get("registries", []))))
+            table.add_row("Tests", str(len(res.get("tests", []))))
+            table.add_row("Configuration Files", str(len(res.get("configuration_files", []))))
+            table.add_row("Documentation Files", str(len(res.get("documentation", []))))
+            table.add_row("CLI Commands", str(len(res.get("cli_commands", []))))
 
             console.print(table)
             if exit_on_complete:
@@ -661,7 +664,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             intel_engine = DocumentationIntelligenceEngine()
             generator = MarkdownGenerator("docs")
 
-            with console.status("[bold blue]Generating complete documentation platform...", spinner="dots"):
+            with console.status(
+                "[bold blue]Generating complete documentation platform...", spinner="dots"
+            ):
                 scan_res = scanner.scan()
                 index_data = {}
                 for mod in scan_res["modules"]:
@@ -675,38 +680,22 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                             index_data[path] = indexer.parse_file(path)
                             break
 
-                graph = graph_builder.build_graph(scan_res, index_data)
-                mermaid_graph = graph_builder.generate_mermaid(graph)
+                dep_graph = graph_builder.build_dependency_graph(scan_res, index_data)
+                pkg_graph = graph_builder.build_package_graph(scan_res, dep_graph)
+                svc_graph = graph_builder.build_service_graph(scan_res, dep_graph)
+
+                dep_mermaid = graph_builder.generate_mermaid(dep_graph, "Dependency Graph")
+                pkg_mermaid = graph_builder.generate_mermaid(pkg_graph, "Package Graph")
+                svc_mermaid = graph_builder.generate_mermaid(svc_graph, "Service Graph")
+
                 intel_report = intel_engine.analyze(index_data)
-                generator.generate(scan_res, intel_report, mermaid_graph)
+                generator.generate(
+                    scan_res, index_data, intel_report, dep_mermaid, pkg_mermaid, svc_mermaid
+                )
 
-            console.print("[bold green]✓ Documentation built successfully inside /docs[/bold green]")
-            if exit_on_complete:
-                sys.exit(0)
-            return True
-
-        elif subcommand == "graph":
-            scanner = RepositoryScanner(target_dir)
-            indexer = DocumentationIndexer()
-            graph_builder = DependencyGraphBuilder()
-
-            with console.status("[bold blue]Building dependency graph...", spinner="dots"):
-                scan_res = scanner.scan()
-                index_data = {}
-                for mod in scan_res["modules"]:
-                    parts = mod.split(".")
-                    possible_paths = [
-                        os.path.join("core", "src", *parts) + ".py",
-                        os.path.join(*parts) + ".py"
-                    ]
-                    for path in possible_paths:
-                        if os.path.exists(path):
-                            index_data[path] = indexer.parse_file(path)
-                            break
-                graph = graph_builder.build_graph(scan_res, index_data)
-                mermaid_graph = graph_builder.generate_mermaid(graph)
-
-            console.print(Panel(mermaid_graph, title="Dependency Flowchart (Mermaid)", border_style="magenta"))
+            console.print(
+                "[bold green]✓ Documentation built successfully inside /docs[/bold green]"
+            )
             if exit_on_complete:
                 sys.exit(0)
             return True
@@ -731,51 +720,18 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                             break
                 intel_report = intel_engine.analyze(index_data)
 
-            console.print(f"[bold green]Code Quality score: {intel_report['score']}/100[/bold green]")
+            console.print(
+                f"[bold green]Completeness Score: {intel_report['score']}/100[/bold green]"
+            )
             console.print(f"Undocumented classes: {len(intel_report['undocumented_classes'])}")
             console.print(f"Undocumented functions: {len(intel_report['undocumented_functions'])}")
-            console.print(f"Large classes (>200 lines): {len(intel_report['large_classes'])}")
             console.print(f"Todos and Fixmes: {len(intel_report['todos_fixmes'])}")
             if exit_on_complete:
                 sys.exit(0)
             return True
 
-        elif subcommand in ["api", "architecture", "coverage", "debt"]:
-            console.print(f"[bold yellow]Command 'docs {subcommand}' is supported under Documentation Intelligence. Running analysis...[/bold yellow]")
-            scanner = RepositoryScanner(target_dir)
-            indexer = DocumentationIndexer()
-            intel_engine = DocumentationIntelligenceEngine()
-            with console.status("[bold blue]Analyzing...", spinner="dots"):
-                scan_res = scanner.scan()
-                index_data = {}
-                for mod in scan_res["modules"]:
-                    parts = mod.split(".")
-                    possible_paths = [
-                        os.path.join("core", "src", *parts) + ".py",
-                        os.path.join(*parts) + ".py"
-                    ]
-                    for path in possible_paths:
-                        if os.path.exists(path):
-                            index_data[path] = indexer.parse_file(path)
-                            break
-                intel_report = intel_engine.analyze(index_data)
-
-            if subcommand == "api":
-                console.print(f"API Classes indexed: {sum(len(d.get('classes', [])) for d in index_data.values())}")
-            elif subcommand == "architecture":
-                console.print(f"Service Modules: {len(scan_res['services'])}")
-            elif subcommand == "coverage":
-                console.print(f"Tests Suites scanned: {len(scan_res['tests'])}")
-            elif subcommand == "debt":
-                console.print(f"Large Classes: {len(intel_report['large_classes'])}")
-                console.print(f"Todos / Fixmes: {len(intel_report['todos_fixmes'])}")
-
-            if exit_on_complete:
-                sys.exit(0)
-            return True
-
         else:
-            console.print("[yellow]Usage: aios docs <scan|build|graph|report|api|architecture|coverage|debt>[/yellow]")
+            console.print("[yellow]Usage: aios docs <scan|build|report>[/yellow]")
             if exit_on_complete:
                 sys.exit(1)
             return True

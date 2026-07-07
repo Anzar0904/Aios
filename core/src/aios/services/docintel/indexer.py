@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 
 class DocumentationIndexer:
-    """Parses Python source files using AST to index classes and functions."""
+    """Parses Python source files using AST to extract detailed metadata."""
 
     def parse_file(self, filepath: str) -> Dict[str, Any]:
         """Parses a single file and extracts detailed structural metadata."""
@@ -17,11 +17,7 @@ class DocumentationIndexer:
             except SyntaxError as e:
                 return {"error": f"Syntax error: {e}"}
 
-        file_metadata = {
-            "classes": [],
-            "functions": [],
-            "imports": []
-        }
+        file_metadata = {"classes": [], "functions": [], "imports": []}
 
         for item in node.body:
             if isinstance(item, ast.ClassDef):
@@ -40,10 +36,19 @@ class DocumentationIndexer:
         docstring = ast.get_docstring(node) or ""
         methods = []
         is_dataclass = any(
-            (isinstance(d, ast.Name) and d.id == "dataclass") or
-            (isinstance(d, ast.Call) and isinstance(d.func, ast.Name) and d.func.id == "dataclass")
+            (isinstance(d, ast.Name) and d.id == "dataclass")
+            or (
+                isinstance(d, ast.Call)
+                and isinstance(d.func, ast.Name)
+                and d.func.id == "dataclass"
+            )
             for d in node.decorator_list
         )
+
+        bases = [self._get_source_segment(b) for b in node.bases]
+        is_enum = any("Enum" in base for base in bases)
+
+        decorators = [self._get_source_segment(d) for d in node.decorator_list]
 
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
@@ -53,9 +58,11 @@ class DocumentationIndexer:
             "name": node.name,
             "docstring": docstring.strip(),
             "methods": methods,
-            "bases": [self._get_source_segment(b) for b in node.bases],
+            "bases": bases,
+            "decorators": decorators,
             "is_dataclass": is_dataclass,
-            "line_count": len(node.body)
+            "is_enum": is_enum,
+            "line_count": len(node.body),
         }
 
     def _parse_function(self, node: ast.FunctionDef) -> Dict[str, Any]:
@@ -65,21 +72,21 @@ class DocumentationIndexer:
             arg_type = None
             if arg.annotation:
                 arg_type = self._get_source_segment(arg.annotation)
-            args.append({
-                "name": arg.arg,
-                "type": arg_type
-            })
+            args.append({"name": arg.arg, "type": arg_type})
 
         return_type = None
         if node.returns:
             return_type = self._get_source_segment(node.returns)
+
+        decorators = [self._get_source_segment(d) for d in node.decorator_list]
 
         return {
             "name": node.name,
             "docstring": docstring.strip(),
             "arguments": args,
             "return_type": return_type,
-            "complexity_approx": self._estimate_complexity(node)
+            "decorators": decorators,
+            "complexity_approx": self._estimate_complexity(node),
         }
 
     def _parse_imports(self, node: Any) -> List[str]:

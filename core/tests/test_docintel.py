@@ -15,25 +15,23 @@ def test_docintel_pipeline():
         os.makedirs(pkg_dir)
         with open(os.path.join(pkg_dir, "__init__.py"), "w") as f:
             f.write("# init\n")
-            
+
         module_path = os.path.join(pkg_dir, "module.py")
         with open(module_path, "w") as f:
-            f.write('''
-"""Module docstring."""
-import os
+            f.write(
+                '"""Module docstring."""\n'
+                "import os\n\n"
+                "class MyClass:\n"
+                '    """Class docstring."""\n'
+                "    def method_a(self, x: int) -> str:\n"
+                "        # TODO: Implement method_a\n"
+                "        return str(x)\n\n"
+                "def my_function():\n"
+                "    pass\n"
+            )
 
-class MyClass:
-    """Class docstring."""
-    def method_a(self, x: int) -> str:
-        # TODO: Implement method_a
-        return str(x)
-
-def my_function():
-    pass
-''')
-
-        # 1. Test Scanner
-        scanner = RepositoryScanner(tmpdir)
+        # 1. Test Scanner with custom exclusion patterns
+        scanner = RepositoryScanner(tmpdir, exclude_patterns=[".git", "ignored_dir"])
         scan_res = scanner.scan()
         assert "mock_pkg" in scan_res["packages"]
         assert "mock_pkg.module" in scan_res["modules"]
@@ -49,11 +47,19 @@ def my_function():
         assert len(index_res["functions"]) == 1
         assert index_res["functions"][0]["name"] == "my_function"
 
-        # 3. Test Graph
+        # 3. Test Graph Analyzer
         graph_builder = DependencyGraphBuilder()
-        graph = graph_builder.build_graph(scan_res, {module_path: index_res})
-        mermaid = graph_builder.generate_mermaid(graph)
-        assert "flowchart TD" in mermaid
+        dep_graph = graph_builder.build_dependency_graph(scan_res, {module_path: index_res})
+        pkg_graph = graph_builder.build_package_graph(scan_res, dep_graph)
+        svc_graph = graph_builder.build_service_graph(scan_res, dep_graph)
+
+        dep_mermaid = graph_builder.generate_mermaid(dep_graph, "Dependency Graph")
+        pkg_mermaid = graph_builder.generate_mermaid(pkg_graph, "Package Graph")
+        svc_mermaid = graph_builder.generate_mermaid(svc_graph, "Service Graph")
+
+        assert "flowchart TD" in dep_mermaid
+        assert "flowchart TD" in pkg_mermaid
+        assert "flowchart TD" in svc_mermaid
 
         # 4. Test Intelligence Engine
         intel_engine = DocumentationIntelligenceEngine()
@@ -65,10 +71,20 @@ def my_function():
 
         # 5. Test Markdown Generator
         generator = MarkdownGenerator(os.path.join(tmpdir, "docs"))
-        generator.generate(scan_res, intel_res, mermaid)
-        
+        generator.generate(
+            scan_res,
+            {module_path: index_res},
+            intel_res,
+            dep_mermaid,
+            pkg_mermaid,
+            svc_mermaid,
+        )
+
         assert os.path.exists(os.path.join(tmpdir, "docs", "README.md"))
-        assert os.path.exists(os.path.join(tmpdir, "docs", "Architecture", "Architecture.md"))
-        assert os.path.exists(os.path.join(tmpdir, "docs", "Services", "Services.md"))
-        report_path = os.path.join(tmpdir, "docs", "Reports", "Code_Intelligence_Report.md")
+        assert os.path.exists(os.path.join(tmpdir, "docs", "Architecture.md"))
+        assert os.path.exists(os.path.join(tmpdir, "docs", "Services.md"))
+        assert os.path.exists(os.path.join(tmpdir, "docs", "Providers.md"))
+        assert os.path.exists(os.path.join(tmpdir, "docs", "API.md"))
+        assert os.path.exists(os.path.join(tmpdir, "docs", "DependencyGraph.md"))
+        report_path = os.path.join(tmpdir, "docs", "Reports", "Code_Completeness_Report.md")
         assert os.path.exists(report_path)
