@@ -587,7 +587,7 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                         )
                         for job in group
                     ]
-                    responses = self.embed_batch(requests)
+                    responses = self.embed_batch(requests, retry=True)
                     for job, res in zip(group, responses, strict=False):
                         if not res.error:
                             logger.info(f"Retry succeeded for embedding job {job['id']}")
@@ -597,7 +597,7 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                             if job["collection_name"]:
                                 try:
                                     repo = repos.get_repository(job["collection_name"])
-                                    repo.save(job["id"], res.vector, {"text": job["text"]})
+                                    repo.save(job["id"], res.vector, {"text": job["text"]}, retry=True)
                                 except Exception as e:
                                     logger.error(
                                         f"Failed to save successfully retried vector to repository: {e}"
@@ -607,9 +607,10 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                             logger.warning(
                                 f"Retry failed (attempt {next_attempts}/{max_attempts}) for embedding job {job['id']}: {res.error}"
                             )
+                            new_status = "FAILED" if next_attempts >= max_attempts else "PENDING"
                             db.execute(
-                                "UPDATE pending_embedding_jobs SET attempts = ?, last_error = ?, updated_at = ? WHERE id = ?",
-                                (next_attempts, str(res.error), time.time(), job["id"]),
+                                "UPDATE pending_embedding_jobs SET status = ?, attempts = ?, last_error = ?, updated_at = ? WHERE id = ?",
+                                (new_status, next_attempts, str(res.error), time.time(), job["id"]),
                             )
 
             # 2. Retry pending index requests
@@ -640,14 +641,16 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                     vec = json.loads(idx["vector"])
                     payload = json.loads(idx["payload"])
                     entity_id = idx.get("entity_id") or idx["id"]
-                    if repo.save(entity_id, vec, payload):
+                    if repo.save(entity_id, vec, payload, retry=True):
                         logger.info(f"Retry succeeded for indexing job {idx['id']}")
                         db.execute("DELETE FROM pending_indexing_jobs WHERE id = ?", (idx["id"],))
                     else:
                         logger.warning(f"Retry returned False for indexing job {idx['id']}")
+                        new_status = "FAILED" if next_attempts >= max_attempts else "PENDING"
                         db.execute(
-                            "UPDATE pending_indexing_jobs SET attempts = ?, retry_count = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
+                            "UPDATE pending_indexing_jobs SET status = ?, attempts = ?, retry_count = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
                             (
+                                new_status,
                                 next_attempts,
                                 next_attempts,
                                 "Qdrant save returned False",
@@ -659,9 +662,10 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                     logger.error(
                         f"Retry failed (attempt {next_attempts}/{max_attempts}) for indexing job {idx['id']}: {str(e)}"
                     )
+                    new_status = "FAILED" if next_attempts >= max_attempts else "PENDING"
                     db.execute(
-                        "UPDATE pending_indexing_jobs SET attempts = ?, retry_count = ?, last_error = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
-                        (next_attempts, next_attempts, str(e), str(e), time.time(), idx["id"]),
+                        "UPDATE pending_indexing_jobs SET status = ?, attempts = ?, retry_count = ?, last_error = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
+                        (new_status, next_attempts, next_attempts, str(e), str(e), time.time(), idx["id"]),
                     )
         except Exception as e:
             logger.error(f"Exception during background retry cycle: {e}")
@@ -682,7 +686,7 @@ class EmbeddingEngineImpl(EmbeddingEngine):
         except Exception:
             pass
 
-    def embed_text(self, request: EmbeddingRequest) -> EmbeddingResponse:
+    def embed_text(self, request: EmbeddingRequest, retry: bool = False) -> EmbeddingResponse:
         t0 = time.perf_counter()
         provider = request.provider_name or self._active_provider
         self.op_counts["embed"] += 1
@@ -723,7 +727,8 @@ class EmbeddingEngineImpl(EmbeddingEngine):
         except Exception as e:
             self.op_counts["failures"] += 1
             self._log_err(f"Embedding failed: {str(e)}")
-            self._persist_failed_job(request.text, provider, request.collection_name)
+            if not retry:
+                self._persist_failed_job(request.text, provider, request.collection_name)
             return EmbeddingResponse(
                 text=request.text,
                 vector=[],
@@ -732,7 +737,7 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                 error=str(e),
             )
 
-    def embed_batch(self, requests: List[EmbeddingRequest]) -> List[EmbeddingResponse]:
+    def embed_batch(self, requests: List[EmbeddingRequest], retry: bool = False) -> List[EmbeddingResponse]:
         t0 = time.perf_counter()
         self.op_counts["batch_embed"] += 1
         results: List[Optional[EmbeddingResponse]] = [None] * len(requests)
@@ -759,7 +764,8 @@ class EmbeddingEngineImpl(EmbeddingEngine):
             except Exception as e:
                 self.op_counts["failures"] += 1
                 self._log_err(f"Batch embedding cache lookup failed for '{req.text}': {str(e)}")
-                self._persist_failed_job(req.text, provider, req.collection_name)
+                if not retry:
+                    self._persist_failed_job(req.text, provider, req.collection_name)
                 results[idx] = EmbeddingResponse(
                     text=req.text,
                     vector=[],
@@ -779,7 +785,8 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                 self.op_counts["failures"] += len(group)
                 self._log_err(f"Batch provider lookup failed for {provider}: {str(e)}")
                 for idx, req in group:
-                    self._persist_failed_job(req.text, provider, req.collection_name)
+                    if not retry:
+                        self._persist_failed_job(req.text, provider, req.collection_name)
                     results[idx] = EmbeddingResponse(
                         text=req.text,
                         vector=[],
@@ -809,7 +816,8 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                         self._log_err(
                             f"Batch vector validation/cache save failed for '{text}': {str(e)}"
                         )
-                        self._persist_failed_job(text, provider, req.collection_name)
+                        if not retry:
+                            self._persist_failed_job(text, provider, req.collection_name)
                         results[idx] = EmbeddingResponse(
                             text=text,
                             vector=[],
@@ -820,12 +828,13 @@ class EmbeddingEngineImpl(EmbeddingEngine):
             except NotImplementedError:
                 # Fall back to sequential processing
                 for idx, req in group:
-                    results[idx] = self.embed_text(req)
+                    results[idx] = self.embed_text(req, retry=retry)
             except Exception as e:
                 self.op_counts["failures"] += len(group)
                 self._log_err(f"Batch embedding failed for provider {provider}: {str(e)}")
                 for idx, req in group:
-                    self._persist_failed_job(req.text, provider, req.collection_name)
+                    if not retry:
+                        self._persist_failed_job(req.text, provider, req.collection_name)
                     results[idx] = EmbeddingResponse(
                         text=req.text,
                         vector=[],

@@ -240,3 +240,35 @@ An ADR transitions through four distinct phases:
 * **Alternatives Considered**: In-place codebase alterations.
 * **Trade-offs**: Requires structured designs, but keeps components decoupled.
 * **Consequences**: Long-term codebase remains clean.
+
+---
+
+### ADR-0017: `pyproject.toml` as Single Version Source of Truth
+* **Status**: Accepted
+* **Date**: 2026-07-06
+* **Context**: The monorepo contains multiple files that declare or reference the project version: the root `pyproject.toml`, `core/pyproject.toml`, `config/config.toml`, `docs/VERSION.md`, and `docs/CHANGELOG.md`. Without a designated authority, these files drifted independently (e.g. pyproject.toml said `0.1.0` while VERSION.md and CHANGELOG.md documented `0.5.0`), making the true release version ambiguous.
+* **Problem**: Multiple competing version declarations across configuration files and documentation created an inconsistent and untrustworthy version state. AI coding agents and human contributors had no definitive answer to "what version is the project at?".
+* **Decision**: Designate `/pyproject.toml` (monorepo root) as the **single canonical version source of truth** for the Personal AI OS project version. All other files that carry a version number MUST reflect the value in this file.
+  * **Versioning Scheme**: [Semantic Versioning 2.0.0](https://semver.org/) — `MAJOR.MINOR.PATCH`.
+  * **Git Tag Convention**: `vMAJOR.MINOR.PATCH` for standard releases; `vMAJOR.MINOR.PATCH-LABEL` for pre-releases or labelled certified cuts.
+  * **Files that MUST be kept in sync** on every release:
+    1. `/pyproject.toml` — `[project] version`
+    2. `/core/pyproject.toml` — `[project] version`
+    3. `/config/config.toml` — `[runtime] version`
+    4. `docs/VERSION.md` — header and Version Matrix
+    5. `docs/CHANGELOG.md` — new `## [X.Y.Z]` entry
+  * **Files that are intentionally independent** (do NOT change these to track project version):
+    * Skill `skill.toml` files — they track individual skill versions, not the project release.
+    * n8n server version references — they track the external n8n service version.
+    * Provider model version strings — they track individual AI model versions.
+    * Internal data-structure version fields in service implementations — they track schema revisions.
+* **Alternatives Considered**:
+  * A standalone `VERSION` file (rejected: non-standard, adds an extra file).
+  * `docs/VERSION.md` as the authority (rejected: documentation files are secondary artifacts; build tooling cannot read them reliably).
+  * A `__version__` Python variable (rejected: only works within Python; does not cover TOML config or docs).
+* **Trade-offs**: Requires updating four files on every release. Mitigated by documenting the procedure in `docs/VERSION.md` and enforcing it via this ADR.
+* **Consequences**: Version state is unambiguous. Any discrepancy between a secondary file and `/pyproject.toml` is immediately identifiable as a bug to be fixed.
+* **Related Documents**:
+  * [docs/VERSION.md](../VERSION.md) — Version registry and release procedure.
+  * [docs/CHANGELOG.md](../CHANGELOG.md) — Chronological release history.
+* **Future Review**: Re-evaluate if the project adopts a release automation tool (e.g. `bump2version`, `commitizen`, or GitHub Actions release workflow) that can automate multi-file version bumping.

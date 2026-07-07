@@ -9,7 +9,7 @@
 
 > All concrete runtime components registered via the Composition Root (bootstrap.py / bootstrap_modules/). These are the actual implementations wired into the kernel.
 
-*Generated: 2026-07-05T22:22:09Z*
+*Generated: 2026-07-06T08:47:16Z*
 
 ---
 

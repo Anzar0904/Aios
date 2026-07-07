@@ -9,7 +9,7 @@
 
 > All dataclasses, enumerations, and data models discovered in the AIOS service layer. These models represent the core domain entities.
 
-*Generated: 2026-07-05T22:22:09Z*
+*Generated: 2026-07-06T08:47:16Z*
 
 ---
 

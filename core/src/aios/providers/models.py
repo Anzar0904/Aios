@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class ProviderStatus(str, Enum):
@@ -26,6 +26,14 @@ class ProviderCapabilities:
     editing: bool = False
     long_context: bool = False
     structured_output: bool = False
+    chat: bool = True
+    coding: bool = False
+    embeddings: bool = False
+    tool_calling: bool = False
+    max_context_tokens: int = 4096
+    max_output_tokens: int = 1024
+    supports_json: bool = False
+    supports_functions: bool = False
 
 
 @dataclass

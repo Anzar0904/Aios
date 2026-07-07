@@ -55,6 +55,8 @@ jobs:
           pip install -e ./core[postgresql,redis,qdrant,embeddings,dev]
 
       - name: Run Ruff check
+        # Covers all of core/: production src packages + all test files.
+        # Exclusions are limited to caches/.venv/build artifacts only (see pyproject.toml).
         run: ruff check ./core
 
       - name: Run Ruff format check

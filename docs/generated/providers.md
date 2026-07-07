@@ -9,7 +9,7 @@
 
 > All registered AI model providers in the AIOS OmniRoute engine, their capabilities, costs, and routing priorities.
 
-*Generated: 2026-07-05T22:22:09Z*
+*Generated: 2026-07-06T08:47:16Z*
 
 ---
 

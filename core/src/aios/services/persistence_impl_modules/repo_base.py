@@ -27,8 +27,8 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from aios.services.persistence import (
     PersistencePolicy,
     PersistenceResult,
-    PersistenceStatus,
     PersistenceService,
+    PersistenceStatus,
 )
 
 
@@ -225,7 +225,10 @@ class _RepositoryMixin:
         """
         try:
             from aios.registry import ServiceRegistry
-            from aios.services.persistence import RedisCacheService, CachePolicyManager  # type: ignore[attr-defined]
+            from aios.services.persistence import (  # type: ignore[attr-defined]
+                CachePolicyManager,
+                RedisCacheService,
+            )
             cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
             policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
             return cache_svc, policy_mgr

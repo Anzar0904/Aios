@@ -74,7 +74,7 @@ def load_config(config_path: Path) -> OSConfig:
     """Loads and parses the TOML configuration file."""
     if not config_path.exists():
         return OSConfig(
-            runtime=RuntimeConfig(name="Personal AI OS", version="0.1.0", debug=False),
+            runtime=RuntimeConfig(name="Personal AI OS", version="0.5.0", debug=False),
             llm=LLMConfig(),
             github=GitHubConfig(),
             notion=NotionConfig(),
@@ -102,7 +102,7 @@ def load_config(config_path: Path) -> OSConfig:
     return OSConfig(
         runtime=RuntimeConfig(
             name=runtime_data.get("name", "Personal AI OS"),
-            version=runtime_data.get("version", "0.1.0"),
+            version=runtime_data.get("version", "0.5.0"),
             debug=runtime_data.get("debug", False),
         ),
         llm=LLMConfig(

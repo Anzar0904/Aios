@@ -1,32 +1,30 @@
 import atexit
-import contextlib
-import io
 import readline
 import signal
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich.table import Table
 from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from aios.bootstrap import bootstrap_kernel
-from aios.services.conversation.manager import ConversationManager
-from aios.services.conversation.store import ConversationStore
-from aios.services.intent import IntentResolverService, IntentType
-from aios.services.model import LLMRequest, ModelService
-from aios.skills.registry import SkillRegistry
-from aios.skills.manager import SkillManager
 from aios.services.command import (
     CommandRegistry,
     DocumentationGenerator,
     match_command,
     register_default_commands,
 )
+from aios.services.conversation.manager import ConversationManager
+from aios.services.conversation.store import ConversationStore
+from aios.services.intent import IntentResolverService, IntentType
+from aios.services.model import LLMRequest, ModelService
+from aios.skills.manager import SkillManager
+from aios.skills.registry import SkillRegistry
 
 # Global Console instance for Terminal UX styling
 console = Console()
@@ -403,6 +401,188 @@ def handle_general_chat(user_input: str, conv_manager: ConversationManager, mode
 
 def main() -> None:
     """CLI entry point for aios."""
+    args = sys.argv[1:]
+
+    if args:
+        config_path = Path("config/config.toml")
+        kernel = bootstrap_kernel(config_path)
+        try:
+            kernel.boot()
+
+            from aios.providers.interface import (
+                OmniRouteRequest,
+                RoutingRequest,
+                universal_health_registry,
+                universal_model_registry,
+                universal_omniroute_engine,
+                universal_provider_registry,
+                universal_routing_engine,
+            )
+
+            cmd = " ".join(args).strip()
+
+            if cmd == "provider list":
+                table = Table(title="Registered LLM Providers", border_style="magenta")
+                table.add_column("Provider Name", style="bold magenta")
+                table.add_column("Models", style="white")
+                table.add_column("Status", style="green")
+
+                for p_name in universal_provider_registry.list_providers():
+                    models = [m.model_id for m in universal_model_registry.list_models(p_name)]
+                    if not models:
+                        provider_inst = universal_provider_registry.lookup(p_name)
+                        meta = getattr(provider_inst, "metadata", provider_inst)
+                        models = getattr(meta, "supported_models", ["default"])
+
+                    health = universal_health_registry.get_health(p_name)
+                    status_str = "Healthy" if health.available else "Degraded/Offline"
+                    table.add_row(p_name, ", ".join(models), status_str)
+
+                console.print(table)
+                sys.exit(0)
+
+            elif cmd == "model list":
+                table = Table(title="Registered LLM Models", border_style="cyan")
+                table.add_column("Model ID", style="bold cyan")
+                table.add_column("Provider", style="white")
+                table.add_column("Capabilities", style="green")
+                table.add_column("Status", style="green")
+
+                models = universal_model_registry.list_models()
+                if not models:
+                    for p_name in universal_provider_registry.list_providers():
+                        provider_inst = universal_provider_registry.lookup(p_name)
+                        meta = getattr(provider_inst, "metadata", provider_inst)
+                        supported = getattr(meta, "supported_models", ["default"])
+                        for m_name in supported:
+                            table.add_row(m_name, p_name, "chat", "Active")
+                else:
+                    for model in models:
+                        caps = []
+                        if model.supports_chat:
+                            caps.append("chat")
+                        if model.supports_coding:
+                            caps.append("coding")
+                        if model.supports_reasoning:
+                            caps.append("reasoning")
+                        if model.supports_vision:
+                            caps.append("vision")
+                        if model.supports_embeddings:
+                            caps.append("embeddings")
+                        status_str = "Active" if model.enabled else "Disabled"
+                        table.add_row(model.model_id, model.provider, ", ".join(caps), status_str)
+
+                console.print(table)
+                sys.exit(0)
+
+            elif cmd == "health":
+                table = Table(title="Provider Health & Telemetry Status", border_style="green")
+                table.add_column("Provider Name", style="bold green")
+                table.add_column("Available", style="white")
+                table.add_column("Latency (ms)", style="cyan")
+                table.add_column("Health Score", style="magenta")
+                table.add_column("Last Error", style="red")
+
+                for p_name in universal_provider_registry.list_providers():
+                    health = universal_health_registry.get_health(p_name)
+                    table.add_row(
+                        p_name,
+                        "Yes" if health.available else "No",
+                        f"{health.latency_ms:.1f}",
+                        f"{health.health_score:.1f}",
+                        health.last_error or "None",
+                    )
+
+                console.print(table)
+                sys.exit(0)
+
+            elif args[0] == "route":
+                task_type = args[1].strip().strip('"').strip("'") if len(args) > 1 else "chat"
+                routing_req = RoutingRequest(
+                    task_type=task_type,
+                    estimated_input_tokens=100,
+                    estimated_output_tokens=100,
+                )
+                decision = universal_routing_engine.route(routing_req)
+                console.print(
+                    Panel(
+                        f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
+                        f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
+                        f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
+                        f"Reasoning: {decision.reasoning}",
+                        title=f"[white]Routing Decision for task type '{task_type}'[/white]",
+                        border_style="blue",
+                    )
+                )
+                sys.exit(0)
+
+            elif args[0] == "chat":
+                prompt = args[1] if len(args) > 1 else ""
+                if (prompt.startswith('"') and prompt.endswith('"')) or (
+                    prompt.startswith("'") and prompt.endswith("'")
+                ):
+                    prompt = prompt[1:-1]
+
+                if not prompt:
+                    console.print("[yellow]Usage: aios chat <message>[/yellow]")
+                    sys.exit(1)
+
+                task_type = "chat"
+                is_coding = (
+                    "python" in prompt.lower()
+                    or "code" in prompt.lower()
+                    or "function" in prompt.lower()
+                )
+                if is_coding:
+                    task_type = "coding"
+
+                omni_req = OmniRouteRequest(
+                    prompt=prompt,
+                    task_type=task_type,
+                    estimated_input_tokens=200,
+                    estimated_output_tokens=200,
+                )
+
+                with console.status(
+                    "[bold blue]Executing chat request via OmniRoute...", spinner="dots"
+                ):
+                    response = universal_omniroute_engine.execute(omni_req)
+
+                title_str = (
+                    f"[bold green]Response ({response.provider} - "
+                    f"{response.model})[/bold green]"
+                )
+                subtitle_str = (
+                    f"[dim]Cost: ${response.cost:.6f} | "
+                    f"Latency: {response.latency_ms:.1f}ms[/dim]"
+                )
+
+                console.print(
+                    Panel(
+                        response.content,
+                        title=title_str,
+                        subtitle=subtitle_str,
+                        border_style="green",
+                    )
+                )
+                sys.exit(0)
+
+            else:
+                console.print(f"[red]✗ Unknown command line argument: {cmd}[/red]")
+                sys.exit(1)
+
+        except Exception as e:
+            console.print(
+                Panel(
+                    f"Command execution failed: {str(e)}",
+                    border_style="red",
+                    title="Runtime Exception",
+                )
+            )
+            sys.exit(1)
+        finally:
+            kernel.shutdown()
+
     console.print("[cyan]Initializing AI OS Core...[/cyan]")
 
     config_path = Path("config/config.toml")
@@ -412,6 +592,7 @@ def main() -> None:
         kernel.boot()
 
         from aios.services.context import ContextService
+
         context_service = kernel.registry.get(ContextService)
         context = context_service.get_current_context()
         workspace_root = context.project_root if context else str(Path.cwd().resolve())
@@ -460,13 +641,15 @@ def main() -> None:
         status_table.add_row("Workspace:", str(workspace_root))
         status_table.add_row("Active Agent:", "developer_agent")
         status_table.add_row("Model Service:", "Online")
-        status_table.add_row("Default Model:", getattr(model_service, "_default_model", "claude-3-5-sonnet"))
+        status_table.add_row(
+            "Default Model:", getattr(model_service, "_default_model", "claude-3-5-sonnet")
+        )
 
         panel = Panel(
             status_table,
             title="[bold white]Personal AI OS CLI Terminal[/bold white]",
             subtitle="[italic gray]Type /help or /? for options[/italic gray]",
-            border_style="cyan"
+            border_style="cyan",
         )
         console.print(banner_text)
         console.print(panel)
@@ -513,7 +696,9 @@ def main() -> None:
                         elif subcmd == "active":
                             handle_conversation_command("current conversation", conv_manager)
                         else:
-                            console.print("[yellow]Subcommands: list, new, resume, delete, rename, active[/yellow]")
+                            console.print(
+                                "[yellow]Subcommands: list, new, resume, delete, rename, active[/yellow]"
+                            )
                     elif slash_cmd == "/skills":
                         print_skills_table(skill_registry)
                     elif slash_cmd == "/providers":
@@ -526,11 +711,15 @@ def main() -> None:
                         console.clear()
                     elif slash_cmd == "/multiline":
                         multiline_mode = not multiline_mode
-                        console.print(f"[green]✓ Multiline mode: {'ENABLED' if multiline_mode else 'DISABLED'}[/green]")
+                        console.print(
+                            f"[green]✓ Multiline mode: {'ENABLED' if multiline_mode else 'DISABLED'}[/green]"
+                        )
                     elif slash_cmd in ("/exit", "/quit"):
                         break
                     else:
-                        console.print(f"[red]✗ Unknown slash command: {slash_cmd}. Type /help for options.[/red]")
+                        console.print(
+                            f"[red]✗ Unknown slash command: {slash_cmd}. Type /help for options.[/red]"
+                        )
                     continue
 
                 # Handle Skill Commands
@@ -538,7 +727,9 @@ def main() -> None:
                 if matched:
                     cmd_metadata, args = matched
                     handler = registry.get_handler(cmd_metadata.name)
-                    with console.status(f"[bold green]Executing command '{cmd_metadata.name}'...", spinner="dots"):
+                    with console.status(
+                        f"[bold green]Executing command '{cmd_metadata.name}'...", spinner="dots"
+                    ):
                         handler(args)
                     continue
 
@@ -558,14 +749,22 @@ def main() -> None:
                     )
                     with console.status("[bold blue]Running reasoning pipeline...", spinner="dots"):
                         result = kernel.execute_intent(intent)
-                    console.print(Panel(Markdown(result.message), border_style="blue", title="System Response"))
+                    console.print(
+                        Panel(Markdown(result.message), border_style="blue", title="System Response")
+                    )
 
             except KeyboardInterrupt:
-                console.print("\n[yellow]Input cancelled. Press Ctrl+D or type /exit to quit.[/yellow]\n")
+                console.print(
+                    "\n[yellow]Input cancelled. Press Ctrl+D or type /exit to quit.[/yellow]\n"
+                )
             except EOFError:
                 break
             except Exception as e:
-                console.print(Panel(f"Execution failed: {str(e)}", border_style="red", title="Runtime Exception"))
+                console.print(
+                    Panel(
+                        f"Execution failed: {str(e)}", border_style="red", title="Runtime Exception"
+                    )
+                )
 
     finally:
         console.print("[yellow]Shutting down AI OS Core...[/yellow]")

@@ -1,0 +1,21 @@
+{
+  "id": "1fae9126-e770-4ff0-9b32-c82add3711f5",
+  "title": "Default Conversation",
+  "created_time": 1783282384.4997702,
+  "updated_time": 1783282384.517453,
+  "active_agent": "developer_agent",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How do we initialize a Vite app c01ba64e-a279-40f1-a66b-d2b12dc4c4ee?",
+      "timestamp": 1783282384.500014
+    },
+    {
+      "role": "assistant",
+      "content": "Mock agent reasoning response.",
+      "timestamp": 1783282384.517453
+    }
+  ],
+  "summary": null,
+  "archived": false
+}

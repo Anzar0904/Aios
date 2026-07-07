@@ -9,7 +9,7 @@
 
 > All installable skills in the Personal AI OS skills library, their commands, capabilities, and requirements.
 
-*Generated: 2026-07-05T22:22:09Z*
+*Generated: 2026-07-06T08:47:16Z*
 
 ---
 

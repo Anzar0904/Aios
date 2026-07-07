@@ -28,13 +28,56 @@ class PersistenceServiceImpl(PersistenceService):
         self.ri_service: Optional[Any] = None
 
     def initialize(self) -> None:
-        provider_cls = self.registry.get_provider_class(self.config.provider_name)
+        try:
+            provider_cls = self.registry.get_provider_class(self.config.provider_name)
+            self.active_provider = provider_cls()
+            self.active_provider.initialize(self.config)
+        except Exception as e:
+            logger.warning(
+                f"Failed to initialize database provider {self.config.provider_name.upper()}: {e}. "
+                "Attempting fallback to SQLite during initialization..."
+            )
+            self.fallback_to_sqlite()
+
+    def fallback_to_sqlite(self) -> None:
+        try:
+            if self.active_provider:
+                self.active_provider.disconnect()
+        except Exception:
+            pass
+
+        logger.warning(
+            f"Database provider {self.config.provider_name.upper()} is unavailable. "
+            "Falling back to local-only SQLite mode."
+        )
+        self.config.provider_name = "sqlite"
+
+        # Dynamically register SQLiteProvider
+        from .sqlite import SQLiteProvider
+        self.registry.register_provider("sqlite", SQLiteProvider)
+
+        provider_cls = self.registry.get_provider_class("sqlite")
         self.active_provider = provider_cls()
         self.active_provider.initialize(self.config)
+        try:
+            self.active_provider.connect()
+            logger.info("Successfully initialized local-only SQLite provider.")
+        except Exception as e:
+            logger.error(f"Failed to initialize local-only SQLite provider: {e}")
 
     def on_ready(self) -> None:
         if self.active_provider:
-            self.active_provider.connect()
+            try:
+                self.active_provider.connect()
+                # Run a query to verify psycopg2 connection doesn't lazily fail
+                self.active_provider.execute("SELECT 1")
+                logger.info(f"Database provider {self.config.provider_name.upper()} connected successfully.")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to connect to database provider {self.config.provider_name.upper()}: {e}. "
+                    "Attempting automatic fallback to local SQLite..."
+                )
+                self.fallback_to_sqlite()
 
     def teardown(self) -> None:
         if self.active_provider:

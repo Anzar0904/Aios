@@ -166,7 +166,7 @@ def render_local_setup(deployments: List[ServiceDeployment]) -> str:
     lines.append("```toml\n")
     lines.append("[runtime]\n")
     lines.append('name = "Personal AI OS"\n')
-    lines.append('version = "0.1.0"\n')
+    lines.append('version = "0.5.0"\n')
     lines.append("debug = false\n\n")
     lines.append("[llm]\n")
     lines.append('provider = "openrouter"\n')

@@ -114,7 +114,7 @@ graph TD
 ├── assets/                 # Custom static images and logo components
 ├── examples/               # Usage scripts and sample skill code
 ├── templates/              # Standard file and prompt templates
-├── pyproject.toml          # Shared workspace tools config (Ruff, Pytest)
+├── pyproject.toml          # **Authoritative version source** + shared workspace tools config (Ruff, Pytest)
 └── README.md
 ```
 

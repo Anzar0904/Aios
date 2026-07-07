@@ -1,5 +1,8 @@
 import logging
-from typing import Dict
+from typing import Any, Dict, Optional
+
+from aios.services.career import JobApplication
+from aios.services.personal import Resume, ResumeVersion
 
 from aios.services.agent import (
     Agent,

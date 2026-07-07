@@ -10,6 +10,7 @@ This homepage serves as the index and navigation portal for the entire documenta
 graph TD
     %% Categories
     AI["AI Context Entrypoint"] --> Foundation["Foundation & Vision"]
+    Foundation --> EngBibleFoundation["Engineering Bible Foundation"]
     Foundation --> Eng["Engineering Specifications"]
     Foundation --> Prod["Product Definitions"]
     Foundation --> KB["Knowledge & Vocabularies"]
@@ -21,6 +22,14 @@ graph TD
     %% Foundation
     Foundation --> Vision["00_PROJECT_VISION.md"]
     Foundation --> ADR["10_DECISION_LOG.md"]
+
+    %% Engineering Bible Foundation
+    EngBibleFoundation --> EBF_README["engineering/README.md"]
+    EngBibleFoundation --> EBF_Vision["engineering/vision.md"]
+    EngBibleFoundation --> EBF_Philosophy["engineering/philosophy.md"]
+    EngBibleFoundation --> EBF_Principles["engineering/engineering_principles.md"]
+    EngBibleFoundation --> EBF_Goals["engineering/design_goals.md"]
+    EngBibleFoundation --> EBF_Ethics["engineering/engineering_ethics.md"]
 
     %% Engineering
     Eng --> EngGuide["01_ENGINEERING_GUIDELINES.md"]
@@ -80,6 +89,61 @@ graph TD
 * **Prerequisites**: [00_PROJECT_VISION.md](file:///Users/anzarakhtar/aios/docs/00_PROJECT_VISION.md).
 * **Related Documents**: [01_ENGINEERING_GUIDELINES.md](file:///Users/anzarakhtar/aios/docs/01_ENGINEERING_GUIDELINES.md).
 * **When to Read**: Read before proposing library replacements or structural alterations.
+
+---
+
+## 2.5 Engineering Bible Foundation
+
+> [!IMPORTANT]
+> **Read this section before any Engineering Specifications document.** The `docs/engineering/` directory is the root identity layer of the Engineering Bible — it establishes *why* this system exists and *how* we think before any rule is written.
+
+### [engineering/README.md](file:///Users/anzarakhtar/aios/docs/engineering/README.md)
+* **Title**: Engineering Bible Foundation — Navigation Hub
+* **Purpose**: Provide document map, reading order, and relationship diagram for the entire `docs/engineering/` directory.
+* **Audience**: All contributors (human and AI) before touching the codebase.
+* **Prerequisites**: None.
+* **Related Documents**: [00_PROJECT_VISION.md](file:///Users/anzarakhtar/aios/docs/00_PROJECT_VISION.md).
+* **When to Read**: Read first in every engineering session.
+
+### [engineering/vision.md](file:///Users/anzarakhtar/aios/docs/engineering/vision.md)
+* **Title**: Engineering Vision
+* **Purpose**: Define the 10-year trajectory, mission statement, success horizon, and strategic pillars for the Personal AI OS.
+* **Audience**: Core Architects, Product Owners, and AI agents.
+* **Prerequisites**: [engineering/README.md](file:///Users/anzarakhtar/aios/docs/engineering/README.md).
+* **Related Documents**: [00_PROJECT_VISION.md](file:///Users/anzarakhtar/aios/docs/00_PROJECT_VISION.md), [09_ROADMAP.md](file:///Users/anzarakhtar/aios/docs/09_ROADMAP.md).
+* **When to Read**: Read before proposing any architectural change or new feature direction.
+
+### [engineering/philosophy.md](file:///Users/anzarakhtar/aios/docs/engineering/philosophy.md)
+* **Title**: Engineering Philosophy
+* **Purpose**: Articulate the Three Foundational Beliefs and Guiding Principles that frame every engineering decision.
+* **Audience**: Core Developers, Architects, and AI coding agents.
+* **Prerequisites**: [engineering/vision.md](file:///Users/anzarakhtar/aios/docs/engineering/vision.md).
+* **Related Documents**: [01_ENGINEERING_GUIDELINES.md](file:///Users/anzarakhtar/aios/docs/01_ENGINEERING_GUIDELINES.md).
+* **When to Read**: Read before writing or reviewing any code.
+
+### [engineering/engineering_principles.md](file:///Users/anzarakhtar/aios/docs/engineering/engineering_principles.md)
+* **Title**: Engineering Principles
+* **Purpose**: Define the five operational engineering laws that govern every line of code in this system.
+* **Audience**: Core Developers, QA Engineers, and AI coding agents.
+* **Prerequisites**: [engineering/philosophy.md](file:///Users/anzarakhtar/aios/docs/engineering/philosophy.md).
+* **Related Documents**: [01_ENGINEERING_GUIDELINES.md](file:///Users/anzarakhtar/aios/docs/01_ENGINEERING_GUIDELINES.md), [08_CODING_STANDARDS.md](file:///Users/anzarakhtar/aios/docs/08_CODING_STANDARDS.md).
+* **When to Read**: Read before writing or reviewing code, and before any PR review.
+
+### [engineering/design_goals.md](file:///Users/anzarakhtar/aios/docs/engineering/design_goals.md)
+* **Title**: Design Goals
+* **Purpose**: Enumerate the non-negotiable system design properties that every service and interface must preserve.
+* **Audience**: Software Architects and Systems Integrators.
+* **Prerequisites**: [engineering/engineering_principles.md](file:///Users/anzarakhtar/aios/docs/engineering/engineering_principles.md).
+* **Related Documents**: [02_ARCHITECTURE_GUIDELINES.md](file:///Users/anzarakhtar/aios/docs/02_ARCHITECTURE_GUIDELINES.md), [15_SYSTEM_DESIGN.md](file:///Users/anzarakhtar/aios/docs/15_SYSTEM_DESIGN.md).
+* **When to Read**: Read before creating new services, interfaces, or cross-module integrations.
+
+### [engineering/engineering_ethics.md](file:///Users/anzarakhtar/aios/docs/engineering/engineering_ethics.md)
+* **Title**: Engineering Ethics
+* **Purpose**: Establish the ethical constraints and red lines binding all contributors — human and AI — without exception.
+* **Audience**: All contributors, AI agents, and external reviewers.
+* **Prerequisites**: [engineering/design_goals.md](file:///Users/anzarakhtar/aios/docs/engineering/design_goals.md).
+* **Related Documents**: [05_SECURITY_GUIDELINES.md](file:///Users/anzarakhtar/aios/docs/05_SECURITY_GUIDELINES.md), [00_PROJECT_VISION.md](file:///Users/anzarakhtar/aios/docs/00_PROJECT_VISION.md).
+* **When to Read**: Read before any AI-assisted contribution or when handling user data.
 
 ---
 

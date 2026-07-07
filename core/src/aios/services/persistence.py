@@ -1,12 +1,12 @@
 import abc
-import os
-from typing import Any, Dict, List, Optional, Type, TypeVar, Callable
-
-from aios.services.base import ServiceLifecycle
-
 import enum
+import json
+import os
 import time
 import uuid
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+
+from aios.services.base import ServiceLifecycle
 
 T = TypeVar("T")
 
@@ -2102,6 +2102,7 @@ class RedisRuntimeIntelligenceService(ServiceLifecycle, abc.ABC):
 
 from dataclasses import dataclass, field
 
+
 class QdrantTransport(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def execute_command(self, cmd: str, *args: Any, **kwargs: Any) -> Any:
@@ -2724,11 +2725,15 @@ class HybridRetrievalService(ServiceLifecycle, abc.ABC):
 
 class VectorMemoryRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def save(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+    def save(
+        self, memory_id: str, vector: List[float], payload: Dict[str, Any], retry: bool = False
+    ) -> bool:
         pass
 
     @abc.abstractmethod
-    def upsert(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+    def upsert(
+        self, memory_id: str, vector: List[float], payload: Dict[str, Any], retry: bool = False
+    ) -> bool:
         pass
 
     @abc.abstractmethod
@@ -2865,6 +2870,95 @@ class SemanticMemoryManager(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def get_statistics(self) -> Dict[str, Any]:
         pass
+
+
+@dataclass
+class KnowledgeNode:
+    """Canonical model representing a unit of system knowledge, documentation, or code reference."""
+
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    type: str = "concept"
+    title: str = ""
+    content: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    source: str = ""
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+    confidence: float = 1.0
+    relationships: List[Dict[str, Any]] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)
+    version: int = 1
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Converts the KnowledgeNode to a standard Python dictionary."""
+        return {
+            "id": self.id,
+            "type": self.type,
+            "title": self.title,
+            "content": self.content,
+            "metadata": self.metadata,
+            "source": self.source,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "confidence": self.confidence,
+            "relationships": self.relationships,
+            "tags": self.tags,
+            "version": self.version,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "KnowledgeNode":
+        """Instantiates a KnowledgeNode from a dictionary."""
+        metadata = data.get("metadata") or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except Exception:
+                metadata = {}
+
+        relationships = data.get("relationships") or []
+        if isinstance(relationships, str):
+            try:
+                relationships = json.loads(relationships)
+            except Exception:
+                relationships = []
+
+        tags = data.get("tags") or []
+        if isinstance(tags, str):
+            try:
+                tags = json.loads(tags)
+            except Exception:
+                tags = []
+
+        return cls(
+            id=data.get("id") or str(uuid.uuid4()),
+            type=data.get("type", "concept"),
+            title=data.get("title", ""),
+            content=data.get("content", ""),
+            metadata=metadata,
+            source=data.get("source", ""),
+            created_at=float(data.get("created_at") or time.time()),
+            updated_at=float(data.get("updated_at") or time.time()),
+            confidence=float(data.get("confidence") if data.get("confidence") is not None else 1.0),
+            relationships=relationships,
+            tags=tags,
+            version=int(data.get("version") if data.get("version") is not None else 1),
+        )
+
+    def to_payload(self) -> Dict[str, Any]:
+        """Converts to a dictionary representation suitable for Qdrant payload."""
+        return self.to_dict()
+
+    def to_json(self) -> str:
+        """Serializes the KnowledgeNode to a JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> "KnowledgeNode":
+        """Deserializes a KnowledgeNode from a JSON string."""
+        data = json.loads(json_str)
+        return cls.from_dict(data)
+
 
 
 

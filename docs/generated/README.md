@@ -7,7 +7,7 @@
 
 # AIOS Generated Documentation
 
-> Auto-generated on **2026-07-05T22:22:09Z** by `aios.docgen.engine.DocGeneratorEngine`.
+> Auto-generated on **2026-07-06T08:47:16Z** by `aios.docgen.engine.DocGeneratorEngine`.
 
 > Do not edit this directory manually — re-run the generator to update.
 

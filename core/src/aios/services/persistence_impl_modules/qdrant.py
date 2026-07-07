@@ -86,12 +86,23 @@ class QdrantConnectionManager(ServiceLifecycle):
             self._client.get_collections()
             self._connected = True
             self._failures = 0
-        except Exception:
-            import traceback
-
-            traceback.print_exc()
-            self._connected = False
-            self._failures += 1
+            logger.info("Successfully connected to Qdrant server.")
+        except Exception as e:
+            logger.warning(
+                f"Qdrant connection failed ({e}). "
+                "Automatically falling back to local-only in-memory QdrantClient."
+            )
+            try:
+                from qdrant_client import QdrantClient
+                self._client = QdrantClient(location=":memory:")
+                self._client.get_collections()
+                self._connected = True
+                self._failures = 0
+                logger.info("Successfully initialized local-only in-memory QdrantClient.")
+            except Exception as e2:
+                logger.error(f"Failed to initialize local-only in-memory QdrantClient: {e2}")
+                self._connected = False
+                self._failures += 1
 
     def disconnect(self) -> None:
         if self._client:
@@ -915,7 +926,9 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
         except Exception:
             pass
 
-    def save(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+    def save(
+        self, memory_id: str, vector: List[float], payload: Dict[str, Any], retry: bool = False
+    ) -> bool:
         t0 = time.perf_counter()
         point_id = memory_id
         try:
@@ -927,19 +940,22 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
             success = self.provider.upsert_points(
                 self.collection_name, [{"id": point_id, "vector": vector, "payload": payload}]
             )
-            if not success:
+            if not success and not retry:
                 self._insert_pending_indexing_job(
                     memory_id, vector, payload, "save", "Qdrant upsert_points returned False"
                 )
         except Exception as exc:
             success = False
-            self._insert_pending_indexing_job(memory_id, vector, payload, "save", str(exc))
+            if not retry:
+                self._insert_pending_indexing_job(memory_id, vector, payload, "save", str(exc))
 
         latency = (time.perf_counter() - t0) * 1000.0
         self._record_op("save", latency)
         return success
 
-    def upsert(self, memory_id: str, vector: List[float], payload: Dict[str, Any]) -> bool:
+    def upsert(
+        self, memory_id: str, vector: List[float], payload: Dict[str, Any], retry: bool = False
+    ) -> bool:
         t0 = time.perf_counter()
         point_id = memory_id
         try:
@@ -951,13 +967,14 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
             success = self.provider.upsert_points(
                 self.collection_name, [{"id": point_id, "vector": vector, "payload": payload}]
             )
-            if not success:
+            if not success and not retry:
                 self._insert_pending_indexing_job(
                     memory_id, vector, payload, "upsert", "Qdrant upsert_points returned False"
                 )
         except Exception as exc:
             success = False
-            self._insert_pending_indexing_job(memory_id, vector, payload, "upsert", str(exc))
+            if not retry:
+                self._insert_pending_indexing_job(memory_id, vector, payload, "upsert", str(exc))
 
         latency = (time.perf_counter() - t0) * 1000.0
         self._record_op("upsert", latency)
@@ -1026,7 +1043,7 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
         self._record_op("search", latency)
         return res
 
-    def batch_upsert(self, points: List[Dict[str, Any]]) -> bool:
+    def batch_upsert(self, points: List[Dict[str, Any]], retry: bool = False) -> bool:
         t0 = time.perf_counter()
         pts = []
         for p in points:
@@ -1039,7 +1056,7 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
 
         try:
             success = self.provider.upsert_points(self.collection_name, pts)
-            if not success:
+            if not success and not retry:
                 for p in points:
                     self._insert_pending_indexing_job(
                         p["id"],
@@ -1050,10 +1067,11 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
                     )
         except Exception as exc:
             success = False
-            for p in points:
-                self._insert_pending_indexing_job(
-                    p["id"], p["vector"], p.get("payload", {}), "batch_upsert", str(exc)
-                )
+            if not retry:
+                for p in points:
+                    self._insert_pending_indexing_job(
+                        p["id"], p["vector"], p.get("payload", {}), "batch_upsert", str(exc)
+                    )
 
         latency = (time.perf_counter() - t0) * 1000.0
         self._record_op("batch_upsert", latency)

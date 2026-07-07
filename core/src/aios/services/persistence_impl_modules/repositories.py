@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from aios.services.base import ServiceLifecycle
 from aios.services.persistence import *
+
 from .repo_base import _RepositoryMixin
 
 logger = logging.getLogger(__name__)
@@ -2545,7 +2546,7 @@ class WorkflowIntegrationRepositoryImpl(_RepositoryMixin, WorkflowIntegrationRep
                     integration["id"],
                     integration.get("workflow_id"),
                     integration.get("execution_id"),
-                    json.dumps(conn_metadata),
+                    json.dumps(integration.get("connection_metadata") or {}),
                     json.dumps(integration.get("server_metadata") or {}),
                     json.dumps(integration.get("health_metadata") or {}),
                     json.dumps(integration.get("capability_discovery") or []),

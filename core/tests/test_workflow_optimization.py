@@ -11,6 +11,7 @@ from aios.services.workflow_monitoring import (
     WorkflowExecutionState,
     WorkflowExecutionMetrics,
     WorkflowExecutionRecord,
+    WorkflowMonitoringService,
 )
 from aios.services.workflow_monitoring_impl import LocalWorkflowMonitoringService
 from aios.services.workflow_optimization import (

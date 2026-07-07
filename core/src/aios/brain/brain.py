@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from aios.brain.context_manager import ContextManager
 from aios.brain.models import BrainContext, BrainResponse, Workflow

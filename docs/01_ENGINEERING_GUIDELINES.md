@@ -187,7 +187,8 @@ A development task, bug fix, or feature branch is considered **Done** only when 
 * [ ] Commit messages follow the Conventional Commits format (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`).
 * [ ] If the commit was written or assisted by an AI agent, the commit trailer contains the appropriate attribution:
   `Co-authored-by: AI-agent <assistant@personal-ai-os.local>`
+* [ ] **If this is a release commit**: update the `version` field in `/pyproject.toml` first, then propagate to `core/pyproject.toml`, `config/config.toml`, and `docs/VERSION.md` per [ADR-0017](10_DECISION_LOG.md#adr-0017-pyprojecttoml-as-single-version-source-of-truth). `/pyproject.toml` is the **single authoritative version source**.
 
 ---
 
-*Engineering Guidelines · Personal AI OS · Version 1.0 · Governed by the Project Constitution.*
+*Engineering Guidelines · Personal AI OS · Version 0.5.0 · Governed by the Project Constitution.*

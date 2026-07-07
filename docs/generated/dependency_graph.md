@@ -9,7 +9,7 @@
 
 > DI binding graph showing which concrete class is registered under each interface in the AIOS Service Registry (extracted from bootstrap.py).
 
-*Generated: 2026-07-05T22:22:09Z*
+*Generated: 2026-07-06T08:47:16Z*
 
 ---
 

@@ -37,83 +37,156 @@ class LocalProfileSerializer(ProfileSerializer):
 
     def serialize(self, profile: EngineeringProfile) -> Dict[str, Any]:
         return {
-            "profile_id": profile.profile_id,
-            "project": {
-                "project_name": profile.project.project_name,
-                "version": profile.project.version,
-                "description": profile.project.description
-            },
-            "coding": {
-                "language": profile.coding.language,
-                "coding_standards": profile.coding.coding_standards,
-                "naming_conventions": profile.coding.naming_conventions
-            },
-            "testing": {
-                "framework": profile.testing.framework,
-                "min_statement_coverage": profile.testing.min_statement_coverage,
-                "min_branch_coverage": profile.testing.min_branch_coverage
-            },
-            "execution": {
-                "max_timeout_seconds": profile.execution.max_timeout_seconds,
-                "sandbox_enabled": profile.execution.sandbox_enabled
-            },
-            "documentation": {
-                "format": profile.documentation.format,
-                "generate_api_docs": profile.documentation.generate_api_docs,
-                "release_formatting_rules": profile.documentation.release_formatting_rules,
-                "markdown_preferences": profile.documentation.markdown_preferences,
-                "section_ordering": profile.documentation.section_ordering,
-                "naming_conventions": profile.documentation.naming_conventions,
-                "versioning_preferences": profile.documentation.versioning_preferences
-            },
-            "github": {
-                "org_name": profile.github.org_name,
-                "repo_name": profile.github.repo_name,
-                "default_branch": profile.github.default_branch
-            },
-            "release": {
-                "auto_release": profile.release.auto_release,
-                "versioning_scheme": profile.release.versioning_scheme
-            },
-            "automation": {
-                "cron_expression": profile.automation.cron_expression,
-                "max_retries": profile.automation.max_retries
-            },
-            "workspace": {
-                "workspace_root": profile.workspace.workspace_root,
-                "exclude_patterns": profile.workspace.exclude_patterns
-            },
-            "timestamp": profile.timestamp
+            "id": profile.profile_id,
+            "workspace_id": getattr(profile, "workspace_id", None),
+            "project_name": profile.project.project_name,
+            "project_version": profile.project.version,
+            "project_description": profile.project.description,
+            "language": profile.coding.language,
+            "coding_standards": profile.coding.coding_standards,
+            "naming_conventions": profile.coding.naming_conventions,
+            "testing_framework": profile.testing.framework,
+            "min_statement_coverage": profile.testing.min_statement_coverage,
+            "min_branch_coverage": profile.testing.min_branch_coverage,
+            "max_timeout_seconds": profile.execution.max_timeout_seconds,
+            "sandbox_enabled": profile.execution.sandbox_enabled,
+            "documentation_format": profile.documentation.format,
+            "generate_api_docs": profile.documentation.generate_api_docs,
+            "release_formatting_rules": profile.documentation.release_formatting_rules,
+            "markdown_preferences": profile.documentation.markdown_preferences,
+            "section_ordering": profile.documentation.section_ordering,
+            "doc_naming_conventions": profile.documentation.naming_conventions,
+            "doc_versioning_preferences": profile.documentation.versioning_preferences,
+            "github_org": profile.github.org_name,
+            "github_repo": profile.github.repo_name,
+            "github_default_branch": profile.github.default_branch,
+            "auto_release": profile.release.auto_release,
+            "versioning_scheme": profile.release.versioning_scheme,
+            "cron_expression": profile.automation.cron_expression,
+            "max_retries": profile.automation.max_retries,
+            "workspace_root": profile.workspace.workspace_root,
+            "exclude_patterns": profile.workspace.exclude_patterns,
+            "timestamp": profile.timestamp,
         }
 
     def deserialize(self, data: Dict[str, Any]) -> EngineeringProfile:
+        # Support both flat DB-row format and nested config-file format.
+        is_flat = "language" in data or "project_name" in data or "id" in data
+
+        if is_flat:
+            # Flat format from DB rows
+            coding_standards = data.get("coding_standards", [])
+            if isinstance(coding_standards, str):
+                try:
+                    import json as _json
+                    coding_standards = _json.loads(coding_standards)
+                except Exception:
+                    coding_standards = []
+
+            naming_conventions = data.get("naming_conventions", {})
+            if isinstance(naming_conventions, str):
+                try:
+                    import json as _json
+                    naming_conventions = _json.loads(naming_conventions)
+                except Exception:
+                    naming_conventions = {}
+
+            def _json_parse(val, default):
+                if isinstance(val, str):
+                    try:
+                        import json as _json
+                        return _json.loads(val)
+                    except Exception:
+                        return default
+                return val if val is not None else default
+
+            project = ProjectProfile(
+                project_name=data.get("project_name", ""),
+                version=data.get("project_version", "0.1.0"),
+                description=data.get("project_description", "")
+            )
+            coding = CodingProfile(
+                language=data.get("language", "python"),
+                coding_standards=coding_standards,
+                naming_conventions=naming_conventions,
+            )
+            testing = TestingProfile(
+                framework=data.get("testing_framework", "pytest"),
+                min_statement_coverage=float(data.get("min_statement_coverage", 80.0) or 80.0),
+                min_branch_coverage=float(data.get("min_branch_coverage", 75.0) or 75.0),
+            )
+            execution = ExecutionProfile(
+                max_timeout_seconds=int(data.get("max_timeout_seconds", 300) or 300),
+                sandbox_enabled=bool(data.get("sandbox_enabled", True)),
+            )
+            documentation = DocumentationProfile(
+                format=data.get("documentation_format", "markdown"),
+                generate_api_docs=bool(data.get("generate_api_docs", True)),
+                release_formatting_rules=_json_parse(data.get("release_formatting_rules"), {}),
+                markdown_preferences=_json_parse(data.get("markdown_preferences"), {}),
+                section_ordering=_json_parse(data.get("section_ordering"), []),
+                naming_conventions=_json_parse(data.get("doc_naming_conventions"), {}),
+                versioning_preferences=_json_parse(data.get("doc_versioning_preferences"), {}),
+            )
+            github = GitHubProfile(
+                org_name=data.get("github_org", ""),
+                repo_name=data.get("github_repo", ""),
+                default_branch=data.get("github_default_branch", "main"),
+            )
+            release = ReleaseProfile(
+                auto_release=bool(data.get("auto_release", False)),
+                versioning_scheme=data.get("versioning_scheme", "semver"),
+            )
+            automation = AutomationProfile(
+                cron_expression=data.get("cron_expression", ""),
+                max_retries=int(data.get("max_retries", 3) or 3),
+            )
+            workspace = WorkspaceProfile(
+                workspace_root=data.get("workspace_root", ""),
+                exclude_patterns=_json_parse(data.get("exclude_patterns"), []),
+            )
+            return EngineeringProfile(
+                profile_id=data.get("id") or data.get("profile_id", "default"),
+                project=project,
+                coding=coding,
+                testing=testing,
+                execution=execution,
+                documentation=documentation,
+                github=github,
+                release=release,
+                automation=automation,
+                workspace=workspace,
+                timestamp=float(data.get("timestamp", time.time()) or time.time()),
+            )
+
+        # Nested config-file format
         project_data = data.get("project", {})
         project = ProjectProfile(
             project_name=project_data.get("project_name", ""),
             version=project_data.get("version", "0.1.0"),
             description=project_data.get("description", "")
         )
-        
+
         coding_data = data.get("coding", {})
         coding = CodingProfile(
             language=coding_data.get("language", "python"),
             coding_standards=coding_data.get("coding_standards", []),
             naming_conventions=coding_data.get("naming_conventions", {})
         )
-        
+
         testing_data = data.get("testing", {})
         testing = TestingProfile(
             framework=testing_data.get("framework", "pytest"),
             min_statement_coverage=float(testing_data.get("min_statement_coverage", 80.0)),
             min_branch_coverage=float(testing_data.get("min_branch_coverage", 75.0))
         )
-        
+
         exec_data = data.get("execution", {})
         execution = ExecutionProfile(
             max_timeout_seconds=int(exec_data.get("max_timeout_seconds", 300)),
             sandbox_enabled=bool(exec_data.get("sandbox_enabled", True))
         )
-        
+
         doc_data = data.get("documentation", {})
         documentation = DocumentationProfile(
             format=doc_data.get("format", "markdown"),
@@ -124,26 +197,26 @@ class LocalProfileSerializer(ProfileSerializer):
             naming_conventions=doc_data.get("naming_conventions", {}),
             versioning_preferences=doc_data.get("versioning_preferences", {})
         )
-        
+
         git_data = data.get("github", {})
         github = GitHubProfile(
             org_name=git_data.get("org_name", ""),
             repo_name=git_data.get("repo_name", ""),
             default_branch=git_data.get("default_branch", "main")
         )
-        
+
         rel_data = data.get("release", {})
         release = ReleaseProfile(
             auto_release=bool(rel_data.get("auto_release", False)),
             versioning_scheme=rel_data.get("versioning_scheme", "semver")
         )
-        
+
         auto_data = data.get("automation", {})
         automation = AutomationProfile(
             cron_expression=auto_data.get("cron_expression", ""),
             max_retries=int(auto_data.get("max_retries", 3))
         )
-        
+
         work_data = data.get("workspace", {})
         workspace = WorkspaceProfile(
             workspace_root=work_data.get("workspace_root", ""),

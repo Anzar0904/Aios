@@ -12,7 +12,25 @@
   * [02_ARCHITECTURE_GUIDELINES.md](file:///Users/anzarakhtar/aios/docs/02_ARCHITECTURE_GUIDELINES.md) - Dependency inversion rules.
   * [15_SYSTEM_DESIGN.md](file:///Users/anzarakhtar/aios/docs/15_SYSTEM_DESIGN.md) - Subsystem models and sequences.
   * [17_KNOWLEDGE_BASE.md](file:///Users/anzarakhtar/aios/docs/17_KNOWLEDGE_BASE.md) - System dictionary.
+  * [engineering/README.md](file:///Users/anzarakhtar/aios/docs/engineering/README.md) - Engineering Bible Foundation (root identity layer).
 * **Future Extensions**: This reference manual will be updated to document changes in runtime execution models (e.g. process daemons, socket APIs) as they are deployed.
+
+---
+
+## 0. Engineering Bible Foundation
+
+> [!IMPORTANT]
+> Before reading any section of this document, the canonical starting point is **[`docs/engineering/`](file:///Users/anzarakhtar/aios/docs/engineering/README.md)** — the root identity layer of the Engineering Bible. The foundation directory answers the three questions every contributor must know before touching the codebase: *why* the system exists, *how* we think about building it, and *what lines we never cross*.
+
+| Document | Responsibility |
+|----------|----------------|
+| [engineering/vision.md](file:///Users/anzarakhtar/aios/docs/engineering/vision.md) | 10-year trajectory, mission, success horizon |
+| [engineering/philosophy.md](file:///Users/anzarakhtar/aios/docs/engineering/philosophy.md) | Three Foundational Beliefs + Guiding Principles |
+| [engineering/engineering_principles.md](file:///Users/anzarakhtar/aios/docs/engineering/engineering_principles.md) | Five operational engineering laws |
+| [engineering/design_goals.md](file:///Users/anzarakhtar/aios/docs/engineering/design_goals.md) | Non-negotiable system design properties |
+| [engineering/engineering_ethics.md](file:///Users/anzarakhtar/aios/docs/engineering/engineering_ethics.md) | Ethical constraints binding all contributors |
+
+The sections below are the *comprehensive reference* that the foundation files inform and summarise.
 
 ---
 
