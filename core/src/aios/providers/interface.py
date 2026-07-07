@@ -118,6 +118,7 @@ class ModelRegistry:
     def __init__(self, provider_registry: Optional[AIProviderRegistry] = None) -> None:
         self._provider_registry = provider_registry or universal_provider_registry
         self._models: Dict[str, ModelInfo] = {}
+        self._resolution_mappings: Dict[Tuple[str, str], str] = {}
 
     def register_model(self, model: ModelInfo) -> None:
         """Registers a ModelInfo metadata profile."""
@@ -139,6 +140,14 @@ class ModelRegistry:
         if model:
             return model.provider
         return None
+
+    def register_model_resolution(self, provider: str, canonical_id: str, provider_id: str) -> None:
+        """Allows dynamic registration of canonical-to-provider model mappings."""
+        self._resolution_mappings[(provider, canonical_id)] = provider_id
+
+    def resolve_provider_model(self, provider: str, model_id: str) -> str:
+        """Resolves a canonical model ID to its provider-specific model ID."""
+        return self._resolution_mappings.get((provider, model_id), model_id)
 
 
 # Global singleton instance for system-wide access
@@ -595,6 +604,17 @@ class RoutingEngine:
 
                     candidates.append((p_name, m_name, final_score, reason))
 
+        # 3. Preferred-model narrowing:
+        #    When the caller specifies a preferred_model, restrict the candidate pool to
+        #    providers that are registered to serve that exact model.  Weighted scoring
+        #    then runs only within that restricted pool.  If no registered provider
+        #    supports the model we fall back to the full candidate list so routing
+        #    remains operational rather than returning an error.
+        if request.preferred_model and candidates:
+            model_matched = [c for c in candidates if c[1] == request.preferred_model]
+            if model_matched:
+                candidates = model_matched
+
         if not candidates:
             # Fallback to default/first registered provider
             registered_providers = self.provider_registry.list_providers()
@@ -727,8 +747,13 @@ class OmniRouteEngine:
             if request.max_tokens is not None:
                 invoke_params["max_tokens"] = request.max_tokens
 
+            # Resolve canonical model to provider-specific model ID
+            resolved_model = self.model_registry.resolve_provider_model(
+                decision.provider, decision.model
+            )
+
             content = provider_instance.generate(
-                model=decision.model,
+                model=resolved_model,
                 prompt=request.prompt,
                 system_prompt=request.system_prompt,
                 **invoke_params,

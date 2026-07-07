@@ -153,8 +153,20 @@ class NVIDIAProvider(AIProvider):
         system_prompt: Optional[str] = None,
         **kwargs: Any,
     ) -> str:
-        """Generates content using the NVIDIA Inference API."""
-        return self._adapter.execute_completion(model, prompt, system_prompt, **kwargs)
+        logger.info(
+            f"Generating response using model: {model} "
+            f"(API Key present: {bool(self._adapter.api_key)})"
+        )
+
+        if not self._adapter.api_key:
+            return f"[NVIDIAProvider] Mock response to prompt: '{prompt}'"
+
+        return self._adapter.execute_completion(
+            model,
+            prompt,
+            system_prompt,
+            **kwargs,
+        )
 
     def stream(
         self,
@@ -278,3 +290,17 @@ def register_nvidia_provider() -> None:
         tokens_remaining=quota.tokens_remaining,
         unlimited=quota.unlimited,
     )
+
+    # 5. Register Model Resolutions
+    model_resolutions = {
+        "nvidia/nemotron-4-340b-instruct": "nvidia/nvidia-nemotron-nano-9b-v2",
+        "nvidia/llama-3.1-nemotron-70b-instruct": "nvidia/nvidia-nemotron-nano-9b-v2",
+        "nvidia/qwen/qwen3-coder": "nvidia/nvidia-nemotron-nano-9b-v2",
+        "qwen/qwen3-coder": "nvidia/nvidia-nemotron-nano-9b-v2",
+    }
+    for canonical_id, provider_id in model_resolutions.items():
+        universal_model_registry.register_model_resolution(
+            provider="nvidia",
+            canonical_id=canonical_id,
+            provider_id=provider_id,
+        )
