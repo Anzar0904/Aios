@@ -442,6 +442,11 @@ def bootstrap_services(
     )
     doc_service.initialize()
 
+    from aios.services.docintel.agent import DocumentationAgent
+
+    doc_agent = DocumentationAgent(model_service=model_service, index_path="docs/index.json")
+    doc_agent.initialize()
+
     readme_service = LocalREADMEIntelligenceService(
         memory_service=memory_service,
         knowledge_hub=knowledge_hub,
@@ -674,6 +679,7 @@ def bootstrap_services(
     registry.register(ValidationService, validation_service)
     registry.register(EngineeringProfileService, profile_service)
     registry.register(DocumentationService, doc_service)
+    registry.register(DocumentationAgent, doc_agent)
     registry.register(READMEIntelligenceService, readme_service)
     registry.register(APIDocumentationService, api_doc_service)
     registry.register(ArchitectureDocumentationService, arch_doc_service)

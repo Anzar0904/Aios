@@ -18,8 +18,20 @@ class MarkdownGenerator:
         svc_mermaid: str,
     ) -> None:
         """Saves target markdown folders and files in the destination directory."""
-        # Create all required folders
+        import json
         os.makedirs(self.output_dir, exist_ok=True)
+        # Write index.json
+        index_path = os.path.join(self.output_dir, "index.json")
+        with open(index_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "scan_results": scan_results,
+                "index_data": index_data,
+                "intel_report": intel_report,
+                "dep_mermaid": dep_mermaid,
+                "pkg_mermaid": pkg_mermaid,
+                "svc_mermaid": svc_mermaid
+            }, f, indent=2)
+
         os.makedirs(os.path.join(self.output_dir, "Architecture"), exist_ok=True)
         os.makedirs(os.path.join(self.output_dir, "API"), exist_ok=True)
         os.makedirs(os.path.join(self.output_dir, "Services"), exist_ok=True)

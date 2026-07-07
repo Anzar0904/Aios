@@ -7,7 +7,7 @@ dependencies = []
 
 [tool.pytest.ini_options]
 testpaths = ["core/tests"]
-pythonpath = ["core/src"]
+pythonpath = ["core/src", "."]
 
 [tool.ruff]
 line-length = 100

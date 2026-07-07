@@ -730,8 +730,31 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(0)
             return True
 
+        elif subcommand == "ask":
+            if len(args) < 3:
+                console.print("[yellow]Usage: aios docs ask \"<query>\"[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            query = args[2]
+
+            from aios.services.docintel.agent import DocumentationAgent
+            from aios.registry import ServiceRegistry
+            agent = ServiceRegistry._global_registry.get(DocumentationAgent)
+            if not agent:
+                agent = DocumentationAgent(index_path="docs/index.json")
+                agent.initialize()
+
+            with console.status("[bold blue]Querying AI Documentation Agent...", spinner="dots"):
+                answer = agent.ask(query)
+
+            console.print(answer)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
         else:
-            console.print("[yellow]Usage: aios docs <scan|build|report>[/yellow]")
+            console.print("[yellow]Usage: aios docs <scan|build|report|ask>[/yellow]")
             if exit_on_complete:
                 sys.exit(1)
             return True
