@@ -4,6 +4,7 @@ import logging
 import os
 import time
 from typing import Any, Dict, List, Optional
+from pathlib import Path
 
 from aios.services.persistence import *
 
@@ -526,11 +527,22 @@ class EmbeddingEngineImpl(EmbeddingEngine):
             except Exception:
                 pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def _retry_worker(self) -> None:
         while not self._stop_event.wait(5.0):
+            try:
+                from aios.registry import ServiceRegistry
+                from aios.services.persistence import PersistenceService, PersistenceStatus
+
+                db = ServiceRegistry._global_registry.get(PersistenceService)
+                if db:
+                    status_res = db.check_status()
+                    if status_res.status == PersistenceStatus.AWAITING_RUNTIME_CONFIGURATION:
+                        continue
+            except Exception:
+                pass
             self.run_retry_cycle()
 
     def _should_retry(self, attempts: int, last_attempted: float, base_backoff: float) -> bool:
@@ -597,7 +609,9 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                             if job["collection_name"]:
                                 try:
                                     repo = repos.get_repository(job["collection_name"])
-                                    repo.save(job["id"], res.vector, {"text": job["text"]}, retry=True)
+                                    repo.save(
+                                        job["id"], res.vector, {"text": job["text"]}, retry=True
+                                    )
                                 except Exception as e:
                                     logger.error(
                                         f"Failed to save successfully retried vector to repository: {e}"
@@ -665,7 +679,15 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                     new_status = "FAILED" if next_attempts >= max_attempts else "PENDING"
                     db.execute(
                         "UPDATE pending_indexing_jobs SET status = ?, attempts = ?, retry_count = ?, last_error = ?, failure_reason = ?, updated_at = ? WHERE id = ?",
-                        (new_status, next_attempts, next_attempts, str(e), str(e), time.time(), idx["id"]),
+                        (
+                            new_status,
+                            next_attempts,
+                            next_attempts,
+                            str(e),
+                            str(e),
+                            time.time(),
+                            idx["id"],
+                        ),
                     )
         except Exception as e:
             logger.error(f"Exception during background retry cycle: {e}")
@@ -737,7 +759,9 @@ class EmbeddingEngineImpl(EmbeddingEngine):
                 error=str(e),
             )
 
-    def embed_batch(self, requests: List[EmbeddingRequest], retry: bool = False) -> List[EmbeddingResponse]:
+    def embed_batch(
+        self, requests: List[EmbeddingRequest], retry: bool = False
+    ) -> List[EmbeddingResponse]:
         t0 = time.perf_counter()
         self.op_counts["batch_embed"] += 1
         results: List[Optional[EmbeddingResponse]] = [None] * len(requests)
@@ -1427,7 +1451,7 @@ class QueryAnalysisServiceImpl(QueryAnalysisService):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def load_config_file(self, config_path: Path) -> None:
@@ -1626,7 +1650,7 @@ class CollectionSelectorImpl(CollectionSelector):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def load_config_file(self, config_path: Path) -> None:
@@ -1760,7 +1784,7 @@ class CandidateRankerImpl(CandidateRanker):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def get_default_weights(self) -> Dict[str, float]:
@@ -1854,7 +1878,7 @@ class ContextOptimizerImpl(ContextOptimizer):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -2049,7 +2073,7 @@ class RetrievalCacheImpl(RetrievalCache):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def _redis_available(self) -> bool:
@@ -2376,7 +2400,7 @@ class HybridRetrievalServiceImpl(HybridRetrievalService):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def retrieve(
