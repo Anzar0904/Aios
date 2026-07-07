@@ -124,6 +124,7 @@ def test_best_effort_policy_returns_failure_result():
 
     registry = PersistenceRegistry()
     registry.register_provider("postgresql", MockOfflinePostgreSQLProvider)
+    registry.register_provider("sqlite", MockOfflinePostgreSQLProvider)
 
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
@@ -132,6 +133,9 @@ def test_best_effort_policy_returns_failure_result():
 
     repo = WorkspaceRepositoryImpl(service)
     repos.register_repository("workspaces", repo)
+
+    # Sabotage transport to test failure behavior
+    service.active_provider.transport.health = lambda: TransportHealth(is_alive=False, latency_ms=0, error_message="Mock Offline")
 
     result = repo.save({"id": "ws-1", "name": "Best Effort Test"})
     assert result.status == PersistenceStatus.PERSISTENCE_UNAVAILABLE

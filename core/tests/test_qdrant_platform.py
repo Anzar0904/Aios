@@ -405,6 +405,7 @@ def test_embedding_engine_and_semantic_search():
     # Prepare repository and collection
     from aios.services.persistence import EngineeringMemoryRepository
     repo = registry.get(EngineeringMemoryRepository)
+    repo.dimensions = 1536 # Align repo with mock provider vector size
     repo.clear()
 
     # Save point with vector
@@ -423,7 +424,11 @@ def test_embedding_engine_and_semantic_search():
         limit=5
     )
 
+    prev_active = engine._active_provider
+    engine._active_provider = "mock"
     search_res = search_service.search(query)
+    engine._active_provider = prev_active
+
     assert len(search_res) == 1
     import uuid
     expected_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
@@ -442,24 +447,33 @@ def test_embedding_engine_and_semantic_search():
     from test_persistence import SQLiteTransportForTests
     db = registry.get(PersistenceService)
     
-    # Inject SQLite test transport to bypass configuration block
+    # Inject SQLite test transport safely
+    db.fallback_to_sqlite()
     test_transport = SQLiteTransportForTests(db.config)
     db.active_provider.transport = test_transport
-    db.on_ready()
+    db.active_provider.transport.connect()
     
     # Explicitly create tables on the SQLite test instance
     db.execute(
         "CREATE TABLE IF NOT EXISTS pending_embedding_jobs ("
         "  id TEXT PRIMARY KEY, text TEXT, provider_name TEXT, collection_name TEXT, "
-        "  status TEXT, attempts INTEGER, last_error TEXT, created_at REAL"
+        "  status TEXT, attempts INTEGER, last_error TEXT, created_at REAL, updated_at REAL"
+        ")"
+    )
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS pending_indexing_jobs ("
+        "  id TEXT PRIMARY KEY, entity_id TEXT, collection_name TEXT, vector TEXT, payload TEXT, status TEXT, "
+        "  workspace_id TEXT, project_id TEXT, embedding_version TEXT, retry_count INTEGER, "
+        "  failure_reason TEXT, attempts INTEGER, last_error TEXT, created_at REAL, updated_at REAL"
         ")"
     )
     
     # Save a fake pending embedding job
     job_id = "pending-job-uuid-1"
+    past_time = time.time() - 100
     db.execute(
-        "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at) VALUES (?, ?, ?, ?, 'PENDING', 0, ?)",
-        (job_id, "pending text message", "mock", "engineering_memory", time.time())
+        "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at, updated_at) VALUES (?, ?, ?, ?, 'PENDING', 0, ?, ?)",
+        (job_id, "pending text message", "mock", "engineering_memory", past_time, past_time)
     )
     
     # Let the retry worker process it
@@ -545,6 +559,7 @@ def test_hybrid_retrieval_pipeline():
 
     # Populate Qdrant repository for end-to-end pipeline test
     repo = registry.get(EngineeringMemoryRepository)
+    repo.dimensions = 384 # Align repo with sentence_transformer vector size
     repo.clear()
     
     # Save test item
@@ -577,9 +592,10 @@ def test_hybrid_retrieval_pipeline():
     db = registry.get(PersistenceService)
     
     # Swap to test SQLite db
+    db.fallback_to_sqlite()
     test_transport = SQLiteTransportForTests(db.config)
     db.active_provider.transport = test_transport
-    db.on_ready()
+    db.active_provider.transport.connect()
     
     # Create schema and populate mock record
     db.execute("CREATE TABLE IF NOT EXISTS ai_memory (id TEXT PRIMARY KEY, key TEXT, value TEXT, metadata TEXT, created_at REAL, updated_at REAL)")

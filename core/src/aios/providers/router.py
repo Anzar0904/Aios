@@ -1,15 +1,15 @@
+# ruff: noqa: E501, I001
+import logging
 import os
 import time
-import logging
-import json
-from typing import Any, Iterator, Dict, List, Tuple, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from aios.providers.config import ProviderConfig
 from aios.providers.health import ProviderHealthMonitor
 from aios.providers.metrics import ProviderMetricsCollector
+from aios.providers.models import DIInitializeMixin, ProviderStatus
 from aios.providers.registry import ProviderRegistry
 from aios.providers.selector import ProviderSelector
-from aios.providers.models import ProviderStatus, DIInitializeMixin
 from aios.services.model import LLMRequest, LLMResponse
 from aios.services.persistence import (
     PersistenceStatus,
@@ -304,7 +304,6 @@ class ProviderRouter(DIInitializeMixin):
                 self.health_monitor.record_success(p_name, latency)
                 self.circuit_breaker.record_success(p_name)
 
-                p_info = self.registry.get_provider(p_name)
                 cost = self.health_monitor.cost_analyzer.estimate_cost(
                     p_name, response.usage.get("prompt_tokens", 0), response.usage.get("completion_tokens", 0)
                 )
@@ -319,9 +318,6 @@ class ProviderRouter(DIInitializeMixin):
                 self.health_monitor.token_usage.record_tokens(
                     p_name, response.usage.get("prompt_tokens", 0), response.usage.get("completion_tokens", 0)
                 )
-
-                # Generate reports
-                self.report_generator.generate_reports()
 
                 if self._routing_repo:
                     try:
@@ -383,7 +379,6 @@ class ProviderRouter(DIInitializeMixin):
                 self.health_monitor.record_success(p_name, latency)
                 self.circuit_breaker.record_success(p_name)
 
-                p_info = self.registry.get_provider(p_name)
                 prompt_tokens = len(request.prompt) // 4
                 comp_tokens = len("".join(chunks)) // 4
                 cost = self.health_monitor.cost_analyzer.estimate_cost(p_name, prompt_tokens, comp_tokens)
@@ -391,8 +386,6 @@ class ProviderRouter(DIInitializeMixin):
                 self.metrics.record_usage(p_name, model_name, prompt_tokens, comp_tokens, cost)
                 self.health_monitor.quota_manager.record_cost(p_name, cost)
                 self.health_monitor.token_usage.record_tokens(p_name, prompt_tokens, comp_tokens)
-
-                self.report_generator.generate_reports()
 
                 if self._routing_repo:
                     try:

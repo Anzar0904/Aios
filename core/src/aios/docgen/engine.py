@@ -152,7 +152,13 @@ class DocGeneratorEngine:
             db_models = []
 
         try:
-            di_bindings = DIBindingDiscoverer(self._bootstrap_file).discover()
+            di_bindings = []
+            if self._bootstrap_modules.exists() and self._bootstrap_modules.is_dir():
+                for f in self._bootstrap_modules.glob("*.py"):
+                    di_bindings.extend(DIBindingDiscoverer(f).discover())
+            if self._bootstrap_file.exists():
+                di_bindings.extend(DIBindingDiscoverer(self._bootstrap_file).discover())
+            
             result.di_bindings_count = len(di_bindings)
             logger.info("  Discovered %d DI bindings", len(di_bindings))
         except Exception as exc:

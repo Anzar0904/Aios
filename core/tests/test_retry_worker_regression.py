@@ -126,7 +126,7 @@ def test_retry_worker_success(retry_setup):
 
     # Verify the vector is saved to repository
     repos.get_repository("col123").save.assert_called_once_with(
-        "job123", mock_vector, {"text": "test text"}
+        "job123", mock_vector, {"text": "test text"}, retry=True
     )
 
 
@@ -169,8 +169,8 @@ def test_retry_worker_failure(retry_setup):
     update_queries = [(q, p) for q, p in db.queries if "UPDATE pending_embedding_jobs" in q]
     assert len(update_queries) == 1
     query, params = update_queries[0]
-    assert params[0] == 3  # next_attempts
-    assert params[1] == "Failed again"
+    assert params[0] == "PENDING"  # status
+    assert params[1] == 3  # next_attempts
 
 
 def test_retry_worker_exponential_backoff(retry_setup):

@@ -2,6 +2,6 @@
 
 - **Active Alerts**: 0 alarms triggered.
 - **Diagnostics Status**: PASS
-- **Drift Index**: 1.72ms latency drift.
+- **Drift Index**: 4.12ms latency drift.
 - **Log Levels**: 0 WARNING, 0 ERROR.
 - **Diagnosed Errors**: Checked SSL conflicts, disk space, and port mappings. Status: OK.

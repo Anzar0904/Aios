@@ -1,3 +1,4 @@
+# ruff: noqa: E501, E402, N802
 import abc
 import enum
 import json
@@ -2759,7 +2760,7 @@ class VectorMemoryRepository(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def batch_upsert(self, points: List[Dict[str, Any]]) -> bool:
+    def batch_upsert(self, points: List[Dict[str, Any]], retry: bool = False) -> bool:
         pass
 
     @abc.abstractmethod

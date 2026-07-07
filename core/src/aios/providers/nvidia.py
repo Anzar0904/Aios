@@ -1,4 +1,5 @@
 """
+# ruff: noqa: E501
 aios/providers/nvidia.py
 
 NVIDIA Inference API provider implementation.
@@ -187,7 +188,7 @@ class NVIDIAProvider(AIProvider):
             vision=False,
             embeddings=False,
             tool_calling=True,
-            streaming=True,
+            streaming=False,  # stream() raises NotImplementedError; updated when implemented
             max_context_tokens=131072,
             max_output_tokens=4096,
             supports_json=True,

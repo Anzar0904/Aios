@@ -1,4 +1,5 @@
 import time
+import os
 import pytest
 import uuid
 import unittest.mock as mock
@@ -86,6 +87,7 @@ def kernel_setup(monkeypatch):
         
     monkeypatch.setattr(SemanticMemoryManagerImpl, "index_memory", mock_index_memory)
 
+    os.environ["QDRANT_DEFAULT_DIMENSIONS"] = "384"
     config_path = Path("aios.toml")
     kernel = bootstrap_kernel(config_path)
     
@@ -105,7 +107,7 @@ def kernel_setup(monkeypatch):
         for col in ["workspace_memory", "conversation_memory", "engineering_memory", "research_memory", "documentation_memory", "knowledge_memory", "project_memory"]:
             if col_mgr.exists(col):
                 col_mgr.delete_collection(col)
-            col_mgr.create_collection(col, dimensions=1536, distance="cosine")
+            col_mgr.create_collection(col, dimensions=384, distance="cosine")
         
     return kernel
 

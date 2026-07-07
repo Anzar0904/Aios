@@ -2221,7 +2221,16 @@ class WorkflowRepositoryImpl(_RepositoryMixin, WorkflowRepository):
         guard = self._guard_status('automation_workflows', "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+        def _parse(row):
+            res = dict(row)
+            for f in ["metadata", "triggers", "actions", "conditions", "variables", "policy"]:
+                if f in res and isinstance(res[f], str):
+                    try:
+                        res[f] = json.loads(res[f])
+                    except Exception:
+                        pass
+            return res
+            
         return self._fetch_one(
             'automation_workflows',
             "SELECT * FROM automation_workflows WHERE id = ?",

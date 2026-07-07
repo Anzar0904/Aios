@@ -71,10 +71,10 @@ def test_profile_serialization(sample_profile_dict):
     assert profile.testing.min_statement_coverage == 90.0
     
     serialized = serializer.serialize(profile)
-    assert serialized["profile_id"] == "test_profile"
-    assert serialized["project"]["project_name"] == "Test project"
-    assert serialized["coding"]["language"] == "python"
-    assert serialized["testing"]["min_statement_coverage"] == 90.0
+    assert serialized["id"] == "test_profile"
+    assert serialized["project_name"] == "Test project"
+    assert serialized["language"] == "python"
+    assert serialized["min_statement_coverage"] == 90.0
 
 
 def test_profile_validation(sample_profile_dict):

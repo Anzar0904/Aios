@@ -249,7 +249,8 @@ class QdrantProviderImpl(QdrantProvider):
         try:
             self.transport.execute_command("upsert", collection_name=collection, points=pts)
             return True
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: Qdrant upsert failed: {e}")
             return False
 
     def delete_points(self, collection: str, point_ids: List[Any]) -> bool:
@@ -814,7 +815,8 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
         self.collection_name = collection_name
         self.provider = provider
         self.col_manager = col_manager
-        self.dimensions = dimensions
+        import os
+        self.dimensions = int(os.environ.get("QDRANT_DEFAULT_DIMENSIONS", dimensions))
         self.distance = distance
 
         self.op_counts: Dict[str, int] = {
@@ -990,7 +992,7 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
 
         try:
             res = self.provider.get_transport().execute_command(
-                "retrieve", collection_name=self.collection_name, ids=[point_id]
+                "retrieve", collection_name=self.collection_name, ids=[point_id], with_vectors=True
             )
             latency = (time.perf_counter() - t0) * 1000.0
             self._record_op("get", latency)
@@ -2013,7 +2015,7 @@ class SemanticMemoryManagerImpl(SemanticMemoryManager):
         payload["status"] = "archived"
         vector = existing.get("vector")
         if not vector:
-            vector = [0.0] * 1536
+            vector = [0.0] * getattr(repo, "dimensions", 1536)
         return repo.upsert(entity_id, vector, payload)
 
     def delete_memory(self, repository_name: str, entity_id: str) -> bool:
@@ -2033,7 +2035,7 @@ class SemanticMemoryManagerImpl(SemanticMemoryManager):
         payload["updated_at"] = time.time()
         vector = existing.get("vector")
         if not vector:
-            vector = [0.0] * 1536
+            vector = [0.0] * getattr(repo, "dimensions", 1536)
         return repo.upsert(entity_id, vector, payload)
 
     def re_embed_memory(self, repository_name: str, entity_id: str) -> bool:

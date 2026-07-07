@@ -1,6 +1,7 @@
 # ruff: noqa: F403, F405, E501, N802, E402, N806, B007
 import logging
 import os
+import threading
 import time
 from typing import Any, Dict, List, Optional
 
@@ -48,52 +49,55 @@ class RedisConfigurationService(ServiceLifecycle):
 
 
 class FakeRedisClient:
+    """Thread-safe in-process Redis stub used when Redis is unavailable."""
+
     def __init__(self, *args, **kwargs) -> None:
         self._data: Dict[str, str] = {}
         self._expires: Dict[str, float] = {}
+        # Re-entrant lock so that exists() -> get() does not deadlock.
+        self._lock = threading.RLock()
 
     def ping(self) -> bool:
         return True
 
     def get(self, key: str) -> Optional[str]:
-        if key in self._expires and time.time() > self._expires[key]:
-            del self._data[key]
-            del self._expires[key]
-            return None
-        return self._data.get(key)
+        with self._lock:
+            if key in self._expires and time.time() > self._expires[key]:
+                del self._data[key]
+                del self._expires[key]
+                return None
+            return self._data.get(key)
 
     def set(self, key: str, value: str, ex: Optional[int] = None) -> bool:
-        self._data[key] = str(value)
-        if ex is not None:
-            self._expires[key] = time.time() + ex
-        else:
-            if key in self._expires:
-                del self._expires[key]
+        with self._lock:
+            self._data[key] = str(value)
+            if ex is not None:
+                self._expires[key] = time.time() + ex
+            else:
+                self._expires.pop(key, None)
         return True
 
     def delete(self, key: str) -> bool:
-        existed = key in self._data
-        if key in self._data:
-            del self._data[key]
-        if key in self._expires:
-            del self._expires[key]
+        with self._lock:
+            existed = key in self._data
+            self._data.pop(key, None)
+            self._expires.pop(key, None)
         return existed
 
     def exists(self, key: str) -> bool:
-        self.get(key)  # trigger expiry
-        return key in self._data
+        # get() already acquires the lock; re-entrant lock prevents deadlock.
+        return self.get(key) is not None
 
     def keys(self, pattern: str = "*") -> List[str]:
         import fnmatch
 
-        now = time.time()
-        expired = [k for k, exp in self._expires.items() if now > exp]
-        for k in expired:
-            if k in self._data:
-                del self._data[k]
-            if k in self._expires:
-                del self._expires[k]
-        return [k for k in self._data.keys() if fnmatch.fnmatch(k, pattern)]
+        with self._lock:
+            now = time.time()
+            expired = [k for k, exp in list(self._expires.items()) if now > exp]
+            for k in expired:
+                self._data.pop(k, None)
+                self._expires.pop(k, None)
+            return [k for k in list(self._data.keys()) if fnmatch.fnmatch(k, pattern)]
 
 
 class RedisConnectionManager(ServiceLifecycle):
@@ -143,7 +147,7 @@ class RedisConnectionManager(ServiceLifecycle):
         except Exception as e:
             primary_error = e
 
-        if not is_prod or self.config.fallback_enabled:
+        if not is_prod and self.config.fallback_enabled:
             error_reason = primary_error or "Redis ping failed"
             logger.warning(
                 f"Redis connection failed ({error_reason}). "

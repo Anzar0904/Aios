@@ -73,6 +73,12 @@ class PersistenceServiceImpl(PersistenceService):
                 self.active_provider.execute("SELECT 1")
                 logger.info(f"Database provider {self.config.provider_name.upper()} connected successfully.")
             except Exception as e:
+                if self.config.policy == PersistencePolicy.STRICT:
+                    logger.error(
+                        f"Failed to connect to database provider {self.config.provider_name.upper()}: {e}. "
+                        "Strict policy blocks fallback."
+                    )
+                    return
                 logger.warning(
                     f"Failed to connect to database provider {self.config.provider_name.upper()}: {e}. "
                     "Attempting automatic fallback to local SQLite..."

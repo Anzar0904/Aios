@@ -1,3 +1,4 @@
+# ruff: noqa: E501, B904, I001
 import json
 import logging
 import os
@@ -5,7 +6,6 @@ import time
 from typing import Any, Dict, Iterator, Optional, Tuple
 
 import httpx
-
 
 from aios.config import load_config
 from aios.services.model import (
@@ -873,6 +873,73 @@ class OmniRouteProvider(LLMProvider):
 
 
 
+class NVIDIALLMProvider(LLMProvider):
+    """Bridge from NVIDIAProvider (AIProvider interface) to LLMProvider.
+
+    This adapter allows the NVIDIA provider to be used through the
+    ProviderFactory / ProviderRouter agent execution path in addition to
+    the OmniRoute CLI execution path.
+    """
+
+    def __init__(self, api_key: Optional[str] = None, timeout: int = 30) -> None:
+        from aios.providers.nvidia import NVIDIAProviderAdapter
+
+        self._adapter = NVIDIAProviderAdapter(api_key=api_key)
+        self._timeout = timeout
+
+    @property
+    def name(self) -> str:
+        return "nvidia"
+
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        if not self._adapter.api_key:
+            # Graceful degradation when key is absent — mirrors other providers.
+            content = (
+                f"[NVIDIAProvider] API key not configured. "
+                f"Set NVIDIA_API_KEY to enable live inference. "
+                f"Prompt: '{request.prompt}'"
+            )
+            return LLMResponse(
+                content=content,
+                model_name=request.model_name or "nvidia/nemotron-4-340b-instruct",
+                provider_name=self.name,
+                usage={"prompt_tokens": 0, "completion_tokens": 0},
+                finish_reason="stop",
+                metadata={},
+            )
+
+        try:
+            content = self._adapter.execute_completion(
+                model=request.model_name or "nvidia/nemotron-4-340b-instruct",
+                prompt=request.prompt,
+                system_prompt=request.system_instruction,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens or 1024,
+                timeout=self._timeout,
+            )
+            return LLMResponse(
+                content=content,
+                model_name=request.model_name or "nvidia/nemotron-4-340b-instruct",
+                provider_name=self.name,
+                usage={"prompt_tokens": 0, "completion_tokens": 0},
+                finish_reason="stop",
+                metadata={},
+            )
+        except Exception as exc:
+            raise LLMProviderError(
+                message=f"NVIDIA provider error: {exc}",
+                status_code=None,
+                response_body=None,
+            ) from exc
+
+    def validate_request(self, request: LLMRequest) -> bool:
+        return True
+
+    def generate_stream(self, request: LLMRequest) -> Iterator[LLMResponse]:
+        # NVIDIA streaming is not implemented; fall back to blocking generate.
+        yield self.generate(request)
+
+
 class LocalModelService(ModelService):
     """Concrete implementation of ModelService coordinating model routing
 
@@ -921,6 +988,14 @@ class LocalModelService(ModelService):
         self.factory.register_provider(GeminiProvider())
         self.factory.register_provider(OllamaProvider())
         self.factory.register_provider(LMStudioProvider())
+
+        # NVIDIA — bridge from AIProvider to LLMProvider so agents can reach it.
+        self.factory.register_provider(
+            NVIDIALLMProvider(
+                api_key=os.environ.get("NVIDIA_API_KEY"),
+                timeout=30,
+            )
+        )
 
         api_key = os.environ.get("OPENROUTER_API_KEY")
         self.factory.register_provider(

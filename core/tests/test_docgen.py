@@ -556,7 +556,7 @@ class TestDbModelDiscoverer:
 class TestDIBindingDiscoverer:
     def test_discovers_bindings(self):
         from aios.docgen.discoverers import DIBindingDiscoverer
-        bindings = DIBindingDiscoverer(_AIOS_SRC / "bootstrap.py").discover()
+        bindings = DIBindingDiscoverer(_AIOS_SRC / "bootstrap_modules" / "infrastructure.py").discover()
         assert len(bindings) > 0
 
     def test_all_bindings_have_interface(self):
