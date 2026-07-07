@@ -1,4 +1,5 @@
 # ruff: noqa: F403, F405, E501, N802, E402, N806, B007
+from __future__ import annotations
 import json
 import logging
 import os
@@ -1146,7 +1147,7 @@ class EngineeringTaskRepositoryImpl(_RepositoryMixin, EngineeringTaskRepository)
         self.service = service
 
     def save(self, task: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('engineering_tasks', "save")
+        guard = self._guard_status("engineering_tasks", "save")
         if guard is not None:
             return guard
         q = (
@@ -1161,33 +1162,40 @@ class EngineeringTaskRepositoryImpl(_RepositoryMixin, EngineeringTaskRepository)
             "assigned_agent=excluded.assigned_agent, dependencies=excluded.dependencies, "
             "retry_count=excluded.retry_count, operation_results=excluded.operation_results"
         )
-        return self._write('engineering_tasks', q, (
-                    task["id"],
-                    task.get("name"),
-                    task.get("description"),
-                    task.get("priority"),
-                    task.get("status"),
-                    task.get("creation_time"),
-                    task.get("update_time"),
-                    task.get("completion_time"),
-                    task.get("workspace"),
-                    task.get("current_phase"),
-                    task.get("assigned_agent"),
-                    json.dumps(task.get("dependencies") or []),
-                    task.get("retry_count", 0),
-                    json.dumps(task.get("operation_results") or {}),
-                ), 'Task saved successfully.')
+        return self._write(
+            "engineering_tasks",
+            q,
+            (
+                task["id"],
+                task.get("name"),
+                task.get("description"),
+                task.get("priority"),
+                task.get("status"),
+                task.get("creation_time"),
+                task.get("update_time"),
+                task.get("completion_time"),
+                task.get("workspace"),
+                task.get("current_phase"),
+                task.get("assigned_agent"),
+                json.dumps(task.get("dependencies") or []),
+                task.get("retry_count", 0),
+                json.dumps(task.get("operation_results") or {}),
+            ),
+            "Task saved successfully.",
+        )
 
     def get(self, task_id: str) -> PersistenceResult:
-        guard = self._guard_status('engineering_tasks', "get")
+        guard = self._guard_status("engineering_tasks", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["dependencies"] = json.loads(row["dependencies"] or "[]")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
             return row
+
         return self._fetch_one(
-            'engineering_tasks',
+            "engineering_tasks",
             "SELECT * FROM engineering_tasks WHERE id = ?",
             (task_id,),
             task_id,
@@ -1196,26 +1204,28 @@ class EngineeringTaskRepositoryImpl(_RepositoryMixin, EngineeringTaskRepository)
         )
 
     def delete(self, task_id: str) -> PersistenceResult:
-        guard = self._guard_status('engineering_tasks', "delete")
+        guard = self._guard_status("engineering_tasks", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'engineering_tasks',
+            "engineering_tasks",
             "DELETE FROM engineering_tasks WHERE id = ?",
             (task_id,),
             "Task deleted successfully.",
         )
 
     def list_all(self) -> PersistenceResult:
-        guard = self._guard_status('engineering_tasks', "list_all")
+        guard = self._guard_status("engineering_tasks", "list_all")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["dependencies"] = json.loads(row["dependencies"] or "[]")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
             return row
+
         return self._fetch_all(
-            'engineering_tasks',
+            "engineering_tasks",
             "SELECT * FROM engineering_tasks",
             _parse,
             "Tasks listed successfully.",
@@ -1227,7 +1237,7 @@ class PlanningRepositoryImpl(_RepositoryMixin, PlanningRepository):
         self.service = service
 
     def save(self, plan: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('planning_sessions', "save")
+        guard = self._guard_status("planning_sessions", "save")
         if guard is not None:
             return guard
         q = (
@@ -1239,21 +1249,27 @@ class PlanningRepositoryImpl(_RepositoryMixin, PlanningRepository):
             "architecture_decisions=excluded.architecture_decisions, dependency_graph=excluded.dependency_graph, "
             "planning_statistics=excluded.planning_statistics, planning_version=excluded.planning_version, timestamp=excluded.timestamp"
         )
-        return self._write('planning_sessions', q, (
-                    plan["id"],
-                    json.dumps(plan.get("execution_plan") or {}),
-                    json.dumps(plan.get("decision_tree") or {}),
-                    json.dumps(plan.get("architecture_decisions") or {}),
-                    json.dumps(plan.get("dependency_graph") or {}),
-                    json.dumps(plan.get("planning_statistics") or {}),
-                    plan.get("planning_version", 1),
-                    plan.get("timestamp", time.time()),
-                ), 'Planning session saved successfully.')
+        return self._write(
+            "planning_sessions",
+            q,
+            (
+                plan["id"],
+                json.dumps(plan.get("execution_plan") or {}),
+                json.dumps(plan.get("decision_tree") or {}),
+                json.dumps(plan.get("architecture_decisions") or {}),
+                json.dumps(plan.get("dependency_graph") or {}),
+                json.dumps(plan.get("planning_statistics") or {}),
+                plan.get("planning_version", 1),
+                plan.get("timestamp", time.time()),
+            ),
+            "Planning session saved successfully.",
+        )
 
     def get(self, plan_id: str) -> PersistenceResult:
-        guard = self._guard_status('planning_sessions', "get")
+        guard = self._guard_status("planning_sessions", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["execution_plan"] = json.loads(row["execution_plan"] or "{}")
             row["decision_tree"] = json.loads(row["decision_tree"] or "{}")
@@ -1261,8 +1277,9 @@ class PlanningRepositoryImpl(_RepositoryMixin, PlanningRepository):
             row["dependency_graph"] = json.loads(row["dependency_graph"] or "{}")
             row["planning_statistics"] = json.loads(row["planning_statistics"] or "{}")
             return row
+
         return self._fetch_one(
-            'planning_sessions',
+            "planning_sessions",
             "SELECT * FROM planning_sessions WHERE id = ?",
             (plan_id,),
             plan_id,
@@ -1271,11 +1288,11 @@ class PlanningRepositoryImpl(_RepositoryMixin, PlanningRepository):
         )
 
     def delete(self, plan_id: str) -> PersistenceResult:
-        guard = self._guard_status('planning_sessions', "delete")
+        guard = self._guard_status("planning_sessions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'planning_sessions',
+            "planning_sessions",
             "DELETE FROM planning_sessions WHERE id = ?",
             (plan_id,),
             "Planning session deleted successfully.",
@@ -1287,7 +1304,7 @@ class ApprovalRepositoryImpl(_RepositoryMixin, ApprovalRepository):
         self.service = service
 
     def save(self, approval: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('approval_sessions', "save")
+        guard = self._guard_status("approval_sessions", "save")
         if guard is not None:
             return guard
         q = (
@@ -1300,33 +1317,40 @@ class ApprovalRepositoryImpl(_RepositoryMixin, ApprovalRepository):
             "approver=excluded.approver, timeline_metadata=excluded.timeline_metadata, "
             "operation_results=excluded.operation_results, created_at=excluded.created_at, closed_at=excluded.closed_at"
         )
-        return self._write('approval_sessions', q, (
-                    approval["id"],
-                    approval.get("workspace_id"),
-                    json.dumps(approval.get("metadata") or {}),
-                    approval.get("decision_outcome"),
-                    approval.get("confidence", 1.0),
-                    json.dumps(approval.get("policy_used") or {}),
-                    approval.get("review_status"),
-                    approval.get("approver"),
-                    json.dumps(approval.get("timeline_metadata") or {}),
-                    json.dumps(approval.get("operation_results") or {}),
-                    approval.get("created_at"),
-                    approval.get("closed_at"),
-                ), 'Approval session saved successfully.')
+        return self._write(
+            "approval_sessions",
+            q,
+            (
+                approval["id"],
+                approval.get("workspace_id"),
+                json.dumps(approval.get("metadata") or {}),
+                approval.get("decision_outcome"),
+                approval.get("confidence", 1.0),
+                json.dumps(approval.get("policy_used") or {}),
+                approval.get("review_status"),
+                approval.get("approver"),
+                json.dumps(approval.get("timeline_metadata") or {}),
+                json.dumps(approval.get("operation_results") or {}),
+                approval.get("created_at"),
+                approval.get("closed_at"),
+            ),
+            "Approval session saved successfully.",
+        )
 
     def get(self, approval_id: str) -> PersistenceResult:
-        guard = self._guard_status('approval_sessions', "get")
+        guard = self._guard_status("approval_sessions", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["metadata"] = json.loads(row["metadata"] or "{}")
             row["policy_used"] = json.loads(row["policy_used"] or "{}")
             row["timeline_metadata"] = json.loads(row["timeline_metadata"] or "{}")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
             return row
+
         return self._fetch_one(
-            'approval_sessions',
+            "approval_sessions",
             "SELECT * FROM approval_sessions WHERE id = ?",
             (approval_id,),
             approval_id,
@@ -1335,11 +1359,11 @@ class ApprovalRepositoryImpl(_RepositoryMixin, ApprovalRepository):
         )
 
     def delete(self, approval_id: str) -> PersistenceResult:
-        guard = self._guard_status('approval_sessions', "delete")
+        guard = self._guard_status("approval_sessions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'approval_sessions',
+            "approval_sessions",
             "DELETE FROM approval_sessions WHERE id = ?",
             (approval_id,),
             "Approval session deleted successfully.",
@@ -1351,7 +1375,7 @@ class ReviewRepositoryImpl(_RepositoryMixin, ReviewRepository):
         self.service = service
 
     def save(self, review: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('review_sessions', "save")
+        guard = self._guard_status("review_sessions", "save")
         if guard is not None:
             return guard
         q = (
@@ -1361,24 +1385,31 @@ class ReviewRepositoryImpl(_RepositoryMixin, ReviewRepository):
             "session_id=excluded.session_id, workspace_id=excluded.workspace_id, "
             "state_transitions=excluded.state_transitions, metadata=excluded.metadata"
         )
-        return self._write('review_sessions', q, (
-                    review["id"],
-                    review.get("session_id"),
-                    review.get("workspace_id"),
-                    json.dumps(review.get("state_transitions") or []),
-                    json.dumps(review.get("metadata") or {}),
-                ), 'Review session saved successfully.')
+        return self._write(
+            "review_sessions",
+            q,
+            (
+                review["id"],
+                review.get("session_id"),
+                review.get("workspace_id"),
+                json.dumps(review.get("state_transitions") or []),
+                json.dumps(review.get("metadata") or {}),
+            ),
+            "Review session saved successfully.",
+        )
 
     def get(self, review_id: str) -> PersistenceResult:
-        guard = self._guard_status('review_sessions', "get")
+        guard = self._guard_status("review_sessions", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["state_transitions"] = json.loads(row["state_transitions"] or "[]")
             row["metadata"] = json.loads(row["metadata"] or "{}")
             return row
+
         return self._fetch_one(
-            'review_sessions',
+            "review_sessions",
             "SELECT * FROM review_sessions WHERE id = ?",
             (review_id,),
             review_id,
@@ -1387,11 +1418,11 @@ class ReviewRepositoryImpl(_RepositoryMixin, ReviewRepository):
         )
 
     def delete(self, review_id: str) -> PersistenceResult:
-        guard = self._guard_status('review_sessions', "delete")
+        guard = self._guard_status("review_sessions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'review_sessions',
+            "review_sessions",
             "DELETE FROM review_sessions WHERE id = ?",
             (review_id,),
             "Review session deleted successfully.",
@@ -1403,7 +1434,7 @@ class DocumentationMetadataRepositoryImpl(_RepositoryMixin, DocumentationMetadat
         self.service = service
 
     def save(self, doc: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('documentation_metadata', "save")
+        guard = self._guard_status("documentation_metadata", "save")
         if guard is not None:
             return guard
         q = (
@@ -1416,30 +1447,37 @@ class DocumentationMetadataRepositoryImpl(_RepositoryMixin, DocumentationMetadat
             "publication_status=excluded.publication_status, knowledge_references=excluded.knowledge_references, "
             "checksums=excluded.checksums, version=excluded.version"
         )
-        return self._write('documentation_metadata', q, (
-                    doc["id"],
-                    doc.get("workspace_id"),
-                    doc.get("session_id"),
-                    doc.get("category"),
-                    doc.get("status"),
-                    doc.get("generation_time"),
-                    doc.get("author"),
-                    doc.get("publication_status"),
-                    json.dumps(doc.get("knowledge_references") or []),
-                    json.dumps(doc.get("checksums") or {}),
-                    doc.get("version", 1),
-                ), 'Documentation metadata saved successfully.')
+        return self._write(
+            "documentation_metadata",
+            q,
+            (
+                doc["id"],
+                doc.get("workspace_id"),
+                doc.get("session_id"),
+                doc.get("category"),
+                doc.get("status"),
+                doc.get("generation_time"),
+                doc.get("author"),
+                doc.get("publication_status"),
+                json.dumps(doc.get("knowledge_references") or []),
+                json.dumps(doc.get("checksums") or {}),
+                doc.get("version", 1),
+            ),
+            "Documentation metadata saved successfully.",
+        )
 
     def get(self, doc_id: str) -> PersistenceResult:
-        guard = self._guard_status('documentation_metadata', "get")
+        guard = self._guard_status("documentation_metadata", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["knowledge_references"] = json.loads(row["knowledge_references"] or "[]")
             row["checksums"] = json.loads(row["checksums"] or "{}")
             return row
+
         return self._fetch_one(
-            'documentation_metadata',
+            "documentation_metadata",
             "SELECT * FROM documentation_metadata WHERE id = ?",
             (doc_id,),
             doc_id,
@@ -1448,11 +1486,11 @@ class DocumentationMetadataRepositoryImpl(_RepositoryMixin, DocumentationMetadat
         )
 
     def delete(self, doc_id: str) -> PersistenceResult:
-        guard = self._guard_status('documentation_metadata', "delete")
+        guard = self._guard_status("documentation_metadata", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'documentation_metadata',
+            "documentation_metadata",
             "DELETE FROM documentation_metadata WHERE id = ?",
             (doc_id,),
             "Documentation metadata deleted successfully.",
@@ -1464,7 +1502,7 @@ class TestSessionRepositoryImpl(_RepositoryMixin, TestSessionRepository):
         self.service = service
 
     def save(self, session: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('test_sessions', "save")
+        guard = self._guard_status("test_sessions", "save")
         if guard is not None:
             return guard
         q = (
@@ -1477,32 +1515,39 @@ class TestSessionRepositoryImpl(_RepositoryMixin, TestSessionRepository):
             "execution_time=excluded.execution_time, failure_categories=excluded.failure_categories, "
             "environment_metadata=excluded.environment_metadata, operation_results=excluded.operation_results, timestamp=excluded.timestamp"
         )
-        return self._write('test_sessions', q, (
-                    session["id"],
-                    session.get("workspace_id"),
-                    session.get("status"),
-                    session.get("pass_count", 0),
-                    session.get("fail_count", 0),
-                    json.dumps(session.get("coverage_summary") or {}),
-                    session.get("execution_time", 0.0),
-                    json.dumps(session.get("failure_categories") or {}),
-                    json.dumps(session.get("environment_metadata") or {}),
-                    json.dumps(session.get("operation_results") or {}),
-                    session.get("timestamp", time.time()),
-                ), 'Test session saved successfully.')
+        return self._write(
+            "test_sessions",
+            q,
+            (
+                session["id"],
+                session.get("workspace_id"),
+                session.get("status"),
+                session.get("pass_count", 0),
+                session.get("fail_count", 0),
+                json.dumps(session.get("coverage_summary") or {}),
+                session.get("execution_time", 0.0),
+                json.dumps(session.get("failure_categories") or {}),
+                json.dumps(session.get("environment_metadata") or {}),
+                json.dumps(session.get("operation_results") or {}),
+                session.get("timestamp", time.time()),
+            ),
+            "Test session saved successfully.",
+        )
 
     def get(self, session_id: str) -> PersistenceResult:
-        guard = self._guard_status('test_sessions', "get")
+        guard = self._guard_status("test_sessions", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["coverage_summary"] = json.loads(row["coverage_summary"] or "{}")
             row["failure_categories"] = json.loads(row["failure_categories"] or "{}")
             row["environment_metadata"] = json.loads(row["environment_metadata"] or "{}")
             row["operation_results"] = json.loads(row["operation_results"] or "{}")
             return row
+
         return self._fetch_one(
-            'test_sessions',
+            "test_sessions",
             "SELECT * FROM test_sessions WHERE id = ?",
             (session_id,),
             session_id,
@@ -1511,11 +1556,11 @@ class TestSessionRepositoryImpl(_RepositoryMixin, TestSessionRepository):
         )
 
     def delete(self, session_id: str) -> PersistenceResult:
-        guard = self._guard_status('test_sessions', "delete")
+        guard = self._guard_status("test_sessions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'test_sessions',
+            "test_sessions",
             "DELETE FROM test_sessions WHERE id = ?",
             (session_id,),
             "Test session deleted successfully.",
@@ -1527,7 +1572,7 @@ class TestResultRepositoryImpl(_RepositoryMixin, TestResultRepository):
         self.service = service
 
     def save(self, result: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('test_results', "save")
+        guard = self._guard_status("test_results", "save")
         if guard is not None:
             return guard
         q = (
@@ -1538,28 +1583,35 @@ class TestResultRepositoryImpl(_RepositoryMixin, TestResultRepository):
             "category=excluded.category, passed=excluded.passed, execution_time=excluded.execution_time, "
             "error_message=excluded.error_message, metadata=excluded.metadata"
         )
-        return self._write('test_results', q, (
-                    result["id"],
-                    result.get("session_id"),
-                    result.get("suite_id"),
-                    result.get("name"),
-                    result.get("category"),
-                    1 if result.get("passed") else 0,
-                    result.get("execution_time", 0.0),
-                    result.get("error_message"),
-                    json.dumps(result.get("metadata") or {}),
-                ), 'Test result saved successfully.')
+        return self._write(
+            "test_results",
+            q,
+            (
+                result["id"],
+                result.get("session_id"),
+                result.get("suite_id"),
+                result.get("name"),
+                result.get("category"),
+                1 if result.get("passed") else 0,
+                result.get("execution_time", 0.0),
+                result.get("error_message"),
+                json.dumps(result.get("metadata") or {}),
+            ),
+            "Test result saved successfully.",
+        )
 
     def get(self, result_id: str) -> PersistenceResult:
-        guard = self._guard_status('test_results', "get")
+        guard = self._guard_status("test_results", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["passed"] = bool(row["passed"])
             row["metadata"] = json.loads(row["metadata"] or "{}")
             return row
+
         return self._fetch_one(
-            'test_results',
+            "test_results",
             "SELECT * FROM test_results WHERE id = ?",
             (result_id,),
             result_id,
@@ -1568,11 +1620,11 @@ class TestResultRepositoryImpl(_RepositoryMixin, TestResultRepository):
         )
 
     def delete(self, result_id: str) -> PersistenceResult:
-        guard = self._guard_status('test_results', "delete")
+        guard = self._guard_status("test_results", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'test_results',
+            "test_results",
             "DELETE FROM test_results WHERE id = ?",
             (result_id,),
             "Test result deleted successfully.",
@@ -2190,7 +2242,7 @@ class WorkflowRepositoryImpl(_RepositoryMixin, WorkflowRepository):
         self.service = service
 
     def save(self, workflow: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('automation_workflows', "save")
+        guard = self._guard_status("automation_workflows", "save")
         if guard is not None:
             return guard
         q = (
@@ -2203,24 +2255,30 @@ class WorkflowRepositoryImpl(_RepositoryMixin, WorkflowRepository):
             "variables=excluded.variables, policy=excluded.policy, created_at=excluded.created_at, "
             "updated_at=excluded.updated_at"
         )
-        return self._write('automation_workflows', q, (
-                    workflow["id"],
-                    workflow.get("name"),
-                    workflow.get("description"),
-                    json.dumps(workflow.get("metadata") or {}),
-                    json.dumps(workflow.get("triggers") or []),
-                    json.dumps(workflow.get("actions") or []),
-                    json.dumps(workflow.get("conditions") or []),
-                    json.dumps(workflow.get("variables") or []),
-                    json.dumps(workflow.get("policy") or {}),
-                    workflow.get("created_at") or time.time(),
-                    workflow.get("updated_at") or time.time(),
-                ), 'Workflow definition saved successfully.')
+        return self._write(
+            "automation_workflows",
+            q,
+            (
+                workflow["id"],
+                workflow.get("name"),
+                workflow.get("description"),
+                json.dumps(workflow.get("metadata") or {}),
+                json.dumps(workflow.get("triggers") or []),
+                json.dumps(workflow.get("actions") or []),
+                json.dumps(workflow.get("conditions") or []),
+                json.dumps(workflow.get("variables") or []),
+                json.dumps(workflow.get("policy") or {}),
+                workflow.get("created_at") or time.time(),
+                workflow.get("updated_at") or time.time(),
+            ),
+            "Workflow definition saved successfully.",
+        )
 
     def get(self, workflow_id: str) -> PersistenceResult:
-        guard = self._guard_status('automation_workflows', "get")
+        guard = self._guard_status("automation_workflows", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             res = dict(row)
             for f in ["metadata", "triggers", "actions", "conditions", "variables", "policy"]:
@@ -2230,9 +2288,9 @@ class WorkflowRepositoryImpl(_RepositoryMixin, WorkflowRepository):
                     except Exception:
                         pass
             return res
-            
+
         return self._fetch_one(
-            'automation_workflows',
+            "automation_workflows",
             "SELECT * FROM automation_workflows WHERE id = ?",
             (workflow_id,),
             workflow_id,
@@ -2241,11 +2299,11 @@ class WorkflowRepositoryImpl(_RepositoryMixin, WorkflowRepository):
         )
 
     def delete(self, workflow_id: str) -> PersistenceResult:
-        guard = self._guard_status('automation_workflows', "delete")
+        guard = self._guard_status("automation_workflows", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'automation_workflows',
+            "automation_workflows",
             "DELETE FROM automation_workflows WHERE id = ?",
             (workflow_id,),
             "Workflow definition deleted successfully.",
@@ -2257,7 +2315,7 @@ class WorkflowExecutionRepositoryImpl(_RepositoryMixin, WorkflowExecutionReposit
         self.service = service
 
     def save(self, execution: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_executions', "save")
+        guard = self._guard_status("workflow_executions", "save")
         if guard is not None:
             return guard
         q = (
@@ -2269,28 +2327,35 @@ class WorkflowExecutionRepositoryImpl(_RepositoryMixin, WorkflowExecutionReposit
             "success=excluded.success, error_summary=excluded.error_summary, execution_time=excluded.execution_time, "
             "created_at=excluded.created_at, closed_at=excluded.closed_at, metadata=excluded.metadata"
         )
-        return self._write('workflow_executions', q, (
-                    execution["id"],
-                    execution.get("workflow_id"),
-                    execution.get("workspace_id"),
-                    execution.get("status"),
-                    execution.get("success", 0),
-                    execution.get("error_summary"),
-                    execution.get("execution_time", 0.0),
-                    execution.get("created_at") or time.time(),
-                    execution.get("closed_at"),
-                    json.dumps(execution.get("metadata") or {}),
-                ), 'Workflow execution saved successfully.')
+        return self._write(
+            "workflow_executions",
+            q,
+            (
+                execution["id"],
+                execution.get("workflow_id"),
+                execution.get("workspace_id"),
+                execution.get("status"),
+                execution.get("success", 0),
+                execution.get("error_summary"),
+                execution.get("execution_time", 0.0),
+                execution.get("created_at") or time.time(),
+                execution.get("closed_at"),
+                json.dumps(execution.get("metadata") or {}),
+            ),
+            "Workflow execution saved successfully.",
+        )
 
     def get(self, execution_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_executions', "get")
+        guard = self._guard_status("workflow_executions", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["metadata"] = json.loads(row["metadata"] or "{}")
             return row
+
         return self._fetch_one(
-            'workflow_executions',
+            "workflow_executions",
             "SELECT * FROM workflow_executions WHERE id = ?",
             (execution_id,),
             execution_id,
@@ -2299,11 +2364,11 @@ class WorkflowExecutionRepositoryImpl(_RepositoryMixin, WorkflowExecutionReposit
         )
 
     def delete(self, execution_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_executions', "delete")
+        guard = self._guard_status("workflow_executions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_executions',
+            "workflow_executions",
             "DELETE FROM workflow_executions WHERE id = ?",
             (execution_id,),
             "Workflow execution deleted successfully.",
@@ -2315,7 +2380,7 @@ class WorkflowMonitoringRepositoryImpl(_RepositoryMixin, WorkflowMonitoringRepos
         self.service = service
 
     def save(self, monitor_report: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_monitoring', "save")
+        guard = self._guard_status("workflow_monitoring", "save")
         if guard is not None:
             return guard
         q = (
@@ -2329,26 +2394,34 @@ class WorkflowMonitoringRepositoryImpl(_RepositoryMixin, WorkflowMonitoringRepos
             "latency_summaries=excluded.latency_summaries, retry_summaries=excluded.retry_summaries, "
             "timestamp=excluded.timestamp"
         )
-        return self._write('workflow_monitoring', q, (
-                    monitor_report["id"],
-                    monitor_report.get("workflow_id"),
-                    json.dumps(monitor_report.get("execution_summaries") or {}),
-                    json.dumps(monitor_report.get("health_summaries") or {}),
-                    json.dumps(monitor_report.get("performance_summaries") or {}),
-                    json.dumps(monitor_report.get("alert_summaries") or []),
-                    json.dumps(monitor_report.get("success_rates") or {}),
-                    json.dumps(monitor_report.get("latency_summaries") or {}),
-                    json.dumps(monitor_report.get("retry_summaries") or {}),
-                    monitor_report.get("timestamp") or time.time(),
-                ), 'Workflow monitoring report saved successfully.')
+        return self._write(
+            "workflow_monitoring",
+            q,
+            (
+                monitor_report["id"],
+                monitor_report.get("workflow_id"),
+                json.dumps(monitor_report.get("execution_summaries") or {}),
+                json.dumps(monitor_report.get("health_summaries") or {}),
+                json.dumps(monitor_report.get("performance_summaries") or {}),
+                json.dumps(monitor_report.get("alert_summaries") or []),
+                json.dumps(monitor_report.get("success_rates") or {}),
+                json.dumps(monitor_report.get("latency_summaries") or {}),
+                json.dumps(monitor_report.get("retry_summaries") or {}),
+                monitor_report.get("timestamp") or time.time(),
+            ),
+            "Workflow monitoring report saved successfully.",
+        )
 
     def get(self, report_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_monitoring', "get")
+        guard = self._guard_status("workflow_monitoring", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'workflow_monitoring',
+            "workflow_monitoring",
             "SELECT * FROM workflow_monitoring WHERE id = ?",
             (report_id,),
             report_id,
@@ -2357,11 +2430,11 @@ class WorkflowMonitoringRepositoryImpl(_RepositoryMixin, WorkflowMonitoringRepos
         )
 
     def delete(self, report_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_monitoring', "delete")
+        guard = self._guard_status("workflow_monitoring", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_monitoring',
+            "workflow_monitoring",
             "DELETE FROM workflow_monitoring WHERE id = ?",
             (report_id,),
             "Workflow monitoring report deleted successfully.",
@@ -2373,7 +2446,7 @@ class WorkflowOptimizationRepositoryImpl(_RepositoryMixin, WorkflowOptimizationR
         self.service = service
 
     def save(self, optimization: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_optimizations', "save")
+        guard = self._guard_status("workflow_optimizations", "save")
         if guard is not None:
             return guard
         q = (
@@ -2386,24 +2459,32 @@ class WorkflowOptimizationRepositoryImpl(_RepositoryMixin, WorkflowOptimizationR
             "recommendation_metadata=excluded.recommendation_metadata, "
             "optimization_statistics=excluded.optimization_statistics, timestamp=excluded.timestamp"
         )
-        return self._write('workflow_optimizations', q, (
-                    optimization["id"],
-                    optimization.get("workflow_id"),
-                    json.dumps(optimization.get("optimization_plans") or {}),
-                    json.dumps(optimization.get("detected_patterns") or []),
-                    json.dumps(optimization.get("complexity_scores") or {}),
-                    json.dumps(optimization.get("recommendation_metadata") or {}),
-                    json.dumps(optimization.get("optimization_statistics") or {}),
-                    optimization.get("timestamp") or time.time(),
-                ), 'Workflow optimization recommendations saved successfully.')
+        return self._write(
+            "workflow_optimizations",
+            q,
+            (
+                optimization["id"],
+                optimization.get("workflow_id"),
+                json.dumps(optimization.get("optimization_plans") or {}),
+                json.dumps(optimization.get("detected_patterns") or []),
+                json.dumps(optimization.get("complexity_scores") or {}),
+                json.dumps(optimization.get("recommendation_metadata") or {}),
+                json.dumps(optimization.get("optimization_statistics") or {}),
+                optimization.get("timestamp") or time.time(),
+            ),
+            "Workflow optimization recommendations saved successfully.",
+        )
 
     def get(self, optimization_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_optimizations', "get")
+        guard = self._guard_status("workflow_optimizations", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'workflow_optimizations',
+            "workflow_optimizations",
             "SELECT * FROM workflow_optimizations WHERE id = ?",
             (optimization_id,),
             optimization_id,
@@ -2412,11 +2493,11 @@ class WorkflowOptimizationRepositoryImpl(_RepositoryMixin, WorkflowOptimizationR
         )
 
     def delete(self, optimization_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_optimizations', "delete")
+        guard = self._guard_status("workflow_optimizations", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_optimizations',
+            "workflow_optimizations",
             "DELETE FROM workflow_optimizations WHERE id = ?",
             (optimization_id,),
             "Workflow optimization deleted successfully.",
@@ -2428,7 +2509,7 @@ class WorkflowVersionRepositoryImpl(_RepositoryMixin, WorkflowVersionRepository)
         self.service = service
 
     def save(self, version: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_versions', "save")
+        guard = self._guard_status("workflow_versions", "save")
         if guard is not None:
             return guard
         q = (
@@ -2441,24 +2522,32 @@ class WorkflowVersionRepositoryImpl(_RepositoryMixin, WorkflowVersionRepository)
             "rollback_metadata=excluded.rollback_metadata, version_graph_references=excluded.version_graph_references, "
             "timestamp=excluded.timestamp"
         )
-        return self._write('workflow_versions', q, (
-                    version["id"],
-                    version.get("workflow_id"),
-                    json.dumps(version.get("version_metadata") or {}),
-                    json.dumps(version.get("migration_metadata") or {}),
-                    json.dumps(version.get("compatibility_metadata") or {}),
-                    json.dumps(version.get("rollback_metadata") or {}),
-                    json.dumps(version.get("version_graph_references") or {}),
-                    version.get("timestamp") or time.time(),
-                ), 'Workflow version details saved successfully.')
+        return self._write(
+            "workflow_versions",
+            q,
+            (
+                version["id"],
+                version.get("workflow_id"),
+                json.dumps(version.get("version_metadata") or {}),
+                json.dumps(version.get("migration_metadata") or {}),
+                json.dumps(version.get("compatibility_metadata") or {}),
+                json.dumps(version.get("rollback_metadata") or {}),
+                json.dumps(version.get("version_graph_references") or {}),
+                version.get("timestamp") or time.time(),
+            ),
+            "Workflow version details saved successfully.",
+        )
 
     def get(self, version_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_versions', "get")
+        guard = self._guard_status("workflow_versions", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'workflow_versions',
+            "workflow_versions",
             "SELECT * FROM workflow_versions WHERE id = ?",
             (version_id,),
             version_id,
@@ -2467,11 +2556,11 @@ class WorkflowVersionRepositoryImpl(_RepositoryMixin, WorkflowVersionRepository)
         )
 
     def delete(self, version_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_versions', "delete")
+        guard = self._guard_status("workflow_versions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_versions',
+            "workflow_versions",
             "DELETE FROM workflow_versions WHERE id = ?",
             (version_id,),
             "Workflow version deleted successfully.",
@@ -2483,7 +2572,7 @@ class WorkflowTranslationRepositoryImpl(_RepositoryMixin, WorkflowTranslationRep
         self.service = service
 
     def save(self, translation: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_translations', "save")
+        guard = self._guard_status("workflow_translations", "save")
         if guard is not None:
             return guard
         q = (
@@ -2496,24 +2585,32 @@ class WorkflowTranslationRepositoryImpl(_RepositoryMixin, WorkflowTranslationRep
             "translation_statistics=excluded.translation_statistics, "
             "compilation_summaries=excluded.compilation_summaries, timestamp=excluded.timestamp"
         )
-        return self._write('workflow_translations', q, (
-                    translation["id"],
-                    translation.get("workflow_id"),
-                    json.dumps(translation.get("workflow_metadata") or {}),
-                    json.dumps(translation.get("translation_metadata") or {}),
-                    translation.get("ir_version"),
-                    json.dumps(translation.get("translation_statistics") or {}),
-                    json.dumps(translation.get("compilation_summaries") or {}),
-                    translation.get("timestamp") or time.time(),
-                ), 'Workflow translation saved successfully.')
+        return self._write(
+            "workflow_translations",
+            q,
+            (
+                translation["id"],
+                translation.get("workflow_id"),
+                json.dumps(translation.get("workflow_metadata") or {}),
+                json.dumps(translation.get("translation_metadata") or {}),
+                translation.get("ir_version"),
+                json.dumps(translation.get("translation_statistics") or {}),
+                json.dumps(translation.get("compilation_summaries") or {}),
+                translation.get("timestamp") or time.time(),
+            ),
+            "Workflow translation saved successfully.",
+        )
 
     def get(self, translation_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_translations', "get")
+        guard = self._guard_status("workflow_translations", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'workflow_translations',
+            "workflow_translations",
             "SELECT * FROM workflow_translations WHERE id = ?",
             (translation_id,),
             translation_id,
@@ -2522,11 +2619,11 @@ class WorkflowTranslationRepositoryImpl(_RepositoryMixin, WorkflowTranslationRep
         )
 
     def delete(self, translation_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_translations', "delete")
+        guard = self._guard_status("workflow_translations", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_translations',
+            "workflow_translations",
             "DELETE FROM workflow_translations WHERE id = ?",
             (translation_id,),
             "Workflow translation deleted successfully.",
@@ -2538,7 +2635,7 @@ class WorkflowIntegrationRepositoryImpl(_RepositoryMixin, WorkflowIntegrationRep
         self.service = service
 
     def save(self, integration: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_integrations', "save")
+        guard = self._guard_status("workflow_integrations", "save")
         if guard is not None:
             return guard
         q = (
@@ -2551,25 +2648,33 @@ class WorkflowIntegrationRepositoryImpl(_RepositoryMixin, WorkflowIntegrationRep
             "health_metadata=excluded.health_metadata, capability_discovery=excluded.capability_discovery, "
             "validation_metadata=excluded.validation_metadata, timestamp=excluded.timestamp"
         )
-        return self._write('workflow_integrations', q, (
-                    integration["id"],
-                    integration.get("workflow_id"),
-                    integration.get("execution_id"),
-                    json.dumps(integration.get("connection_metadata") or {}),
-                    json.dumps(integration.get("server_metadata") or {}),
-                    json.dumps(integration.get("health_metadata") or {}),
-                    json.dumps(integration.get("capability_discovery") or []),
-                    json.dumps(integration.get("validation_metadata") or {}),
-                    integration.get("timestamp") or time.time(),
-                ), 'Workflow integration metadata saved successfully.')
+        return self._write(
+            "workflow_integrations",
+            q,
+            (
+                integration["id"],
+                integration.get("workflow_id"),
+                integration.get("execution_id"),
+                json.dumps(integration.get("connection_metadata") or {}),
+                json.dumps(integration.get("server_metadata") or {}),
+                json.dumps(integration.get("health_metadata") or {}),
+                json.dumps(integration.get("capability_discovery") or []),
+                json.dumps(integration.get("validation_metadata") or {}),
+                integration.get("timestamp") or time.time(),
+            ),
+            "Workflow integration metadata saved successfully.",
+        )
 
     def get(self, integration_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_integrations', "get")
+        guard = self._guard_status("workflow_integrations", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'workflow_integrations',
+            "workflow_integrations",
             "SELECT * FROM workflow_integrations WHERE id = ?",
             (integration_id,),
             integration_id,
@@ -2578,11 +2683,11 @@ class WorkflowIntegrationRepositoryImpl(_RepositoryMixin, WorkflowIntegrationRep
         )
 
     def delete(self, integration_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_integrations', "delete")
+        guard = self._guard_status("workflow_integrations", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_integrations',
+            "workflow_integrations",
             "DELETE FROM workflow_integrations WHERE id = ?",
             (integration_id,),
             "Workflow integration deleted successfully.",
@@ -2594,7 +2699,7 @@ class AutomationTelemetryRepositoryImpl(_RepositoryMixin, AutomationTelemetryRep
         self.service = service
 
     def save(self, telemetry: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('workflow_executions', "save")
+        guard = self._guard_status("workflow_executions", "save")
         if guard is not None:
             return guard
         q = (
@@ -2605,24 +2710,32 @@ class AutomationTelemetryRepositoryImpl(_RepositoryMixin, AutomationTelemetryRep
             "status=excluded.status, success=excluded.success, execution_time=excluded.execution_time, "
             "metadata=excluded.metadata"
         )
-        return self._write('workflow_executions', q, (
-                    telemetry["id"],
-                    telemetry.get("workflow_id", "system"),
-                    telemetry.get("workspace_id", "system"),
-                    "telemetry",
-                    1 if telemetry.get("success", True) else 0,
-                    telemetry.get("execution_time", 0.0),
-                    time.time(),
-                    json.dumps(telemetry),
-                ), 'Telemetry saved successfully.')
+        return self._write(
+            "workflow_executions",
+            q,
+            (
+                telemetry["id"],
+                telemetry.get("workflow_id", "system"),
+                telemetry.get("workspace_id", "system"),
+                "telemetry",
+                1 if telemetry.get("success", True) else 0,
+                telemetry.get("execution_time", 0.0),
+                time.time(),
+                json.dumps(telemetry),
+            ),
+            "Telemetry saved successfully.",
+        )
 
     def get(self, telemetry_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_executions', "get")
+        guard = self._guard_status("workflow_executions", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'workflow_executions',
+            "workflow_executions",
             "SELECT * FROM workflow_executions WHERE id = ?",
             (telemetry_id,),
             telemetry_id,
@@ -2631,11 +2744,11 @@ class AutomationTelemetryRepositoryImpl(_RepositoryMixin, AutomationTelemetryRep
         )
 
     def delete(self, telemetry_id: str) -> PersistenceResult:
-        guard = self._guard_status('workflow_executions', "delete")
+        guard = self._guard_status("workflow_executions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'workflow_executions',
+            "workflow_executions",
             "DELETE FROM workflow_executions WHERE id = ?",
             (telemetry_id,),
             "Telemetry deleted successfully.",
@@ -2647,7 +2760,7 @@ class AutomationStatisticsRepositoryImpl(_RepositoryMixin, AutomationStatisticsR
         self.service = service
 
     def save(self, stats: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('automation_statistics', "save")
+        guard = self._guard_status("automation_statistics", "save")
         if guard is not None:
             return guard
         q = (
@@ -2662,27 +2775,35 @@ class AutomationStatisticsRepositoryImpl(_RepositoryMixin, AutomationStatisticsR
             "success_ratios=excluded.success_ratios, failure_ratios=excluded.failure_ratios, "
             "usage_trends=excluded.usage_trends, timestamp=excluded.timestamp"
         )
-        return self._write('automation_statistics', q, (
-                    stats["id"],
-                    stats.get("workflow_count", 0),
-                    stats.get("execution_count", 0),
-                    stats.get("translation_count", 0),
-                    stats.get("optimization_count", 0),
-                    stats.get("monitoring_count", 0),
-                    stats.get("version_count", 0),
-                    json.dumps(stats.get("success_ratios") or {}),
-                    json.dumps(stats.get("failure_ratios") or {}),
-                    json.dumps(stats.get("usage_trends") or {}),
-                    stats.get("timestamp") or time.time(),
-                ), 'Automation statistics saved successfully.')
+        return self._write(
+            "automation_statistics",
+            q,
+            (
+                stats["id"],
+                stats.get("workflow_count", 0),
+                stats.get("execution_count", 0),
+                stats.get("translation_count", 0),
+                stats.get("optimization_count", 0),
+                stats.get("monitoring_count", 0),
+                stats.get("version_count", 0),
+                json.dumps(stats.get("success_ratios") or {}),
+                json.dumps(stats.get("failure_ratios") or {}),
+                json.dumps(stats.get("usage_trends") or {}),
+                stats.get("timestamp") or time.time(),
+            ),
+            "Automation statistics saved successfully.",
+        )
 
     def get(self, stats_id: str) -> PersistenceResult:
-        guard = self._guard_status('automation_statistics', "get")
+        guard = self._guard_status("automation_statistics", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'automation_statistics',
+            "automation_statistics",
             "SELECT * FROM automation_statistics WHERE id = ?",
             (stats_id,),
             stats_id,
@@ -2691,11 +2812,11 @@ class AutomationStatisticsRepositoryImpl(_RepositoryMixin, AutomationStatisticsR
         )
 
     def delete(self, stats_id: str) -> PersistenceResult:
-        guard = self._guard_status('automation_statistics', "delete")
+        guard = self._guard_status("automation_statistics", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'automation_statistics',
+            "automation_statistics",
             "DELETE FROM automation_statistics WHERE id = ?",
             (stats_id,),
             "Automation statistics deleted successfully.",
@@ -3278,11 +3399,14 @@ class AIProviderRepositoryImpl(_RepositoryMixin, AIProviderRepository):
         self.service = service
 
     def save(self, provider: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('ai_providers', "save")
+        guard = self._guard_status("ai_providers", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO ai_providers (id, name, version, priority, status, context_window, cost_per_million_input, cost_per_million_output, auth_type, supported_models, is_local, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        return self._write('ai_providers', q, (
+        return self._write(
+            "ai_providers",
+            q,
+            (
                 provider["id"],
                 provider.get("name"),
                 provider.get("version"),
@@ -3296,18 +3420,22 @@ class AIProviderRepositoryImpl(_RepositoryMixin, AIProviderRepository):
                 1 if provider.get("is_local") else 0,
                 provider.get("created_at") or time.time(),
                 provider.get("updated_at") or time.time(),
-            ), 'AI Provider saved.')
+            ),
+            "AI Provider saved.",
+        )
 
     def get(self, provider_id: str) -> PersistenceResult:
-        guard = self._guard_status('ai_providers', "get")
+        guard = self._guard_status("ai_providers", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["supported_models"] = json.loads(row["supported_models"] or "[]")
             row["is_local"] = bool(row["is_local"])
             return row
+
         return self._fetch_one(
-            'ai_providers',
+            "ai_providers",
             "SELECT * FROM ai_providers WHERE id = ?",
             (provider_id,),
             provider_id,
@@ -3316,11 +3444,11 @@ class AIProviderRepositoryImpl(_RepositoryMixin, AIProviderRepository):
         )
 
     def delete(self, provider_id: str) -> PersistenceResult:
-        guard = self._guard_status('ai_providers', "delete")
+        guard = self._guard_status("ai_providers", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'ai_providers',
+            "ai_providers",
             "DELETE FROM ai_providers WHERE id = ?",
             (provider_id,),
             "Provider deleted.",
@@ -3332,7 +3460,7 @@ class ProviderCapabilityRepositoryImpl(_RepositoryMixin, ProviderCapabilityRepos
         self.service = service
 
     def save(self, capabilities: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_capabilities', "save")
+        guard = self._guard_status("provider_capabilities", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_capabilities (id, provider_name, capabilities, timestamp) VALUES (?, ?, ?, ?)"
@@ -3350,39 +3478,42 @@ class ProviderCapabilityRepositoryImpl(_RepositoryMixin, ProviderCapabilityRepos
             return row
 
         return self._write_with_cache(
-            'provider_capabilities', q, params,
-            'Capabilities saved.',
-            cache_namespace='provider_capabilities',
+            "provider_capabilities",
+            q,
+            params,
+            "Capabilities saved.",
+            cache_namespace="provider_capabilities",
             entity_id=capabilities["id"],
             cache_payload_fn=_cache_payload,
-            retrieve_msg='Capabilities retrieved.',
+            retrieve_msg="Capabilities retrieved.",
         )
 
     def get(self, capability_id: str) -> PersistenceResult:
         def _parse(row):
             row["capabilities"] = json.loads(row["capabilities"] or "{}")
             return row
+
         return self._fetch_one_with_cache(
-            'provider_capabilities',
+            "provider_capabilities",
             "SELECT * FROM provider_capabilities WHERE id = ?",
             (capability_id,),
             capability_id,
             _parse,
-            'Capabilities retrieved.',
-            'Capabilities not found.',
-            'provider_capabilities',
+            "Capabilities retrieved.",
+            "Capabilities not found.",
+            "provider_capabilities",
         )
 
     def delete(self, capability_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_capabilities', "delete")
+        guard = self._guard_status("provider_capabilities", "delete")
         if guard is not None:
             return guard
         return self._delete_with_cache(
-            'provider_capabilities',
+            "provider_capabilities",
             "DELETE FROM provider_capabilities WHERE id = ?",
             (capability_id,),
-            'Capabilities deleted.',
-            'provider_capabilities',
+            "Capabilities deleted.",
+            "provider_capabilities",
             capability_id,
         )
 
@@ -3392,7 +3523,7 @@ class ProviderHealthRepositoryImpl(_RepositoryMixin, ProviderHealthRepository):
         self.service = service
 
     def save(self, health: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_health', "save")
+        guard = self._guard_status("provider_health", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_health (id, provider_name, is_healthy, availability_pct, success_rate, rate_limited_until, circuit_breaker_state, cooldown_until, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -3414,39 +3545,42 @@ class ProviderHealthRepositoryImpl(_RepositoryMixin, ProviderHealthRepository):
             return row
 
         return self._write_with_cache(
-            'provider_health', q, params,
-            'Health status saved.',
-            cache_namespace='provider_health',
+            "provider_health",
+            q,
+            params,
+            "Health status saved.",
+            cache_namespace="provider_health",
             entity_id=health["id"],
             cache_payload_fn=_cache_payload,
-            retrieve_msg='Health report retrieved.',
+            retrieve_msg="Health report retrieved.",
         )
 
     def get(self, health_id: str) -> PersistenceResult:
         def _parse(row):
             row["is_healthy"] = bool(row["is_healthy"])
             return row
+
         return self._fetch_one_with_cache(
-            'provider_health',
+            "provider_health",
             "SELECT * FROM provider_health WHERE id = ?",
             (health_id,),
             health_id,
             _parse,
-            'Health report retrieved.',
-            'Health report not found.',
-            'provider_health',
+            "Health report retrieved.",
+            "Health report not found.",
+            "provider_health",
         )
 
     def delete(self, health_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_health', "delete")
+        guard = self._guard_status("provider_health", "delete")
         if guard is not None:
             return guard
         return self._delete_with_cache(
-            'provider_health',
+            "provider_health",
             "DELETE FROM provider_health WHERE id = ?",
             (health_id,),
-            'Health report deleted.',
-            'provider_health',
+            "Health report deleted.",
+            "provider_health",
             health_id,
         )
 
@@ -3456,28 +3590,35 @@ class ProviderTelemetryRepositoryImpl(_RepositoryMixin, ProviderTelemetryReposit
         self.service = service
 
     def save(self, telemetry: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_telemetry', "save")
+        guard = self._guard_status("provider_telemetry", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_telemetry (id, provider_name, average_latency, p95_latency, query_latencies, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-        return self._write('provider_telemetry', q, (
+        return self._write(
+            "provider_telemetry",
+            q,
+            (
                 telemetry["id"],
                 telemetry.get("provider_name"),
                 telemetry.get("average_latency"),
                 telemetry.get("p95_latency"),
                 json.dumps(telemetry.get("query_latencies", [])),
                 telemetry.get("timestamp") or time.time(),
-            ), 'Telemetry saved.')
+            ),
+            "Telemetry saved.",
+        )
 
     def get(self, telemetry_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_telemetry', "get")
+        guard = self._guard_status("provider_telemetry", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["query_latencies"] = json.loads(row["query_latencies"] or "[]")
             return row
+
         return self._fetch_one(
-            'provider_telemetry',
+            "provider_telemetry",
             "SELECT * FROM provider_telemetry WHERE id = ?",
             (telemetry_id,),
             telemetry_id,
@@ -3486,11 +3627,11 @@ class ProviderTelemetryRepositoryImpl(_RepositoryMixin, ProviderTelemetryReposit
         )
 
     def delete(self, telemetry_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_telemetry', "delete")
+        guard = self._guard_status("provider_telemetry", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'provider_telemetry',
+            "provider_telemetry",
             "DELETE FROM provider_telemetry WHERE id = ?",
             (telemetry_id,),
             "Telemetry deleted.",
@@ -3502,11 +3643,14 @@ class ProviderStatisticsRepositoryImpl(_RepositoryMixin, ProviderStatisticsRepos
         self.service = service
 
     def save(self, statistics: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_statistics', "save")
+        guard = self._guard_status("provider_statistics", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_statistics (id, provider_name, total_requests, success_count, failure_count, error_summary, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        return self._write('provider_statistics', q, (
+        return self._write(
+            "provider_statistics",
+            q,
+            (
                 statistics["id"],
                 statistics.get("provider_name"),
                 statistics.get("total_requests"),
@@ -3514,15 +3658,20 @@ class ProviderStatisticsRepositoryImpl(_RepositoryMixin, ProviderStatisticsRepos
                 statistics.get("failure_count"),
                 statistics.get("error_summary"),
                 statistics.get("timestamp") or time.time(),
-            ), 'Statistics saved.')
+            ),
+            "Statistics saved.",
+        )
 
     def get(self, statistics_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_statistics', "get")
+        guard = self._guard_status("provider_statistics", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'provider_statistics',
+            "provider_statistics",
             "SELECT * FROM provider_statistics WHERE id = ?",
             (statistics_id,),
             statistics_id,
@@ -3531,11 +3680,11 @@ class ProviderStatisticsRepositoryImpl(_RepositoryMixin, ProviderStatisticsRepos
         )
 
     def delete(self, statistics_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_statistics', "delete")
+        guard = self._guard_status("provider_statistics", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'provider_statistics',
+            "provider_statistics",
             "DELETE FROM provider_statistics WHERE id = ?",
             (statistics_id,),
             "Statistics deleted.",
@@ -3547,11 +3696,14 @@ class ProviderQuotaRepositoryImpl(_RepositoryMixin, ProviderQuotaRepository):
         self.service = service
 
     def save(self, quota: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_quotas', "save")
+        guard = self._guard_status("provider_quotas", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_quotas (id, provider_name, quota_limit, quota_used, remaining_quota, is_exhausted, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        return self._write('provider_quotas', q, (
+        return self._write(
+            "provider_quotas",
+            q,
+            (
                 quota["id"],
                 quota.get("provider_name"),
                 quota.get("quota_limit"),
@@ -3559,17 +3711,21 @@ class ProviderQuotaRepositoryImpl(_RepositoryMixin, ProviderQuotaRepository):
                 quota.get("remaining_quota"),
                 1 if quota.get("is_exhausted") else 0,
                 quota.get("timestamp") or time.time(),
-            ), 'Quota saved.')
+            ),
+            "Quota saved.",
+        )
 
     def get(self, quota_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_quotas', "get")
+        guard = self._guard_status("provider_quotas", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["is_exhausted"] = bool(row["is_exhausted"])
             return row
+
         return self._fetch_one(
-            'provider_quotas',
+            "provider_quotas",
             "SELECT * FROM provider_quotas WHERE id = ?",
             (quota_id,),
             quota_id,
@@ -3578,11 +3734,11 @@ class ProviderQuotaRepositoryImpl(_RepositoryMixin, ProviderQuotaRepository):
         )
 
     def delete(self, quota_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_quotas', "delete")
+        guard = self._guard_status("provider_quotas", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'provider_quotas',
+            "provider_quotas",
             "DELETE FROM provider_quotas WHERE id = ?",
             (quota_id,),
             "Quota deleted.",
@@ -3594,7 +3750,7 @@ class ProviderRoutingRepositoryImpl(_RepositoryMixin, ProviderRoutingRepository)
         self.service = service
 
     def save(self, routing: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_routing', "save")
+        guard = self._guard_status("provider_routing", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_routing (id, request_model, selected_provider, selected_model, strategy, routing_candidates, operation_result_ref, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -3616,39 +3772,42 @@ class ProviderRoutingRepositoryImpl(_RepositoryMixin, ProviderRoutingRepository)
             return row
 
         return self._write_with_cache(
-            'provider_routing', q, params,
-            'Routing decision saved.',
-            cache_namespace='provider_routing',
+            "provider_routing",
+            q,
+            params,
+            "Routing decision saved.",
+            cache_namespace="provider_routing",
             entity_id=routing["id"],
             cache_payload_fn=_cache_payload,
-            retrieve_msg='Routing decision retrieved.',
+            retrieve_msg="Routing decision retrieved.",
         )
 
     def get(self, routing_id: str) -> PersistenceResult:
         def _parse(row):
             row["routing_candidates"] = json.loads(row["routing_candidates"] or "[]")
             return row
+
         return self._fetch_one_with_cache(
-            'provider_routing',
+            "provider_routing",
             "SELECT * FROM provider_routing WHERE id = ?",
             (routing_id,),
             routing_id,
             _parse,
-            'Routing decision retrieved.',
-            'Routing decision not found.',
-            'provider_routing',
+            "Routing decision retrieved.",
+            "Routing decision not found.",
+            "provider_routing",
         )
 
     def delete(self, routing_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_routing', "delete")
+        guard = self._guard_status("provider_routing", "delete")
         if guard is not None:
             return guard
         return self._delete_with_cache(
-            'provider_routing',
+            "provider_routing",
             "DELETE FROM provider_routing WHERE id = ?",
             (routing_id,),
-            'Routing decision deleted.',
-            'provider_routing',
+            "Routing decision deleted.",
+            "provider_routing",
             routing_id,
         )
 
@@ -3658,11 +3817,14 @@ class ProviderSessionRepositoryImpl(_RepositoryMixin, ProviderSessionRepository)
         self.service = service
 
     def save(self, session: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_sessions', "save")
+        guard = self._guard_status("provider_sessions", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_sessions (id, session_id, workspace_id, project_id, active_provider, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-        return self._write('provider_sessions', q, (
+        return self._write(
+            "provider_sessions",
+            q,
+            (
                 session["id"],
                 session.get("session_id"),
                 session.get("workspace_id"),
@@ -3670,15 +3832,20 @@ class ProviderSessionRepositoryImpl(_RepositoryMixin, ProviderSessionRepository)
                 session.get("active_provider"),
                 session.get("created_at") or time.time(),
                 session.get("updated_at") or time.time(),
-            ), 'Session saved.')
+            ),
+            "Session saved.",
+        )
 
     def get(self, session_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_sessions', "get")
+        guard = self._guard_status("provider_sessions", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'provider_sessions',
+            "provider_sessions",
             "SELECT * FROM provider_sessions WHERE id = ?",
             (session_id,),
             session_id,
@@ -3687,11 +3854,11 @@ class ProviderSessionRepositoryImpl(_RepositoryMixin, ProviderSessionRepository)
         )
 
     def delete(self, session_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_sessions', "delete")
+        guard = self._guard_status("provider_sessions", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'provider_sessions',
+            "provider_sessions",
             "DELETE FROM provider_sessions WHERE id = ?",
             (session_id,),
             "Session deleted.",
@@ -3703,28 +3870,35 @@ class ProviderCheckpointRepositoryImpl(_RepositoryMixin, ProviderCheckpointRepos
         self.service = service
 
     def save(self, checkpoint: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_checkpoints', "save")
+        guard = self._guard_status("provider_checkpoints", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_checkpoints (id, task_id, provider_name, context, retry_count, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-        return self._write('provider_checkpoints', q, (
+        return self._write(
+            "provider_checkpoints",
+            q,
+            (
                 checkpoint["id"],
                 checkpoint.get("task_id"),
                 checkpoint.get("provider_name"),
                 json.dumps(checkpoint.get("context") or {}),
                 checkpoint.get("retry_count"),
                 checkpoint.get("timestamp") or time.time(),
-            ), 'Checkpoint saved.')
+            ),
+            "Checkpoint saved.",
+        )
 
     def get(self, checkpoint_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_checkpoints', "get")
+        guard = self._guard_status("provider_checkpoints", "get")
         if guard is not None:
             return guard
+
         def _parse(row):
             row["context"] = json.loads(row["context"])
             return row
+
         return self._fetch_one(
-            'provider_checkpoints',
+            "provider_checkpoints",
             "SELECT * FROM provider_checkpoints WHERE id = ?",
             (checkpoint_id,),
             checkpoint_id,
@@ -3733,11 +3907,11 @@ class ProviderCheckpointRepositoryImpl(_RepositoryMixin, ProviderCheckpointRepos
         )
 
     def delete(self, checkpoint_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_checkpoints', "delete")
+        guard = self._guard_status("provider_checkpoints", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'provider_checkpoints',
+            "provider_checkpoints",
             "DELETE FROM provider_checkpoints WHERE id = ?",
             (checkpoint_id,),
             "Checkpoint deleted.",
@@ -3749,26 +3923,34 @@ class ProviderFailoverRepositoryImpl(_RepositoryMixin, ProviderFailoverRepositor
         self.service = service
 
     def save(self, failover: Dict[str, Any]) -> PersistenceResult:
-        guard = self._guard_status('provider_failovers', "save")
+        guard = self._guard_status("provider_failovers", "save")
         if guard is not None:
             return guard
         q = "INSERT OR REPLACE INTO provider_failovers (id, failed_provider, target_provider, checkpoint_id, error_message, timestamp) VALUES (?, ?, ?, ?, ?, ?)"
-        return self._write('provider_failovers', q, (
+        return self._write(
+            "provider_failovers",
+            q,
+            (
                 failover["id"],
                 failover.get("failed_provider"),
                 failover.get("target_provider"),
                 failover.get("checkpoint_id"),
                 failover.get("error_message"),
                 failover.get("timestamp") or time.time(),
-            ), 'Failover history logged.')
+            ),
+            "Failover history logged.",
+        )
 
     def get(self, failover_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_failovers', "get")
+        guard = self._guard_status("provider_failovers", "get")
         if guard is not None:
             return guard
-        def _parse(row): return row
+
+        def _parse(row):
+            return row
+
         return self._fetch_one(
-            'provider_failovers',
+            "provider_failovers",
             "SELECT * FROM provider_failovers WHERE id = ?",
             (failover_id,),
             failover_id,
@@ -3777,11 +3959,11 @@ class ProviderFailoverRepositoryImpl(_RepositoryMixin, ProviderFailoverRepositor
         )
 
     def delete(self, failover_id: str) -> PersistenceResult:
-        guard = self._guard_status('provider_failovers', "delete")
+        guard = self._guard_status("provider_failovers", "delete")
         if guard is not None:
             return guard
         return self._write(
-            'provider_failovers',
+            "provider_failovers",
             "DELETE FROM provider_failovers WHERE id = ?",
             (failover_id,),
             "Failover log deleted.",

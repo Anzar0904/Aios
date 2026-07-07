@@ -1,4 +1,5 @@
 # ruff: noqa: F403, F405, E501, N802, E402, N806, B007
+from __future__ import annotations
 import logging
 import os
 import time
@@ -8,6 +9,7 @@ from aios.services.base import ServiceLifecycle
 from aios.services.persistence import *
 
 logger = logging.getLogger(__name__)
+
 
 class RedisTelemetry(ServiceLifecycle):
     def __init__(self) -> None:
@@ -173,7 +175,6 @@ class RedisReportGenerator(ServiceLifecycle):
             f.write(
                 f"# Redis Platform Diagnostics Report\n\n- Remediations: {diag['remediations']}\n"
             )
-
 
 
 class RedisRuntimeTelemetryImpl(RedisRuntimeTelemetry):

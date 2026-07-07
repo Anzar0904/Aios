@@ -1,4 +1,5 @@
 # ruff: noqa: F403, F405, E501, N802, E402, N806, B007
+from __future__ import annotations
 import logging
 import os
 import threading
@@ -11,6 +12,7 @@ from aios.services.persistence import *
 from ..intelligence import get_unified_ri
 
 logger = logging.getLogger(__name__)
+
 
 class RedisConfigurationService(ServiceLifecycle):
     def __init__(self) -> None:
@@ -118,7 +120,9 @@ class RedisConnectionManager(ServiceLifecycle):
 
     def connect(self) -> Any:
         if self.config.awaiting_configuration:
-            logger.warning("Redis is not configured (awaiting configuration). Falling back to FakeRedisClient local mode.")
+            logger.warning(
+                "Redis is not configured (awaiting configuration). Falling back to FakeRedisClient local mode."
+            )
             self.client = FakeRedisClient()
             return self.client
 
@@ -261,7 +265,6 @@ class RedisProviderImpl(RedisProvider):
             return False
 
 
-
 class RedisRuntimeServiceImpl(RedisRuntimeService, ServiceLifecycle):
     def __init__(
         self,
@@ -349,5 +352,3 @@ class RedisRuntimeServiceImpl(RedisRuntimeService, ServiceLifecycle):
 
     def generate_reports(self) -> None:
         self.report_gen.generate_reports()
-
-
