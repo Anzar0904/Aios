@@ -67,7 +67,7 @@ class PersistenceConfigurationService(ServiceLifecycle):
     """Configuration management service for the Persistence Platform."""
 
     def __init__(self) -> None:
-        self.policy: PersistencePolicy = PersistencePolicy.STRICT
+        self.policy: PersistencePolicy = PersistencePolicy.BEST_EFFORT
         self.provider_name: str = "postgresql"
         # Discovery of standard environment variables
         self.host: str = os.getenv("POSTGRES_HOST", "")

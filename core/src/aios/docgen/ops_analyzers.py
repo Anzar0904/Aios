@@ -495,7 +495,7 @@ class StartupSequenceAnalyzer:
                 healthcheck=None,
                 notes=(
                     "Migrations are run automatically inside bootstrap_kernel() via "
-                    "PersistenceBootstrapper.on_ready(). Running manually ensures the "
+                    "PersistenceBootstrapper.start(). Running manually ensures the "
                     "schema is current before the first startup."
                 ),
             ),

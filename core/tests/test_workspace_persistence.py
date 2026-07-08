@@ -72,7 +72,7 @@ def persistence_setup():
     # Bootstrap schemas
     bootstrapper = PersistenceBootstrapper(service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Repositories
     workspace_repo = WorkspaceRepositoryImpl(service)

@@ -88,7 +88,7 @@ def test_strict_policy_fails_immediately():
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
     service.initialize()
-    service.on_ready()
+    service.start()
 
     repo = WorkspaceRepositoryImpl(service)
     repos.register_repository("workspaces", repo)
@@ -108,7 +108,7 @@ def test_awaiting_config_fails_immediately_in_strict():
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
     service.initialize()
-    service.on_ready()
+    service.start()
 
     repo = WorkspaceRepositoryImpl(service)
     repos.register_repository("workspaces", repo)
@@ -129,7 +129,7 @@ def test_best_effort_policy_returns_failure_result():
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
     service.initialize()
-    service.on_ready()
+    service.start()
 
     repo = WorkspaceRepositoryImpl(service)
     repos.register_repository("workspaces", repo)
@@ -153,7 +153,7 @@ def test_read_only_policy_blocks_writes():
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
     service.initialize()
-    service.on_ready()
+    service.start()
 
     repo = WorkspaceRepositoryImpl(service)
     repos.register_repository("workspaces", repo)
@@ -196,7 +196,7 @@ def test_profile_service_strict_policy_fails_on_db_disconnect():
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
     service.initialize()
-    service.on_ready()
+    service.start()
 
     repo = EngineeringProfileRepositoryImpl(service)
     repos.register_repository("engineering_profiles", repo)
@@ -246,7 +246,7 @@ def test_profile_service_best_effort_policy_registers_in_memory():
     repos = RepositoryRegistry()
     service = PersistenceServiceImpl(config, registry, repos)
     service.initialize()
-    service.on_ready()
+    service.start()
 
     repo = EngineeringProfileRepositoryImpl(service)
     repos.register_repository("engineering_profiles", repo)

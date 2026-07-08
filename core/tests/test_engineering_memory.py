@@ -61,7 +61,7 @@ def memory_setup():
     # Bootstrap schemas
     bootstrapper = PersistenceBootstrapper(service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Repositories
     task_repo = EngineeringTaskRepositoryImpl(service)

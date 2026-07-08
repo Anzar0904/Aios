@@ -55,7 +55,7 @@ def ri_setup():
     # Bootstrap schemas
     bootstrapper = PersistenceBootstrapper(service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Auxiliary classes
     ri_telem = RuntimeTelemetryCollector()

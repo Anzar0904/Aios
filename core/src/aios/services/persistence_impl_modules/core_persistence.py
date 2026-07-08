@@ -65,7 +65,7 @@ class PersistenceServiceImpl(PersistenceService):
         except Exception as e:
             logger.error(f"Failed to initialize local-only SQLite provider: {e}")
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         if self.active_provider:
             try:
                 self.active_provider.connect()
@@ -85,7 +85,7 @@ class PersistenceServiceImpl(PersistenceService):
                 )
                 self.fallback_to_sqlite()
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         if self.active_provider:
             self.active_provider.disconnect()
 
@@ -619,7 +619,7 @@ class PersistenceBootstrapper(ServiceLifecycle):
     def __init__(self, persistence_service: PersistenceService) -> None:
         self.persistence_service = persistence_service
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         impl = self.persistence_service  # type: ignore
         provider = impl.active_provider
         if not provider or not provider.migration_manager:

@@ -15,10 +15,10 @@ class DummyService(ServiceLifecycle):
     def initialize(self):
         self.init_count += 1
 
-    def on_ready(self):
+    def start(self):
         self.ready_count += 1
 
-    def teardown(self):
+    def shutdown(self):
         self.teardown_count += 1
 
 
@@ -32,14 +32,14 @@ def test_single_initialization():
     service.initialize()
     assert service.init_count == 1
 
-    # Call on_ready multiple times
-    service.on_ready()
-    service.on_ready()
+    # Call start multiple times
+    service.start()
+    service.start()
     assert service.ready_count == 1
 
-    # Call teardown multiple times
-    service.teardown()
-    service.teardown()
+    # Call shutdown multiple times
+    service.shutdown()
+    service.shutdown()
     assert service.teardown_count == 1
 
 

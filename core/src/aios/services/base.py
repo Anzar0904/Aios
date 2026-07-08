@@ -2,7 +2,7 @@ class ServiceLifecycle:
     """
     Defines the contract for core service lifecycles.
     Each service transitions through these stages:
-    initialize -> on_ready -> on_active -> teardown.
+    initialize -> start -> ready -> shutdown.
     """
 
     def __init_subclass__(cls, **kwargs):
@@ -17,39 +17,35 @@ class ServiceLifecycle:
                     orig_init(self, *args, **kwargs)
             cls.initialize = wrapped_init
 
-        # Wrap on_ready
-        orig_ready = getattr(cls, "on_ready", None)
-        if orig_ready:
-            def wrapped_ready(self, *args, **kwargs):
-                if not getattr(self, "_lifecycle_ready", False):
-                    setattr(self, "_lifecycle_ready", True)
-                    orig_ready(self, *args, **kwargs)
-            cls.on_ready = wrapped_ready
+        # Wrap start
+        orig_start = getattr(cls, "start", None)
+        if orig_start:
+            def wrapped_start(self, *args, **kwargs):
+                if not getattr(self, "_lifecycle_start", False):
+                    setattr(self, "_lifecycle_start", True)
+                    orig_start(self, *args, **kwargs)
+            cls.start = wrapped_start
 
-        # Wrap teardown
-        orig_teardown = getattr(cls, "teardown", None)
-        if orig_teardown:
-            def wrapped_teardown(self, *args, **kwargs):
-                if not getattr(self, "_lifecycle_teardown", False):
-                    setattr(self, "_lifecycle_teardown", True)
-                    orig_teardown(self, *args, **kwargs)
-            cls.teardown = wrapped_teardown
+        # Wrap shutdown
+        orig_shutdown = getattr(cls, "shutdown", None)
+        if orig_shutdown:
+            def wrapped_shutdown(self, *args, **kwargs):
+                if not getattr(self, "_lifecycle_shutdown", False):
+                    setattr(self, "_lifecycle_shutdown", True)
+                    orig_shutdown(self, *args, **kwargs)
+            cls.shutdown = wrapped_shutdown
 
     def initialize(self) -> None:
-        """Called during service registration to initialize resources."""
         if not getattr(self, "_lifecycle_initialized", False):
             setattr(self, "_lifecycle_initialized", True)
 
-    def on_ready(self) -> None:
-        """Called when all services are registered and the system is ready to start."""
-        if not getattr(self, "_lifecycle_ready", False):
-            setattr(self, "_lifecycle_ready", True)
+    def start(self) -> None:
+        if not getattr(self, "_lifecycle_start", False):
+            setattr(self, "_lifecycle_start", True)
 
-    def on_active(self) -> None:
-        """Called when the service is transitioning to active session state."""
-        pass
+    def ready(self) -> bool:
+        return True
 
-    def teardown(self) -> None:
-        """Called during graceful shutdown to clean up resources."""
-        if not getattr(self, "_lifecycle_teardown", False):
-            setattr(self, "_lifecycle_teardown", True)
+    def shutdown(self) -> None:
+        if not getattr(self, "_lifecycle_shutdown", False):
+            setattr(self, "_lifecycle_shutdown", True)

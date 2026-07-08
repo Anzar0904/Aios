@@ -76,9 +76,9 @@ from aios.services.base import ServiceLifecycle
 class DIInitializeMixin(ServiceLifecycle):
     def initialize(self) -> None:
         pass
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
 

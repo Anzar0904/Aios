@@ -236,7 +236,7 @@ class Kernel:
 
         for service in self.registry.get_all():
             if not getattr(service, "_lifecycle_ready", False):
-                service.on_ready()
+                service.start()
                 setattr(service, "_lifecycle_ready", True)
 
         event_bus.publish(KernelStartedEvent(version=self.config.runtime.version))
@@ -260,7 +260,7 @@ class Kernel:
             for service in reversed(self.registry.get_all()):
                 try:
                     if not getattr(service, "_lifecycle_teardown", False):
-                        service.teardown()
+                        service.shutdown()
                         setattr(service, "_lifecycle_teardown", True)
                 except Exception as e:
                     # Engineering Constitution: fail loudly in development, safely in production

@@ -70,7 +70,7 @@ def queue_env():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # 2. Setup Redis Queue Platform Mock
     redis_cfg = RedisConfigurationService()

@@ -20,10 +20,10 @@ class LocalEventBus(EventBusService):
     def initialize(self) -> None:
         logger.info("Initializing LocalEventBus")
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         logger.info("LocalEventBus is ready")
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         logger.info("Tearing down LocalEventBus")
         self._subscribers.clear()
         self._registered_types.clear()

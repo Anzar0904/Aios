@@ -569,7 +569,7 @@ def test_health_monitor():
     # Inject SQLite test transport
     transport = SQLiteTransportForTests(config)
     service.active_provider.transport = transport
-    service.on_ready()
+    service.start()
 
     service.execute("SELECT 1")
     h2 = health_monitor.check_health()
@@ -594,7 +594,7 @@ def test_report_generator(tmp_path):
     service.initialize()
     mock_transport = MockDatabaseTransport(config)
     service.active_provider.transport = mock_transport
-    service.on_ready()
+    service.start()
 
     health = PersistenceHealthMonitor(service)
     diagnostics = PersistenceDiagnostics(config, service)

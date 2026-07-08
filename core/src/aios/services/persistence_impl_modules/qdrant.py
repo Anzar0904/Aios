@@ -1801,7 +1801,7 @@ class QdrantRuntimeCoordinatorImpl(QdrantRuntimeCoordinator):
     def stop(self) -> None:
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         self.stop()
 
     def get_telemetry_service(self) -> QdrantRuntimeTelemetry:

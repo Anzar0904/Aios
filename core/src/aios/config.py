@@ -63,11 +63,22 @@ class NotionConfig:
 
 
 @dataclass(frozen=True)
+class PersistenceConfig:
+    policy: Optional[str] = None
+    provider_name: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    database: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
+
+@dataclass(frozen=True)
 class OSConfig:
     runtime: RuntimeConfig
     llm: LLMConfig = LLMConfig()
     github: GitHubConfig = GitHubConfig()
     notion: NotionConfig = NotionConfig()
+    persistence: PersistenceConfig = PersistenceConfig()
 
 
 def load_config(config_path: Path) -> OSConfig:
@@ -78,6 +89,7 @@ def load_config(config_path: Path) -> OSConfig:
             llm=LLMConfig(),
             github=GitHubConfig(),
             notion=NotionConfig(),
+            persistence=PersistenceConfig(),
         )
 
     with open(config_path, "rb") as f:
@@ -89,6 +101,7 @@ def load_config(config_path: Path) -> OSConfig:
     omniroute_data = llm_data.get("omniroute", {})
     github_data = data.get("github", {})
     notion_data = data.get("notion", {})
+    persistence_data = data.get("persistence", {})
 
     # Load api_key from environment variables if not present in config
     api_key = omniroute_data.get("api_key") or os.environ.get("OMNIROUTE_API_KEY")
@@ -142,5 +155,14 @@ def load_config(config_path: Path) -> OSConfig:
             retry_count=notion_data.get("retry_count", 3),
             timeout=notion_data.get("timeout", 30),
             logging_enabled=notion_data.get("logging_enabled", True),
+        ),
+        persistence=PersistenceConfig(
+            policy=persistence_data.get("policy"),
+            provider_name=persistence_data.get("provider_name"),
+            host=persistence_data.get("host"),
+            port=persistence_data.get("port"),
+            database=persistence_data.get("database"),
+            user=persistence_data.get("user"),
+            password=persistence_data.get("password"),
         ),
     )

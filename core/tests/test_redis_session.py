@@ -66,7 +66,7 @@ def session_env():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # 2. Setup Redis Session Platform Mock
     redis_cfg = RedisConfigurationService()

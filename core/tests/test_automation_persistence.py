@@ -65,7 +65,7 @@ def automation_setup():
     # Bootstrap schemas including Level 16-23 migrations
     bootstrapper = PersistenceBootstrapper(service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Repositories
     workflow_repo = WorkflowRepositoryImpl(service)

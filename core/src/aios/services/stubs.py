@@ -16,13 +16,15 @@ class StubContextService(ContextService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def detect_context(self) -> WorkspaceContext:
@@ -42,13 +44,15 @@ class StubMemoryService(MemoryService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def add_memory(
@@ -141,13 +145,15 @@ class StubSessionService(SessionService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def start_session(self, workspace_path: str, session_id: Optional[str] = None) -> Session:
@@ -185,13 +191,15 @@ class StubModelService(ModelService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def execute_prompt(self, prompt: str, system_instruction: str | None = None) -> str:
@@ -212,13 +220,15 @@ class StubToolService(ToolService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def register_tool(self, tool: Tool) -> None:
@@ -244,13 +254,15 @@ class StubEventBusService(EventBusService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def register_event_type(self, event_type: Type[Event]) -> None:
@@ -270,13 +282,15 @@ class StubIntentResolverService(IntentResolverService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def resolve(self, text: str) -> Intent:
@@ -299,13 +313,15 @@ class StubAgentRuntimeService(AgentRuntimeService):
     def initialize(self) -> None:
         pass
 
-    def on_ready(self) -> None:
+    def start(self) -> None:
         pass
 
-    def on_active(self) -> None:
+    def ready(self) -> bool:
+        return True
+
         pass
 
-    def teardown(self) -> None:
+    def shutdown(self) -> None:
         pass
 
     def register_agent(self, agent: Agent) -> None:

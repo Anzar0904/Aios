@@ -85,7 +85,7 @@ def intelligence_env():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # 2. Setup Redis Subsystems and Mocks
     redis_cfg = RedisConfigurationService()

@@ -490,7 +490,7 @@ class TestStartupGuide:
       1. PostgreSQL → Persistence Platform
       2. Redis → Redis Platform
       3. Qdrant → Vector Memory Platform
-      4. Database Migrations → PersistenceBootstrapper.on_ready()
+      4. Database Migrations → PersistenceBootstrapper.start()
       5. AIOS Core → full kernel
       6. n8n → optional workflow platform
     """

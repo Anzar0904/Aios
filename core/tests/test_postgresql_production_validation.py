@@ -84,7 +84,7 @@ def validation_env():
     # Bootstrap schemas
     bootstrapper = PersistenceBootstrapper(service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Wire up repos
     r_map = {

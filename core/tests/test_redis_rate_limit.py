@@ -70,7 +70,7 @@ def rate_limit_env():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # 2. Setup Redis Rate Limiting Mock
     redis_cfg = RedisConfigurationService()

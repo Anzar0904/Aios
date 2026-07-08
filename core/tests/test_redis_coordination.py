@@ -66,7 +66,7 @@ def coordination_env():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # 2. Setup Redis Coordination Platform Mock
     redis_cfg = RedisConfigurationService()

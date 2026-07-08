@@ -78,7 +78,7 @@ def test_env():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Repositories
     workspace_repo = WorkspaceRepositoryImpl(p_service)

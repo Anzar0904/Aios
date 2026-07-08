@@ -221,7 +221,7 @@ def main():
 
     bootstrapper = PersistenceBootstrapper(p_service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     workspace_repo = WorkspaceRepositoryImpl(p_service)
     profile_repo = EngineeringProfileRepositoryImpl(p_service)

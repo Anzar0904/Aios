@@ -71,7 +71,7 @@ def ai_setup():
     # Bootstrap schemas including Level 24-35 migrations
     bootstrapper = PersistenceBootstrapper(service)
     bootstrapper.initialize()
-    bootstrapper.on_ready()
+    bootstrapper.start()
 
     # Repositories
     ai_provider_repo = AIProviderRepositoryImpl(service)
