@@ -13,16 +13,19 @@ def test_credentials_store_isolated(tmp_path):
     # Save a workspace token
     store.save_token("workspace_1", "secret_123")
     assert store.load_all() == {"workspace_1": "secret_123"}
+    assert (cred_path.stat().st_mode & 0o777) == 0o600
 
     # Save another workspace token (check multiple workspaces)
     store.save_token("workspace_2", "secret_456")
     loaded = store.load_all()
     assert loaded["workspace_1"] == "secret_123"
     assert loaded["workspace_2"] == "secret_456"
+    assert (cred_path.stat().st_mode & 0o777) == 0o600
 
     # Delete workspace_1
     store.delete_workspace("workspace_1")
     assert store.load_all() == {"workspace_2": "secret_456"}
+    assert (cred_path.stat().st_mode & 0o777) == 0o600
 
     # Delete all
     store.delete_all()
@@ -36,6 +39,7 @@ def test_local_notion_service_lifecycle(tmp_path):
     # Instantiate service
     service = LocalNotionService(credentials_path=cred_path)
     service.initialize()
+    service.start()
 
     # Check status initially disconnected
     status = service.get_status()
@@ -78,6 +82,8 @@ def test_local_notion_service_lifecycle(tmp_path):
     assert status["status"] == "disconnected"
     assert status["workspaces"] == []
 
+    service.shutdown()
+
 
 def test_stub_methods(tmp_path):
     cred_path = tmp_path / "credentials.json"
@@ -111,3 +117,24 @@ def test_stub_methods(tmp_path):
 
     # list_databases
     assert service.list_databases() == []
+
+
+def test_credentials_store_default_path():
+    from pathlib import Path
+    store = NotionCredentialsStore()
+    assert store.path == Path(".agent/notion/credentials.json")
+
+
+def test_local_notion_service_login_invalid_inputs(tmp_path):
+    cred_path = tmp_path / "credentials.json"
+    service = LocalNotionService(credentials_path=cred_path)
+    service.initialize()
+
+    # Empty token
+    assert service.login("", "workspace_1") is False
+
+    # Empty workspace name
+    assert service.login("secret_abc", "") is False
+
+    # Both empty
+    assert service.login("", "") is False

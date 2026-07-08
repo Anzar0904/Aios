@@ -45,6 +45,7 @@ class NotionCredentialsStore:
         try:
             with open(self.path, "w", encoding="utf-8") as f:
                 json.dump(updated, f, indent=2, ensure_ascii=False)
+            self.path.chmod(0o600)
         except Exception as e:
             logger.error(f"Failed to save Notion token: {e}")
 
@@ -57,6 +58,7 @@ class NotionCredentialsStore:
         try:
             with open(self.path, "w", encoding="utf-8") as f:
                 json.dump(updated, f, indent=2, ensure_ascii=False)
+            self.path.chmod(0o600)
         except Exception as e:
             logger.error(f"Failed to delete Notion workspace: {e}")
 
