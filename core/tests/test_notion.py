@@ -92,40 +92,370 @@ def test_local_notion_service_lifecycle(tmp_path):
     service.shutdown()
 
 
-def test_stub_methods(tmp_path):
+def test_notion_service_operations(tmp_path):
     cred_path = tmp_path / "credentials.json"
-    service = LocalNotionService(credentials_path=cred_path)
+    cache_path = tmp_path / "cache.json"
+
+    # 1. Setup mock cache file content
+    cache_data = {
+        "workspace_1": {
+            "metadata": {"last_sync_time": "2026-07-08T10:00:00.000Z"},
+            "pages": [
+                {
+                    "object": "page",
+                    "id": "page_1",
+                    "last_edited_time": "2026-07-08T10:00:00.000Z",
+                    "parent": {"type": "database_id", "database_id": "db_1"},
+                    "properties": {
+                        "title": {
+                            "type": "title",
+                            "title": [
+                                {
+                                    "type": "text",
+                                    "text": {"content": "Page 1 title"},
+                                    "plain_text": "Page 1 title",
+                                }
+                            ],
+                        },
+                        "MyRelation": {"type": "relation", "relation": [{"id": "page_2"}]},
+                    },
+                    "blocks": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [
+                                    {
+                                        "type": "text",
+                                        "text": {"content": "Paragraph block content"},
+                                        "plain_text": "Paragraph block content",
+                                    }
+                                ]
+                            },
+                        }
+                    ],
+                    "memory_id": "mem_page_1",
+                },
+                {
+                    "object": "page",
+                    "id": "page_2",
+                    "last_edited_time": "2026-07-08T10:00:00.000Z",
+                    "parent": {"type": "page_id", "page_id": "page_1"},
+                    "properties": {
+                        "title": {
+                            "type": "title",
+                            "title": [
+                                {
+                                    "type": "text",
+                                    "text": {"content": "Page 2 title"},
+                                    "plain_text": "Page 2 title",
+                                }
+                            ],
+                        }
+                    },
+                    "blocks": [],
+                    "memory_id": "mem_page_2",
+                },
+            ],
+            "databases": [
+                {
+                    "object": "database",
+                    "id": "db_1",
+                    "parent": {"type": "workspace", "workspace": True},
+                    "title": [
+                        {
+                            "type": "text",
+                            "text": {"content": "My Database"},
+                            "plain_text": "My Database",
+                        }
+                    ],
+                    "properties": {"title": {"type": "title"}},
+                }
+            ],
+            "users": [],
+        }
+    }
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(cache_data, f)
+
+    # 2. Setup mock services
+    mock_memory_service = MagicMock()
+    mock_model_service = MagicMock()
+
+    service = LocalNotionService(
+        credentials_path=cred_path,
+        cache_path=cache_path,
+        model_service=mock_model_service,
+        memory_service=mock_memory_service,
+    )
     service.initialize()
     service.login("secret_123", "workspace_1")
 
-    # sync
-    with patch.object(service, "_crawl_workspace", return_value={"pages": []}) as mock_crawl:
-        sync_res = service.sync()
-        mock_crawl.assert_called_once_with("workspace_1", "secret_123")
-    assert sync_res["status"] == "success"
-    assert sync_res["synced_pages"] == 0
-    assert "workspace_1" in sync_res["workspaces"]
+    # 3. Test list_databases
+    dbs = service.list_databases()
+    assert len(dbs) == 1
+    assert dbs[0]["id"] == "db_1"
 
-    # search
-    assert service.search("query") == []
+    # 4. Test explain
+    explanation = service.explain("page_1")
+    assert explanation["id"] == "page_1"
+    assert explanation["title"] == "Page 1 title"
+    assert explanation["workspace"] == "workspace_1"
+    assert explanation["hierarchy"]["parent_type"] == "database_id"
+    assert explanation["hierarchy"]["parent_id"] == "db_1"
+    assert explanation["child_block_types"] == ["paragraph"]
 
-    # summarize
-    assert service.summarize("page_123") == "Summary of page page_123"
+    # 5. Test summarize
+    # Mock ModelService execution response
+    mock_response = MagicMock()
+    mock_response.content = "This is a great summary of Page 1."
+    mock_model_service.execute_request.return_value = mock_response
 
-    # create_page
-    create_res = service.create_page("parent_abc", "My Page", "Hello World")
-    assert create_res["id"] == "mock_page_parent_abc"
-    assert create_res["title"] == "My Page"
-    assert create_res["status"] == "created"
+    summary = service.summarize("page_1")
+    assert summary == "This is a great summary of Page 1."
 
-    # update_page
-    update_res = service.update_page("page_abc", "New Content")
-    assert update_res["id"] == "page_abc"
-    assert update_res["content"] == "New Content"
-    assert update_res["status"] == "updated"
+    # Assert ModelService was called with LLMRequest containing prompt
+    mock_model_service.execute_request.assert_called_once()
+    llm_req = mock_model_service.execute_request.call_args[0][0]
+    assert "Page 1 title" in llm_req.prompt
+    assert "Paragraph block content" in llm_req.prompt
 
-    # list_databases
-    assert service.list_databases() == []
+    # 6. Test create_page
+    mock_response_create = {
+        "object": "page",
+        "id": "new_page_999",
+        "parent": {"type": "page_id", "page_id": "page_1"},
+        "properties": {
+            "title": {
+                "type": "title",
+                "title": [
+                    {
+                        "type": "text",
+                        "text": {"content": "New Child Page"},
+                        "plain_text": "New Child Page",
+                    }
+                ],
+            }
+        },
+    }
+
+    mock_memory = MagicMock()
+    mock_memory.memory_id = "mem_new_page"
+    mock_memory_service.add_memory.return_value = mock_memory
+
+    # Mock httpx client response
+    with patch("aios.services.notion_impl.httpx.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_http_response = MagicMock()
+        mock_http_response.json.return_value = mock_response_create
+        mock_client.request.return_value = mock_http_response
+
+        new_page = service.create_page(
+            parent_id="page_1", title="New Child Page", content="Line 1 content\nLine 2 content"
+        )
+        assert new_page["id"] == "new_page_999"
+
+        # Verify request parameters
+        mock_client.request.assert_called_once()
+        method, url = mock_client.request.call_args[0]
+        assert method == "POST"
+        assert "/v1/pages" in url
+
+        json_payload = mock_client.request.call_args[1]["json"]
+        assert json_payload["parent"]["page_id"] == "page_1"
+        assert len(json_payload["children"]) == 2
+        assert (
+            json_payload["children"][0]["paragraph"]["rich_text"][0]["text"]["content"]
+            == "Line 1 content"
+        )
+
+        # Verify MemoryService and cache updates
+        mock_memory_service.add_memory.assert_called_once()
+        mock_memory_service.commit.assert_called_once()
+
+        # Reload cache to verify creation persisted
+        with open(cache_path, "r", encoding="utf-8") as f:
+            updated_cache = json.load(f)
+        ws_pages = updated_cache["workspace_1"]["pages"]
+        assert any(p["id"] == "new_page_999" for p in ws_pages)
+        created_cached_page = next(p for p in ws_pages if p["id"] == "new_page_999")
+        assert created_cached_page["memory_id"] == "mem_new_page"
+
+    # 7. Test update_page
+    mock_response_update = {
+        "object": "list",
+        "results": [
+            {
+                "object": "block",
+                "id": "block_new_1",
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {"content": "Updated paragraph content"},
+                            "plain_text": "Updated paragraph content",
+                        }
+                    ]
+                },
+            }
+        ],
+    }
+
+    mock_memory_service.commit.reset_mock()
+    with patch("aios.services.notion_impl.httpx.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_http_response = MagicMock()
+        mock_http_response.json.return_value = mock_response_update
+        mock_client.request.return_value = mock_http_response
+
+        update_res = service.update_page(page_id="page_1", content="Updated paragraph content")
+        assert update_res["status"] == "updated"
+        assert update_res["blocks_added"] == 1
+
+        # Verify request parameters
+        mock_client.request.assert_called_once()
+        method, url = mock_client.request.call_args[0]
+        assert method == "POST"
+        assert "/v1/blocks/page_1/children" in url
+
+        # Verify memory/cache update
+        mock_memory_service.update_memory.assert_called_once()
+        mock_memory_service.commit.assert_called_once()
+
+        with open(cache_path, "r", encoding="utf-8") as f:
+            updated_cache = json.load(f)
+        ws_pages = updated_cache["workspace_1"]["pages"]
+        updated_cached_page = next(p for p in ws_pages if p["id"] == "page_1")
+        assert len(updated_cached_page["blocks"]) == 2
+        assert updated_cached_page["blocks"][1]["id"] == "block_new_1"
+
+    # 8. Test search
+    search_results = service.search("title")
+    assert len(search_results) == 3
+    assert {r["id"] for r in search_results} == {"page_1", "page_2", "new_page_999"}
+
+    db_search = service.search("Database")
+    assert len(db_search) == 2
+    assert {d["id"] for d in db_search} == {"page_1", "db_1"}
+
+
+def test_notion_service_generate_graphs(tmp_path):
+    cred_path = tmp_path / "credentials.json"
+    cache_path = tmp_path / "cache.json"
+    graphs_path = tmp_path / "graphs"
+
+    # Setup mock cache
+    cache_data = {
+        "workspace_1": {
+            "metadata": {"last_sync_time": "2026-07-08T10:00:00.000Z"},
+            "pages": [
+                {
+                    "object": "page",
+                    "id": "page_1",
+                    "parent": {"type": "workspace", "workspace": True},
+                    "properties": {
+                        "title": {
+                            "type": "title",
+                            "title": [
+                                {
+                                    "type": "text",
+                                    "text": {"content": "Page 1 Title"},
+                                    "plain_text": "Page 1 Title",
+                                }
+                            ],
+                        },
+                        "relation_prop": {"type": "relation", "relation": [{"id": "page_2"}]},
+                    },
+                    "blocks": [
+                        {
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [
+                                    {
+                                        "type": "mention",
+                                        "mention": {"type": "database", "database": {"id": "db_1"}},
+                                    }
+                                ]
+                            },
+                        }
+                    ],
+                },
+                {
+                    "object": "page",
+                    "id": "page_2",
+                    "parent": {"type": "database_id", "database_id": "db_1"},
+                    "properties": {
+                        "title": {
+                            "type": "title",
+                            "title": [
+                                {
+                                    "type": "text",
+                                    "text": {"content": "Page 2 Title"},
+                                    "plain_text": "Page 2 Title",
+                                }
+                            ],
+                        }
+                    },
+                    "blocks": [],
+                },
+            ],
+            "databases": [
+                {
+                    "object": "database",
+                    "id": "db_1",
+                    "parent": {"type": "workspace", "workspace": True},
+                    "title": [
+                        {
+                            "type": "text",
+                            "text": {"content": "Database 1"},
+                            "plain_text": "Database 1",
+                        }
+                    ],
+                    "properties": {"title": {"type": "title"}},
+                }
+            ],
+            "users": [],
+        }
+    }
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(cache_data, f)
+
+    service = LocalNotionService(credentials_path=cred_path, cache_path=cache_path)
+    service.initialize()
+
+    # Generate graphs
+    result = service.generate_graphs(graphs_dir=graphs_path)
+
+    assert result["status"] == "success"
+    assert result["graphs_dir"] == str(graphs_path)
+
+    # Assert all files were written
+    expected_files = [
+        "workspace_graph.dot",
+        "page_relationship.dot",
+        "database_relationship.dot",
+        "sync_dependency.dot",
+        "notion_graphs.md",
+    ]
+
+    for filename in expected_files:
+        filepath = graphs_path / filename
+        assert filepath.is_file()
+
+        # Read to verify basic DOT/Markdown syntax
+        content = filepath.read_text(encoding="utf-8")
+        if filename.endswith(".dot"):
+            assert content.startswith("digraph ")
+            assert content.endswith("}\n")
+        else:
+            assert "# Notion Workspace Relationships Summary" in content
+            assert "```mermaid" in content
 
 
 def test_credentials_store_default_path():
@@ -162,9 +492,7 @@ def test_local_notion_service_request_error(tmp_path):
         # Mock an HTTP status error
         mock_response = MagicMock()
         mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Mocked HTTP error",
-            request=MagicMock(),
-            response=mock_response
+            "Mocked HTTP error", request=MagicMock(), response=mock_response
         )
         mock_client.request.return_value = mock_response
 
@@ -181,60 +509,54 @@ def test_local_notion_service_crawl_and_cache(tmp_path):
 
     def mock_request_side_effect(method, url, **kwargs):
         response_mock = MagicMock()
-        
+
         if "/v1/search" in url:
             body = kwargs.get("json", {})
             if body and body.get("start_cursor") == "cursor_page_2":
                 response_mock.json.return_value = {
-                    "results": [
-                        {"object": "page", "id": "page_id_2"}
-                    ],
+                    "results": [{"object": "page", "id": "page_id_2"}],
                     "has_more": False,
-                    "next_cursor": None
+                    "next_cursor": None,
                 }
             else:
                 response_mock.json.return_value = {
                     "results": [
                         {"object": "page", "id": "page_id_1"},
-                        {"object": "database", "id": "db_id_1"}
+                        {"object": "database", "id": "db_id_1"},
                     ],
                     "has_more": True,
-                    "next_cursor": "cursor_page_2"
+                    "next_cursor": "cursor_page_2",
                 }
         elif "/v1/blocks/page_id_1/children" in url:
             response_mock.json.return_value = {
                 "results": [
                     {"object": "block", "id": "block_id_1", "has_children": True},
-                    {"object": "block", "id": "block_id_2", "has_children": False}
+                    {"object": "block", "id": "block_id_2", "has_children": False},
                 ],
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         elif "/v1/blocks/page_id_2/children" in url:
             response_mock.json.return_value = {
                 "results": [],
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         elif "/v1/blocks/block_id_1/children" in url:
             response_mock.json.return_value = {
-                "results": [
-                    {"object": "block", "id": "block_child_1", "has_children": False}
-                ],
+                "results": [{"object": "block", "id": "block_child_1", "has_children": False}],
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         elif "/v1/users" in url:
             response_mock.json.return_value = {
-                "results": [
-                    {"object": "user", "id": "user_id_1", "name": "Alice"}
-                ],
+                "results": [{"object": "user", "id": "user_id_1", "name": "Alice"}],
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         else:
             response_mock.json.return_value = {}
-            
+
         return response_mock
 
     with patch("aios.services.notion_impl.httpx.Client") as mock_client_class:
@@ -267,7 +589,7 @@ def test_local_notion_service_crawl_and_cache(tmp_path):
         assert cache_path.is_file()
         with open(cache_path, "r", encoding="utf-8") as f:
             cache_content = json.load(f)
-        
+
         assert "workspace_1" in cache_content
         cached_ws = cache_content["workspace_1"]
         assert len(cached_ws["pages"]) == 2
@@ -277,15 +599,15 @@ def test_local_notion_service_crawl_and_cache(tmp_path):
         # Check sync method triggers the crawling for all active workspaces
         # We will add another workspace to test sync behavior
         service.login("secret_xyz", "workspace_2")
-        
+
         # Reset mock calls count/state
         mock_client.request.reset_mock()
-        
+
         sync_result = service.sync()
         assert sync_result["status"] == "success"
         assert "workspace_1" in sync_result["workspaces"]
         assert "workspace_2" in sync_result["workspaces"]
-        
+
         # Both workspaces should now be present in the cache file
         with open(cache_path, "r", encoding="utf-8") as f:
             updated_cache = json.load(f)
@@ -314,11 +636,7 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
         return mem
 
     def mock_update_memory(
-        memory_id,
-        content=None,
-        tags=None,
-        importance=None,
-        metadata_additional=None
+        memory_id, content=None, tags=None, importance=None, metadata_additional=None
     ):
         mem = MagicMock()
         mem.memory_id = memory_id
@@ -333,9 +651,7 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
     mock_memory_service.update_memory.side_effect = mock_update_memory
 
     service = LocalNotionService(
-        credentials_path=cred_path,
-        cache_path=cache_path,
-        memory_service=mock_memory_service
+        credentials_path=cred_path, cache_path=cache_path, memory_service=mock_memory_service
     )
     service.initialize()
     service.login("secret_abc", "workspace_1")
@@ -350,19 +666,19 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
             response_mock.json.return_value = {
                 "results": search_results,
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         elif "/v1/blocks/page_id_1/children" in url:
             response_mock.json.return_value = {
                 "results": block_results,
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         elif "/v1/users" in url:
             response_mock.json.return_value = {
                 "results": [],
                 "has_more": False,
-                "next_cursor": None
+                "next_cursor": None,
             }
         else:
             response_mock.json.return_value = {}
@@ -382,9 +698,9 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
                 "properties": {
                     "Name": {
                         "type": "title",
-                        "title": [{"type": "text", "text": {"content": "Initial Title"}}]
+                        "title": [{"type": "text", "text": {"content": "Initial Title"}}],
                     }
-                }
+                },
             }
         ]
         block_results = [
@@ -392,7 +708,7 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [{"type": "text", "text": {"content": "Hello page content"}}]
-                }
+                },
             }
         ]
 
@@ -454,9 +770,9 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
                 "properties": {
                     "Name": {
                         "type": "title",
-                        "title": [{"type": "text", "text": {"content": "Updated Title"}}]
+                        "title": [{"type": "text", "text": {"content": "Updated Title"}}],
                     }
-                }
+                },
             }
         ]
         block_results = [
@@ -464,7 +780,7 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
                 "type": "paragraph",
                 "paragraph": {
                     "rich_text": [{"type": "text", "text": {"content": "Modified page content"}}]
-                }
+                },
             }
         ]
 
@@ -481,4 +797,3 @@ def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
         assert "Updated Title" in updated_memories[0].content
         assert "Modified page content" in updated_memories[0].content
         mock_memory_service.commit.assert_called_once()
-

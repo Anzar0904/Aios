@@ -118,3 +118,13 @@ class NotionService(ServiceLifecycle, abc.ABC):
     def list_databases(self) -> list:
         """List all accessible databases."""
         pass
+
+    @abc.abstractmethod
+    def explain(self, page_id: str) -> dict:
+        """Describe page properties, hierarchy, and child block types."""
+        pass
+
+    @abc.abstractmethod
+    def generate_graphs(self, graphs_dir: Optional[Path] = None) -> dict:
+        """Generate workspace graphs in Graphviz DOT and Markdown formats."""
+        pass
