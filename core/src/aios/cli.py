@@ -624,6 +624,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
     elif args and args[0] == "docs":
         import os
         import sys
+
         subcommand = args[1] if len(args) > 1 else "help"
         target_dir = "."
 
@@ -673,7 +674,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                     parts = mod.split(".")
                     possible_paths = [
                         os.path.join("core", "src", *parts) + ".py",
-                        os.path.join(*parts) + ".py"
+                        os.path.join(*parts) + ".py",
                     ]
                     for path in possible_paths:
                         if os.path.exists(path):
@@ -712,7 +713,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                     parts = mod.split(".")
                     possible_paths = [
                         os.path.join("core", "src", *parts) + ".py",
-                        os.path.join(*parts) + ".py"
+                        os.path.join(*parts) + ".py",
                     ]
                     for path in possible_paths:
                         if os.path.exists(path):
@@ -732,14 +733,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
         elif subcommand == "ask":
             if len(args) < 3:
-                console.print("[yellow]Usage: aios docs ask \"<query>\"[/yellow]")
+                console.print('[yellow]Usage: aios docs ask "<query>"[/yellow]')
                 if exit_on_complete:
                     sys.exit(1)
                 return True
             query = args[2]
 
-            from aios.services.docintel.agent import DocumentationAgent
             from aios.registry import ServiceRegistry
+            from aios.services.docintel.agent import DocumentationAgent
+
             agent = ServiceRegistry._global_registry.get(DocumentationAgent)
             if not agent:
                 agent = DocumentationAgent(index_path="docs/index.json")
@@ -755,6 +757,183 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
         else:
             console.print("[yellow]Usage: aios docs <scan|build|report|ask>[/yellow]")
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+    elif args and args[0] == "engineer":
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios engineer <build|search|graph|explain|impact|validate>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+
+        from aios.registry import ServiceRegistry
+        from aios.services.engineer.bible import EngineeringBibleService
+
+        service = None
+        if ServiceRegistry._global_registry:
+            service = ServiceRegistry._global_registry.get(EngineeringBibleService)
+
+        if not service:
+            service = EngineeringBibleService()
+            service.initialize()
+
+        if subcommand == "build":
+            target_dir = "."
+            from aios.services.docintel.generator import MarkdownGenerator
+            from aios.services.docintel.graph import DependencyGraphBuilder
+            from aios.services.docintel.indexer import DocumentationIndexer
+            from aios.services.docintel.intelligence import DocumentationIntelligenceEngine
+            from aios.services.docintel.scanner import RepositoryScanner
+
+            scanner = RepositoryScanner(target_dir)
+            indexer = DocumentationIndexer()
+            graph_builder = DependencyGraphBuilder()
+            intel_engine = DocumentationIntelligenceEngine()
+            generator = MarkdownGenerator("docs")
+
+            with console.status(
+                "[bold blue]Generating complete documentation platform...", spinner="dots"
+            ):
+                scan_res = scanner.scan()
+                index_data = {}
+                for mod in scan_res["modules"]:
+                    parts = mod.split(".")
+                    possible_paths = [
+                        os.path.join("core", "src", *parts) + ".py",
+                        os.path.join(*parts) + ".py",
+                    ]
+                    for path in possible_paths:
+                        if os.path.exists(path):
+                            index_data[path] = indexer.parse_file(path)
+                            break
+
+                dep_graph = graph_builder.build_dependency_graph(scan_res, index_data)
+                pkg_graph = graph_builder.build_package_graph(scan_res, dep_graph)
+                svc_graph = graph_builder.build_service_graph(scan_res, dep_graph)
+
+                dep_mermaid = graph_builder.generate_mermaid(dep_graph, "Dependency Graph")
+                pkg_mermaid = graph_builder.generate_mermaid(pkg_graph, "Package Graph")
+                svc_mermaid = graph_builder.generate_mermaid(svc_graph, "Service Graph")
+
+                intel_report = intel_engine.analyze(index_data)
+                generator.generate(
+                    scan_res,
+                    index_data,
+                    intel_report,
+                    dep_mermaid,
+                    pkg_mermaid,
+                    svc_mermaid,
+                )
+            service.initialize()
+            console.print("[green]Engineering Graph compiled successfully.[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "search":
+            if len(args) < 3:
+                console.print('[yellow]Usage: aios engineer search "<query>"[/yellow]')
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            query = args[2]
+            res = service.search(query)
+            if not res:
+                console.print("[yellow]No entities found matching query.[/yellow]")
+            for item in res:
+                console.print(
+                    f"- [bold cyan]{item['name']}[/bold cyan] ({item['type']}) in {item['file']}"
+                )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "graph":
+            gtype = args[2] if len(args) > 2 else "import"
+            if gtype not in ["import", "service", "event", "provider"]:
+                console.print(
+                    "[yellow]Usage: aios engineer graph <import|service|event|provider>[/yellow]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if gtype == "import":
+                dot = service.dependency_analyzer.generate_import_graph()
+            elif gtype == "service":
+                dot = service.dependency_analyzer.generate_service_graph()
+            elif gtype == "event":
+                dot = service.dependency_analyzer.generate_event_graph()
+            elif gtype == "provider":
+                dot = service.dependency_analyzer.generate_provider_graph()
+            console.print(dot)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "explain":
+            if len(args) < 3:
+                console.print("[yellow]Usage: aios engineer explain <entity_name>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            ent_name = args[2]
+            ent = service.graph.entities.get(ent_name)
+            if not ent:
+                console.print(f"[red]Entity '{ent_name}' not found.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            console.print(f"[bold green]Entity: {ent['name']}[/bold green]")
+            console.print(f"Type: {ent['type']}")
+            console.print(f"File: {ent['file']}")
+            console.print(f"Bases: {', '.join(ent.get('bases', []))}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "impact":
+            if len(args) < 3:
+                console.print("[yellow]Usage: aios engineer impact <entity_name>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            ent_name = args[2]
+            res = service.impact_analyzer.analyze(ent_name)
+            if "error" in res:
+                console.print(f"[red]{res['error']}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            console.print(f"[bold green]Impact Analysis for {res['entity']}:[/bold green]")
+            console.print(f"File: {res['file']}")
+            console.print(f"Dependents: {', '.join(res['dependents'])}")
+            console.print(f"Affected Tests: {', '.join(res['affected_tests'])}")
+            console.print(f"Risk Score: [bold red]{res['risk_score']}/100[/bold red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "validate":
+            violations = service.rule_engine.validate()
+            if not violations:
+                console.print("✓ No architectural validation violations found.")
+            else:
+                for v in violations:
+                    console.print(f"[red]Violation: {v['type']}[/red] - {v['description']}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios engineer <build|search|graph|explain|impact|validate>[/yellow]"
+            )
             if exit_on_complete:
                 sys.exit(1)
             return True
@@ -932,10 +1111,8 @@ def main() -> None:
                         console.clear()
                     elif slash_cmd == "/multiline":
                         multiline_mode = not multiline_mode
-                        mode_status = 'ENABLED' if multiline_mode else 'DISABLED'
-                        console.print(
-                            f"[green]✓ Multiline mode: {mode_status}[/green]"
-                        )
+                        mode_status = "ENABLED" if multiline_mode else "DISABLED"
+                        console.print(f"[green]✓ Multiline mode: {mode_status}[/green]")
                     elif slash_cmd in ("/exit", "/quit"):
                         break
                     else:

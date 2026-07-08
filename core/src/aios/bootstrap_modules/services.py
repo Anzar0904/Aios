@@ -447,6 +447,13 @@ def bootstrap_services(
     doc_agent = DocumentationAgent(model_service=model_service, index_path="docs/index.json")
     doc_agent.initialize()
 
+    from aios.services.engineer.bible import EngineeringBibleService
+
+    bible_service = EngineeringBibleService(
+        model_service=model_service, index_path="docs/index.json"
+    )
+    bible_service.initialize()
+
     readme_service = LocalREADMEIntelligenceService(
         memory_service=memory_service,
         knowledge_hub=knowledge_hub,
@@ -680,6 +687,7 @@ def bootstrap_services(
     registry.register(EngineeringProfileService, profile_service)
     registry.register(DocumentationService, doc_service)
     registry.register(DocumentationAgent, doc_agent)
+    registry.register(EngineeringBibleService, bible_service)
     registry.register(READMEIntelligenceService, readme_service)
     registry.register(APIDocumentationService, api_doc_service)
     registry.register(ArchitectureDocumentationService, arch_doc_service)
