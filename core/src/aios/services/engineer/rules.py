@@ -67,6 +67,13 @@ class ArchitectureRuleEngine:
         violations = []
         idx_data = self.graph.index_data.get("index_data", {})
 
+        # Filter out test files
+        idx_data = {
+            fp: data
+            for fp, data in idx_data.items()
+            if "tests/" not in fp and not os.path.basename(fp).startswith("test_")
+        }
+
         # Build mapping from file path to full module path
         filepath_to_mod = {}
         for filepath in idx_data.keys():
@@ -156,14 +163,25 @@ class ArchitectureRuleEngine:
                         )
                     })
 
-                # Rule: Core layers (1, 2, 3) must never import skills/plugins (Layer 5)
-                if source_layer <= 3 and target_layer == 5:
+                # Rule: Core/Engine layers (1, 2, 3, 4) must never import skills/plugins (Layer 5)
+                if source_layer <= 4 and target_layer == 5:
                     violations.append({
                         "type": "layering_violation",
                         "description": (
-                            f"Layering violation: Core module "
+                            f"Layering violation: Core/Engine module "
                             f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
                             f"imports plugin/extension '{imp}' (Layer {target_layer})."
+                        )
+                    })
+
+                # Rule: Service Layer (Layer 3) must never import Execution Engine (Layer 4)
+                if source_layer == 3 and target_layer == 4:
+                    violations.append({
+                        "type": "layering_violation",
+                        "description": (
+                            f"Layering violation: Service module "
+                            f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
+                            f"imports Execution Engine module '{imp}' (Layer {target_layer})."
                         )
                     })
 

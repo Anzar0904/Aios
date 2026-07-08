@@ -135,7 +135,7 @@ def test_module_level_vs_contract_imports():
 
 
 def test_core_to_skill_scope_constraints():
-    # Layer 3 (Service) cannot import Layer 5, but Layer 4 (Brain) can
+    # Layer 3 (Service) and Layer 4 (Brain) cannot import Layer 5 (Skills)
     mock_data = {
         "index_data": {
             "core/src/aios/brain/orchestrator.py": {"imports": ["skills.my_skill"]},
@@ -151,7 +151,43 @@ def test_core_to_skill_scope_constraints():
         "my_service.py" in v["description"] and "another_skill" in v["description"]
         for v in layering
     )
-    assert not any("orchestrator.py" in v["description"] for v in layering)
+    assert any(
+        "orchestrator.py" in v["description"] and "my_skill" in v["description"]
+        for v in layering
+    )
+
+
+def test_service_to_engine_layering_violation():
+    # Service (Layer 3) cannot import Execution Engine (Layer 4)
+    mock_data = {
+        "index_data": {
+            "core/src/aios/services/my_service.py": {"imports": ["aios.brain.orchestrator"]},
+        }
+    }
+    graph = EngineeringGraph(mock_data)
+    graph.build()
+    engine = ArchitectureRuleEngine(graph)
+    violations = engine.validate()
+    layering = [v for v in violations if v["type"] == "layering_violation"]
+    assert any(
+        "my_service.py" in v["description"] and "brain" in v["description"]
+        for v in layering
+    )
+
+
+def test_skip_test_files_validation():
+    # Test files (containing "tests/" or starting with "test_") are skipped
+    mock_data = {
+        "index_data": {
+            "core/tests/test_something.py": {"imports": ["skills.my_skill"]},
+            "test_another.py": {"imports": ["skills.another_skill"]},
+        }
+    }
+    graph = EngineeringGraph(mock_data)
+    graph.build()
+    engine = ArchitectureRuleEngine(graph)
+    violations = engine.validate()
+    assert len(violations) == 0
 
 
 def test_deduplicate_cross_layer_violations():
@@ -172,3 +208,4 @@ def test_deduplicate_cross_layer_violations():
     violations = engine.validate()
     layering = [v for v in violations if v["type"] == "layering_violation"]
     assert len(layering) == 1
+
