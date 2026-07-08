@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from aios.services.memory import MemoryType
 from aios.services.notion import NotionCredentialsStore
 from aios.services.notion_impl import LocalNotionService
 
@@ -290,3 +291,194 @@ def test_local_notion_service_crawl_and_cache(tmp_path):
             updated_cache = json.load(f)
         assert "workspace_1" in updated_cache
         assert "workspace_2" in updated_cache
+
+
+def test_local_notion_service_incremental_sync_and_memory_service(tmp_path):
+    cred_path = tmp_path / "credentials.json"
+    cache_path = tmp_path / "cache.json"
+
+    # Setup Mock MemoryService
+    mock_memory_service = MagicMock()
+    added_memories = []
+    updated_memories = []
+
+    def mock_add_memory(content, memory_type, tags=None, importance=1, metadata_additional=None):
+        mem = MagicMock()
+        mem.memory_id = f"mem_id_{len(added_memories) + 1}"
+        mem.content = content
+        mem.memory_type = memory_type
+        mem.tags = tags
+        mem.metadata = MagicMock()
+        mem.metadata.additional = metadata_additional
+        added_memories.append(mem)
+        return mem
+
+    def mock_update_memory(
+        memory_id,
+        content=None,
+        tags=None,
+        importance=None,
+        metadata_additional=None
+    ):
+        mem = MagicMock()
+        mem.memory_id = memory_id
+        mem.content = content
+        mem.tags = tags
+        mem.metadata = MagicMock()
+        mem.metadata.additional = metadata_additional
+        updated_memories.append(mem)
+        return mem
+
+    mock_memory_service.add_memory.side_effect = mock_add_memory
+    mock_memory_service.update_memory.side_effect = mock_update_memory
+
+    service = LocalNotionService(
+        credentials_path=cred_path,
+        cache_path=cache_path,
+        memory_service=mock_memory_service
+    )
+    service.initialize()
+    service.login("secret_abc", "workspace_1")
+
+    # Define mock response variables to simulate Notion API behavior over multiple syncs
+    search_results = []
+    block_results = []
+
+    def mock_request_side_effect(method, url, **kwargs):
+        response_mock = MagicMock()
+        if "/v1/search" in url:
+            response_mock.json.return_value = {
+                "results": search_results,
+                "has_more": False,
+                "next_cursor": None
+            }
+        elif "/v1/blocks/page_id_1/children" in url:
+            response_mock.json.return_value = {
+                "results": block_results,
+                "has_more": False,
+                "next_cursor": None
+            }
+        elif "/v1/users" in url:
+            response_mock.json.return_value = {
+                "results": [],
+                "has_more": False,
+                "next_cursor": None
+            }
+        else:
+            response_mock.json.return_value = {}
+        return response_mock
+
+    with patch("aios.services.notion_impl.httpx.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client.request.side_effect = mock_request_side_effect
+
+        # --- FIRST SYNC: FULL SYNC ---
+        search_results = [
+            {
+                "object": "page",
+                "id": "page_id_1",
+                "last_edited_time": "2026-07-08T10:00:00.000Z",
+                "properties": {
+                    "Name": {
+                        "type": "title",
+                        "title": [{"type": "text", "text": {"content": "Initial Title"}}]
+                    }
+                }
+            }
+        ]
+        block_results = [
+            {
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": "Hello page content"}}]
+                }
+            }
+        ]
+
+        service.sync()
+
+        # Verify blocks crawled
+        # Search request + block children request + users request
+        urls_called = [args[1] for args, _ in mock_client.request.call_args_list]
+        assert any("/v1/blocks/page_id_1/children" in u for u in urls_called)
+
+        # Verify add_memory called
+        assert len(added_memories) == 1
+        assert "Initial Title" in added_memories[0].content
+        assert "Hello page content" in added_memories[0].content
+        assert added_memories[0].memory_type == MemoryType.NOTE
+        assert added_memories[0].tags == ["notion"]
+        assert added_memories[0].metadata.additional["page_id"] == "page_id_1"
+        assert added_memories[0].metadata.additional["workspace_name"] == "workspace_1"
+        mock_memory_service.commit.assert_called_once()
+
+        # Cache file should record the memory ID
+        with open(cache_path, "r", encoding="utf-8") as f:
+            cache_content = json.load(f)
+        cached_page = cache_content["workspace_1"]["pages"][0]
+        assert cached_page["memory_id"] == "mem_id_1"
+        assert "last_sync_time" in cache_content["workspace_1"]["metadata"]
+
+        # Reset mocks for next stage
+        mock_client.request.reset_mock()
+        mock_memory_service.commit.reset_mock()
+        added_memories.clear()
+        updated_memories.clear()
+
+        # --- SECOND SYNC: INCREMENTAL SYNC - UNCHANGED ---
+        # The page state remains identical (same last_edited_time)
+        service.sync()
+
+        # Verify NO blocks crawled
+        urls_called_2 = [args[1] for args, _ in mock_client.request.call_args_list]
+        assert not any("/v1/blocks/page_id_1/children" in u for u in urls_called_2)
+
+        # Verify no memory updates or additions
+        assert len(added_memories) == 0
+        assert len(updated_memories) == 0
+
+        # Reset mocks for next stage
+        mock_client.request.reset_mock()
+        mock_memory_service.commit.reset_mock()
+        added_memories.clear()
+        updated_memories.clear()
+
+        # --- THIRD SYNC: INCREMENTAL SYNC - CHANGED ---
+        # Update search results to simulate updated page
+        search_results = [
+            {
+                "object": "page",
+                "id": "page_id_1",
+                "last_edited_time": "2028-07-08T11:00:00.000Z",
+                "properties": {
+                    "Name": {
+                        "type": "title",
+                        "title": [{"type": "text", "text": {"content": "Updated Title"}}]
+                    }
+                }
+            }
+        ]
+        block_results = [
+            {
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{"type": "text", "text": {"content": "Modified page content"}}]
+                }
+            }
+        ]
+
+        service.sync()
+
+        # Verify blocks crawled again since it was modified
+        urls_called_3 = [args[1] for args, _ in mock_client.request.call_args_list]
+        assert any("/v1/blocks/page_id_1/children" in u for u in urls_called_3)
+
+        # Verify update_memory was called instead of add_memory
+        assert len(added_memories) == 0
+        assert len(updated_memories) == 1
+        assert updated_memories[0].memory_id == "mem_id_1"
+        assert "Updated Title" in updated_memories[0].content
+        assert "Modified page content" in updated_memories[0].content
+        mock_memory_service.commit.assert_called_once()
+
