@@ -1,9 +1,9 @@
-import os
 import json
-import pytest
-from unittest.mock import MagicMock, patch
-from aios.services.engineer.graph import EngineeringGraph
+from unittest.mock import MagicMock
+
 from aios.services.engineer.bible import EngineeringBibleService
+from aios.services.engineer.graph import EngineeringGraph
+
 
 def test_bible_service_exact_search():
     mock_data = {

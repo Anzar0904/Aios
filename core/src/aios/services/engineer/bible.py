@@ -1,14 +1,21 @@
-from typing import List, Dict, Any
-from aios.services.base import ServiceLifecycle
-from aios.services.engineer.graph import EngineeringGraph
-from aios.services.engineer.dependency import DependencyAnalyzer
-from aios.services.engineer.rules import ArchitectureRuleEngine
-from aios.services.engineer.impact import ImpactAnalyzer
 import json
 import os
+from typing import Any, Dict, List
+
+from aios.services.base import ServiceLifecycle
+from aios.services.engineer.dependency import DependencyAnalyzer
+from aios.services.engineer.graph import EngineeringGraph
+from aios.services.engineer.impact import ImpactAnalyzer
+from aios.services.engineer.rules import ArchitectureRuleEngine
+
 
 class EngineeringBibleService(ServiceLifecycle):
-    def __init__(self, model_service: Any = None, graph: EngineeringGraph = None, index_path: str = "docs/index.json") -> None:
+    def __init__(
+        self,
+        model_service: Any = None,
+        graph: EngineeringGraph = None,
+        index_path: str = "docs/index.json",
+    ) -> None:
         self.model_service = model_service
         self.graph = graph
         self.index_path = index_path
@@ -45,15 +52,27 @@ class EngineeringBibleService(ServiceLifecycle):
     def get_decision_memory(self) -> Dict[str, Any]:
         return {
             "decisions": [
-                {"date": "2026-07-07", "decision": "Freeze AI Core API architectures (Kernel, OmniRoute, registries)."},
-                {"date": "2026-07-08", "decision": "Add incremental repository documentation scanner and docintel agent."}
+                {
+                    "date": "2026-07-07",
+                    "decision": (
+                        "Freeze AI Core API architectures (Kernel, "
+                        "OmniRoute, registries)."
+                    ),
+                },
+                {
+                    "date": "2026-07-08",
+                    "decision": (
+                        "Add incremental repository documentation "
+                        "scanner and docintel agent."
+                    ),
+                },
             ]
         }
 
     def generate_engineering_context(self, request_desc: str) -> str:
         decisions = self.get_decision_memory()
         violations = self.rule_engine.validate()
-        
+
         prompt = (
             f"You are the AI OS Engineering Bible Service. Given the request: '{request_desc}', "
             f"provide technical guidelines based on our codebase constraints.\n\n"
@@ -65,4 +84,8 @@ class EngineeringBibleService(ServiceLifecycle):
                 return self.model_service.execute_prompt(prompt)
             except Exception as e:
                 return f"Failed to call LLM model: {e}"
-        return f"Architecture Constraint Guidelines:\n- Do not modify frozen core APIs.\n- Avoid circular dependencies."
+        return (
+            "Architecture Constraint Guidelines:\n"
+            "- Do not modify frozen core APIs.\n"
+            "- Avoid circular dependencies."
+        )
