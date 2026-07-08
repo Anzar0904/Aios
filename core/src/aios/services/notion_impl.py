@@ -1,10 +1,12 @@
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 
+from aios.services.memory import MemoryService, MemoryType
 from aios.services.notion import NotionCredentialsStore, NotionService
 
 logger = logging.getLogger(__name__)
@@ -18,16 +20,25 @@ class LocalNotionService(NotionService):
         model_service: Optional[Any] = None,
         credentials_path: Optional[Path] = None,
         cache_path: Optional[Path] = None,
+        memory_service: Optional[MemoryService] = None,
     ) -> None:
         self._model_service = model_service
         self._credentials_store = NotionCredentialsStore(path=credentials_path)
         self._cache_path = cache_path or Path(".agent/notion/cache.json")
         self._workspaces: Dict[str, str] = {}
+        self._memory_service = memory_service
 
     def initialize(self) -> None:
         """Initialize the service and load persisted credentials."""
         logger.info("Initializing LocalNotionService")
         self._workspaces = self._credentials_store.load_all()
+        if not self._memory_service:
+            from aios.registry import ServiceRegistry
+            if ServiceRegistry._global_registry:
+                try:
+                    self._memory_service = ServiceRegistry._global_registry.get(MemoryService)
+                except KeyError:
+                    pass
 
     def start(self) -> None:
         """Start the service."""
@@ -171,45 +182,240 @@ class LocalNotionService(NotionService):
 
         return users
 
+    def _compile_page_text(self, page: dict) -> str:
+        """Compile a unified text representation of a page."""
+        # Extract title
+        title = "Untitled"
+        properties = page.get("properties", {})
+        for _name, prop in properties.items():
+            if isinstance(prop, dict) and prop.get("type") == "title":
+                title_list = prop.get("title", [])
+                if title_list:
+                    title = "".join([
+                        t.get("plain_text", t.get("text", {}).get("content", ""))
+                        for t in title_list
+                    ])
+                    break
+
+        # Database association
+        db_association = ""
+        parent = page.get("parent", {})
+        if parent.get("type") == "database_id":
+            db_association = f"Database: {parent.get('database_id')}"
+
+        # Properties
+        prop_lines = []
+        for prop_name, prop in properties.items():
+            if not isinstance(prop, dict):
+                continue
+            p_type = prop.get("type")
+            if p_type == "title":
+                continue
+            
+            val_str = None
+            if p_type == "rich_text":
+                val_str = "".join([
+                    t.get("plain_text", t.get("text", {}).get("content", ""))
+                    for t in prop.get("rich_text", [])
+                ])
+            elif p_type == "number":
+                val_str = str(prop.get("number")) if prop.get("number") is not None else ""
+            elif p_type == "select":
+                sel = prop.get("select")
+                val_str = sel.get("name") if sel else ""
+            elif p_type == "multi_select":
+                val_str = ", ".join([s.get("name", "") for s in prop.get("multi_select", [])])
+            elif p_type == "date":
+                date_val = prop.get("date")
+                val_str = date_val.get("start") if date_val else ""
+            elif p_type == "checkbox":
+                val_str = str(prop.get("checkbox"))
+            elif p_type == "url":
+                val_str = prop.get("url") or ""
+            elif p_type == "email":
+                val_str = prop.get("email") or ""
+            elif p_type == "phone_number":
+                val_str = prop.get("phone_number") or ""
+            
+            if val_str is not None:
+                prop_lines.append(f"{prop_name}: {val_str}")
+
+        # Block content
+        def extract_block_text(blocks: List[dict]) -> str:
+            text_parts = []
+            for block in blocks:
+                b_type = block.get("type")
+                if not b_type:
+                    continue
+                block_content = block.get(b_type)
+                if isinstance(block_content, dict):
+                    rich_text = block_content.get("rich_text", [])
+                    if rich_text:
+                        b_text = "".join([
+                            t.get("plain_text", t.get("text", {}).get("content", ""))
+                            for t in rich_text
+                        ])
+                        if b_text:
+                            text_parts.append(b_text)
+                
+                children = block.get("children", [])
+                if children:
+                    c_text = extract_block_text(children)
+                    if c_text:
+                        text_parts.append(c_text)
+            return "\n".join(text_parts)
+
+        blocks_text = extract_block_text(page.get("blocks", []))
+
+        # Assemble
+        parts = [f"Title: {title}"]
+        if db_association:
+            parts.append(db_association)
+        if prop_lines:
+            parts.append("Properties:\n" + "\n".join(prop_lines))
+        if blocks_text:
+            parts.append("Content:\n" + blocks_text)
+
+        return "\n\n".join(parts)
+
     def _crawl_workspace(self, workspace_name: str, token: str) -> dict:
         """Crawl the workspace for pages, databases, and users, and save to cache."""
         self._current_token = token
+        
+        # Load existing cache data for this workspace
+        cache_data = {}
+        if self._cache_path.is_file():
+            try:
+                with open(self._cache_path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        cache_data = json.loads(content)
+            except Exception as e:
+                logger.error(f"Failed to load existing cache: {e}")
+        
+        ws_cache = cache_data.get(workspace_name, {})
+        metadata = ws_cache.get("metadata", {})
+        last_sync_time = metadata.get("last_sync_time") if isinstance(metadata, dict) else None
+        
+        cached_pages = ws_cache.get("pages", [])
+        cached_pages_by_id = {p["id"]: p for p in cached_pages if isinstance(p, dict) and "id" in p}
+        
+        start_sync_time = datetime.now(timezone.utc).isoformat()
+        
         try:
             pages, databases = self._fetch_search_objects(token)
+            
+            def is_modified_since(
+                last_edited_str: Optional[str],
+                last_sync_str: Optional[str]
+            ) -> bool:
+                if not last_sync_str:
+                    return True
+                if not last_edited_str:
+                    return True
+                try:
+                    e_str = last_edited_str.replace("Z", "+00:00")
+                    s_str = last_sync_str.replace("Z", "+00:00")
+                    return datetime.fromisoformat(e_str) > datetime.fromisoformat(s_str)
+                except Exception:
+                    return last_edited_str > last_sync_str
 
             for page in pages:
                 page_id = page["id"]
-                page["blocks"] = self._fetch_block_children(page_id, token)
-
+                cached_page = cached_pages_by_id.get(page_id)
+                
+                has_changed = True
+                if cached_page:
+                    cached_edited = cached_page.get("last_edited_time")
+                    current_edited = page.get("last_edited_time")
+                    if cached_edited and current_edited == cached_edited:
+                        has_changed = False
+                    elif last_sync_time and current_edited:
+                        if not is_modified_since(current_edited, last_sync_time):
+                            has_changed = False
+                
+                if not has_changed and cached_page:
+                    page["blocks"] = cached_page.get("blocks", [])
+                    if "memory_id" in cached_page:
+                        page["memory_id"] = cached_page["memory_id"]
+                else:
+                    page["blocks"] = self._fetch_block_children(page_id, token)
+                    if cached_page and "memory_id" in cached_page:
+                        page["memory_id"] = cached_page["memory_id"]
+                    
             users = self._fetch_users(token)
-
+            
+            # Update MemoryService
+            memory_service = self._memory_service
+            if not memory_service:
+                from aios.registry import ServiceRegistry
+                if ServiceRegistry._global_registry:
+                    try:
+                        memory_service = ServiceRegistry._global_registry.get(MemoryService)
+                    except KeyError:
+                        pass
+            
+            if memory_service:
+                for page in pages:
+                    page_id = page["id"]
+                    cached_page = cached_pages_by_id.get(page_id)
+                    
+                    is_new = "memory_id" not in page
+                    has_changed = True
+                    if cached_page:
+                        cached_edited = cached_page.get("last_edited_time")
+                        current_edited = page.get("last_edited_time")
+                        if cached_edited and current_edited == cached_edited:
+                            has_changed = False
+                        elif last_sync_time and current_edited:
+                            if not is_modified_since(current_edited, last_sync_time):
+                                has_changed = False
+                                
+                    if is_new or has_changed:
+                        unified_text = self._compile_page_text(page)
+                        if is_new:
+                            mem = memory_service.add_memory(
+                                content=unified_text,
+                                memory_type=MemoryType.NOTE,
+                                tags=["notion"],
+                                metadata_additional={
+                                    "page_id": page_id,
+                                    "workspace_name": workspace_name
+                                }
+                            )
+                            page["memory_id"] = mem.memory_id
+                        else:
+                            memory_service.update_memory(
+                                memory_id=page["memory_id"],
+                                content=unified_text,
+                                tags=["notion"],
+                                metadata_additional={
+                                    "page_id": page_id,
+                                    "workspace_name": workspace_name
+                                }
+                            )
+                
+                memory_service.commit()
+                
             structured_data = {
+                "metadata": {
+                    "last_sync_time": start_sync_time
+                },
                 "pages": pages,
                 "databases": databases,
                 "users": users,
             }
-
+            
+            cache_data[workspace_name] = structured_data
+            
             # Save to cache file
             self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-
-            cache_data = {}
-            if self._cache_path.is_file():
-                try:
-                    with open(self._cache_path, "r", encoding="utf-8") as f:
-                        content = f.read().strip()
-                        if content:
-                            cache_data = json.loads(content)
-                except Exception as e:
-                    logger.error(f"Failed to load existing cache: {e}")
-
-            cache_data[workspace_name] = structured_data
-
             try:
                 with open(self._cache_path, "w", encoding="utf-8") as f:
                     json.dump(cache_data, f, indent=2, ensure_ascii=False)
             except Exception as e:
                 logger.error(f"Failed to save cache data: {e}")
-
+                
             return structured_data
         finally:
             if hasattr(self, "_current_token"):
