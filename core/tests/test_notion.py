@@ -1,3 +1,9 @@
+import json
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import httpx
+import pytest
 from aios.services.notion import NotionCredentialsStore
 from aios.services.notion_impl import LocalNotionService
 
@@ -92,7 +98,9 @@ def test_stub_methods(tmp_path):
     service.login("secret_123", "workspace_1")
 
     # sync
-    sync_res = service.sync()
+    with patch.object(service, "_crawl_workspace", return_value={"pages": []}) as mock_crawl:
+        sync_res = service.sync()
+        mock_crawl.assert_called_once_with("workspace_1", "secret_123")
     assert sync_res["status"] == "success"
     assert sync_res["synced_pages"] == 0
     assert "workspace_1" in sync_res["workspaces"]
@@ -120,7 +128,6 @@ def test_stub_methods(tmp_path):
 
 
 def test_credentials_store_default_path():
-    from pathlib import Path
     store = NotionCredentialsStore()
     assert store.path == Path(".agent/notion/credentials.json")
 
@@ -138,3 +145,148 @@ def test_local_notion_service_login_invalid_inputs(tmp_path):
 
     # Both empty
     assert service.login("", "") is False
+
+
+def test_local_notion_service_request_error(tmp_path):
+    cred_path = tmp_path / "credentials.json"
+    cache_path = tmp_path / "cache.json"
+    service = LocalNotionService(credentials_path=cred_path, cache_path=cache_path)
+    service.initialize()
+    service.login("secret_abc", "workspace_1")
+
+    with patch("aios.services.notion_impl.httpx.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value.__enter__.return_value = mock_client
+
+        # Mock an HTTP status error
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Mocked HTTP error",
+            request=MagicMock(),
+            response=mock_response
+        )
+        mock_client.request.return_value = mock_response
+
+        with pytest.raises(httpx.HTTPStatusError):
+            service._request("GET", "/v1/users")
+
+
+def test_local_notion_service_crawl_and_cache(tmp_path):
+    cred_path = tmp_path / "credentials.json"
+    cache_path = tmp_path / "cache.json"
+    service = LocalNotionService(credentials_path=cred_path, cache_path=cache_path)
+    service.initialize()
+    service.login("secret_abc", "workspace_1")
+
+    def mock_request_side_effect(method, url, **kwargs):
+        response_mock = MagicMock()
+        
+        if "/v1/search" in url:
+            body = kwargs.get("json", {})
+            if body and body.get("start_cursor") == "cursor_page_2":
+                response_mock.json.return_value = {
+                    "results": [
+                        {"object": "page", "id": "page_id_2"}
+                    ],
+                    "has_more": False,
+                    "next_cursor": None
+                }
+            else:
+                response_mock.json.return_value = {
+                    "results": [
+                        {"object": "page", "id": "page_id_1"},
+                        {"object": "database", "id": "db_id_1"}
+                    ],
+                    "has_more": True,
+                    "next_cursor": "cursor_page_2"
+                }
+        elif "/v1/blocks/page_id_1/children" in url:
+            response_mock.json.return_value = {
+                "results": [
+                    {"object": "block", "id": "block_id_1", "has_children": True},
+                    {"object": "block", "id": "block_id_2", "has_children": False}
+                ],
+                "has_more": False,
+                "next_cursor": None
+            }
+        elif "/v1/blocks/page_id_2/children" in url:
+            response_mock.json.return_value = {
+                "results": [],
+                "has_more": False,
+                "next_cursor": None
+            }
+        elif "/v1/blocks/block_id_1/children" in url:
+            response_mock.json.return_value = {
+                "results": [
+                    {"object": "block", "id": "block_child_1", "has_children": False}
+                ],
+                "has_more": False,
+                "next_cursor": None
+            }
+        elif "/v1/users" in url:
+            response_mock.json.return_value = {
+                "results": [
+                    {"object": "user", "id": "user_id_1", "name": "Alice"}
+                ],
+                "has_more": False,
+                "next_cursor": None
+            }
+        else:
+            response_mock.json.return_value = {}
+            
+        return response_mock
+
+    with patch("aios.services.notion_impl.httpx.Client") as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value.__enter__.return_value = mock_client
+        mock_client.request.side_effect = mock_request_side_effect
+
+        # Trigger crawl
+        result = service._crawl_workspace("workspace_1", "secret_abc")
+
+        # Verify structured result format
+        assert "pages" in result
+        assert "databases" in result
+        assert "users" in result
+
+        assert len(result["pages"]) == 2
+        assert len(result["databases"]) == 1
+        assert len(result["users"]) == 1
+
+        # Check recursion in blocks
+        page1 = next(p for p in result["pages"] if p["id"] == "page_id_1")
+        assert "blocks" in page1
+        assert len(page1["blocks"]) == 2
+        block1 = next(b for b in page1["blocks"] if b["id"] == "block_id_1")
+        assert "children" in block1
+        assert len(block1["children"]) == 1
+        assert block1["children"][0]["id"] == "block_child_1"
+
+        # Verify cache serialization
+        assert cache_path.is_file()
+        with open(cache_path, "r", encoding="utf-8") as f:
+            cache_content = json.load(f)
+        
+        assert "workspace_1" in cache_content
+        cached_ws = cache_content["workspace_1"]
+        assert len(cached_ws["pages"]) == 2
+        assert len(cached_ws["databases"]) == 1
+        assert len(cached_ws["users"]) == 1
+
+        # Check sync method triggers the crawling for all active workspaces
+        # We will add another workspace to test sync behavior
+        service.login("secret_xyz", "workspace_2")
+        
+        # Reset mock calls count/state
+        mock_client.request.reset_mock()
+        
+        sync_result = service.sync()
+        assert sync_result["status"] == "success"
+        assert "workspace_1" in sync_result["workspaces"]
+        assert "workspace_2" in sync_result["workspaces"]
+        
+        # Both workspaces should now be present in the cache file
+        with open(cache_path, "r", encoding="utf-8") as f:
+            updated_cache = json.load(f)
+        assert "workspace_1" in updated_cache
+        assert "workspace_2" in updated_cache
