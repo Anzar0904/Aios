@@ -87,6 +87,8 @@ from aios.services.n8n_integration import N8NIntegrationService
 from aios.services.n8n_integration_impl import LocalN8NIntegrationService
 from aios.services.n8n_translation import WorkflowTranslator
 from aios.services.n8n_translation_impl import LocalWorkflowTranslator
+from aios.services.notion import NotionService
+from aios.services.notion_impl import LocalNotionService
 from aios.services.orchestrator import OrchestratorService
 from aios.services.orchestrator_impl import LocalOrchestratorService
 from aios.services.patch_generation import PatchGenerationService
@@ -633,6 +635,13 @@ def bootstrap_services(
     registry.register(ModelService, model_service)
     registry.register(ToolService, tool_service)
     registry.register(GitHubService, github_service)
+
+    notion_service = LocalNotionService(
+        model_service=model_service,
+        memory_service=memory_service,
+    )
+    notion_service.initialize()
+    registry.register(NotionService, notion_service)
 
     registry.register(SourceControlRegistry, sc_registry)
     registry.register(ProviderDiscovery, sc_discovery)

@@ -940,6 +940,193 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(1)
             return True
 
+    elif args and args[0] == "notion":
+        import sys
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios notion <login|logout|status|sync|search|"
+                "summarize|create-page|update-page|list-databases>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+
+        from aios.registry import ServiceRegistry
+        from aios.services.notion import NotionService
+        from aios.services.notion_impl import LocalNotionService
+
+        service = None
+        if ServiceRegistry._global_registry:
+            service = ServiceRegistry._global_registry.get(NotionService)
+
+        if not service:
+            service = LocalNotionService()
+            service.initialize()
+
+        if subcommand == "login":
+            if len(args) < 4:
+                console.print("[red]Usage: aios notion login <token> <workspace_name>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            token = args[2]
+            workspace_name = args[3]
+            if service.login(token, workspace_name):
+                console.print(f"[green]Successfully connected workspace '{workspace_name}'[/green]")
+                if exit_on_complete:
+                    sys.exit(0)
+            else:
+                console.print("[red]Failed to login[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "logout":
+            workspace_name = args[2] if len(args) > 2 else None
+            service.logout(workspace_name)
+            if workspace_name:
+                console.print(
+                    f"[green]Successfully logged out of workspace '{workspace_name}'[/green]"
+                )
+            else:
+                console.print("[green]Successfully logged out of all workspaces[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "status":
+            status = service.get_status()
+            console.print(f"Status: [bold]{status['status']}[/bold]")
+            if status["workspaces"]:
+                console.print(f"Connected Workspaces: {', '.join(status['workspaces'])}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "sync":
+            console.print("Syncing Notion workspaces...")
+            res = service.sync()
+            if res.get("status") == "success":
+                console.print(
+                    f"[green]✓ Successfully synchronized "
+                    f"{res.get('synced_pages', 0)} pages.[/green]"
+                )
+                if exit_on_complete:
+                    sys.exit(0)
+            else:
+                console.print("[red]Failed to sync Notion workspaces[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "search":
+            if len(args) < 3:
+                console.print("[red]Usage: aios notion search <query>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            query = args[2]
+            results = service.search(query)
+            if not results:
+                console.print("No pages or databases found matching query.")
+            for r in results:
+                console.print(
+                    f"- {r['title']} ({r['type']}) in workspace '{r['workspace']}' [ID: {r['id']}]"
+                )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summarize":
+            if len(args) < 3:
+                console.print("[red]Usage: aios notion summarize <page_id>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            page_id = args[2]
+            try:
+                summary = service.summarize(page_id)
+                console.print(f"[bold]Summary of page {page_id}:[/bold]\n{summary}")
+                if exit_on_complete:
+                    sys.exit(0)
+            except Exception as e:
+                console.print(f"[red]Error summarizing page: {e}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "create-page":
+            if len(args) < 4:
+                console.print(
+                    "[red]Usage: aios notion create-page <parent_id> <title> [content][/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            parent_id = args[2]
+            title = args[3]
+            content = args[4] if len(args) > 4 else ""
+            try:
+                page = service.create_page(parent_id, title, content)
+                console.print(
+                    f"[green]Successfully created page '{title}' [ID: {page['id']}][/green]"
+                )
+                if exit_on_complete:
+                    sys.exit(0)
+            except Exception as e:
+                console.print(f"[red]Error creating page: {e}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "update-page":
+            if len(args) < 4:
+                console.print("[red]Usage: aios notion update-page <page_id> <content>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            page_id = args[2]
+            content = args[3]
+            try:
+                res = service.update_page(page_id, content)
+                console.print(
+                    f"[green]Successfully updated page {page_id}. "
+                    f"Blocks added: {res.get('blocks_added', 0)}[/green]"
+                )
+                if exit_on_complete:
+                    sys.exit(0)
+            except Exception as e:
+                console.print(f"[red]Error updating page: {e}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "list-databases":
+            dbs = service.list_databases()
+            if not dbs:
+                console.print("No databases found in cache.")
+            for db in dbs:
+                title = ""
+                title_list = db.get("title", [])
+                if title_list:
+                    title = "".join([t.get("plain_text", "") for t in title_list])
+                console.print(f"- {title or 'Untitled Database'} [ID: {db.get('id')}]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios notion <login|logout|status|sync|search|"
+                "summarize|create-page|update-page|list-databases>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
     return False
 
 
