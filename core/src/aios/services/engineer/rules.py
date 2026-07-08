@@ -11,7 +11,7 @@ def filepath_to_module_path(filepath: str) -> str:
         filepath = filepath[:-9]
     # Normalize slashes
     filepath = filepath.replace("\\", "/")
-    
+
     # Strip any prefix before "aios/" or "skills/"
     for prefix in ["aios/", "skills/"]:
         if prefix in filepath:
@@ -20,6 +20,7 @@ def filepath_to_module_path(filepath: str) -> str:
             break
     # Replace slashes with dots
     return filepath.replace("/", ".")
+
 
 class ArchitectureRuleEngine:
     def __init__(self, graph: Any) -> None:
@@ -51,16 +52,16 @@ class ArchitectureRuleEngine:
         imp_lower = import_str.lower()
         if "impl" in imp_lower or "local" in imp_lower or "concrete" in imp_lower:
             return False
-            
+
         # Extract the last part (module or class/type)
         parts = import_str.split(".")
         last_part = parts[-1]
         last_part_lower = last_part.lower()
-        
+
         # Must contain "service" (but not be exactly "services") or contain "interface"
         if last_part_lower == "services":
             return False
-            
+
         return "service" in last_part_lower or "interface" in last_part_lower
 
     def validate(self) -> List[Dict[str, Any]]:
@@ -111,10 +112,12 @@ class ArchitectureRuleEngine:
             if node in path_set:
                 idx = path.index(node)
                 cycle = path[idx:] + [node]
-                violations.append({
-                    "type": "circular_dependency",
-                    "description": f"Circular dependency cycle: {' -> '.join(cycle)}"
-                })
+                violations.append(
+                    {
+                        "type": "circular_dependency",
+                        "description": f"Circular dependency cycle: {' -> '.join(cycle)}",
+                    }
+                )
                 return
             if node in visited:
                 return
@@ -134,8 +137,11 @@ class ArchitectureRuleEngine:
             source_layer = self._get_layer(filepath)
             imports = data.get("imports", [])
             for imp in imports:
+                # Only validate layering constraints for internal modules/packages
+                if not (imp.startswith("aios") or imp.startswith("skills")):
+                    continue
                 target_layer = self._get_layer(imp)
-                
+
                 # Rule: Lower layers must not import from higher layers,
                 # unless it is an abstract contract
                 if target_layer < source_layer:
@@ -143,61 +149,71 @@ class ArchitectureRuleEngine:
                     if target_layer == 3 and self._is_abstract_contract(imp):
                         pass
                     else:
-                        violations.append({
-                            "type": "layering_violation",
-                            "description": (
-                                f"Layering violation: Lower layer module "
-                                f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
-                                f"imports higher layer '{imp}' (Layer {target_layer})."
-                            )
-                        })
+                        violations.append(
+                            {
+                                "type": "layering_violation",
+                                "description": (
+                                    f"Layering violation: Lower layer module "
+                                    f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
+                                    f"imports higher layer '{imp}' (Layer {target_layer})."
+                                ),
+                            }
+                        )
 
                 # Rule: Kernel (Layer 2) cannot import higher layers (Layer 4/5) directly
                 if source_layer == 2 and target_layer >= 4:
-                    violations.append({
-                        "type": "layering_violation",
-                        "description": (
-                            f"Layering violation: Kernel module '{os.path.basename(filepath)}' "
-                            f"(Layer {source_layer}) imports higher layer '{imp}' "
-                            f"(Layer {target_layer})."
-                        )
-                    })
+                    violations.append(
+                        {
+                            "type": "layering_violation",
+                            "description": (
+                                f"Layering violation: Kernel module '{os.path.basename(filepath)}' "
+                                f"(Layer {source_layer}) imports higher layer '{imp}' "
+                                f"(Layer {target_layer})."
+                            ),
+                        }
+                    )
 
                 # Rule: Core/Engine layers (1, 2, 3, 4) must never import skills/plugins (Layer 5)
                 if source_layer <= 4 and target_layer == 5:
-                    violations.append({
-                        "type": "layering_violation",
-                        "description": (
-                            f"Layering violation: Core/Engine module "
-                            f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
-                            f"imports plugin/extension '{imp}' (Layer {target_layer})."
-                        )
-                    })
+                    violations.append(
+                        {
+                            "type": "layering_violation",
+                            "description": (
+                                f"Layering violation: Core/Engine module "
+                                f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
+                                f"imports plugin/extension '{imp}' (Layer {target_layer})."
+                            ),
+                        }
+                    )
 
                 # Rule: Service Layer (Layer 3) must never import Execution Engine (Layer 4)
                 if source_layer == 3 and target_layer == 4:
-                    violations.append({
-                        "type": "layering_violation",
-                        "description": (
-                            f"Layering violation: Service module "
-                            f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
-                            f"imports Execution Engine module '{imp}' (Layer {target_layer})."
-                        )
-                    })
+                    violations.append(
+                        {
+                            "type": "layering_violation",
+                            "description": (
+                                f"Layering violation: Service module "
+                                f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
+                                f"imports Execution Engine module '{imp}' (Layer {target_layer})."
+                            ),
+                        }
+                    )
 
                 # Rule: Cross-layer imports must not target concrete implementations
                 if source_layer != target_layer:
                     imp_lower = imp.lower()
                     if target_layer == 3 and ("impl" in imp_lower or "local" in imp_lower):
-                        violations.append({
-                            "type": "invalid_import",
-                            "description": (
-                                f"Invalid import: module "
-                                f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
-                                f"imports concrete implementation '{imp}' "
-                                f"from Service Layer (Layer 3)."
-                            )
-                        })
+                        violations.append(
+                            {
+                                "type": "invalid_import",
+                                "description": (
+                                    f"Invalid import: module "
+                                    f"'{os.path.basename(filepath)}' (Layer {source_layer}) "
+                                    f"imports concrete implementation '{imp}' "
+                                    f"from Service Layer (Layer 3)."
+                                ),
+                            }
+                        )
 
         # Deduplicate violations by type and description
         unique_violations = []

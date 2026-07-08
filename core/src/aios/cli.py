@@ -762,6 +762,8 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             return True
 
     elif args and args[0] == "engineer":
+        import sys
+
         if len(args) < 2:
             console.print(
                 "[yellow]Usage: aios engineer <build|search|graph|explain|impact|validate>[/yellow]"
