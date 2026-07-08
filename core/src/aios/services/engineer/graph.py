@@ -1,8 +1,8 @@
-from typing import Any, Dict
+from typing import Any
 
 
 class EngineeringGraph:
-    def __init__(self, index_data: Dict[str, Any]) -> None:
+    def __init__(self, index_data: dict[str, Any]) -> None:
         self.index_data = index_data
         self.entities = {}
 
@@ -12,7 +12,9 @@ class EngineeringGraph:
         # Categorize classes
         for filepath, data in idx_data.items():
             for cls in data.get("classes", []):
-                name = cls["name"]
+                name = cls.get("name")
+                if not name:
+                    continue
                 bases = cls.get("bases", [])
                 is_dataclass = cls.get("is_dataclass", False)
                 is_enum = cls.get("is_enum", False)
