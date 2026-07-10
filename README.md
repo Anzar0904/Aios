@@ -114,7 +114,10 @@ graph TD
 │   └── tests/              # Core unit and integration tests
 ├── docs/                   # Structured guidelines, specs, and runtime reports
 │   ├── n8n/                # n8n connection and intelligence docs
-│   └── runtime/            # Workflow runtime architecture and deployment guides
+│   ├── runtime/            # Workflow runtime architecture and deployment guides
+│   ├── supabase/           # Supabase DB schema and security reports
+│   ├── vercel/             # Vercel deployment and build diagnostics guides
+│   └── project/            # Project Intelligence health, risk, and graph reports
 ├── architecture/           # Folder for system diagrams and schemas
 ├── design/                 # Folder for UX designs and screenshots
 ├── diagrams/               # Raw files for Mermaid/Draw.io files
@@ -434,5 +437,58 @@ aios vercel summary
 
 ### Architecture Reference
 See [docs/vercel/architecture.md](docs/vercel/architecture.md) for detailed APIs, credentials schemas, and the CLI guide.
+
+
+## 📂 Project Intelligence (Sprint 28)
+
+The **Project Intelligence** subsystem acts as the single source of truth for all software projects managed by AI OS. It aggregates insights from Workspace, Research, GitHub, Supabase, Vercel, n8n, and semantic memory.
+
+### Key Capabilities
+- **Project Registry**: Automatically registers and tracks active projects under `.agent/project/projects.json` (secured with `0600` permissions).
+- **Project Discovery**: Automatically detects frameworks, git repositories, package managers, databases, deployments, workflows, environment scopes, and documentation structures.
+- **Unified Project Model**: Merges source code, database status, deployment targets, workflows, and issue tracking into one cohesive model.
+- **Architecture Intelligence**: Generates service maps, module mappings, dependency graphs, and relationships.
+- **Health Scorecard**: Calculates documentation coverage, test scores, tech debt, and readiness indicators.
+- **Timeline Engine**: Merges commits, database migrations, and deployments into a consolidated event timeline.
+- **Risk Assessor**: Flags environmental drift, security vulnerabilities, missing tests, and configuration issues.
+- **Project Memory**: Stores and semantically retrieves architecture decisions and previous bug resolutions.
+- **Markdown Reports**: Compiles 7 reports (summary, architecture, health, risks, timeline, dependencies, graph) under `docs/project/`.
+
+### CLI Commands Reference
+```bash
+# 1. List all registered projects
+aios project list
+
+# 2. Display registry status and active project
+aios project status
+
+# 3. Compile project summary and generate reports
+aios project summary [project_id]
+
+# 4. Query knowledge graph node connections
+aios project graph [project_id]
+
+# 5. View health scorecard, debt, and recommendations
+aios project health [project_id]
+
+# 6. Retrieve aggregated historical timeline events
+aios project timeline [project_id]
+
+# 7. Check coverage gaps, security, and drift risks
+aios project risks [project_id]
+
+# 8. Display components service map and modules
+aios project architecture [project_id]
+
+# 9. Perform semantic memory query over design history
+aios project memory [project_id] [query]
+
+# 10. Auto-discover framework and config at path
+aios project analyze [path]
+```
+
+### Architecture Reference
+See [docs/project/architecture.md](docs/project/architecture.md) for detailed APIs, schemas, and CLI guides.
+
 
 

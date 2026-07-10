@@ -1378,3 +1378,131 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         ),
         lambda args: handle_vercel_cmd("summary", args),
     )
+
+    def handle_project_cmd(cmd_type: str, args: str) -> None:
+        from aios.cli import execute_builtin_cli_command
+
+        cmd_args = ["project", cmd_type]
+        if args.strip():
+            cmd_args.extend(args.strip().split())
+        execute_builtin_cli_command(cmd_args, exit_on_complete=False)
+
+    registry.register_command(
+        CommandMetadata(
+            name="project list",
+            description="List all registered projects under Project Intelligence.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project list",
+        ),
+        lambda args: handle_project_cmd("list", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project status",
+            description="Display the active project ID and overall registry statistics.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project status",
+        ),
+        lambda args: handle_project_cmd("status", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project summary",
+            description="Compile project profile summary and generate reports.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project summary [project_id]",
+        ),
+        lambda args: handle_project_cmd("summary", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project graph",
+            description="Query and display project knowledge graph node connections.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project graph [project_id]",
+        ),
+        lambda args: handle_project_cmd("graph", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project health",
+            description="Display health scorecard including coverage and technical debt.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project health [project_id]",
+        ),
+        lambda args: handle_project_cmd("health", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project timeline",
+            description="Generate aggregated historical timeline events.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project timeline [project_id]",
+        ),
+        lambda args: handle_project_cmd("timeline", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project risks",
+            description="Inspect coverage gaps, environment drift, and security risks.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project risks [project_id]",
+        ),
+        lambda args: handle_project_cmd("risks", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project architecture",
+            description="Retrieve project component service mappings and module maps.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project architecture [project_id]",
+        ),
+        lambda args: handle_project_cmd("architecture", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project memory",
+            description="Perform semantic lookup over design decisions and resolutions.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project memory [project_id] [query]",
+        ),
+        lambda args: handle_project_cmd("memory", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="project analyze",
+            description="Auto-discover framework, package manager and config at path.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="project analyze [path]",
+        ),
+        lambda args: handle_project_cmd("analyze", args),
+    )

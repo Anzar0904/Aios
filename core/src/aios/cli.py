@@ -3200,6 +3200,273 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(1)
             return True
 
+    elif args and args[0] == "project":
+        import sys
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios project <list|status|summary|graph|"
+                "health|timeline|risks|architecture|memory|analyze>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        from aios.registry import ServiceRegistry
+        from aios.services.project_intelligence import ProjectIntelligenceService
+        from aios.services.project_intelligence_impl import LocalProjectIntelligence
+
+        service = None
+        if ServiceRegistry._global_registry:
+            try:
+                service = ServiceRegistry._global_registry.get(ProjectIntelligenceService)
+            except Exception:
+                pass
+
+        if not service:
+            service = LocalProjectIntelligence()
+            service.initialize()
+            service.start()
+
+        if subcommand == "list":
+            projects = service.list_projects()
+            if not projects:
+                console.print(
+                    "[yellow]No projects registered. "
+                    "Run 'aios project analyze <path>' to register.[/yellow]"
+                )
+            else:
+                table = Table(title="Project Intelligence Registry", border_style="green")
+                table.add_column("Project ID", style="bold green")
+                table.add_column("Name", style="white")
+                table.add_column("Framework", style="cyan")
+                table.add_column("Creation Date", style="dim")
+                for p in projects:
+                    table.add_row(
+                        p.get("project_id", "N/A"),
+                        p.get("name", "N/A"),
+                        p.get("framework", "N/A"),
+                        p.get("creation_date", "N/A"),
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "status":
+            projects = service.list_projects()
+            table = Table(title="Project Intelligence System Status", border_style="cyan")
+            table.add_column("Property", style="bold cyan")
+            table.add_column("Value / Count", style="white")
+            table.add_row("Active Project ID", service._active_project_id or "None")
+            table.add_row("Total Registered Projects", str(len(projects)))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summary":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project summary <project_id>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                profile = service.get_project_profile(pid)
+                title_str = f"Project Summary: {profile.get('name')}"
+                table = Table(title=title_str, border_style="cyan")
+                table.add_column("Metric / Property", style="bold cyan")
+                table.add_column("Value", style="white")
+                table.add_row("Project ID", profile.get("project_id"))
+                table.add_row("Framework", profile.get("framework"))
+                table.add_row("Workspace Path", profile.get("workspace_path"))
+                table.add_row("Last Activity", profile.get("last_activity"))
+                console.print(table)
+
+                # Automatically compile reports
+                console.print("[cyan]Compiling markdown reports under docs/project/...[/cyan]")
+                service.generate_reports(pid)
+                console.print("[green]✓ Markdown reports compiled successfully.[/green]")
+            except Exception as e:
+                console.print(f"[red]Error fetching summary: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "graph":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project graph <project_id>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                graph = service.query_knowledge_graph(pid, "all")
+                table = Table(title="Project Knowledge Graph Nodes", border_style="magenta")
+                table.add_column("Node ID", style="bold magenta")
+                table.add_column("Type", style="cyan")
+                table.add_column("Label", style="white")
+                for n in graph.get("nodes", []):
+                    table.add_row(n.get("id"), n.get("type"), n.get("label"))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching graph: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "health":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project health <project_id>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                h = service.get_health_scorecard(pid)
+                table = Table(title="Project Health Scorecard", border_style="green")
+                table.add_column("Metric", style="bold green")
+                table.add_column("Score / Level", style="white")
+                table.add_row("Overall Health Score", f"{h.get('health_score')}%")
+                table.add_row("Documentation Score", f"{h.get('documentation_score')}%")
+                table.add_row("Test Coverage Score", f"{h.get('test_coverage_score')}%")
+                table.add_row("Deployment Status", h.get("deployment_status"))
+                table.add_row("Technical Debt", f"{h.get('technical_debt_hours')} hours")
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching health: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "timeline":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project timeline <project_id>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                timeline = service.get_timeline(pid)
+                table = Table(title="Project Timeline", border_style="yellow")
+                table.add_column("Date", style="bold yellow")
+                table.add_column("Type", style="cyan")
+                table.add_column("Description", style="white")
+                for ev in timeline.get("events", []):
+                    table.add_row(ev.get("date"), ev.get("type"), ev.get("desc"))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching timeline: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "risks":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project risks <project_id>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                r = service.get_risk_analysis(pid)
+                title_str = f"Project Risk Analysis (Overall Risk: {r.get('overall_risk_level')})"
+                table = Table(title=title_str, border_style="red")
+                table.add_column("Category", style="bold red")
+                table.add_column("Level", style="magenta")
+                table.add_column("Description", style="white")
+                for risk in r.get("risks", []):
+                    table.add_row(risk.get("category"), risk.get("level"), risk.get("desc"))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching risks: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "architecture":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project architecture <project_id>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                arch = service.get_architecture_map(pid)
+                console.print(
+                    Panel(str(arch.get("service_map")), title="Service Map", border_style="blue")
+                )
+                console.print(
+                    Panel(str(arch.get("module_map")), title="Module Map", border_style="green")
+                )
+            except Exception as e:
+                console.print(f"[red]Error fetching architecture: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "memory":
+            pid = args[2] if len(args) > 2 else service._active_project_id
+            query = args[3] if len(args) > 3 else "architecture"
+            if not pid:
+                console.print(
+                    "[red]No active project. Usage: aios project memory <project_id> [query][/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            try:
+                mem = service.query_project_memory(pid, query)
+                table = Table(title=f"Semantic Memory Query: '{query}'", border_style="blue")
+                table.add_column("Entry", style="bold blue")
+                table.add_column("Description", style="white")
+                for entry in mem:
+                    table.add_row(entry.get("title"), entry.get("desc"))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error querying memory: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "analyze":
+            path_str = args[2] if len(args) > 2 else "."
+            try:
+                console.print(f"[cyan]Analyzing project at path '{path_str}'...[/cyan]")
+                profile = service.discover_project(path_str)
+                console.print(
+                    f"[green]✓ Discovered project: '{profile.get('name')}' "
+                    f"(ID: {profile.get('project_id')})[/green]"
+                )
+            except Exception as e:
+                console.print(f"[red]Error analyzing project: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios project <list|status|summary|graph|"
+                "health|timeline|risks|architecture|memory|analyze>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
     return False
 
 
