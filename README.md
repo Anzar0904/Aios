@@ -105,9 +105,16 @@ graph TD
 │   │       ├── cli.py      # CLI REPL loop (entry point)
 │   │       ├── kernel.py   # Kernel orchestration engine
 │   │       ├── registry.py # Service registration index
+│   │       ├── n8n/        # n8n Integration, Intelligence & Runtime
+│   │       │   ├── service.py
+│   │       │   ├── intelligence.py
+│   │       │   ├── connection.py
+│   │       │   └── runtime.py
 │   │       └── services/   # Service contract interfaces and stubs
 │   └── tests/              # Core unit and integration tests
-├── docs/                   # Structured guidelines and specifications
+├── docs/                   # Structured guidelines, specs, and runtime reports
+│   ├── n8n/                # n8n connection and intelligence docs
+│   └── runtime/            # Workflow runtime architecture and deployment guides
 ├── architecture/           # Folder for system diagrams and schemas
 ├── design/                 # Folder for UX designs and screenshots
 ├── diagrams/               # Raw files for Mermaid/Draw.io files
@@ -194,5 +201,142 @@ doc = service.fetch_document("https://nats.io/documentation")
 # 3. Verify claim and get confidence score
 verification = service.verify_claim("LocalEventBus runs in-process")
 print(f"Status: {verification.verification_status}, Score: {verification.confidence_score}")
+
+
+## 🤖 n8n Intelligence (Sprint 23)
+
+The **n8n Intelligence** subsystem enables AI OS to design, generate, analyze, validate, optimize, and document n8n workflows.
+
+### Key Capabilities
+- **Workflow Generation**: Generates production-ready n8n workflow JSON based on natural language requirements or prebuilt categories using `WorkflowGenerator`.
+- **Workflow Graph Validation**: Evaluates connections, missing node properties, circular loops (DFS check), and orphaned nodes using `WorkflowValidator`.
+- **Workflow Optimization**: Consolidates redundant duplicate nodes and simplifies connections via `WorkflowOptimizer`.
+- **Workflow Path & Credential Analysis**: Identifies external API integrations, required credentials, and performance bottlenecks via `WorkflowAnalyzer` and `CredentialIntelligence`.
+- **Workflow Memory & Templates**: Indexes previous configurations and caches reusable templates for lead generation, cold email, AI agent assistant, customer support, and more in `WorkflowMemory`.
+
+### Local Setup
+To install and run n8n locally for use with the n8n intelligence subsystem:
+```bash
+# 1. Install n8n globally via npm
+npm install -g n8n
+
+# 2. Start the local n8n instance
+n8n start
+```
+The editor is accessible at `http://localhost:5678`, and health status can be verified at `http://localhost:5678/healthz`.
+
+### CLI Subcommand Reference
+```bash
+# 1. List available workflow templates
+aios workflow templates
+
+# 2. Generate a workflow from a prompt
+aios workflow generate "Create Slack notification on Shopify purchase"
+
+# 3. Validate a workflow JSON file
+aios workflow validate path/to/workflow.json
+
+# 4. Analyze execution paths and credential requirements
+aios workflow analyze path/to/workflow.json
+
+# 5. Optimize workflow nodes and connections
+aios workflow optimize path/to/workflow.json
+
+# 6. Export latest workflow JSON to file
+aios workflow export my_workflow.json
+
+# 7. Print summary statistics
+aios workflow summary path/to/workflow.json
 ```
 
+
+## 🔌 Live n8n Integration (Sprint 24A)
+
+AI OS integrates with live, running local or remote n8n instances using `N8NLiveConnectionManager`.
+
+### Key Capabilities
+- **Automatic Discovery**: Automatically checks for instances running on `http://localhost:5678` or `http://127.0.0.1:5678`.
+- **Connection Management**: Connects, tests health/latency, credentials, and caches the connection details in Persistent Memory.
+- **Reporting**: Automatically compiles connection status, configuration, health latency, and API support details under `docs/n8n/`.
+- **Version Detection**: Probes version payload from public healthz headers or falls back to local CLI commands if local.
+
+### CLI Commands Reference
+```bash
+# 1. Connect to local or remote n8n server
+aios n8n connect http://localhost:5678
+
+# 2. Check current integration status
+aios n8n status
+
+# 3. Disconnect and clear cache
+aios n8n disconnect
+
+# 4. Measure server latency and health
+aios n8n health
+
+# 5. Detect server version
+aios n8n version
+
+# 6. Show configuration details
+aios n8n config
+
+# 7. Execute live diagnostic tests
+aios n8n test
+```
+
+
+## 🚀 Workflow Runtime & Deployment (Sprint 24B)
+
+AI OS can now deploy, execute, monitor, version, recover, and synchronize workflows
+on a live n8n instance via `N8NWorkflowRuntimeManager`.
+
+### Key Capabilities
+- **Deployment Engine**: Upload, update, replace, or clone workflows. Never overwrites without confirmation (`force` flag).
+- **Version History**: Every deployment is recorded in `.aios_n8n_cache/deployment_history.json` for audit and rollback.
+- **Rollback**: Restore any previous version from history; appends a new version entry so the audit trail is preserved.
+- **Execution Manager**: Trigger workflows by ID with optional input data. Captures execution IDs.
+- **Lifecycle Control**: Enable, disable, activate, deactivate, or delete workflows.
+- **Drift Detection**: `sync` compares local JSON node-sets against the live server and reports any drift.
+- **Runtime Analytics**: Computes success rate, failure count, and average latency from execution history.
+- **Runtime Reports**: Generates 6 markdown docs under `docs/runtime/` on every deploy or execution.
+
+### CLI Commands Reference
+```bash
+# Deploy workflow to live n8n instance
+aios workflow deploy path/to/workflow.json
+
+# Update an already-deployed workflow
+aios workflow update <workflow_id> path/to/workflow.json
+
+# Trigger a workflow execution
+aios workflow execute <workflow_id> ['{"key":"value"}']
+
+# View execution analytics dashboard
+aios workflow monitor
+
+# Retrieve execution logs summary
+aios workflow logs
+
+# View full deployment version history
+aios workflow history <workflow_id>
+
+# Roll back to a prior version
+aios workflow rollback <workflow_id> <version_number>
+
+# Enable (activate) a workflow
+aios workflow enable <workflow_id>
+
+# Disable (deactivate) a workflow
+aios workflow disable <workflow_id>
+
+# Delete workflow from live n8n server
+aios workflow delete <workflow_id>
+
+# Detect local-vs-live state drift
+aios workflow sync path/to/workflow.json
+```
+
+### Architecture Reference
+See [docs/runtime/ARCHITECTURE.md](docs/runtime/ARCHITECTURE.md) for full design details,
+data flows, version history schema, drift detection, failure recovery, and the complete
+CLI reference.

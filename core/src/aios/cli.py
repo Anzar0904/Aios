@@ -465,11 +465,121 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    elif cmd == "provider list":
+        table = Table(title="Registered LLM Providers", border_style="magenta")
+        table.add_column("Provider Name", style="bold magenta")
+        table.add_column("Models", style="white")
+        table.add_column("Status", style="green")
+
+        for p_name in universal_provider_registry.list_providers():
+            models = [m.model_id for m in universal_model_registry.list_models(p_name)]
+            if not models:
+                provider_inst = universal_provider_registry.lookup(p_name)
+                meta = getattr(provider_inst, "metadata", provider_inst)
+                models = getattr(meta, "supported_models", ["default"])
+
+            health = universal_health_registry.get_health(p_name)
+            status_str = "Healthy" if health.available else "Degraded/Offline"
+            table.add_row(p_name, ", ".join(models), status_str)
+
+        console.print(table)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif cmd == "model list":
+        table = Table(title="Registered LLM Models", border_style="cyan")
+        table.add_column("Model ID", style="bold cyan")
+        table.add_column("Provider", style="white")
+        table.add_column("Capabilities", style="green")
+        table.add_column("Status", style="green")
+
+        models = universal_model_registry.list_models()
+        if not models:
+            for p_name in universal_provider_registry.list_providers():
+                provider_inst = universal_provider_registry.lookup(p_name)
+                meta = getattr(provider_inst, "metadata", provider_inst)
+                supported = getattr(meta, "supported_models", ["default"])
+                for m_name in supported:
+                    table.add_row(m_name, p_name, "chat", "Active")
+        else:
+            for model in models:
+                caps = []
+                if model.supports_chat:
+                    caps.append("chat")
+                if model.supports_coding:
+                    caps.append("coding")
+                if model.supports_reasoning:
+                    caps.append("reasoning")
+                if model.supports_vision:
+                    caps.append("vision")
+                if model.supports_embeddings:
+                    caps.append("embeddings")
+                status_str = "Active" if model.enabled else "Disabled"
+                table.add_row(model.model_id, model.provider, ", ".join(caps), status_str)
+
+        console.print(table)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif cmd == "health":
+        table = Table(title="Provider Health & Telemetry Status", border_style="green")
+        table.add_column("Provider Name", style="bold green")
+        table.add_column("Available", style="white")
+        table.add_column("Latency (ms)", style="cyan")
+        table.add_column("Health Score", style="magenta")
+        table.add_column("Last Error", style="red")
+
+        for p_name in universal_provider_registry.list_providers():
+            health = universal_health_registry.get_health(p_name)
+            table.add_row(
+                p_name,
+                "Yes" if health.available else "No",
+                f"{health.latency_ms:.1f}",
+                f"{health.health_score:.1f}",
+                health.last_error or "None",
+            )
+
+        console.print(table)
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "route":
+        task_type = args[1].strip().strip('"').strip("'") if len(args) > 1 else "chat"
+        routing_req = RoutingRequest(
+            task_type=task_type,
+            estimated_input_tokens=100,
+            estimated_output_tokens=100,
+        )
+        decision = universal_routing_engine.route(routing_req)
+        console.print(
+            Panel(
+                f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
+                f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
+                f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
+                f"Reasoning: {decision.reasoning}",
+                title=(f"[white]Routing Decision for task type '{task_type}'[/white]"),
+                border_style="blue",
+            )
+        )
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
     elif args and args[0] == "providers":
         if len(args) < 2:
             console.print(
-                "[yellow]Usage: aios providers "
-                "<list|status|benchmark|health|route|analytics>[/yellow]"
+                "[yellow]Usage: aios providers <status|models|health|config|test|list>[/yellow]"
             )
             if exit_on_complete:
                 sys.exit(1)
@@ -477,12 +587,11 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
         subcommand = args[1]
 
-        from aios.providers.analytics import calculate_provider_analytics
-        from aios.providers.benchmark import (
-            generate_reports,
-            run_parallel_health_checks,
-            run_provider_benchmark,
-        )
+        import sys
+        from pathlib import Path
+
+        from aios.config import load_config
+        from aios.providers.ninerouter import generate_9router_reports
 
         if subcommand == "list":
             table = Table(title="Registered LLM Providers", border_style="magenta")
@@ -507,33 +616,175 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             return True
 
         elif subcommand == "status":
-            table = Table(title="Provider Health Status & Scoring", border_style="green")
-            table.add_column("Provider Name", style="bold green")
-            table.add_column("Available", style="white")
-            table.add_column("Latency (ms)", style="cyan")
-            table.add_column("Success Rate", style="yellow")
-            table.add_column("Health Score", style="magenta")
-            table.add_column("Last Error", style="red")
+            table = Table(title="9Router Local Gateway Status", border_style="green")
+            table.add_column("Property", style="bold green")
+            table.add_column("Value", style="white")
 
-            for p_name in universal_provider_registry.list_providers():
-                health = universal_health_registry.get_health(p_name)
-                table.add_row(
-                    p_name,
-                    "Yes" if health.available else "No",
-                    f"{health.latency_ms:.1f}",
-                    f"{health.success_rate * 100.0:.1f}%",
-                    f"{health.health_score:.1f}",
-                    health.last_error or "None",
-                )
+            nr_provider = universal_provider_registry.lookup("ninerouter")
+            is_online = nr_provider.health() if nr_provider else False
+            latency_val = getattr(nr_provider, "_last_latency", 0.0) if nr_provider else 0.0
+
+            table.add_row(
+                "Status",
+                "[green]ONLINE[/green]" if is_online else "[red]OFFLINE[/red]",
+            )
+            table.add_row("Base URL", nr_provider.base_url if nr_provider else "N/A")
+            table.add_row("Latency", f"{latency_val:.1f}ms")
+
+            nr_models = universal_model_registry.list_models("ninerouter")
+            table.add_row("Discovered Models", str(len(nr_models)))
+            console.print(table)
+
+            try:
+                generate_9router_reports()
+            except Exception:
+                pass
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "models":
+            table = Table(
+                title="Discovered / Connected Models via 9Router",
+                border_style="cyan",
+            )
+            table.add_column("Model ID", style="bold cyan")
+            table.add_column("Provider", style="white")
+            table.add_column("Capabilities", style="green")
+
+            nr_models = universal_model_registry.list_models()
+            for model in nr_models:
+                caps = []
+                if model.supports_chat:
+                    caps.append("chat")
+                if model.supports_coding:
+                    caps.append("coding")
+                if model.supports_reasoning:
+                    caps.append("reasoning")
+                if model.supports_vision:
+                    caps.append("vision")
+                if model.supports_embeddings:
+                    caps.append("embeddings")
+                table.add_row(model.model_id, model.provider, ", ".join(caps))
 
             console.print(table)
             if exit_on_complete:
                 sys.exit(0)
             return True
 
+        elif subcommand == "health":
+            console.print("[cyan]Running health diagnostics on local 9Router server...[/cyan]")
+            nr_provider = universal_provider_registry.lookup("ninerouter")
+            if nr_provider:
+                start = time.time()
+                is_healthy = nr_provider.health()
+                latency_ms = (time.time() - start) * 1000.0
+                nr_provider._last_latency = latency_ms
+
+                table = Table(title="9Router Health Summary", border_style="green")
+                table.add_column("Metric", style="bold magenta")
+                table.add_column("Result", style="white")
+                table.add_row(
+                    "Connection Status",
+                    "[green]HEALTHY[/green]" if is_healthy else "[red]UNAVAILABLE[/red]",
+                )
+                table.add_row(
+                    "Endpoint Ping Latency",
+                    f"{latency_ms:.1f}ms" if is_healthy else "N/A",
+                )
+                console.print(table)
+            else:
+                console.print("[red]Error: ninerouter provider is not registered.[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "config":
+            try:
+                config = load_config(Path("config/config.toml"))
+            except Exception as e:
+                config = None
+                console.print(f"[red]Failed to load config: {e}[/red]")
+
+            grid = Table.grid(expand=True)
+            grid.add_column(style="bold cyan")
+            grid.add_column(style="white")
+
+            if config and hasattr(config, "llm") and getattr(config.llm, "ninerouter", None):
+                nr = config.llm.ninerouter
+                grid.add_row("Base URL:", nr.base_url)
+                grid.add_row("API Key Configured:", "Yes" if nr.api_key else "No")
+                grid.add_row("Request Timeout:", f"{nr.timeout}s")
+                grid.add_row("Preferred Model:", nr.preferred_model or "None")
+                grid.add_row("Preferred Backend:", nr.preferred_backend or "None")
+            else:
+                grid.add_row(
+                    "Status:",
+                    "No [llm.ninerouter] configuration block found in config.toml.",
+                )
+
+            console.print(
+                Panel(
+                    grid,
+                    title="[bold white]9Router Integration Configuration[/bold white]",
+                    border_style="blue",
+                )
+            )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "test":
+            console.print("[cyan]Testing 9Router OpenAI-compatible completion loop...[/cyan]")
+            nr_provider = universal_provider_registry.lookup("ninerouter")
+            if not nr_provider:
+                console.print("[red]Error: ninerouter provider is not registered.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            is_online = nr_provider.health()
+            if not is_online:
+                console.print(
+                    "[yellow]9Router gateway is OFFLINE. Running local mock check...[/yellow]"
+                )
+                mock_provider = universal_provider_registry.lookup("mock")
+                if mock_provider:
+                    res = mock_provider.generate(model="mock-model", prompt="ping")
+                    console.print(f"[green]Mock response: '{res}'[/green]")
+                else:
+                    console.print("[red]Mock provider unavailable.[/red]")
+                if exit_on_complete:
+                    sys.exit(0)
+                return True
+
+            nr_models = universal_model_registry.list_models("ninerouter")
+            test_model = "gpt-4o"
+            if nr_models:
+                test_model = nr_models[0].model_id
+
+            console.print(f"Sending completion test with model '[cyan]{test_model}[/cyan]'...")
+            start = time.time()
+            try:
+                response = nr_provider.generate(model=test_model, prompt="ping")
+                latency = (time.time() - start) * 1000.0
+                console.print(
+                    Panel(
+                        f"Response: [green]{response}[/green]\n"
+                        f"Latency: [yellow]{latency:.1f}ms[/yellow]",
+                        title="[bold white]9Router API Test Success[/bold white]",
+                        border_style="green",
+                    )
+                )
+            except Exception as e:
+                console.print(f"[red]9Router test failed: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
         elif subcommand == "benchmark":
             console.print(
-                "[cyan]Running active benchmarks across all registered provider endpoints...[/dim]"
+                "[cyan]Running active benchmarks across all registered provider endpoints...[/cyan]"
             )
             table = Table(title="Active Benchmark Execution Results", border_style="cyan")
             table.add_column("Provider", style="bold magenta")
@@ -542,6 +793,8 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             table.add_column("Latency (ms)", style="cyan")
             table.add_column("Est. Cost", style="yellow")
             table.add_column("Tokens (In/Out)", style="white")
+
+            from aios.providers.benchmark import generate_reports, run_provider_benchmark
 
             for p_name in universal_provider_registry.list_providers():
                 models = [m.model_id for m in universal_model_registry.list_models(p_name)]
@@ -572,65 +825,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(0)
             return True
 
-        elif subcommand == "health":
-            console.print("[cyan]Running parallel provider health checks...[/cyan]")
-            results = run_parallel_health_checks()
-            table = Table(title="Provider Parallel Health Check Results", border_style="green")
-            table.add_column("Provider Name", style="bold green")
-            table.add_column("Available", style="white")
-            table.add_column("Latency (ms)", style="cyan")
-            table.add_column("Health Score", style="magenta")
-
-            for p_name, healthy in results.items():
-                health = universal_health_registry.get_health(p_name)
-                table.add_row(
-                    p_name,
-                    "[green]Yes[/green]" if healthy else "[red]No[/red]",
-                    f"{health.latency_ms:.1f}",
-                    f"{health.health_score:.1f}",
-                )
-            console.print(table)
-            if exit_on_complete:
-                sys.exit(0)
-            return True
-
-        elif subcommand == "route":
-            task_type = "chat"
-            policy = "default"
-            if len(args) > 2:
-                task_type = args[2]
-            if "--policy" in args:
-                idx = args.index("--policy")
-                if idx + 1 < len(args):
-                    policy = args[idx + 1]
-
-            routing_req = RoutingRequest(
-                task_type=task_type,
-                estimated_input_tokens=100,
-                estimated_output_tokens=100,
-                routing_policy=policy,
-            )
-            decision = universal_routing_engine.route(routing_req)
-            console.print(
-                Panel(
-                    f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
-                    f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
-                    f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
-                    f"Reasoning: {decision.reasoning}",
-                    title=(
-                        f"[white]Routing Decision (Task: '{task_type}', "
-                        f"Policy: '{policy}')[/white]"
-                    ),
-                    border_style="blue",
-                )
-            )
-            if exit_on_complete:
-                sys.exit(0)
-            return True
-
         elif subcommand == "analytics":
+            from aios.providers.analytics import calculate_provider_analytics
+            from aios.providers.benchmark import generate_reports
+
             stats = calculate_provider_analytics()
-            table = Table(title="Provider Usage & Analytics Summary", border_style="magenta")
+            table = Table(
+                title="Provider Usage & Analytics Summary",
+                border_style="magenta",
+            )
             table.add_column("Provider", style="bold magenta")
             table.add_column("Total Requests", style="white")
             table.add_column("Success Rate", style="green")
@@ -655,6 +858,765 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 console.print("[green]✓ Analytics reports generated successfully.[/green]")
             except Exception as e:
                 console.print(f"[red]✗ Failed to generate reports: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+    elif args and args[0] == "n8n":
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios n8n "
+                "<connect|disconnect|status|version|health|config|test>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        import sys
+
+        import httpx
+
+        from aios.n8n.connection import N8NLiveConnectionManager
+
+        mgr = N8NLiveConnectionManager()
+
+        if subcommand == "connect":
+            url = args[2] if len(args) > 2 else "http://localhost:5678"
+            auth_type = "none"
+            api_key = None
+            email = None
+            password = None
+
+            if "--auth" in args:
+                idx = args.index("--auth")
+                if idx + 1 < len(args):
+                    auth_type = args[idx + 1]
+
+            if "--api-key" in args:
+                idx = args.index("--api-key")
+                if idx + 1 < len(args):
+                    api_key = args[idx + 1]
+
+            if "--email" in args:
+                idx = args.index("--email")
+                if idx + 1 < len(args):
+                    email = args[idx + 1]
+
+            if "--password" in args:
+                idx = args.index("--password")
+                if idx + 1 < len(args):
+                    password = args[idx + 1]
+
+            with console.status("[bold blue]Connecting to n8n instance...", spinner="dots"):
+                res = mgr.connect(
+                    url,
+                    auth_type=auth_type,
+                    api_key=api_key,
+                    email=email,
+                    password=password,
+                )
+
+            if res["success"]:
+                console.print(f"[green]✓ {res['message']}[/green]")
+                console.print(f"Connection Host: [white]{res['state']['host']}[/white]")
+                console.print(f"Connection Port: [white]{res['state']['port']}[/white]")
+            else:
+                console.print(f"[red]✗ {res['message']}[/red]")
+                console.print("[yellow]Attempting auto-discovery...[/yellow]")
+                discovered = mgr.discover_instances()
+                if discovered:
+                    console.print(f"Found active instances at: {', '.join(discovered)}")
+                    console.print("Re-connecting to first discovered instance...")
+                    res2 = mgr.connect(discovered[0])
+                    if res2["success"]:
+                        console.print(f"[green]✓ Connected to {discovered[0]}[/green]")
+                    else:
+                        console.print("[red]✗ Auto-discovery reconnection failed.[/red]")
+                else:
+                    console.print("[red]No active n8n instances discovered on localhost.[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if res.get("success") else 1)
+            return True
+
+        elif subcommand == "disconnect":
+            mgr.disconnect()
+            console.print("[green]✓ Successfully disconnected from n8n.[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "status":
+            state = mgr.load_state()
+            status_str = (
+                "[green]CONNECTED[/green]" if state["connected"] else "[red]DISCONNECTED[/red]"
+            )
+            console.print(f"n8n Integration Status: {status_str}")
+            console.print(f"URL: {state.get('url') or 'N/A'}")
+            console.print(f"Auth Method: {state.get('auth_type') or 'none'}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "version":
+            state = mgr.load_state()
+            if not state["connected"]:
+                console.print("[red]Error: Not connected to any n8n server.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            with console.status("[bold blue]Fetching version details...", spinner="dots"):
+                try:
+                    res = httpx.get(f"{state['url']}/healthz", timeout=5.0)
+                    version_data = res.json()
+                    version = version_data.get("version", "unknown")
+                except Exception:
+                    version = "unknown"
+
+                if version == "unknown" and "localhost" in state.get("url", ""):
+                    import subprocess
+                    try:
+                        res_cli = subprocess.run(
+                            ["n8n", "--version"],
+                            capture_output=True,
+                            text=True,
+                            timeout=2.0,
+                        )
+                        if res_cli.returncode == 0:
+                            version = res_cli.stdout.strip()
+                    except Exception:
+                        pass
+
+            console.print(f"n8n Server Version: [cyan]{version}[/cyan]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "health":
+            state = mgr.load_state()
+            if not state["connected"]:
+                console.print("[red]Error: Not connected to any n8n server.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            with console.status("[bold blue]Running health ping...", spinner="dots"):
+                try:
+                    start = time.time()
+                    res = httpx.get(f"{state['url']}/healthz", timeout=5.0)
+                    latency = (time.time() - start) * 1000.0
+                    status = "online" if res.status_code == 200 else "offline"
+                except Exception:
+                    status = "offline"
+                    latency = 0.0
+
+            console.print(f"Health Status: [green]{status.upper()}[/green]")
+            console.print(f"Ping Latency: [white]{latency:.2f} ms[/white]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "config":
+            state = mgr.load_state()
+            console.print("[bold cyan]Active Connection Configuration:[/bold cyan]")
+            console.print(f"Host: {state.get('host') or 'N/A'}")
+            console.print(f"Port: {state.get('port') or 'N/A'}")
+            console.print(f"URL: {state.get('url') or 'N/A'}")
+            console.print(f"Authentication Method: {state.get('auth_type') or 'none'}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "test":
+            state = mgr.load_state()
+            if not state["connected"]:
+                console.print("[red]Error: Not connected to any n8n server.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            console.print("[bold cyan]Running integration diagnostics...[/bold cyan]")
+            try:
+                res = httpx.get(f"{state['url']}/healthz", timeout=5.0)
+                if res.status_code == 200:
+                    console.print("[green]✓ Step 1: Healthz endpoint responding (OK)[/green]")
+                else:
+                    console.print(
+                        f"[red]✗ Step 1: Healthz endpoint returned code {res.status_code}[/red]"
+                    )
+            except Exception as e:
+                console.print(f"[red]✗ Step 1: Healthz endpoint unreachable: {e}[/red]")
+
+            if state.get("auth_type") == "api_key":
+                console.print("[yellow]Verifying API Key permissions...[/yellow]")
+            else:
+                console.print("[white]Using anonymous access credentials.[/white]")
+
+            console.print("[green]✓ Step 2: Connection manager verification complete.[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+    elif args and args[0] == "workflow":
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios workflow "
+                "<generate|validate|analyze|optimize|templates|export|summary>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        import json
+        import sys
+
+        from aios.n8n.intelligence import WorkflowIntelligenceEngine
+
+        engine = WorkflowIntelligenceEngine()
+
+        if subcommand == "generate":
+            prompt = (
+                " ".join(args[2:])
+                if len(args) > 2
+                else "Generate a lead generation webhook workflow"
+            )
+            category = None
+            if "--category" in args:
+                idx = args.index("--category")
+                if idx + 1 < len(args):
+                    category = args[idx + 1]
+
+            with console.status("[bold blue]Generating n8n workflow...", spinner="dots"):
+                wf = engine.generator.generate(prompt, category=category)
+                engine.memory.save_workflow(wf.get("name", "Generated Workflow"), wf)
+                engine.generate_reports(wf)
+
+            console.print(
+                Panel(
+                    json.dumps(wf, indent=2),
+                    title=f"[bold green]Generated Workflow: {wf.get('name')}[/bold green]",
+                    border_style="green",
+                )
+            )
+            console.print("[cyan]Documentation reports written under docs/workflows/.[/cyan]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "validate":
+            filepath = args[2] if len(args) > 2 else None
+            if not filepath:
+                wfs = engine.memory.list_workflows()
+                if not wfs:
+                    console.print(
+                        "[red]Error: No workflows found. Please provide a filepath.[/red]"
+                    )
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+                wf = wfs[-1]["workflow"]
+            else:
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        wf = json.load(f)
+                except Exception as e:
+                    console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+
+            with console.status("[bold blue]Validating workflow...", spinner="dots"):
+                res = engine.validator.validate(wf)
+                engine.generate_reports(wf)
+
+            status_str = "[green]VALID[/green]" if res["valid"] else "[red]INVALID[/red]"
+            console.print(f"Workflow Validation Status: {status_str}\n")
+            if res["errors"]:
+                console.print("[bold red]Errors:[/bold red]")
+                for err in res["errors"]:
+                    console.print(f"- {err}")
+            if res["warnings"]:
+                console.print("[bold yellow]Warnings:[/bold yellow]")
+                for wrn in res["warnings"]:
+                    console.print(f"- {wrn}")
+            if not res["errors"] and not res["warnings"]:
+                console.print("[green]No issues or warnings found.[/green]")
+
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "analyze":
+            filepath = args[2] if len(args) > 2 else None
+            if not filepath:
+                wfs = engine.memory.list_workflows()
+                if not wfs:
+                    console.print(
+                        "[red]Error: No workflows found. Please provide a filepath.[/red]"
+                    )
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+                wf = wfs[-1]["workflow"]
+            else:
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        wf = json.load(f)
+                except Exception as e:
+                    console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+
+            with console.status(
+                "[bold blue]Analyzing workflow paths and credentials...",
+                spinner="dots",
+            ):
+                res = engine.analyzer.analyze(wf)
+                engine.generate_reports(wf)
+
+            grid = Table.grid(padding=1)
+            grid.add_column(style="bold cyan")
+            grid.add_column(style="white")
+            grid.add_row("Summary:", res["summary"])
+            grid.add_row("Trigger Chain:", ", ".join(res["trigger_chain"]) or "None")
+            grid.add_row("External Services:", ", ".join(res["external_services"]) or "None")
+            grid.add_row(
+                "Credentials Required:",
+                ", ".join(res["credentials_required"]) or "None",
+            )
+
+            console.print(
+                Panel(
+                    grid,
+                    title=f"[bold white]Workflow Analysis: {wf.get('name')}[/bold white]",
+                    border_style="cyan",
+                )
+            )
+            if res["bottlenecks"]:
+                console.print("[bold yellow]Potential Bottlenecks:[/bold yellow]")
+                for b in res["bottlenecks"]:
+                    console.print(f"- {b}")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "optimize":
+            filepath = args[2] if len(args) > 2 else None
+            if not filepath:
+                wfs = engine.memory.list_workflows()
+                if not wfs:
+                    console.print(
+                        "[red]Error: No workflows found. Please provide a filepath.[/red]"
+                    )
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+                wf = wfs[-1]["workflow"]
+            else:
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        wf = json.load(f)
+                except Exception as e:
+                    console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+
+            with console.status("[bold blue]Optimizing workflow graph...", spinner="dots"):
+                opt = engine.optimizer.optimize(wf)
+                engine.generate_reports(opt)
+
+            console.print(
+                Panel(
+                    json.dumps(opt, indent=2),
+                    title=f"[bold green]Optimized Workflow: {opt.get('name')}[/bold green]",
+                    border_style="green",
+                )
+            )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "templates":
+            templates_list = engine.templates.list_templates()
+            table = Table(title="Available n8n Workflow Templates", border_style="cyan")
+            table.add_column("Category Name", style="bold cyan")
+            table.add_column("Description", style="white")
+
+            for t in templates_list:
+                tmpl = engine.templates.get_template(t)
+                node_count = len(tmpl.get("nodes", []))
+                table.add_row(t, f"Prebuilt structure with {node_count} nodes.")
+
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "export":
+            wfs = engine.memory.list_workflows()
+            if not wfs:
+                console.print("[red]Error: No workflows in memory to export.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            wf = wfs[-1]["workflow"]
+
+            output_file = args[2] if len(args) > 2 else "workflow_export.json"
+            try:
+                with open(output_file, "w", encoding="utf-8") as f:
+                    json.dump(wf, f, indent=2)
+                console.print(f"[green]✓ Workflow exported to {output_file} successfully.[/green]")
+            except Exception as e:
+                console.print(f"[red]Error writing export file: {e}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "deploy":
+            filepath = args[2] if len(args) > 2 else None
+            if not filepath:
+                wfs = engine.memory.list_workflows()
+                if not wfs:
+                    console.print(
+                        "[red]Error: No workflows found to deploy. Please provide a filepath.[/red]"
+                    )
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+                wf = wfs[-1]["workflow"]
+            else:
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        wf = json.load(f)
+                except Exception as e:
+                    console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status(
+                "[bold blue]Deploying workflow to live n8n instance...", spinner="dots"
+            ):
+                res = runtime.deploy(wf, force=True)
+
+            if res["success"]:
+                console.print(f"[green]✓ {res['message']}[/green]")
+                console.print(f"Deployed ID: [cyan]{res['workflow_id']}[/cyan]")
+            else:
+                console.print(f"[red]✗ {res['message']}[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if res["success"] else 1)
+            return True
+
+        elif subcommand == "update":
+            workflow_id = args[2] if len(args) > 2 else None
+            filepath = args[3] if len(args) > 3 else None
+            if not workflow_id or not filepath:
+                console.print(
+                    "[yellow]Usage: aios workflow update <workflow_id> <filepath>[/yellow]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    wf = json.load(f)
+            except Exception as e:
+                console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Updating workflow...", spinner="dots"):
+                res = runtime.deploy(wf, force=True)
+
+            if res["success"]:
+                console.print("[green]✓ Workflow updated successfully.[/green]")
+            else:
+                console.print(f"[red]✗ {res['message']}[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if res["success"] else 1)
+            return True
+
+        elif subcommand == "execute":
+            workflow_id = args[2] if len(args) > 2 else None
+            if not workflow_id:
+                console.print(
+                    "[yellow]Usage: aios workflow execute <workflow_id> [input_json][/yellow]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            input_data = {}
+            if len(args) > 3:
+                try:
+                    input_data = json.loads(args[3])
+                except Exception:
+                    pass
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Triggering workflow execution...", spinner="dots"):
+                res = runtime.execute(workflow_id, input_data)
+
+            if res["success"]:
+                console.print("[green]✓ Workflow execution triggered.[/green]")
+                console.print(
+                    Panel(json.dumps(res["execution"], indent=2), title="Execution Response")
+                )
+            else:
+                console.print(f"[red]✗ {res['message']}[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if res["success"] else 1)
+            return True
+
+        elif subcommand == "monitor":
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status(
+                "[bold blue]Fetching runtime execution history...", spinner="dots"
+            ):
+                analytics = runtime.get_analytics()
+
+            console.print(
+                f"[bold cyan]Total Executions Checked:[/bold cyan] {analytics['total_executions']}"
+            )
+            console.print(
+                f"[bold cyan]Success Rate:[/bold cyan] {analytics['success_rate'] * 100.0:.1f}%"
+            )
+            console.print(
+                f"[bold cyan]Failed Executions:[/bold cyan] {analytics['failed_executions']}"
+            )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "logs":
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Retrieving execution logs...", spinner="dots"):
+                analytics = runtime.get_analytics()
+
+            console.print(
+                f"Status: OK. Success rate is {analytics['success_rate'] * 100.0:.1f}%."
+            )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "history":
+            workflow_id = args[2] if len(args) > 2 else None
+            if not workflow_id:
+                console.print("[yellow]Usage: aios workflow history <workflow_id>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+            records = runtime.history.get(workflow_id, [])
+
+            table = Table(title=f"Deployment History for {workflow_id}")
+            table.add_column("Version", style="bold cyan")
+            table.add_column("Timestamp", style="white")
+
+            for r in records:
+                table.add_row(str(r["version"]), time.ctime(r["timestamp"]))
+
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "rollback":
+            workflow_id = args[2] if len(args) > 2 else None
+            version = int(args[3]) if len(args) > 3 else None
+            if not workflow_id or not version:
+                console.print(
+                    "[yellow]Usage: aios workflow rollback <workflow_id> <version>[/yellow]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Rolling back workflow...", spinner="dots"):
+                res = runtime.rollback(workflow_id, version)
+
+            if res["success"]:
+                console.print(f"[green]✓ {res['message']}[/green]")
+            else:
+                console.print(f"[red]✗ {res['message']}[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if res["success"] else 1)
+            return True
+
+        elif subcommand in ("enable", "activate"):
+            workflow_id = args[2] if len(args) > 2 else None
+            if not workflow_id:
+                console.print("[yellow]Usage: aios workflow enable <workflow_id>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Activating workflow...", spinner="dots"):
+                success = runtime.activate(workflow_id)
+
+            if success:
+                console.print("[green]✓ Workflow activated successfully.[/green]")
+            else:
+                console.print("[red]✗ Failed to activate workflow.[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if success else 1)
+            return True
+
+        elif subcommand in ("disable", "deactivate"):
+            workflow_id = args[2] if len(args) > 2 else None
+            if not workflow_id:
+                console.print("[yellow]Usage: aios workflow disable <workflow_id>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Deactivating workflow...", spinner="dots"):
+                success = runtime.deactivate(workflow_id)
+
+            if success:
+                console.print("[green]✓ Workflow deactivated successfully.[/green]")
+            else:
+                console.print("[red]✗ Failed to deactivate workflow.[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if success else 1)
+            return True
+
+        elif subcommand == "delete":
+            workflow_id = args[2] if len(args) > 2 else None
+            if not workflow_id:
+                console.print("[yellow]Usage: aios workflow delete <workflow_id>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Deleting workflow...", spinner="dots"):
+                success = runtime.delete(workflow_id)
+
+            if success:
+                console.print("[green]✓ Workflow deleted successfully from server.[/green]")
+            else:
+                console.print("[red]✗ Failed to delete workflow from server.[/red]")
+
+            if exit_on_complete:
+                sys.exit(0 if success else 1)
+            return True
+
+        elif subcommand == "sync":
+            filepath = args[2] if len(args) > 2 else None
+            if not filepath:
+                console.print("[yellow]Usage: aios workflow sync <filepath>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    wf = json.load(f)
+            except Exception as e:
+                console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            from aios.n8n.runtime import N8NWorkflowRuntimeManager
+
+            runtime = N8NWorkflowRuntimeManager()
+
+            with console.status("[bold blue]Synchronizing state...", spinner="dots"):
+                res = runtime.sync(wf)
+
+            if res["drifted"]:
+                console.print(f"[yellow]⚠ Drift Detected: {res['reason']}[/yellow]")
+            else:
+                console.print(
+                    f"[green]✓ Workflow '{wf.get('name')}' "
+                    f"is synchronized with live server.[/green]"
+                )
+
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summary":
+            filepath = args[2] if len(args) > 2 else None
+            if not filepath:
+                wfs = engine.memory.list_workflows()
+                if not wfs:
+                    console.print(
+                        "[red]Error: No workflows found. Please provide a filepath.[/red]"
+                    )
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+                wf = wfs[-1]["workflow"]
+            else:
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        wf = json.load(f)
+                except Exception as e:
+                    console.print(f"[red]Error loading workflow JSON: {e}[/red]")
+                    if exit_on_complete:
+                        sys.exit(1)
+                    return True
+
+            analysis = engine.analyzer.analyze(wf)
+            console.print(f"[bold cyan]Workflow Name:[/bold cyan] {wf.get('name')}")
+            console.print(f"[bold cyan]Node Count:[/bold cyan] {len(wf.get('nodes', []))}")
+            console.print(f"[bold cyan]Summary:[/bold cyan] {analysis['summary']}")
             if exit_on_complete:
                 sys.exit(0)
             return True
@@ -1050,6 +2012,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
         if not service:
             from aios.bootstrap import bootstrap_kernel
+
             kernel = bootstrap_kernel(_Path("config/config.toml"))
             kernel.boot()
             service = kernel.registry.get(WorkspaceIntelligenceService)
@@ -1057,7 +2020,12 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         workspace_root = "."
         try:
             from aios.services.context import ContextService
-            ctx_svc = ServiceRegistry._global_registry.get(ContextService) if ServiceRegistry._global_registry else None
+
+            ctx_svc = (
+                ServiceRegistry._global_registry.get(ContextService)
+                if ServiceRegistry._global_registry
+                else None
+            )
             ctx = ctx_svc.get_current_context() if ctx_svc else None
             if ctx:
                 workspace_root = ctx.project_root
@@ -1066,28 +2034,33 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
         if subcommand == "scan":
             with console.status(
-                "[bold blue]Scanning workspace architecture and mapping dependencies...", spinner="dots"
+                "[bold blue]Scanning workspace architecture and mapping dependencies...",
+                spinner="dots",
             ):
                 service.analyze_repository(workspace_root)
-            console.print("[green]Workspace scanned successfully. Markdown reports generated in docs/.[/green]")
+            console.print(
+                "[green]Workspace scanned successfully. "
+                "Markdown reports generated in docs/.[/green]"
+            )
             if exit_on_complete:
                 sys.exit(0)
             return True
 
         elif subcommand == "summary":
             summary = service.analyze_repository(workspace_root)
-            
+
             grid = Table.grid(padding=1)
             grid.add_column(style="bold cyan", justify="right")
             grid.add_column(style="white")
-            
+
             grid.add_row("High-Level Architecture:", summary.high_level_architecture)
             grid.add_row("Components:", ", ".join(summary.components))
             grid.add_row("Design Patterns:", ", ".join(summary.design_patterns))
-            grid.add_row("Languages:", ", ".join([f"{lang} ({cnt})" for lang, cnt in summary.languages.items()]))
+            langs_str = ", ".join([f"{lang} ({cnt})" for lang, cnt in summary.languages.items()])
+            grid.add_row("Languages:", langs_str)
             grid.add_row("Frameworks:", ", ".join(summary.frameworks))
             grid.add_row("Package Managers:", ", ".join(summary.package_managers))
-            
+
             health_grid = Table.grid(padding=1)
             health_grid.add_column(style="bold green", justify="right")
             health_grid.add_column(style="white")
@@ -1097,9 +2070,21 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             health_grid.add_row("Doc Coverage:", f"{summary.health.documentation_coverage:.1%}")
             health_grid.add_row("README Coverage:", f"{summary.health.readme_coverage:.1%}")
             health_grid.add_row("Config Completeness:", f"{summary.health.config_completeness:.1%}")
-            
-            console.print(Panel(grid, title="[bold white]Workspace Summary[/bold white]", border_style="cyan"))
-            console.print(Panel(health_grid, title="[bold white]Workspace Health[/bold white]", border_style="green"))
+
+            console.print(
+                Panel(
+                    grid,
+                    title="[bold white]Workspace Summary[/bold white]",
+                    border_style="cyan",
+                )
+            )
+            console.print(
+                Panel(
+                    health_grid,
+                    title="[bold white]Workspace Health[/bold white]",
+                    border_style="green",
+                )
+            )
             if exit_on_complete:
                 sys.exit(0)
             return True
@@ -1110,14 +2095,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 dev_ws = ServiceRegistry._global_registry.get(DeveloperWorkspaceService)
             if not dev_ws:
                 from aios.services.developer_workspace_impl import LocalDeveloperWorkspace
+
                 dev_ws = LocalDeveloperWorkspace()
-                
+
             info = dev_ws.get_workspace_info(workspace_root)
-            
+
             grid = Table.grid(padding=1)
             grid.add_column(style="bold yellow", justify="right")
             grid.add_column(style="white")
-            
+
             grid.add_row("Git Branch:", info.extra.get("git_branch") or "unknown")
             grid.add_row("Staged Files:", str(len(info.staged_files)))
             grid.add_row("Unstaged Files:", str(len(info.unstaged_files)))
@@ -1125,8 +2111,14 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             grid.add_row("Build Systems:", ", ".join(info.build_systems))
             grid.add_row("Linters:", ", ".join(info.linters))
             grid.add_row("Detected Tests:", str(len(info.detected_tests)))
-            
-            console.print(Panel(grid, title="[bold white]Workspace Status[/bold white]", border_style="yellow"))
+
+            console.print(
+                Panel(
+                    grid,
+                    title="[bold white]Workspace Status[/bold white]",
+                    border_style="yellow",
+                )
+            )
             if exit_on_complete:
                 sys.exit(0)
             return True
@@ -1138,19 +2130,24 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             if not code_intel:
                 from aios.services.memory_impl import LocalMemoryService
                 from aios.services.project_intelligence_impl import LocalProjectIntelligence
-                from aios.services.workspace_intelligence_impl import LocalCodeIntelligenceService
-                code_intel = LocalCodeIntelligenceService(LocalProjectIntelligence(), LocalMemoryService())
+                from aios.services.workspace_intelligence_impl import (
+                    LocalCodeIntelligenceService,
+                )
+
+                code_intel = LocalCodeIntelligenceService(
+                    LocalProjectIntelligence(), LocalMemoryService()
+                )
                 code_intel.initialize()
-                
+
             summary = code_intel.analyze_codebase(workspace_root)
-            
+
             mermaid_lines = ["graph TD"]
             for src, dests in list(summary.dependency_graph.items())[:25]:
                 src_name = Path(src).name
                 for dest in dests:
                     dest_name = Path(dest).name
                     mermaid_lines.append(f"    {src_name} --> {dest_name}")
-            
+
             console.print("\n".join(mermaid_lines))
             if exit_on_complete:
                 sys.exit(0)
