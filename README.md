@@ -149,3 +149,50 @@ To verify code style and formatting:
 ruff check ./core
 ruff format --check ./core
 ```
+
+---
+
+## 🔍 Research Intelligence (Sprint 21)
+
+The **Research Intelligence** module enables the Personal AI OS to securely acquire, parse, validate, and reason over external technical literature.
+
+### Key Capabilities
+* **Outbound SSRF Guards & SSL Audit**: Enforces strict URL validations (blocking loopback, private range, or link-local IPs) and verifies target SSL/TLS certificates.
+* **HTML Element Stripping & Unicode Normalization**: Cleans boilerplate tags (e.g. `nav`, `footer`, `script`, `aside`), converts text to Unicode NFKC, and compacts whitespace.
+* **Concept Extraction & Fact Validation**: Automatically extracts concepts and evidence statements via the LLM (or regex fallback) and stores them in SQLite.
+* **Confidence Scoring**: Computes credibility scores using:
+  `CS = (SCS * 0.3) + (Consensus * 0.3) + (AgeDecay * 0.1) + (DirectValidation * 0.3)`
+* **Contradiction Detection**: Flags conflicting claims across sources, links them in a relation graph (`CONFLICTS_WITH`), and logs warning messages to the console.
+* **Vector Indexing**: Automatically syncs report markdown pages to `KnowledgeHubService` and `research_memory` in Qdrant.
+
+### Architecture Map
+```mermaid
+graph TD
+    RE[ResearchIntelligenceService] --> SC[SSRF / SSL Guard]
+    RE --> WP[Web Page Parser]
+    RE --> DB[(SQLite DB Cache)]
+    RE --> QD[(Qdrant research_memory)]
+    WP --> CN[Content Normalizer]
+    RE --> FV[Fact Verification & Scoring]
+    FV --> CD[Contradiction Detection]
+```
+
+### Usage Examples
+```python
+from aios.services.research_impl import LocalResearchService
+
+# Initialize the research service
+service = LocalResearchService(model_service, workspace_root=".")
+service.initialize()
+
+# 1. Search cached SQLite/external providers
+docs = service.search("Compare LocalEventBus and NATS", limit=5)
+
+# 2. Fetch and parse url to markdown
+doc = service.fetch_document("https://nats.io/documentation")
+
+# 3. Verify claim and get confidence score
+verification = service.verify_claim("LocalEventBus runs in-process")
+print(f"Status: {verification.verification_status}, Score: {verification.confidence_score}")
+```
+
