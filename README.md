@@ -390,3 +390,49 @@ aios supabase summary
 ### Architecture Reference
 See [docs/supabase/architecture.md](docs/supabase/architecture.md) for design details, APIs, credentials schemas, and the complete CLI guides.
 
+
+## 🔺 Vercel Intelligence (Sprint 27)
+
+The **Vercel Intelligence** subsystem enables AI OS to discover, manage, deploy, monitor, analyze, and troubleshoot Vercel projects.
+
+### Key Capabilities
+- **Connection Manager**: Supports secure credentials management (under `.agent/vercel/credentials.json` with `0600` permissions) with token validation and discovery for Personal and Team scopes.
+- **Project Exploration**: Discovers active project properties, framework, DNS custom domains, environment variables metadata (keys/scopes only), and build/install commands.
+- **Deployments Tracking**: Monitors build history, retrieves current deployment state, and evaluates safe rollback candidates (successful historical production builds) without automatically deploying without user approval.
+- **Build Diagnostics & Explanations**: Inspects build events/logs and diagnoses build failures (missing dependencies, syntax errors, build script failure) to present AI-powered explanations.
+- **Custom Domains & SSL Audit**: Queries custom domains DNS configuration, SSL/TLS certificate health, and redirects.
+- **Environment Metadata Audit**: Indexes environment variable targets (Production, Preview, Development) and flags configuration drift without exposing secret values.
+- **Monitoring & Health Scorecard**: Gathers activity metrics, average build times, success rates, and outputs project health indicators.
+- **Runtime Reports**: Automatically generates 5 markdown reports (deployment, build, domain, environment, health reports) under `docs/vercel/`.
+
+### CLI Commands Reference
+```bash
+# 1. Authenticate with Vercel using personal access token
+aios vercel login [--token <token>] [--team <team_id>]
+
+# 2. Check Vercel connectivity and scope (personal vs team)
+aios vercel status
+
+# 3. List all discovered Vercel projects
+aios vercel projects
+
+# 4. View recent deployments list and rollback candidates
+aios vercel deployments
+
+# 5. Retrieve deployment build logs and AI failure diagnosis
+aios vercel logs <deployment_id>
+
+# 6. Verify custom domains SSL status and redirects
+aios vercel domains
+
+# 7. Audit environment variables configuration targets
+aios vercel env
+
+# 8. Compile project health summary and write reports
+aios vercel summary
+```
+
+### Architecture Reference
+See [docs/vercel/architecture.md](docs/vercel/architecture.md) for detailed APIs, credentials schemas, and the CLI guide.
+
+

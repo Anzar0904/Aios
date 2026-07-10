@@ -89,8 +89,6 @@ from aios.services.n8n_translation import WorkflowTranslator
 from aios.services.n8n_translation_impl import LocalWorkflowTranslator
 from aios.services.notion import NotionService
 from aios.services.notion_impl import LocalNotionService
-from aios.services.supabase import SupabaseService
-from aios.services.supabase_impl import LocalSupabaseIntelligenceService
 from aios.services.orchestrator import OrchestratorService
 from aios.services.orchestrator_impl import LocalOrchestratorService
 from aios.services.patch_generation import PatchGenerationService
@@ -117,6 +115,8 @@ from aios.services.session import SessionService
 from aios.services.session_impl import LocalSessionService
 from aios.services.software_engineer import SoftwareEngineerService
 from aios.services.software_engineer_impl import LocalSoftwareEngineerService
+from aios.services.supabase import SupabaseService
+from aios.services.supabase_impl import LocalSupabaseIntelligenceService
 from aios.services.test_coverage import AITestCoverageService
 from aios.services.test_coverage_impl import LocalAITestCoverageService
 from aios.services.test_engineer import AITestEngineerService
@@ -133,6 +133,8 @@ from aios.services.test_validation import ValidationService
 from aios.services.test_validation_impl import LocalValidationService
 from aios.services.tool import ToolService
 from aios.services.tool_impl import LocalToolManager
+from aios.services.vercel import VercelService
+from aios.services.vercel_impl import LocalVercelIntelligenceService
 
 # Workflow monitoring and optimization
 from aios.services.workflow_monitoring import WorkflowMonitoringService
@@ -648,6 +650,10 @@ def bootstrap_services(
     supabase_service = LocalSupabaseIntelligenceService()
     supabase_service.initialize()
     registry.register(SupabaseService, supabase_service)
+
+    vercel_service = LocalVercelIntelligenceService()
+    vercel_service.initialize()
+    registry.register(VercelService, vercel_service)
 
     registry.register(SourceControlRegistry, sc_registry)
     registry.register(ProviderDiscovery, sc_discovery)

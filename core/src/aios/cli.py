@@ -977,6 +977,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
                 if version == "unknown" and "localhost" in state.get("url", ""):
                     import subprocess
+
                     try:
                         res_cli = subprocess.run(
                             ["n8n", "--version"],
@@ -1078,13 +1079,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             mgr = GitHubConnectionManager(token=token_arg)
             result = mgr.login(token=token_arg)
             if result["success"]:
-                console.print(
-                    f"[green]✓ Logged in as {result['user']}[/green]"
-                )
+                console.print(f"[green]✓ Logged in as {result['user']}[/green]")
             else:
-                console.print(
-                    f"[red]✗ Login failed: {result['message']}[/red]"
-                )
+                console.print(f"[red]✗ Login failed: {result['message']}[/red]")
                 if exit_on_complete:
                     sys.exit(1)
                 return True
@@ -1096,16 +1093,10 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             mgr = GitHubConnectionManager()
             st = mgr.get_status()
             if st.get("connected"):
-                console.print(
-                    f"[green]✓ Connected as {st['user']}[/green]"
-                )
-                console.print(
-                    f"  Token hint: {st.get('token_hint', 'n/a')}"
-                )
+                console.print(f"[green]✓ Connected as {st['user']}[/green]")
+                console.print(f"  Token hint: {st.get('token_hint', 'n/a')}")
             else:
-                console.print(
-                    "[yellow]Not connected. Run: aios github login[/yellow]"
-                )
+                console.print("[yellow]Not connected. Run: aios github login[/yellow]")
             if exit_on_complete:
                 sys.exit(0)
             return True
@@ -1162,9 +1153,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             engine = _make_engine()
             try:
                 branches = engine.list_branches(repo_name)
-                console.print(
-                    f"[cyan]{len(branches)} branch(es) in {repo_name}[/cyan]"
-                )
+                console.print(f"[cyan]{len(branches)} branch(es) in {repo_name}[/cyan]")
                 for b in branches:
                     console.print(f"  {b.name}  ({b.sha[:7]})")
             except Exception as exc:
@@ -1186,14 +1175,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             engine = _make_engine()
             try:
                 commits = engine.get_commit_history(repo_name)
-                console.print(
-                    f"[cyan]Last {len(commits)} commit(s) in {repo_name}[/cyan]"
-                )
+                console.print(f"[cyan]Last {len(commits)} commit(s) in {repo_name}[/cyan]")
                 for c in commits:
-                    console.print(
-                        f"  [{c.sha[:7]}] {c.message[:72]} "
-                        f"— {c.author} ({c.date[:10]})"
-                    )
+                    console.print(f"  [{c.sha[:7]}] {c.message[:72]} — {c.author} ({c.date[:10]})")
             except Exception as exc:
                 console.print(f"[red]Error: {exc}[/red]")
                 if exit_on_complete:
@@ -1213,14 +1197,11 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             engine = _make_engine()
             try:
                 issues = engine.list_issues(repo_name)
-                console.print(
-                    f"[cyan]{len(issues)} open issue(s) in {repo_name}[/cyan]"
-                )
+                console.print(f"[cyan]{len(issues)} open issue(s) in {repo_name}[/cyan]")
                 for i in issues:
                     labels = ", ".join(i.get("labels", []))
                     console.print(
-                        f"  #{i.get('number')} {i.get('title')} "
-                        f"[{labels or 'no labels'}]"
+                        f"  #{i.get('number')} {i.get('title')} [{labels or 'no labels'}]"
                     )
             except Exception as exc:
                 console.print(f"[red]Error: {exc}[/red]")
@@ -1235,9 +1216,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             # aios github pr <owner/repo> [pr_number]
             repo_name = args[2] if len(args) > 2 else None
             if not repo_name:
-                console.print(
-                    "[red]Usage: aios github pr <owner/repo> [number][/red]"
-                )
+                console.print("[red]Usage: aios github pr <owner/repo> [number][/red]")
                 if exit_on_complete:
                     sys.exit(1)
                 return True
@@ -1246,18 +1225,14 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 if len(args) > 3:
                     pr_num = int(args[3])
                     pr = engine.inspect_pull_request(repo_name, pr_num)
-                    console.print(
-                        f"[bold]PR #{pr.number}: {pr.title}[/bold]"
-                    )
+                    console.print(f"[bold]PR #{pr.number}: {pr.title}[/bold]")
                     console.print(f"  State   : {pr.state}")
                     console.print(f"  Author  : {pr.user}")
                     console.print(f"  URL     : {pr.html_url}")
                     console.print(f"  Draft   : {pr.is_draft}")
                 else:
                     prs = engine.list_pull_requests(repo_name)
-                    console.print(
-                        f"[cyan]{len(prs)} PR(s) in {repo_name}[/cyan]"
-                    )
+                    console.print(f"[cyan]{len(prs)} PR(s) in {repo_name}[/cyan]")
                     for p in prs:
                         console.print(
                             f"  #{p.get('number')} {p.get('title')} "
@@ -1275,18 +1250,14 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         elif sub == "releases":
             repo_name = args[2] if len(args) > 2 else None
             if not repo_name:
-                console.print(
-                    "[red]Usage: aios github releases <owner/repo>[/red]"
-                )
+                console.print("[red]Usage: aios github releases <owner/repo>[/red]")
                 if exit_on_complete:
                     sys.exit(1)
                 return True
             engine = _make_engine()
             try:
                 releases = engine.get_release_history(repo_name)
-                console.print(
-                    f"[cyan]{len(releases)} release(s) in {repo_name}[/cyan]"
-                )
+                console.print(f"[cyan]{len(releases)} release(s) in {repo_name}[/cyan]")
                 for r in releases:
                     console.print(
                         f"  {r.tag_name}  {r.name}  "
@@ -1304,24 +1275,17 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         elif sub == "actions":
             repo_name = args[2] if len(args) > 2 else None
             if not repo_name:
-                console.print(
-                    "[red]Usage: aios github actions <owner/repo>[/red]"
-                )
+                console.print("[red]Usage: aios github actions <owner/repo>[/red]")
                 if exit_on_complete:
                     sys.exit(1)
                 return True
             engine = _make_engine()
             try:
                 workflows = engine.get_workflow_status(repo_name)
-                console.print(
-                    f"[cyan]{len(workflows)} action run(s) in {repo_name}[/cyan]"
-                )
+                console.print(f"[cyan]{len(workflows)} action run(s) in {repo_name}[/cyan]")
                 for w in workflows:
                     conclusion = w.conclusion or "pending"
-                    console.print(
-                        f"  #{w.id} {w.name}  "
-                        f"status={w.status}  conclusion={conclusion}"
-                    )
+                    console.print(f"  #{w.id} {w.name}  status={w.status}  conclusion={conclusion}")
             except Exception as exc:
                 console.print(f"[red]Error: {exc}[/red]")
                 if exit_on_complete:
@@ -1334,9 +1298,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         elif sub == "summary":
             repo_name = args[2] if len(args) > 2 else None
             if not repo_name:
-                console.print(
-                    "[red]Usage: aios github summary <owner/repo>[/red]"
-                )
+                console.print("[red]Usage: aios github summary <owner/repo>[/red]")
                 if exit_on_complete:
                     sys.exit(1)
                 return True
@@ -1367,9 +1329,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                     },
                     prs=prs,
                     issues=issues,
-                    branches=[
-                        {"name": b.name, "sha": b.sha} for b in branches
-                    ],
+                    branches=[{"name": b.name, "sha": b.sha} for b in branches],
                     releases=[
                         {
                             "tag_name": r.tag_name,
@@ -1417,7 +1377,6 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             return True
 
     elif args and args[0] == "workflow":
-
         if len(args) < 2:
             console.print(
                 "[yellow]Usage: aios workflow "
@@ -1756,9 +1715,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
             runtime = N8NWorkflowRuntimeManager()
 
-            with console.status(
-                "[bold blue]Fetching runtime execution history...", spinner="dots"
-            ):
+            with console.status("[bold blue]Fetching runtime execution history...", spinner="dots"):
                 analytics = runtime.get_analytics()
 
             console.print(
@@ -1782,9 +1739,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             with console.status("[bold blue]Retrieving execution logs...", spinner="dots"):
                 analytics = runtime.get_analytics()
 
-            console.print(
-                f"Status: OK. Success rate is {analytics['success_rate'] * 100.0:.1f}%."
-            )
+            console.print(f"Status: OK. Success rate is {analytics['success_rate'] * 100.0:.1f}%.")
             if exit_on_complete:
                 sys.exit(0)
             return True
@@ -2746,7 +2701,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 service = ServiceRegistry._global_registry.get(SupabaseService)
             except Exception:
                 pass
-        
+
         if not service:
             service = LocalSupabaseIntelligenceService()
             service.initialize()
@@ -2760,22 +2715,34 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
             for i in range(len(args)):
                 if args[i] == "--token" and i + 1 < len(args):
-                    token = args[i+1]
+                    token = args[i + 1]
                 elif args[i] == "--url" and i + 1 < len(args):
-                    url = args[i+1]
+                    url = args[i + 1]
                 elif args[i] == "--key" and i + 1 < len(args):
-                    key = args[i+1]
+                    key = args[i + 1]
                 elif args[i] == "--ref" and i + 1 < len(args):
-                    ref = args[i+1]
+                    ref = args[i + 1]
 
             if not token and not (url and key):
-                token = input("Enter Supabase Personal Access Token (PAT) [Press Enter to Skip]: ").strip() or None
+                token = (
+                    input(
+                        "Enter Supabase Personal Access Token (PAT) [Press Enter to Skip]: "
+                    ).strip()
+                    or None
+                )
                 if not token:
-                    url = input("Enter Supabase Project URL (e.g., https://xyz.supabase.co): ").strip() or None
+                    url = (
+                        input(
+                            "Enter Supabase Project URL (e.g., https://xyz.supabase.co): "
+                        ).strip()
+                        or None
+                    )
                     key = input("Enter Supabase Service Role Key: ").strip() or None
                     ref = input("Enter Project Ref (optional): ").strip() or None
 
-            success = service.login(access_token=token, project_url=url, service_role_key=key, project_ref=ref)
+            success = service.login(
+                access_token=token, project_url=url, service_role_key=key, project_ref=ref
+            )
             if success:
                 console.print("[green]✓ Successfully authenticated with Supabase.[/green]")
                 if exit_on_complete:
@@ -2791,7 +2758,10 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             table = Table(title="Supabase Connection Status", border_style="green")
             table.add_column("Property", style="bold green")
             table.add_column("Value", style="white")
-            table.add_row("Connected State", "[green]CONNECTED[/green]" if status["connected"] else "[red]DISCONNECTED[/red]")
+            table.add_row(
+                "Connected State",
+                "[green]CONNECTED[/green]" if status["connected"] else "[red]DISCONNECTED[/red]",
+            )
             table.add_row("Access Token Present", "Yes" if status["access_token_present"] else "No")
             table.add_row("Active Project Ref", status["active_project_ref"] or "None")
             table.add_row("Active Project URL", status["project_url"] or "None")
@@ -2804,7 +2774,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         elif subcommand == "projects":
             projects = service.list_projects()
             if not projects:
-                console.print("[yellow]No projects discovered. Run 'aios supabase login' first.[/yellow]")
+                console.print(
+                    "[yellow]No projects discovered. Run 'aios supabase login' first.[/yellow]"
+                )
             else:
                 table = Table(title="Supabase Discovered Projects", border_style="cyan")
                 table.add_column("Project Name", style="bold cyan")
@@ -2812,7 +2784,12 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Region", style="green")
                 table.add_column("URL", style="dim")
                 for p in projects:
-                    table.add_row(p.get("name", "N/A"), p.get("ref", "N/A"), p.get("region", "N/A"), p.get("url", "N/A"))
+                    table.add_row(
+                        p.get("name", "N/A"),
+                        p.get("ref", "N/A"),
+                        p.get("region", "N/A"),
+                        p.get("url", "N/A"),
+                    )
                 console.print(table)
             if exit_on_complete:
                 sys.exit(0)
@@ -2825,7 +2802,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Table Name", style="bold magenta")
                 table.add_column("Columns count", style="white")
                 table.add_column("Columns Details", style="dim")
-                
+
                 for t in schema.get("tables", []):
                     cols = t.get("columns", [])
                     col_names = ", ".join([f"{c.get('name')}({c.get('type')})" for c in cols[:5]])
@@ -2833,11 +2810,23 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                         col_names += ", ..."
                     table.add_row(t.get("name"), str(len(cols)), col_names)
                 console.print(table)
-                
+
                 if schema.get("views"):
-                    console.print(Panel(f"Views: {', '.join([v.get('name', v) if isinstance(v, dict) else v for v in schema.get('views', [])])}", title="Views discovered", border_style="cyan"))
+                    console.print(
+                        Panel(
+                            f"Views: {', '.join([v.get('name', v) if isinstance(v, dict) else v for v in schema.get('views', [])])}",
+                            title="Views discovered",
+                            border_style="cyan",
+                        )
+                    )
                 if schema.get("functions"):
-                    console.print(Panel(f"Functions: {', '.join([f.get('name', f) if isinstance(f, dict) else f for f in schema.get('functions', [])])}", title="Functions discovered", border_style="blue"))
+                    console.print(
+                        Panel(
+                            f"Functions: {', '.join([f.get('name', f) if isinstance(f, dict) else f for f in schema.get('functions', [])])}",
+                            title="Functions discovered",
+                            border_style="blue",
+                        )
+                    )
             except Exception as e:
                 console.print(f"[red]Error fetching schema: {e}[/red]")
             if exit_on_complete:
@@ -2847,12 +2836,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         elif subcommand == "security":
             try:
                 security = service.get_security_analysis()
-                console.print(Panel(
-                    f"[green]RLS Enabled Tables:[/green] {', '.join(security.get('rls_enabled_tables', [])) or 'None'}\n"
-                    f"[red]RLS Disabled Tables:[/red] {', '.join(security.get('rls_disabled_tables', [])) or 'None'}",
-                    title="Row Level Security (RLS) Status", border_style="yellow"
-                ))
-                
+                console.print(
+                    Panel(
+                        f"[green]RLS Enabled Tables:[/green] {', '.join(security.get('rls_enabled_tables', [])) or 'None'}\n"
+                        f"[red]RLS Disabled Tables:[/red] {', '.join(security.get('rls_disabled_tables', [])) or 'None'}",
+                        title="Row Level Security (RLS) Status",
+                        border_style="yellow",
+                    )
+                )
+
                 if security.get("security_recommendations"):
                     console.print("[bold red]Security Recommendations:[/bold red]")
                     for rec in security["security_recommendations"]:
@@ -2872,9 +2864,13 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Bucket ID", style="bold blue")
                 table.add_column("Public Access", style="white")
                 table.add_column("File Size Limit (Bytes)", style="dim")
-                
+
                 for b in storage.get("buckets", []):
-                    table.add_row(b.get("id"), "Yes" if b.get("public") else "No", str(b.get("file_size_limit") or "Unlimited"))
+                    table.add_row(
+                        b.get("id"),
+                        "Yes" if b.get("public") else "No",
+                        str(b.get("file_size_limit") or "Unlimited"),
+                    )
                 console.print(table)
             except Exception as e:
                 console.print(f"[red]Error fetching storage stats: {e}[/red]")
@@ -2888,17 +2884,17 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table = Table(title="Supabase Auth Provider Settings", border_style="yellow")
                 table.add_column("Provider / Setting", style="bold yellow")
                 table.add_column("State", style="white")
-                
+
                 providers = auth.get("providers", {})
                 for k, v in providers.items():
                     state = "[green]Enabled[/green]" if v.get("enabled") else "[red]Disabled[/red]"
                     table.add_row(k.capitalize(), state)
-                
+
                 mfa = auth.get("mfa", {})
                 for k, v in mfa.items():
                     state = "[green]Enabled[/green]" if v.get("enabled") else "[red]Disabled[/red]"
                     table.add_row(f"MFA - {k.upper()}", state)
-                
+
                 console.print(table)
             except Exception as e:
                 console.print(f"[red]Error fetching auth config: {e}[/red]")
@@ -2913,13 +2909,19 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Version", style="bold cyan")
                 table.add_column("Migration Name", style="white")
                 table.add_column("Applied At", style="dim")
-                
+
                 for m in migrations.get("migration_history", []):
                     table.add_row(m.get("version"), m.get("name"), m.get("applied_at"))
                 console.print(table)
-                
+
                 drift = "Yes" if migrations.get("drift_detected") else "No"
-                console.print(Panel(f"Drift Detected: {drift}", title="Drift Detection", border_style="red" if drift == "Yes" else "green"))
+                console.print(
+                    Panel(
+                        f"Drift Detected: {drift}",
+                        title="Drift Detection",
+                        border_style="red" if drift == "Yes" else "green",
+                    )
+                )
             except Exception as e:
                 console.print(f"[red]Error fetching migrations history: {e}[/red]")
             if exit_on_complete:
@@ -2933,9 +2935,11 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Function Name", style="bold magenta")
                 table.add_column("Status", style="green")
                 table.add_column("Verify JWT", style="white")
-                
+
                 for f in funcs.get("functions", []):
-                    table.add_row(f.get("name"), f.get("status"), "Yes" if f.get("verify_jwt") else "No")
+                    table.add_row(
+                        f.get("name"), f.get("status"), "Yes" if f.get("verify_jwt") else "No"
+                    )
                 console.print(table)
             except Exception as e:
                 console.print(f"[red]Error fetching edge functions: {e}[/red]")
@@ -2946,7 +2950,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         elif subcommand == "summary":
             try:
                 summary = service.get_project_summary()
-                table = Table(title=f"Supabase Project Summary: {summary.get('name')}", border_style="green")
+                table = Table(
+                    title=f"Supabase Project Summary: {summary.get('name')}", border_style="green"
+                )
                 table.add_column("Component", style="bold green")
                 table.add_column("Count / Details", style="white")
                 table.add_row("Project Reference", summary.get("project_ref"))
@@ -2956,8 +2962,227 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_row("Storage Buckets", str(summary.get("buckets_count")))
                 table.add_row("Edge Functions", str(summary.get("functions_count")))
                 console.print(table)
-                
-                console.print("[cyan]Generating full markdown reports under docs/supabase/...[/cyan]")
+
+                console.print(
+                    "[cyan]Generating full markdown reports under docs/supabase/...[/cyan]"
+                )
+                service.generate_reports()
+                console.print("[green]✓ Reports generated successfully.[/green]")
+            except Exception as e:
+                console.print(f"[red]Error fetching project summary: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+    elif args and args[0] == "vercel":
+        import sys
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios vercel <login|status|projects|deployments|"
+                "logs|domains|env|summary>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        from aios.registry import ServiceRegistry
+        from aios.services.vercel import VercelService
+        from aios.services.vercel_impl import LocalVercelIntelligenceService
+
+        service = None
+        if ServiceRegistry._global_registry:
+            try:
+                service = ServiceRegistry._global_registry.get(VercelService)
+            except Exception:
+                pass
+
+        if not service:
+            service = LocalVercelIntelligenceService()
+            service.initialize()
+            service.start()
+
+        if subcommand == "login":
+            token = None
+            team = None
+
+            for i in range(len(args)):
+                if args[i] == "--token" and i + 1 < len(args):
+                    token = args[i + 1]
+                elif args[i] == "--team" and i + 1 < len(args):
+                    team = args[i + 1]
+
+            if not token:
+                token = input("Enter Vercel Personal Access Token: ").strip() or None
+                team = input("Enter Vercel Team ID (optional): ").strip() or None
+
+            if not token:
+                console.print("[red]✗ Access token is required.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            success = service.login(access_token=token, team_id=team)
+            if success:
+                console.print("[green]✓ Successfully authenticated with Vercel.[/green]")
+                if exit_on_complete:
+                    sys.exit(0)
+            else:
+                console.print("[red]✗ Authentication failed. Please check your credentials.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "status":
+            status = service.get_status()
+            table = Table(title="Vercel Connection Status", border_style="green")
+            table.add_column("Property", style="bold green")
+            table.add_column("Value", style="white")
+            state_str = (
+                "[green]CONNECTED[/green]" if status["connected"] else "[red]DISCONNECTED[/red]"
+            )
+            table.add_row("Connected State", state_str)
+            table.add_row("Active Team ID", status["team_id"] or "Personal Account")
+            table.add_row("Active Project ID", status["active_project_id"] or "None")
+            table.add_row("Projects Count", str(status["projects_count"]))
+            table.add_row("Teams Count", str(status["teams_count"]))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "projects":
+            projects = service.list_projects()
+            if not projects:
+                console.print(
+                    "[yellow]No projects discovered. Run 'aios vercel login' first.[/yellow]"
+                )
+            else:
+                table = Table(title="Vercel Discovered Projects", border_style="cyan")
+                table.add_column("Project Name", style="bold cyan")
+                table.add_column("Project ID", style="white")
+                table.add_column("Framework", style="green")
+                for p in projects:
+                    table.add_row(
+                        p.get("name", "N/A"),
+                        p.get("id", "N/A"),
+                        p.get("framework", "N/A"),
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "deployments":
+            try:
+                deps = service.get_deployments()
+                table = Table(title="Vercel Recent Deployments", border_style="magenta")
+                table.add_column("Deployment ID (UID)", style="bold magenta")
+                table.add_column("URL", style="white")
+                table.add_column("State", style="green")
+
+                for d in deps.get("deployments", []):
+                    table.add_row(d.get("uid"), d.get("url"), d.get("state"))
+                console.print(table)
+
+                if deps.get("rollback_candidates"):
+                    rollback_table = Table(title="Rollback Candidates", border_style="yellow")
+                    rollback_table.add_column("UID", style="bold yellow")
+                    rollback_table.add_column("URL", style="white")
+                    for r in deps["rollback_candidates"]:
+                        rollback_table.add_row(r.get("uid"), r.get("url"))
+                    console.print(rollback_table)
+            except Exception as e:
+                console.print(f"[red]Error fetching deployments: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "logs":
+            if len(args) < 3:
+                console.print("[red]Usage: aios vercel logs <deployment_id>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            dep_id = args[2]
+            try:
+                analysis = service.get_build_analysis(dep_id)
+                logs_summary = analysis.get("error_log_summary") or "No build logs found."
+                console.print(
+                    Panel(
+                        logs_summary,
+                        title=f"Logs for deployment {dep_id}",
+                        border_style="blue",
+                    )
+                )
+                console.print(
+                    Panel(
+                        analysis.get("explanation"),
+                        title="AI Diagnosis & Explanation",
+                        border_style="yellow",
+                    )
+                )
+            except Exception as e:
+                console.print(f"[red]Error fetching build analysis: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "domains":
+            try:
+                domains = service.get_domains()
+                table = Table(title="Vercel Custom Domains", border_style="blue")
+                table.add_column("Domain Name", style="bold blue")
+                table.add_column("Verified Status", style="green")
+
+                for d in domains.get("domains", []):
+                    table.add_row(d.get("name"), "Yes" if d.get("verified") else "No")
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching domains: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "env":
+            try:
+                envs = service.get_environments()
+                title_str = "Vercel Environment Variables (Metadata)"
+                table = Table(title=title_str, border_style="yellow")
+                table.add_column("Variable Key", style="bold yellow")
+                table.add_column("Target Environments", style="white")
+                table.add_column("Type", style="dim")
+
+                for e in envs.get("variables", []):
+                    table.add_row(e.get("key"), ", ".join(e.get("target", [])), e.get("type"))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching environments: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summary":
+            try:
+                summary = service.get_project_summary()
+                title_str = f"Vercel Project Summary: {summary.get('name')}"
+                table = Table(title=title_str, border_style="green")
+                table.add_column("Property", style="bold green")
+                table.add_column("Value / Details", style="white")
+                table.add_row("Project ID", summary.get("project_id"))
+                table.add_row("Framework", summary.get("framework"))
+                table.add_row("Production URL", summary.get("production_url") or "None")
+
+                monitoring = service.get_monitoring_data()
+                table.add_row("Health Status", monitoring.get("health_status"))
+                rate = monitoring.get("deployment_success_rate", 0.0)
+                table.add_row("Success Rate", f"{rate:.1f}%")
+                console.print(table)
+
+                console.print(
+                    "[cyan]Generating Vercel markdown reports under docs/vercel/...[/cyan]"
+                )
                 service.generate_reports()
                 console.print("[green]✓ Reports generated successfully.[/green]")
             except Exception as e:
@@ -2968,8 +3193,8 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
 
         else:
             console.print(
-                "[yellow]Usage: aios supabase <login|status|projects|schema|"
-                "security|storage|auth|migrations|functions|summary>[/yellow]"
+                "[yellow]Usage: aios vercel <login|status|projects|deployments|"
+                "logs|domains|env|summary>[/yellow]"
             )
             if exit_on_complete:
                 sys.exit(1)

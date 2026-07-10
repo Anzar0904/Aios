@@ -767,6 +767,7 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
 
     # 4. Brain Commands
     from aios.brain.brain import Brain
+
     brain_instance = Brain(kernel, registry)
 
     def handle_brain_execute(args: str) -> None:
@@ -788,7 +789,9 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         explanation = brain_instance.explain(args)
         print("\n=== BRAIN EXPLANATION ===")
         print(f"Objective: {explanation['objective']}")
-        print(f"Provider: {explanation['provider']['model_name']} (provider: {explanation['provider']['provider_name']})")
+        print(
+            f"Provider: {explanation['provider']['model_name']} (provider: {explanation['provider']['provider_name']})"
+        )
         print(f"Reason: {explanation['provider']['reason']}")
         print("\nContext:")
         print(f"  Project Root: {explanation['context']['project_root']}")
@@ -796,11 +799,11 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         print(f"  Git Branch: {explanation['context']['git_branch']}")
         print(f"  Memories Count: {explanation['context']['memories_count']}")
         print("\nSelected Skills:")
-        for s in explanation['selected_skills']:
+        for s in explanation["selected_skills"]:
             print(f"  - Skill: {s['skill_id']} (Confidence: {s['confidence']:.2f})")
             print(f"    Reason: {s['reason']}")
         print("\nPlanned Workflow Steps:")
-        for idx, step in enumerate(explanation['workflow']['steps'], 1):
+        for idx, step in enumerate(explanation["workflow"]["steps"], 1):
             print(f"  {idx}. [{step['skill_id']}] {step['description']}")
             print(f"     Command: {step['command']} {step['args']}")
         print("=========================\n")
@@ -838,9 +841,13 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
 
     def handle_brain_status(args: str) -> None:
         print("\n=== BRAIN STATUS ===")
-        print(f"Active Workflow: {brain_instance.active_workflow.workflow_id if brain_instance.active_workflow else 'None'}")
+        print(
+            f"Active Workflow: {brain_instance.active_workflow.workflow_id if brain_instance.active_workflow else 'None'}"
+        )
         print(f"History Size: {len(brain_instance.history)}")
-        print(f"Model Service Model: {getattr(brain_instance.model_service, '_default_model', 'mock-model')}")
+        print(
+            f"Model Service Model: {getattr(brain_instance.model_service, '_default_model', 'mock-model')}"
+        )
         print("====================\n")
 
     registry.register_command(
@@ -896,6 +903,7 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         workspace_root = "."
         try:
             from aios.services.context import ContextService
+
             ctx_svc = kernel.registry.get(ContextService)
             ctx = ctx_svc.get_current_context()
             if ctx:
@@ -904,6 +912,7 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
             pass
 
         from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+
         workspace_intel = kernel.registry.get(WorkspaceIntelligenceService) if kernel else None
         if not workspace_intel:
             print("Workspace Intelligence Service is not registered.")
@@ -914,14 +923,16 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         print("Workspace scan completed successfully. Reports generated under docs/.")
 
     def handle_workspace_summary_cmd(args: str) -> None:
+        from rich.console import Console
         from rich.panel import Panel
         from rich.table import Table
-        from rich.console import Console
+
         console = Console()
-        
+
         workspace_root = "."
         try:
             from aios.services.context import ContextService
+
             ctx_svc = kernel.registry.get(ContextService)
             ctx = ctx_svc.get_current_context()
             if ctx:
@@ -930,24 +941,27 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
             pass
 
         from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+
         workspace_intel = kernel.registry.get(WorkspaceIntelligenceService) if kernel else None
         if not workspace_intel:
             print("Workspace Intelligence Service is not registered.")
             return
 
         summary = workspace_intel.analyze_repository(workspace_root)
-        
+
         grid = Table.grid(padding=1)
         grid.add_column(style="bold cyan", justify="right")
         grid.add_column(style="white")
-        
+
         grid.add_row("High-Level Architecture:", summary.high_level_architecture)
         grid.add_row("Components:", ", ".join(summary.components))
         grid.add_row("Design Patterns:", ", ".join(summary.design_patterns))
-        grid.add_row("Languages:", ", ".join([f"{lang} ({cnt})" for lang, cnt in summary.languages.items()]))
+        grid.add_row(
+            "Languages:", ", ".join([f"{lang} ({cnt})" for lang, cnt in summary.languages.items()])
+        )
         grid.add_row("Frameworks:", ", ".join(summary.frameworks))
         grid.add_row("Package Managers:", ", ".join(summary.package_managers))
-        
+
         health_grid = Table.grid(padding=1)
         health_grid.add_column(style="bold green", justify="right")
         health_grid.add_column(style="white")
@@ -957,19 +971,27 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         health_grid.add_row("Doc Coverage:", f"{summary.health.documentation_coverage:.1%}")
         health_grid.add_row("README Coverage:", f"{summary.health.readme_coverage:.1%}")
         health_grid.add_row("Config Completeness:", f"{summary.health.config_completeness:.1%}")
-        
-        console.print(Panel(grid, title="[bold white]Workspace Summary[/bold white]", border_style="cyan"))
-        console.print(Panel(health_grid, title="[bold white]Workspace Health[/bold white]", border_style="green"))
+
+        console.print(
+            Panel(grid, title="[bold white]Workspace Summary[/bold white]", border_style="cyan")
+        )
+        console.print(
+            Panel(
+                health_grid, title="[bold white]Workspace Health[/bold white]", border_style="green"
+            )
+        )
 
     def handle_workspace_status_cmd(args: str) -> None:
-        from rich.table import Table
         from rich.console import Console
         from rich.panel import Panel
+        from rich.table import Table
+
         console = Console()
-        
+
         workspace_root = "."
         try:
             from aios.services.context import ContextService
+
             ctx_svc = kernel.registry.get(ContextService)
             ctx = ctx_svc.get_current_context()
             if ctx:
@@ -978,17 +1000,18 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
             pass
 
         from aios.services.developer_workspace import DeveloperWorkspaceService
+
         dev_ws = kernel.registry.get(DeveloperWorkspaceService) if kernel else None
         if not dev_ws:
             print("Developer Workspace Service is not registered.")
             return
-            
+
         info = dev_ws.get_workspace_info(workspace_root)
-        
+
         grid = Table.grid(padding=1)
         grid.add_column(style="bold yellow", justify="right")
         grid.add_column(style="white")
-        
+
         grid.add_row("Git Branch:", info.extra.get("git_branch") or "unknown")
         grid.add_row("Staged Files:", str(len(info.staged_files)))
         grid.add_row("Unstaged Files:", str(len(info.unstaged_files)))
@@ -996,19 +1019,23 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         grid.add_row("Build Systems:", ", ".join(info.build_systems))
         grid.add_row("Linters:", ", ".join(info.linters))
         grid.add_row("Detected Tests:", str(len(info.detected_tests)))
-        
-        console.print(Panel(grid, title="[bold white]Workspace Status[/bold white]", border_style="yellow"))
+
+        console.print(
+            Panel(grid, title="[bold white]Workspace Status[/bold white]", border_style="yellow")
+        )
 
     def handle_workspace_graph_cmd(args: str) -> None:
         from aios.services.workspace_intelligence import CodeIntelligenceService
+
         code_intel = kernel.registry.get(CodeIntelligenceService) if kernel else None
         if not code_intel:
             print("Code Intelligence Service is not registered.")
             return
-            
+
         workspace_root = "."
         try:
             from aios.services.context import ContextService
+
             ctx_svc = kernel.registry.get(ContextService)
             ctx = ctx_svc.get_current_context()
             if ctx:
@@ -1017,20 +1044,21 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
             pass
 
         summary = code_intel.analyze_codebase(workspace_root)
-        
+
         mermaid_lines = ["graph TD"]
         for src, dests in list(summary.dependency_graph.items())[:25]:
             src_name = Path(src).name
             for dest in dests:
                 dest_name = Path(dest).name
                 mermaid_lines.append(f"    {src_name} --> {dest_name}")
-                
+
         print("\n".join(mermaid_lines))
 
     def handle_workspace_refresh_cmd(args: str) -> None:
         workspace_root = "."
         try:
             from aios.services.context import ContextService
+
             ctx_svc = kernel.registry.get(ContextService)
             ctx = ctx_svc.get_current_context()
             if ctx:
@@ -1046,13 +1074,14 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
                     cache_path.unlink()
                 except Exception:
                     pass
-                    
+
         from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+
         workspace_intel = kernel.registry.get(WorkspaceIntelligenceService) if kernel else None
         if not workspace_intel:
             print("Workspace Intelligence Service is not registered.")
             return
-            
+
         workspace_intel.analyze_repository(workspace_root)
         print("Workspace refreshed successfully.")
 
@@ -1119,6 +1148,7 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
     # --- Supabase Intelligence Interactive Commands ---
     def handle_supabase_cmd(subcmd: str, args: str) -> None:
         from aios.cli import execute_builtin_cli_command
+
         cli_args = ["supabase", subcmd]
         if args:
             cli_args.extend(args.split())
@@ -1244,5 +1274,107 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         lambda args: handle_supabase_cmd("summary", args),
     )
 
+    # --- Vercel Intelligence Interactive Commands ---
+    def handle_vercel_cmd(subcmd: str, args: str) -> None:
+        from aios.cli import execute_builtin_cli_command
 
+        cli_args = ["vercel", subcmd]
+        if args:
+            cli_args.extend(args.split())
+        execute_builtin_cli_command(cli_args, exit_on_complete=False)
 
+    registry.register_command(
+        CommandMetadata(
+            name="vercel login",
+            description="Log in to Vercel using personal access token.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel login --token vc_xxx",
+        ),
+        lambda args: handle_vercel_cmd("login", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel status",
+            description="Display connection state, active project, and scoped team.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel status",
+        ),
+        lambda args: handle_vercel_cmd("status", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel projects",
+            description="List discovered Vercel projects.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel projects",
+        ),
+        lambda args: handle_vercel_cmd("projects", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel deployments",
+            description="Display recent deployments and rollback candidates.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel deployments",
+        ),
+        lambda args: handle_vercel_cmd("deployments", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel logs",
+            description="Retrieve build logs and AI failure diagnosis for a deployment.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel logs <deployment_id>",
+        ),
+        lambda args: handle_vercel_cmd("logs", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel domains",
+            description="List custom domains, verification state and SSL status.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel domains",
+        ),
+        lambda args: handle_vercel_cmd("domains", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel env",
+            description="List environment variables metadata (without exposing secrets).",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel env",
+        ),
+        lambda args: handle_vercel_cmd("env", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="vercel summary",
+            description="Compile project health metrics and generate markdown reports.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="vercel summary",
+        ),
+        lambda args: handle_vercel_cmd("summary", args),
+    )
