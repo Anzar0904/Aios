@@ -1,6 +1,6 @@
 [project]
 name = "aios-core"
-version = "0.5.0"
+version = "1.0.0"
 description = "Core runtime engine and orchestration layer for the Personal AI OS"
 readme = "README.md"
 requires-python = ">=3.12"

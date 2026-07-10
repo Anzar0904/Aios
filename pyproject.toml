@@ -1,6 +1,6 @@
 [project]
 name = "aios"
-version = "0.5.0"
+version = "1.0.0"
 description = "Monorepo root for Personal AI OS"
 requires-python = ">=3.12"
 dependencies = []

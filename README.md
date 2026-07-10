@@ -119,7 +119,8 @@ graph TD
 │   ├── vercel/             # Vercel deployment and build diagnostics guides
 │   ├── project/            # Project Intelligence health, risk, and graph reports
 │   ├── business/           # Business Intelligence client, organization and analytics reports
-│   └── approval/           # Approval Engine and Governance queue, audit and reports
+│   ├── approval/           # Approval Engine and Governance queue, audit and reports
+│   └── cli/                # CLI Experience, diagnostics, performance and shell reports
 ├── architecture/           # Folder for system diagrams and schemas
 ├── design/                 # Folder for UX designs and screenshots
 ├── diagrams/               # Raw files for Mermaid/Draw.io files
@@ -590,6 +591,63 @@ aios approval status [request_id]
 
 ### Architecture Reference
 See [docs/approval/architecture.md](docs/approval/architecture.md) for detailed APIs, schemas, and CLI guides.
+
+
+## 💻 CLI Experience, Developer Experience & Production Polish (Sprint 31)
+
+Sprint 31 focuses on elevating the user experience, diagnostic observability, and overall CLI polish of the AI OS terminal ecosystem.
+
+### Key Capabilities
+- **Premium Boot Experience**: Simulation of a modern Operating System loading sequence detailing Logo, environment context, health checks, and active providers.
+- **Interactive AI OS Shell**: A prompt-driven interface with auto-completion (Tab), command history, and custom slash commands.
+- **Diagnostics & Observability Telemetry**: A central diagnostics engine tracking average command latencies, module loading sizes, and system resource footprint.
+- **Live Progress Engine**: Multi-step progress bars and spinners to prevent blocking waits on long-running tasks.
+- **Setup Onboarding Wizard**: A step-by-step wizard configures keys and platform integrations with validation checks.
+- **Command Search Palette**: Search command palette fuzzy search list mapped to the `Ctrl+K` keyboard shortcut.
+- **Standardized Keyboard Shortcuts**: Complete support for `Ctrl+C` (cancel), `Ctrl+L` (clear), `Ctrl+R` (history search), and `Tab` (completion).
+- **Graceful Goodbye experience**: Saves workspace cache and session parameters to `.agent/session.json` on shell exit.
+
+### CLI Commands Reference
+```bash
+# 1. Launch the interactive AI OS Shell
+aios
+
+# 2. Display systems integration health dashboard
+aios dashboard
+
+# 3. Launch interactive onboarding guide configuration
+aios setup
+
+# 4. Check active CLI session status metadata
+aios session
+
+# 5. Display OS telemetry diagnostics and latency benchmarks
+aios diagnostics
+```
+
+### Slash Commands Reference
+```bash
+/help        - Display commands guide
+/status      - Show component health
+/models      - Show model info
+/project     - Show project portfolio
+/workspace   - Show workspace status
+/research    - Show research query cache
+/github      - Show GitHub status
+/supabase    - Show Supabase status
+/vercel      - Show Vercel status
+/business    - Show business analytics
+/approval    - Show approval queue
+/workflow    - Show n8n status
+/memory      - Show semantic memory
+/settings    - Show settings details
+/palette     - Open fuzzy command search
+/clear       - Clear terminal
+/exit        - Save session and quit
+```
+
+### Architecture Reference
+See [docs/cli/architecture_guide.md](docs/cli/architecture_guide.md) for detailed diagrams, guides, and layouts.
 
 
 

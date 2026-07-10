@@ -1,5 +1,5 @@
-import tomllib
 import os
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -30,11 +30,21 @@ class OmniRouteConfig:
 
 
 @dataclass(frozen=True)
+class NineRouterConfig:
+    base_url: str = "http://localhost:8080/v1"
+    api_key: Optional[str] = None
+    timeout: int = 30
+    preferred_model: Optional[str] = None
+    preferred_backend: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class LLMConfig:
     provider: str = "mock"
     default_model: str = "mock-model"
     openrouter: OpenRouterConfig = OpenRouterConfig()
     omniroute: OmniRouteConfig = OmniRouteConfig()
+    ninerouter: NineRouterConfig = NineRouterConfig()
 
 
 @dataclass(frozen=True)
@@ -85,7 +95,7 @@ def load_config(config_path: Path) -> OSConfig:
     """Loads and parses the TOML configuration file."""
     if not config_path.exists():
         return OSConfig(
-            runtime=RuntimeConfig(name="Personal AI OS", version="0.5.0", debug=False),
+            runtime=RuntimeConfig(name="Personal AI OS", version="1.0.0", debug=False),
             llm=LLMConfig(),
             github=GitHubConfig(),
             notion=NotionConfig(),
@@ -99,15 +109,23 @@ def load_config(config_path: Path) -> OSConfig:
     llm_data = data.get("llm", {})
     openrouter_data = llm_data.get("openrouter", {})
     omniroute_data = llm_data.get("omniroute", {})
+    ninerouter_data = llm_data.get("ninerouter", {})
     github_data = data.get("github", {})
     notion_data = data.get("notion", {})
     persistence_data = data.get("persistence", {})
 
     # Load api_key from environment variables if not present in config
     api_key = omniroute_data.get("api_key") or os.environ.get("OMNIROUTE_API_KEY")
+    ninerouter_api_key = ninerouter_data.get("api_key") or os.environ.get(
+        "NINEROUTER_API_KEY"
+    )
 
     # Load github token from environment variables if not present in config
-    github_token = github_data.get("token") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_PAT")
+    github_token = (
+        github_data.get("token")
+        or os.environ.get("GITHUB_TOKEN")
+        or os.environ.get("GITHUB_PAT")
+    )
 
     # Load notion token from environment variables if not present in config
     notion_token = notion_data.get("token") or os.environ.get("NOTION_TOKEN")
@@ -115,7 +133,7 @@ def load_config(config_path: Path) -> OSConfig:
     return OSConfig(
         runtime=RuntimeConfig(
             name=runtime_data.get("name", "Personal AI OS"),
-            version=runtime_data.get("version", "0.5.0"),
+            version=runtime_data.get("version", "1.0.0"),
             debug=runtime_data.get("debug", False),
         ),
         llm=LLMConfig(
@@ -133,6 +151,13 @@ def load_config(config_path: Path) -> OSConfig:
                 retry_count=omniroute_data.get("retry_count", 3),
                 streaming_enabled=omniroute_data.get("streaming_enabled", True),
                 offline_mode=omniroute_data.get("offline_mode", False),
+            ),
+            ninerouter=NineRouterConfig(
+                base_url=ninerouter_data.get("base_url", "http://localhost:8080/v1"),
+                api_key=ninerouter_api_key,
+                timeout=ninerouter_data.get("timeout", 30),
+                preferred_model=ninerouter_data.get("preferred_model"),
+                preferred_backend=ninerouter_data.get("preferred_backend"),
             ),
         ),
         github=GitHubConfig(

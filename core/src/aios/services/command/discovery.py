@@ -57,6 +57,55 @@ def execute_cover_letter(kernel: Any, args: str) -> None:
     )
 
 
+def execute_dashboard_cmd(args: str) -> None:
+    from aios.ux import DashboardRenderer
+
+    DashboardRenderer.render()
+
+
+def execute_setup_cmd(args: str) -> None:
+    from aios.ux import SetupWizard
+
+    SetupWizard.run()
+
+
+def execute_session_cmd(args: str) -> None:
+    from rich.console import Console
+    from rich.table import Table
+
+    from aios.ux import SessionManager
+
+    console = Console()
+    mgr = SessionManager()
+    data = mgr.load_session()
+    table = Table(title="CLI Session State", border_style="cyan")
+    table.add_column("Property", style="bold cyan")
+    table.add_column("Value", style="white")
+    table.add_row("Current Project", data.get("current_project"))
+    table.add_row(
+        "Recent Projects",
+        ", ".join(data.get("recent_projects", []))
+    )
+    table.add_row("Last Active", time.ctime(data.get("last_active", 0)))
+    console.print(table)
+
+
+def execute_diagnostics_cmd(args: str) -> None:
+    from rich.console import Console
+    from rich.table import Table
+
+    from aios.ux import DiagnosticsEngine
+
+    console = Console()
+    metrics = DiagnosticsEngine.get_metrics()
+    table = Table(title="OS System Telemetry Diagnostics", border_style="green")
+    table.add_column("Metric ID", style="bold green")
+    table.add_column("Value", style="white")
+    for k, v in metrics.items():
+        table.add_row(k, str(v))
+    console.print(table)
+
+
 def execute_system_status(kernel: Any) -> None:
     intent = Intent(
         intent_type=IntentType.SYSTEM,
@@ -1749,4 +1798,52 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
             example_usage="approval status [request_id]",
         ),
         lambda args: handle_approval_cmd("status", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="dashboard",
+            description="Display the systems status dashboard panel.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="dashboard",
+        ),
+        lambda args: execute_dashboard_cmd(args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="setup",
+            description="Run interactive onboarding guide configurations.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="setup",
+        ),
+        lambda args: execute_setup_cmd(args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="session",
+            description="Display the CLI Session state details.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="session",
+        ),
+        lambda args: execute_session_cmd(args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="diagnostics",
+            description="Display telemetry performance and resource metrics.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="diagnostics",
+        ),
+        lambda args: execute_diagnostics_cmd(args),
     )
