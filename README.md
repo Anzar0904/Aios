@@ -117,7 +117,8 @@ graph TD
 │   ├── runtime/            # Workflow runtime architecture and deployment guides
 │   ├── supabase/           # Supabase DB schema and security reports
 │   ├── vercel/             # Vercel deployment and build diagnostics guides
-│   └── project/            # Project Intelligence health, risk, and graph reports
+│   ├── project/            # Project Intelligence health, risk, and graph reports
+│   └── business/           # Business Intelligence client, organization and analytics reports
 ├── architecture/           # Folder for system diagrams and schemas
 ├── design/                 # Folder for UX designs and screenshots
 ├── diagrams/               # Raw files for Mermaid/Draw.io files
@@ -489,6 +490,58 @@ aios project analyze [path]
 
 ### Architecture Reference
 See [docs/project/architecture.md](docs/project/architecture.md) for detailed APIs, schemas, and CLI guides.
+
+
+## 💼 Business Intelligence (Sprint 29)
+
+The **Business Intelligence** subsystem acts as the operational command layer for managing an AI Automation Agency on top of AI OS. It aggregates organizational roles, clients, leads, proposal documents, workflow allocations, and agency metrics.
+
+### Key Capabilities
+- **Organization Management**: Manages multiple company profiles, team members, roles, and permissions under `.agent/business/organizations.json` (secured with `0600` owner-only permissions).
+- **Client & Lead Management**: Tracks active clients, tags, lead pipeline stages, conversions, and scores.
+- **Project Portfolio**: Automatically links client accounts to technical Project Intelligence models.
+- **Proposal Intelligence**: Generates, versions, and retrieves project scopes, budgets, estimated timelines, and specifications.
+- **Workflow & Task Allocation**: Maps active n8n workflows and runtime success statistics to client owners, and manages backlogs and milestones.
+- **Operations Analytics**: Evaluates active clients, active projects, workflow success rates, revenue estimations, and productivity metrics.
+- **Consolidated Timeline**: Merges meetings, workflow deployments, commits, and releases into a unified history.
+- **Markdown Reports**: Generates 6 operations reports (client, organization, project portfolio, proposal, workflow, analytics reports) under `docs/business/`.
+
+### CLI Commands Reference
+```bash
+# 1. List active agency organizations and teams
+aios business organizations
+
+# 2. List and search registered clients
+aios business clients
+
+# 3. Review lead pipeline stages and scores
+aios business leads
+
+# 4. View project portfolios mapped to clients
+aios business projects
+
+# 5. Display active proposals and budget estimates
+aios business proposals
+
+# 6. Inspect n8n workflow allocation and success rates
+aios business workflows
+
+# 7. List operational task backlogs and deadlines
+aios business tasks
+
+# 8. Display active clients count and agency analytics
+aios business analytics
+
+# 9. Generate aggregated client timeline events
+aios business timeline [client_id]
+
+# 10. Compile business summary and generate reports
+aios business summary
+```
+
+### Architecture Reference
+See [docs/business/architecture.md](docs/business/architecture.md) for detailed APIs, schemas, and CLI guides.
+
 
 
 

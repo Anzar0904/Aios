@@ -45,6 +45,8 @@ from aios.services.architecture_documentation_impl import LocalArchitectureDocum
 # Automation services
 from aios.services.automation import AutomationService
 from aios.services.automation_impl import LocalAutomationService
+from aios.services.business import BusinessIntelligenceService
+from aios.services.business_impl import LocalBusinessIntelligenceService
 
 # Career and Daily OS imports
 from aios.services.career import CareerOSService
@@ -654,6 +656,10 @@ def bootstrap_services(
     vercel_service = LocalVercelIntelligenceService()
     vercel_service.initialize()
     registry.register(VercelService, vercel_service)
+
+    business_service = LocalBusinessIntelligenceService()
+    business_service.initialize()
+    registry.register(BusinessIntelligenceService, business_service)
 
     registry.register(SourceControlRegistry, sc_registry)
     registry.register(ProviderDiscovery, sc_discovery)

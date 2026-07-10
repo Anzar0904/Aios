@@ -3467,6 +3467,218 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(1)
             return True
 
+    elif args and args[0] == "business":
+        import sys
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios business <organizations|clients|leads|"
+                "projects|proposals|workflows|tasks|analytics|timeline|"
+                "summary>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        from aios.registry import ServiceRegistry
+        from aios.services.business import BusinessIntelligenceService
+        from aios.services.business_impl import LocalBusinessIntelligenceService
+
+        service = None
+        if ServiceRegistry._global_registry:
+            try:
+                service = ServiceRegistry._global_registry.get(
+                    BusinessIntelligenceService
+                )
+            except Exception:
+                pass
+
+        if not service:
+            service = LocalBusinessIntelligenceService()
+            service.initialize()
+            service.start()
+
+        if subcommand == "organizations":
+            orgs = service.list_organizations()
+            if not orgs:
+                console.print(
+                    "[yellow]No organizations registered. "
+                    "Use save_organization API.[/yellow]"
+                )
+            else:
+                table = Table(title="Agency Organizations", border_style="cyan")
+                table.add_column("Org ID", style="bold cyan")
+                table.add_column("Name", style="white")
+                for o in orgs:
+                    table.add_row(o.get("org_id"), o.get("name"))
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "clients":
+            clients = service.list_clients()
+            if not clients:
+                console.print("[yellow]No clients registered.[/yellow]")
+            else:
+                table = Table(title="Client Registry", border_style="green")
+                table.add_column("Client ID", style="bold green")
+                table.add_column("Name", style="white")
+                table.add_column("Email", style="cyan")
+                for c in clients:
+                    table.add_row(
+                        c.get("client_id"),
+                        c.get("name"),
+                        c.get("email", "N/A")
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "leads":
+            leads = service.list_leads()
+            if not leads:
+                console.print("[yellow]No leads in pipeline.[/yellow]")
+            else:
+                table = Table(title="Lead Pipeline", border_style="yellow")
+                table.add_column("Lead ID", style="bold yellow")
+                table.add_column("Name", style="white")
+                table.add_column("Score", style="cyan")
+                for lead in leads:
+                    table.add_row(
+                        lead.get("lead_id"),
+                        lead.get("name"),
+                        str(lead.get("score", 0))
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "projects":
+            projects = service.list_projects()
+            table = Table(title="Business Project Portfolio", border_style="blue")
+            table.add_column("Project ID", style="bold blue")
+            table.add_column("Name", style="white")
+            table.add_column("Client ID", style="cyan")
+            table.add_column("Github", style="dim")
+            for p in projects:
+                table.add_row(
+                    p.get("project_id"),
+                    p.get("name"),
+                    p.get("client_id"),
+                    p.get("github_repo")
+                )
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "proposals":
+            try:
+                proposal = service.get_proposal("prop_1")
+                table = Table(title="Proposal Details", border_style="magenta")
+                table.add_column("Metric / Property", style="bold magenta")
+                table.add_column("Value", style="white")
+                table.add_row("Proposal ID", proposal.get("proposal_id"))
+                table.add_row("Title", proposal.get("title"))
+                table.add_row("Budget", f"${proposal.get('budget')}")
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching proposals: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "workflows":
+            wfs = service.list_workflows()
+            title_str = "Workflow Client Ownership & Statistics"
+            table = Table(title=title_str, border_style="cyan")
+            table.add_column("Workflow ID", style="bold cyan")
+            table.add_column("Name", style="white")
+            table.add_column("Client ID", style="magenta")
+            table.add_column("Success Rate", style="green")
+            for wf in wfs:
+                table.add_row(
+                    wf.get("workflow_id"),
+                    wf.get("name"),
+                    wf.get("client_id"),
+                    f"{wf.get('success_rate')}%"
+                )
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "tasks":
+            tasks = service.list_tasks()
+            table = Table(title="Agency Tasks & Milestones", border_style="yellow")
+            table.add_column("Task ID", style="bold yellow")
+            table.add_column("Name", style="white")
+            table.add_column("Priority", style="red")
+            table.add_column("Deadline", style="dim")
+            table.add_row(
+                tasks[0].get("task_id"),
+                tasks[0].get("name"),
+                tasks[0].get("priority"),
+                tasks[0].get("deadline")
+            )
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "analytics":
+            analytics = service.get_analytics()
+            table = Table(title="Agency Operations Analytics", border_style="green")
+            table.add_column("Metric", style="bold green")
+            table.add_column("Value", style="white")
+            table.add_row("Active Clients", str(analytics.get("active_clients")))
+            table.add_row("Active Projects", str(analytics.get("active_projects")))
+            table.add_row("Workflows count", str(analytics.get("workflows_count")))
+            table.add_row("Success Rate", f"{analytics.get('success_rate')}%")
+            table.add_row("Revenue estimate", analytics.get("revenue_estimate"))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "timeline":
+            cid = args[2] if len(args) > 2 else "c1"
+            timeline = service.get_client_timeline(cid)
+            table = Table(title=f"Client Timeline: {cid}", border_style="yellow")
+            table.add_column("Date", style="bold yellow")
+            table.add_column("Type", style="cyan")
+            table.add_column("Description", style="white")
+            for ev in timeline.get("events", []):
+                table.add_row(ev.get("date"), ev.get("type"), ev.get("desc"))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summary":
+            msg_str = "Compiling business operations reports under docs/business/..."
+            console.print(f"[cyan]{msg_str}[/cyan]")
+            service.generate_reports()
+            success_str = "✓ Business operations reports generated successfully."
+            console.print(f"[green]{success_str}[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios business <organizations|clients|leads|"
+                "projects|proposals|workflows|tasks|analytics|timeline|"
+                "summary>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
     return False
 
 

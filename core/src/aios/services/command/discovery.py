@@ -1506,3 +1506,132 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         ),
         lambda args: handle_project_cmd("analyze", args),
     )
+
+    def handle_business_cmd(cmd_type: str, args: str) -> None:
+        from aios.cli import execute_builtin_cli_command
+
+        cmd_args = ["business", cmd_type]
+        if args.strip():
+            cmd_args.extend(args.strip().split())
+        execute_builtin_cli_command(cmd_args, exit_on_complete=False)
+
+    registry.register_command(
+        CommandMetadata(
+            name="business organizations",
+            description="List or manage multiple business agency profiles and teams.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business organizations",
+        ),
+        lambda args: handle_business_cmd("organizations", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business clients",
+            description="List and filter registered agency clients database.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business clients",
+        ),
+        lambda args: handle_business_cmd("clients", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business leads",
+            description="List and review sales lead pipeline and scores.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business leads",
+        ),
+        lambda args: handle_business_cmd("leads", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business projects",
+            description="View active portfolio projects linked to clients.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business projects",
+        ),
+        lambda args: handle_business_cmd("projects", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business proposals",
+            description="Display agency proposals and timeline estimates.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business proposals",
+        ),
+        lambda args: handle_business_cmd("proposals", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business workflows",
+            description="Inspect client workflow ownership and n8n stats.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business workflows",
+        ),
+        lambda args: handle_business_cmd("workflows", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business tasks",
+            description="List agency project tasks and milestones.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business tasks",
+        ),
+        lambda args: handle_business_cmd("tasks", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business analytics",
+            description="Display active client counts, success rates and revenue.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business analytics",
+        ),
+        lambda args: handle_business_cmd("analytics", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business timeline",
+            description="Generate aggregated client timeline history.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business timeline [client_id]",
+        ),
+        lambda args: handle_business_cmd("timeline", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="business summary",
+            description="Compile business operations status and write reports.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="business summary",
+        ),
+        lambda args: handle_business_cmd("summary", args),
+    )
+
