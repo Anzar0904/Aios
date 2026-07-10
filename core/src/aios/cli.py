@@ -3488,9 +3488,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         service = None
         if ServiceRegistry._global_registry:
             try:
-                service = ServiceRegistry._global_registry.get(
-                    BusinessIntelligenceService
-                )
+                service = ServiceRegistry._global_registry.get(BusinessIntelligenceService)
             except Exception:
                 pass
 
@@ -3503,8 +3501,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             orgs = service.list_organizations()
             if not orgs:
                 console.print(
-                    "[yellow]No organizations registered. "
-                    "Use save_organization API.[/yellow]"
+                    "[yellow]No organizations registered. Use save_organization API.[/yellow]"
                 )
             else:
                 table = Table(title="Agency Organizations", border_style="cyan")
@@ -3527,11 +3524,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Name", style="white")
                 table.add_column("Email", style="cyan")
                 for c in clients:
-                    table.add_row(
-                        c.get("client_id"),
-                        c.get("name"),
-                        c.get("email", "N/A")
-                    )
+                    table.add_row(c.get("client_id"), c.get("name"), c.get("email", "N/A"))
                 console.print(table)
             if exit_on_complete:
                 sys.exit(0)
@@ -3547,11 +3540,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Name", style="white")
                 table.add_column("Score", style="cyan")
                 for lead in leads:
-                    table.add_row(
-                        lead.get("lead_id"),
-                        lead.get("name"),
-                        str(lead.get("score", 0))
-                    )
+                    table.add_row(lead.get("lead_id"), lead.get("name"), str(lead.get("score", 0)))
                 console.print(table)
             if exit_on_complete:
                 sys.exit(0)
@@ -3566,10 +3555,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             table.add_column("Github", style="dim")
             for p in projects:
                 table.add_row(
-                    p.get("project_id"),
-                    p.get("name"),
-                    p.get("client_id"),
-                    p.get("github_repo")
+                    p.get("project_id"), p.get("name"), p.get("client_id"), p.get("github_repo")
                 )
             console.print(table)
             if exit_on_complete:
@@ -3605,7 +3591,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                     wf.get("workflow_id"),
                     wf.get("name"),
                     wf.get("client_id"),
-                    f"{wf.get('success_rate')}%"
+                    f"{wf.get('success_rate')}%",
                 )
             console.print(table)
             if exit_on_complete:
@@ -3623,7 +3609,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 tasks[0].get("task_id"),
                 tasks[0].get("name"),
                 tasks[0].get("priority"),
-                tasks[0].get("deadline")
+                tasks[0].get("deadline"),
             )
             console.print(table)
             if exit_on_complete:
@@ -3674,6 +3660,225 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 "[yellow]Usage: aios business <organizations|clients|leads|"
                 "projects|proposals|workflows|tasks|analytics|timeline|"
                 "summary>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+    elif args and args[0] == "approval":
+        import sys
+        from unittest.mock import MagicMock
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios approval <queue|pending|approve|reject|"
+                "cancel|history|policies|preview|status>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        from aios.registry import ServiceRegistry
+        from aios.services.approval import ApprovalEngineService
+
+        service = None
+        if ServiceRegistry._global_registry:
+            try:
+                service = ServiceRegistry._global_registry.get(
+                    ApprovalEngineService
+                )
+            except Exception:
+                pass
+
+        if not service:
+            from aios.services.approval_impl import LocalApprovalEngineService
+            from aios.services.memory import MemoryService
+            mock_mem = MagicMock(spec=MemoryService)
+            service = LocalApprovalEngineService(memory_service=mock_mem)
+            service.initialize()
+            service.start()
+
+        if subcommand == "queue":
+            queue = service.list_queue()
+            if not queue:
+                console.print("[yellow]Approval queue is empty.[/yellow]")
+            else:
+                table = Table(title="Governance Approval Queue", border_style="cyan")
+                table.add_column("Request ID", style="bold cyan")
+                table.add_column("Action", style="white")
+                table.add_column("Project", style="magenta")
+                table.add_column("Client", style="yellow")
+                table.add_column("Risk", style="red")
+                table.add_column("Status", style="green")
+                for q in queue:
+                    table.add_row(
+                        q.get("request_id"),
+                        q.get("action"),
+                        q.get("project"),
+                        q.get("client"),
+                        q.get("risk"),
+                        q.get("status")
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "pending":
+            pending = service.list_pending()
+            if not pending:
+                console.print("[yellow]No pending approvals found.[/yellow]")
+            else:
+                table = Table(title="Pending Governance Decisions", border_style="yellow")
+                table.add_column("Request ID", style="bold yellow")
+                table.add_column("Action", style="white")
+                table.add_column("Project", style="magenta")
+                table.add_column("Risk", style="red")
+                for p in pending:
+                    table.add_row(
+                        p.get("request_id"),
+                        p.get("action"),
+                        p.get("project"),
+                        p.get("risk")
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "approve":
+            if len(args) < 3:
+                console.print("[red]Error: request ID required.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            req_id = args[2]
+            success = service.approve_request(req_id)
+            if success:
+                console.print(f"[green]✓ Request {req_id} approved successfully.[/green]")
+            else:
+                console.print(f"[red]✗ Request {req_id} not found.[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "reject":
+            if len(args) < 3:
+                console.print("[red]Error: request ID required.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            req_id = args[2]
+            success = service.reject_request(req_id)
+            if success:
+                console.print(f"[green]✓ Request {req_id} rejected successfully.[/green]")
+            else:
+                console.print(f"[red]✗ Request {req_id} not found.[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "cancel":
+            if len(args) < 3:
+                console.print("[red]Error: request ID required.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            req_id = args[2]
+            success = service.cancel_request(req_id)
+            if success:
+                console.print(f"[green]✓ Request {req_id} cancelled successfully.[/green]")
+            else:
+                console.print(f"[red]✗ Request {req_id} not found.[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "history":
+            audit = service.list_audit_trail()
+            if not audit:
+                console.print("[yellow]No history log records found.[/yellow]")
+            else:
+                table = Table(title="Governance Execution History", border_style="green")
+                table.add_column("Log ID", style="bold green")
+                table.add_column("Action", style="white")
+                table.add_column("Outcome", style="magenta")
+                table.add_column("Reason", style="dim")
+                for entry in audit:
+                    table.add_row(
+                        entry.get("log_id"),
+                        entry.get("action"),
+                        entry.get("outcome"),
+                        entry.get("reason")
+                    )
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "policies":
+            policies = service.get_policies()
+            table = Table(title="Configured Governance Policies", border_style="magenta")
+            table.add_column("Scope / Target", style="bold magenta")
+            table.add_column("Policy Setting", style="white")
+            for k, v in policies.items():
+                table.add_row(k, str(v))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "preview":
+            if len(args) < 3:
+                console.print("[red]Error: request ID required.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            req_id = args[2]
+            preview = service.get_preview(req_id)
+            table = Table(title=f"Execution Preview: {req_id}", border_style="yellow")
+            table.add_column("Property", style="bold yellow")
+            table.add_column("Value", style="white")
+            table.add_row("Summary", preview.get("action_summary", "N/A"))
+            table.add_row(
+                "Files Affected",
+                ", ".join(preview.get("files_affected", [])) or "None"
+            )
+            table.add_row(
+                "Services Affected",
+                ", ".join(preview.get("services_affected", [])) or "None"
+            )
+            table.add_row("Expected Changes", preview.get("expected_changes", ""))
+            table.add_row("Rollback Supported", str(preview.get("rollback_supported", False)))
+            table.add_row("Estimated Impact", preview.get("estimated_impact", "low"))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "status":
+            if len(args) < 3:
+                console.print("[red]Error: request ID required.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            req_id = args[2]
+            queue = service.list_queue()
+            status_val = "unknown"
+            for item in queue:
+                if item.get("request_id") == req_id:
+                    status_val = item.get("status")
+                    break
+            console.print(f"[cyan]Request {req_id} current status: {status_val}[/cyan]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios approval <queue|pending|approve|reject|"
+                "cancel|history|policies|preview|status>[/yellow]"
             )
             if exit_on_complete:
                 sys.exit(1)

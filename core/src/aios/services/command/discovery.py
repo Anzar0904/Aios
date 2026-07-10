@@ -1635,3 +1635,118 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         lambda args: handle_business_cmd("summary", args),
     )
 
+    def handle_approval_cmd(cmd_type: str, args: str) -> None:
+        from aios.cli import execute_builtin_cli_command
+
+        cmd_args = ["approval", cmd_type]
+        if args.strip():
+            cmd_args.extend(args.strip().split())
+        execute_builtin_cli_command(cmd_args, exit_on_complete=False)
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval queue",
+            description="List all requests in the governance approval queue.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval queue",
+        ),
+        lambda args: handle_approval_cmd("queue", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval pending",
+            description="List pending governance decisions in the queue.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval pending",
+        ),
+        lambda args: handle_approval_cmd("pending", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval approve",
+            description="Approve a request by request ID.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval approve [request_id]",
+        ),
+        lambda args: handle_approval_cmd("approve", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval reject",
+            description="Reject a request by request ID.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval reject [request_id]",
+        ),
+        lambda args: handle_approval_cmd("reject", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval cancel",
+            description="Cancel a request by request ID.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval cancel [request_id]",
+        ),
+        lambda args: handle_approval_cmd("cancel", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval history",
+            description="Display the governance execution audit log history.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval history",
+        ),
+        lambda args: handle_approval_cmd("history", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval policies",
+            description="Display configured scope policies mapping.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval policies",
+        ),
+        lambda args: handle_approval_cmd("policies", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval preview",
+            description="Generate/display execution preview details for a request.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval preview [request_id]",
+        ),
+        lambda args: handle_approval_cmd("preview", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="approval status",
+            description="Display current status of a request by request ID.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="approval status [request_id]",
+        ),
+        lambda args: handle_approval_cmd("status", args),
+    )

@@ -2,6 +2,7 @@ import abc
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
+
 from aios.services.base import ServiceLifecycle
 
 
@@ -192,3 +193,89 @@ class ApprovalEngineService(ServiceLifecycle, abc.ABC):
     def publish_approval_report(self, report: ApprovalReport) -> None:
         """Synchronizes report summaries on Notion."""
         pass
+
+    @abc.abstractmethod
+    def list_queue(self) -> List[Dict[str, Any]]:
+        """List all requests in the approval queue."""
+        pass
+
+    @abc.abstractmethod
+    def list_pending(self) -> List[Dict[str, Any]]:
+        """List all pending requests in the queue."""
+        pass
+
+    @abc.abstractmethod
+    def approve_request(self, request_id: str) -> bool:
+        """Approve a request by ID."""
+        pass
+
+    @abc.abstractmethod
+    def reject_request(self, request_id: str) -> bool:
+        """Reject a request by ID."""
+        pass
+
+    @abc.abstractmethod
+    def cancel_request(self, request_id: str) -> bool:
+        """Cancel a request by ID."""
+        pass
+
+    @abc.abstractmethod
+    def retry_request(self, request_id: str) -> bool:
+        """Retry execution of an approved or failed request."""
+        pass
+
+    @abc.abstractmethod
+    def execute_request(self, request_id: str) -> Dict[str, Any]:
+        """Execute an approved request."""
+        pass
+
+    @abc.abstractmethod
+    def expire_requests(self) -> None:
+        """Expire time-limited pending requests."""
+        pass
+
+    @abc.abstractmethod
+    def get_policies(self) -> Dict[str, Any]:
+        """Get all configured policies."""
+        pass
+
+    @abc.abstractmethod
+    def update_policy(self, policy_id: str, config: Dict[str, Any]) -> None:
+        """Update a policy configuration."""
+        pass
+
+    @abc.abstractmethod
+    def get_preview(self, request_id: str) -> Dict[str, Any]:
+        """Generate or retrieve action preview details."""
+        pass
+
+    @abc.abstractmethod
+    def list_audit_trail(self) -> List[Dict[str, Any]]:
+        """Retrieve audit log items."""
+        pass
+
+    @abc.abstractmethod
+    def generate_reports(self, output_dir: Optional[Any] = None) -> Dict[str, Any]:
+        """Generate markdown reports under docs/approval/."""
+        pass
+
+    @abc.abstractmethod
+    def classify_risk(self, action: str, details: Dict[str, Any]) -> str:
+        """Classify action risk level (low, medium, high, critical)."""
+        pass
+
+    @abc.abstractmethod
+    def resolve_policy(self, action: str, project: str, client: str) -> str:
+        """Resolve policy string for specified action, project, and client."""
+        pass
+
+    @abc.abstractmethod
+    def log_audit_trail(self, entry: Dict[str, Any]) -> None:
+        """Log operational governance event into secure audit logs."""
+        pass
+
+    @abc.abstractmethod
+    def queue_request_item(self, request_item: Dict[str, Any]) -> None:
+        """Persist a new action request item in queue."""
+        pass
+

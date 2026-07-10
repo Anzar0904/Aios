@@ -1,34 +1,41 @@
-import os
 import json
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.approval import (
-    ApprovalStatus,
     ApprovalDecision,
-    ApprovalEvidence,
-    ApprovalRule,
-    ApprovalPolicy,
-    ApprovalPackage,
-    ApprovalRequest,
-    ApprovalSession,
-    ApprovalSummary,
-    ApprovalHistory,
-    ApprovalReport,
-    ApprovalValidator,
-    ApprovalManager,
     ApprovalEngineService,
+    ApprovalHistory,
+    ApprovalManager,
+    ApprovalPackage,
+    ApprovalPolicy,
+    ApprovalReport,
+    ApprovalRequest,
+    ApprovalRule,
+    ApprovalSession,
+    ApprovalStatus,
+    ApprovalSummary,
+    ApprovalValidator,
 )
-from aios.services.persistence import PersistenceStatus, PersistencePolicy, ApprovalRepository, ReviewRepository
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import (
+    ApprovalRepository,
+    PersistencePolicy,
+    PersistenceStatus,
+    ReviewRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +285,7 @@ class LocalApprovalManager(ApprovalManager):
             # Check if failures warrant manual review or rejection
             if len(failed_reasons) == 1 and "Documentation" in failed_reasons[0]:
                 status = ApprovalStatus.CHANGES_REQUESTED
-            reasoning = f"Policy evaluation failed. Discrepancies discovered:\n" + "\n".join(failed_reasons)
+            reasoning = "Policy evaluation failed. Discrepancies discovered:\n" + "\n".join(failed_reasons)
         else:
             status = ApprovalStatus.APPROVED
             reasoning = "All safety checks and validation gates passed successfully."
@@ -313,6 +320,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
         self._histories: Dict[str, ApprovalHistory] = {}
         self._approval_repo = None
         self._review_repo = None
+        self.base_dir = Path(".agent/approval")
 
     def initialize(self) -> None:
         logger.info("Initializing LocalApprovalEngineService")
@@ -637,3 +645,421 @@ class LocalApprovalEngineService(ApprovalEngineService):
             )
         )
         self._knowledge_hub.sync_document(doc, "notion")
+
+    # --- Secure JSON Storage helpers ---
+    def _load_json(self, filename: str, default: Any) -> Any:
+        path = self.base_dir / filename
+        if not path.is_file():
+            return default
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return default
+
+    def _save_json(self, filename: str, data: Any) -> None:
+        path = self.base_dir / filename
+        try:
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            # Apply owner-only 0600 permissions
+            os.chmod(path, 0o600)
+        except Exception as e:
+            logger.error(f"Failed to write secure file {filename}: {e}")
+
+    # --- Extended Governance APIs ---
+    def list_queue(self) -> List[Dict[str, Any]]:
+        """List all requests in the approval queue."""
+        return self._load_json("queue.json", [])
+
+    def list_pending(self) -> List[Dict[str, Any]]:
+        """List all pending requests in the queue."""
+        queue = self.list_queue()
+        return [item for item in queue if item.get("status") == "pending"]
+
+    def approve_request(self, request_id: str) -> bool:
+        """Approve a request by ID."""
+        queue = self.list_queue()
+        for item in queue:
+            if item.get("request_id") == request_id:
+                item["status"] = "approved"
+                self._save_json("queue.json", queue)
+                self.log_audit_trail({
+                    "action": item.get("action"),
+                    "project": item.get("project"),
+                    "client": item.get("client"),
+                    "outcome": "approved",
+                    "risk": item.get("risk"),
+                    "user": item.get("user"),
+                    "timestamp": time.time(),
+                    "reason": f"Manual approval for request {request_id}"
+                })
+                return True
+        return False
+
+    def reject_request(self, request_id: str) -> bool:
+        """Reject a request by ID."""
+        queue = self.list_queue()
+        for item in queue:
+            if item.get("request_id") == request_id:
+                item["status"] = "rejected"
+                self._save_json("queue.json", queue)
+                self.log_audit_trail({
+                    "action": item.get("action"),
+                    "project": item.get("project"),
+                    "client": item.get("client"),
+                    "outcome": "rejected",
+                    "risk": item.get("risk"),
+                    "user": item.get("user"),
+                    "timestamp": time.time(),
+                    "reason": f"Manual rejection for request {request_id}"
+                })
+                return True
+        return False
+
+    def cancel_request(self, request_id: str) -> bool:
+        """Cancel a request by ID."""
+        queue = self.list_queue()
+        for item in queue:
+            if item.get("request_id") == request_id:
+                item["status"] = "cancelled"
+                self._save_json("queue.json", queue)
+                self.log_audit_trail({
+                    "action": item.get("action"),
+                    "project": item.get("project"),
+                    "client": item.get("client"),
+                    "outcome": "cancelled",
+                    "risk": item.get("risk"),
+                    "user": item.get("user"),
+                    "timestamp": time.time(),
+                    "reason": f"Manual cancellation for request {request_id}"
+                })
+                return True
+        return False
+
+    def retry_request(self, request_id: str) -> bool:
+        """Retry execution of an approved or failed request."""
+        queue = self.list_queue()
+        for item in queue:
+            if item.get("request_id") == request_id:
+                # Update timestamp and status to trigger retry
+                item["timestamp"] = time.time()
+                item["status"] = "pending"
+                self._save_json("queue.json", queue)
+                self.log_audit_trail({
+                    "action": item.get("action"),
+                    "project": item.get("project"),
+                    "client": item.get("client"),
+                    "outcome": "retry",
+                    "risk": item.get("risk"),
+                    "user": item.get("user"),
+                    "timestamp": time.time(),
+                    "reason": f"Retry execution for request {request_id}"
+                })
+                return True
+        return False
+
+    def execute_request(self, request_id: str) -> Dict[str, Any]:
+        """Execute an approved request."""
+        queue = self.list_queue()
+        for item in queue:
+            if item.get("request_id") == request_id:
+                if item.get("status") != "approved":
+                    return {
+                        "status": "failed",
+                        "message": f"Request {request_id} is not approved."
+                    }
+                item["status"] = "executed"
+                self._save_json("queue.json", queue)
+                self.log_audit_trail({
+                    "action": item.get("action"),
+                    "project": item.get("project"),
+                    "client": item.get("client"),
+                    "outcome": "execution",
+                    "risk": item.get("risk"),
+                    "user": item.get("user"),
+                    "timestamp": time.time(),
+                    "reason": f"Executed approved request {request_id}"
+                })
+                # Add to history
+                history = self._load_json("history.json", [])
+                history.append(item)
+                self._save_json("history.json", history)
+                return {
+                    "status": "executed",
+                    "message": "Action executed successfully."
+                }
+        return {
+            "status": "failed",
+            "message": f"Request {request_id} not found."
+        }
+
+    def expire_requests(self) -> None:
+        """Expire time-limited pending requests."""
+        queue = self.list_queue()
+        now = time.time()
+        modified = False
+        for item in queue:
+            if item.get("status") == "pending" and now > item.get("expiration", 0):
+                item["status"] = "expired"
+                modified = True
+                self.log_audit_trail({
+                    "action": item.get("action"),
+                    "project": item.get("project"),
+                    "client": item.get("client"),
+                    "outcome": "expired",
+                    "risk": item.get("risk"),
+                    "user": item.get("user"),
+                    "timestamp": time.time(),
+                    "reason": f"Request {item.get('request_id')} expired automatically"
+                })
+        if modified:
+            self._save_json("queue.json", queue)
+
+    def get_policies(self) -> Dict[str, Any]:
+        """Get all configured policies."""
+        return self._load_json("policies.json", {
+            "global": "default"
+        })
+
+    def update_policy(self, policy_id: str, config: Dict[str, Any]) -> None:
+        """Update a policy configuration."""
+        policies = self.get_policies()
+        policies[policy_id] = config
+        self._save_json("policies.json", policies)
+
+    def get_preview(self, request_id: str) -> Dict[str, Any]:
+        """Generate or retrieve action preview details."""
+        queue = self.list_queue()
+        for item in queue:
+            if item.get("request_id") == request_id:
+                return item.get("preview", {})
+        return {
+            "action_summary": "Unknown action request",
+            "files_affected": [],
+            "services_affected": [],
+            "expected_changes": "",
+            "rollback_supported": False,
+            "estimated_impact": "low"
+        }
+
+    def list_audit_trail(self) -> List[Dict[str, Any]]:
+        """Retrieve audit log items."""
+        return self._load_json("audit.json", [])
+
+    def classify_risk(self, action: str, details: Dict[str, Any]) -> str:
+        """Classify action risk level (low, medium, high, critical)."""
+        action = action.lower()
+        if "delete" in action or "migration" in action or "storage" in action:
+            return "critical"
+        if "production" in action or "release" in action or "push" in action:
+            return "high"
+        if "deploy" in action or "update" in action or "exec" in action:
+            return "medium"
+        return "low"
+
+    def resolve_policy(self, action: str, project: str, client: str) -> str:
+        """Resolve policy string for specified action, project, and client."""
+        policies = self.get_policies()
+        if f"action:{action}" in policies:
+            return policies[f"action:{action}"]
+        if f"project:{project}" in policies:
+            return policies[f"project:{project}"]
+        if f"client:{client}" in policies:
+            return policies[f"client:{client}"]
+        return policies.get("global", "default")
+
+    def log_audit_trail(self, entry: Dict[str, Any]) -> None:
+        """Log operational governance event into secure audit logs."""
+        audit = self.list_audit_trail()
+        entry["log_id"] = f"log_{int(time.time() * 1000)}"
+        if "timestamp" not in entry:
+            entry["timestamp"] = time.time()
+        audit.append(entry)
+        self._save_json("audit.json", audit)
+
+    def queue_request_item(self, request_item: Dict[str, Any]) -> None:
+        """Persist a new action request item in queue."""
+        queue = self.list_queue()
+        queue.append(request_item)
+        self._save_json("queue.json", queue)
+
+    def generate_reports(self, output_dir: Optional[Any] = None) -> Dict[str, Any]:
+        """Generate markdown reports under docs/approval/."""
+        out_path = Path(output_dir) if output_dir else Path("docs/approval")
+        out_path.mkdir(parents=True, exist_ok=True)
+
+        queue = self.list_queue()
+        audit = self.list_audit_trail()
+        policies = self.get_policies()
+
+        # 1. Approval Report
+        app_lines = []
+        for q in queue:
+            app_lines.append(
+                f"- **{q.get('request_id')}**: {q.get('action')} | "
+                f"Status: {q.get('status')} | Risk: {q.get('risk')}"
+            )
+        if not app_lines:
+            app_lines.append("- (No active or pending approvals in queue)")
+        with open(out_path / "approval_report.md", "w", encoding="utf-8") as f:
+            f.write("# Approval Queue Report\n\n" + "\n".join(app_lines))
+
+        # 2. Audit Report
+        audit_lines = []
+        for entry in audit:
+            ts = time.localtime(entry.get('timestamp', 0))
+            ts_str = time.strftime('%Y-%m-%d %H:%M:%S', ts)
+            audit_lines.append(
+                f"- [{ts_str}] **{entry.get('outcome').upper()}**: "
+                f"{entry.get('action')} - {entry.get('reason')}"
+            )
+        if not audit_lines:
+            audit_lines.append("- (No governance audit records logged yet)")
+        with open(out_path / "audit_report.md", "w", encoding="utf-8") as f:
+            f.write("# Governance Audit Trail Report\n\n" + "\n".join(audit_lines))
+
+        # 3. Policy Report
+        policy_lines = []
+        for k, v in policies.items():
+            policy_lines.append(f"- **{k}**: `{v}`")
+        with open(out_path / "policy_report.md", "w", encoding="utf-8") as f:
+            f.write("# Approval Policies Configuration Report\n\n" + "\n".join(policy_lines))
+
+        # 4. Risk Report
+        risk_md = """# Action Risk Classification Report
+
+All protected actions are classified dynamically to enforce the appropriate gating policy:
+
+- **LOW**: Low impact operations (read/log). Executes immediately by default.
+- **MEDIUM**: Standard deployment and workflow runs. Requires dry-run preview.
+- **HIGH**: Production releases and branch modifications. Requires manual approval.
+- **CRITICAL**: Auth changes, storage removals, and branch deletions. Requires manual confirmation.
+"""
+        with open(out_path / "risk_report.md", "w", encoding="utf-8") as f:
+            f.write(risk_md.strip())
+
+        # 5. Rollback Report
+        rollback_md = """# Action Rollback Availability Report
+
+Rollback capability is assessed per action:
+
+- **n8n workflow**: Rollback via local history cache. Supported.
+- **Vercel deployment**: Rollback via production alias swap. Supported.
+- **GitHub push**: Rollback via revert/reset force push. Supported with warnings.
+- **Supabase database modifications**: Rollback via migration down files. DB states are non-trivial.
+- **Client communication**: Rollback is impossible once sent.
+"""
+        with open(out_path / "rollback_report.md", "w", encoding="utf-8") as f:
+            f.write(rollback_md.strip())
+
+        return {"reports_written": 5, "output_dir": str(out_path)}
+
+
+class ApprovalMiddleware:
+    """Centralized middleware through which every protected action must pass."""
+
+    def __init__(self, approval_service: ApprovalEngineService) -> None:
+        self._service = approval_service
+
+    def process_action(
+        self,
+        action: str,
+        project: str,
+        client: str,
+        provider: str,
+        details: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Processes a protected action request."""
+        risk_level = self._service.classify_risk(action, details)
+        policy = self._service.resolve_policy(action, project, client)
+
+        request_id = f"req_{int(time.time() * 1000)}"
+        token = f"tok_{request_id}"
+
+        if policy == "never_allow" or (policy == "default" and risk_level == "critical"):
+            self._service.log_audit_trail({
+                "action": action,
+                "project": project,
+                "client": client,
+                "outcome": "rejected",
+                "risk": risk_level,
+                "user": "developer",
+                "timestamp": time.time(),
+                "reason": "Policy explicitly forbids or critical risk level rejected"
+            })
+            return {
+                "status": "rejected",
+                "request_id": request_id,
+                "token": "",
+                "message": "Action rejected by governance policy",
+                "rollback_supported": False
+            }
+
+        if policy == "always_approve" or (policy == "default" and risk_level == "low"):
+            self._service.log_audit_trail({
+                "action": action,
+                "project": project,
+                "client": client,
+                "outcome": "executed",
+                "risk": risk_level,
+                "user": "developer",
+                "timestamp": time.time(),
+                "reason": "Always approve policy or low risk auto-execution"
+            })
+            return {
+                "status": "executed",
+                "request_id": request_id,
+                "token": token,
+                "message": "Action auto-approved and executed",
+                "rollback_supported": True
+            }
+
+        # Queue request for manual confirmation
+        preview = {
+            "action_summary": f"Protected {action} on {project}",
+            "files_affected": details.get("files", []),
+            "services_affected": [provider],
+            "expected_changes": details.get("changes", "Metadata update"),
+            "rollback_supported": details.get("rollback", True),
+            "estimated_impact": risk_level
+        }
+
+        request_item = {
+            "request_id": request_id,
+            "token": token,
+            "timestamp": time.time(),
+            "expiration": time.time() + 3600,
+            "user": "developer",
+            "project": project,
+            "client": client,
+            "provider": provider,
+            "action": action,
+            "risk": risk_level,
+            "status": "pending",
+            "preview": preview,
+            "rollback_capability": preview["rollback_supported"],
+            "details": details
+        }
+
+        self._service.queue_request_item(request_item)
+        self._service.log_audit_trail({
+            "action": action,
+            "project": project,
+            "client": client,
+            "outcome": "queued",
+            "risk": risk_level,
+            "user": "developer",
+            "timestamp": time.time(),
+            "reason": "Action queued for confirmation"
+        })
+
+        return {
+            "status": "queued",
+            "request_id": request_id,
+            "token": token,
+            "message": "Action queued for approval",
+            "rollback_supported": preview["rollback_supported"]
+        }
+

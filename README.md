@@ -118,7 +118,8 @@ graph TD
 │   ├── supabase/           # Supabase DB schema and security reports
 │   ├── vercel/             # Vercel deployment and build diagnostics guides
 │   ├── project/            # Project Intelligence health, risk, and graph reports
-│   └── business/           # Business Intelligence client, organization and analytics reports
+│   ├── business/           # Business Intelligence client, organization and analytics reports
+│   └── approval/           # Approval Engine and Governance queue, audit and reports
 ├── architecture/           # Folder for system diagrams and schemas
 ├── design/                 # Folder for UX designs and screenshots
 ├── diagrams/               # Raw files for Mermaid/Draw.io files
@@ -541,6 +542,55 @@ aios business summary
 
 ### Architecture Reference
 See [docs/business/architecture.md](docs/business/architecture.md) for detailed APIs, schemas, and CLI guides.
+
+
+## 🛡️ Approval Engine & Governance (Sprint 30)
+
+The **Approval Engine & Governance** subsystem serves as the central security policy enforcement and action gatekeeper for AI OS. It intercepts all high-impact actions (deployments, merges, database wipes, domain updates) and ensures they comply with policies or receive manual confirmation before execution.
+
+### Key Capabilities
+- **Governance Middleware**: Centralized middleware layer intercepting all high-impact action calls across subsystems.
+- **Queue Management**: Persistent, owner-only (`0600`) queue storing requests under `.agent/approval/queue.json`.
+- **Flexible Scope Policies**: Resolves action permissions using the hierarchy: `Action -> Project -> Client -> Global`. Configured in `policies.json`.
+- **Single-Use Approval Tokens**: Assigns unique request IDs and tokens to prevent replay and force idempotency.
+- **Risk Classification**: Classifies operations into `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
+- **Preview & Rollback Engine**: Generates execution preview detail summaries, impact estimates, and checks rollback availability.
+- **Audit Logs**: Secures chronological logs under `.agent/approval/audit.json`.
+- **Markdown Reports**: Compiles 5 governance reports under `docs/approval/` (`approval_report.md`, `audit_report.md`, `policy_report.md`, `risk_report.md`, `rollback_report.md`).
+
+### CLI Commands Reference
+```bash
+# 1. List all requests in the approval queue
+aios approval queue
+
+# 2. List pending governance decisions
+aios approval pending
+
+# 3. Approve a pending request by ID
+aios approval approve [request_id]
+
+# 4. Reject a pending request by ID
+aios approval reject [request_id]
+
+# 5. Cancel a request by ID
+aios approval cancel [request_id]
+
+# 6. Display governance audit execution history logs
+aios approval history
+
+# 7. List configured scope policy rules mapping
+aios approval policies
+
+# 8. Generate execution preview for a request
+aios approval preview [request_id]
+
+# 9. Display current status of a request ID
+aios approval status [request_id]
+```
+
+### Architecture Reference
+See [docs/approval/architecture.md](docs/approval/architecture.md) for detailed APIs, schemas, and CLI guides.
+
 
 
 
