@@ -465,116 +465,199 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
-    elif cmd == "provider list":
-        table = Table(title="Registered LLM Providers", border_style="magenta")
-        table.add_column("Provider Name", style="bold magenta")
-        table.add_column("Models", style="white")
-        table.add_column("Status", style="green")
+    elif args and args[0] == "providers":
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios providers "
+                "<list|status|benchmark|health|route|analytics>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
 
-        for p_name in universal_provider_registry.list_providers():
-            models = [m.model_id for m in universal_model_registry.list_models(p_name)]
-            if not models:
-                provider_inst = universal_provider_registry.lookup(p_name)
-                meta = getattr(provider_inst, "metadata", provider_inst)
-                models = getattr(meta, "supported_models", ["default"])
+        subcommand = args[1]
 
-            health = universal_health_registry.get_health(p_name)
-            status_str = "Healthy" if health.available else "Degraded/Offline"
-            table.add_row(p_name, ", ".join(models), status_str)
+        from aios.providers.analytics import calculate_provider_analytics
+        from aios.providers.benchmark import (
+            generate_reports,
+            run_parallel_health_checks,
+            run_provider_benchmark,
+        )
 
-        console.print(table)
-        if exit_on_complete:
-            import sys
+        if subcommand == "list":
+            table = Table(title="Registered LLM Providers", border_style="magenta")
+            table.add_column("Provider Name", style="bold magenta")
+            table.add_column("Models", style="white")
+            table.add_column("Status", style="green")
 
-            sys.exit(0)
-        return True
-
-    elif cmd == "model list":
-        table = Table(title="Registered LLM Models", border_style="cyan")
-        table.add_column("Model ID", style="bold cyan")
-        table.add_column("Provider", style="white")
-        table.add_column("Capabilities", style="green")
-        table.add_column("Status", style="green")
-
-        models = universal_model_registry.list_models()
-        if not models:
             for p_name in universal_provider_registry.list_providers():
-                provider_inst = universal_provider_registry.lookup(p_name)
-                meta = getattr(provider_inst, "metadata", provider_inst)
-                supported = getattr(meta, "supported_models", ["default"])
-                for m_name in supported:
-                    table.add_row(m_name, p_name, "chat", "Active")
-        else:
-            for model in models:
-                caps = []
-                if model.supports_chat:
-                    caps.append("chat")
-                if model.supports_coding:
-                    caps.append("coding")
-                if model.supports_reasoning:
-                    caps.append("reasoning")
-                if model.supports_vision:
-                    caps.append("vision")
-                if model.supports_embeddings:
-                    caps.append("embeddings")
-                status_str = "Active" if model.enabled else "Disabled"
-                table.add_row(model.model_id, model.provider, ", ".join(caps), status_str)
+                models = [m.model_id for m in universal_model_registry.list_models(p_name)]
+                if not models:
+                    provider_inst = universal_provider_registry.lookup(p_name)
+                    meta = getattr(provider_inst, "metadata", provider_inst)
+                    models = getattr(meta, "supported_models", ["default"])
 
-        console.print(table)
-        if exit_on_complete:
-            import sys
+                health = universal_health_registry.get_health(p_name)
+                status_str = "Healthy" if health.available else "Degraded/Offline"
+                table.add_row(p_name, ", ".join(models), status_str)
 
-            sys.exit(0)
-        return True
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
 
-    elif cmd == "health":
-        table = Table(title="Provider Health & Telemetry Status", border_style="green")
-        table.add_column("Provider Name", style="bold green")
-        table.add_column("Available", style="white")
-        table.add_column("Latency (ms)", style="cyan")
-        table.add_column("Health Score", style="magenta")
-        table.add_column("Last Error", style="red")
+        elif subcommand == "status":
+            table = Table(title="Provider Health Status & Scoring", border_style="green")
+            table.add_column("Provider Name", style="bold green")
+            table.add_column("Available", style="white")
+            table.add_column("Latency (ms)", style="cyan")
+            table.add_column("Success Rate", style="yellow")
+            table.add_column("Health Score", style="magenta")
+            table.add_column("Last Error", style="red")
 
-        for p_name in universal_provider_registry.list_providers():
-            health = universal_health_registry.get_health(p_name)
-            table.add_row(
-                p_name,
-                "Yes" if health.available else "No",
-                f"{health.latency_ms:.1f}",
-                f"{health.health_score:.1f}",
-                health.last_error or "None",
+            for p_name in universal_provider_registry.list_providers():
+                health = universal_health_registry.get_health(p_name)
+                table.add_row(
+                    p_name,
+                    "Yes" if health.available else "No",
+                    f"{health.latency_ms:.1f}",
+                    f"{health.success_rate * 100.0:.1f}%",
+                    f"{health.health_score:.1f}",
+                    health.last_error or "None",
+                )
+
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "benchmark":
+            console.print(
+                "[cyan]Running active benchmarks across all registered provider endpoints...[/dim]"
             )
+            table = Table(title="Active Benchmark Execution Results", border_style="cyan")
+            table.add_column("Provider", style="bold magenta")
+            table.add_column("Model", style="white")
+            table.add_column("Status", style="green")
+            table.add_column("Latency (ms)", style="cyan")
+            table.add_column("Est. Cost", style="yellow")
+            table.add_column("Tokens (In/Out)", style="white")
 
-        console.print(table)
-        if exit_on_complete:
-            import sys
+            for p_name in universal_provider_registry.list_providers():
+                models = [m.model_id for m in universal_model_registry.list_models(p_name)]
+                if not models:
+                    models = ["default"]
+                for m_name in models:
+                    res = run_provider_benchmark(p_name, m_name)
+                    if res["success"]:
+                        status_str = "[green]Success[/green]"
+                        latency_str = f"{res['latency_ms']:.1f}"
+                        cost_str = f"${res['cost']:.6f}"
+                        tokens_str = f"{res['input_tokens']}/{res['output_tokens']}"
+                    else:
+                        status_str = f"[red]Failed ({res.get('error', 'Unknown')})[/red]"
+                        latency_str = f"{res['latency_ms']:.1f}"
+                        cost_str = "$0.000000"
+                        tokens_str = "0/0"
+                    table.add_row(p_name, m_name, status_str, latency_str, cost_str, tokens_str)
 
-            sys.exit(0)
-        return True
+            console.print(table)
+            console.print("[cyan]Generating markdown reports under docs/providers/...[/cyan]")
+            try:
+                generate_reports()
+                console.print("[green]✓ Benchmark reports generated successfully.[/green]")
+            except Exception as e:
+                console.print(f"[red]✗ Failed to generate reports: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
 
-    elif args and args[0] == "route":
-        task_type = args[1].strip().strip('"').strip("'") if len(args) > 1 else "chat"
-        routing_req = RoutingRequest(
-            task_type=task_type,
-            estimated_input_tokens=100,
-            estimated_output_tokens=100,
-        )
-        decision = universal_routing_engine.route(routing_req)
-        console.print(
-            Panel(
-                f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
-                f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
-                f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
-                f"Reasoning: {decision.reasoning}",
-                title=f"[white]Routing Decision for task type '{task_type}'[/white]",
-                border_style="blue",
+        elif subcommand == "health":
+            console.print("[cyan]Running parallel provider health checks...[/cyan]")
+            results = run_parallel_health_checks()
+            table = Table(title="Provider Parallel Health Check Results", border_style="green")
+            table.add_column("Provider Name", style="bold green")
+            table.add_column("Available", style="white")
+            table.add_column("Latency (ms)", style="cyan")
+            table.add_column("Health Score", style="magenta")
+
+            for p_name, healthy in results.items():
+                health = universal_health_registry.get_health(p_name)
+                table.add_row(
+                    p_name,
+                    "[green]Yes[/green]" if healthy else "[red]No[/red]",
+                    f"{health.latency_ms:.1f}",
+                    f"{health.health_score:.1f}",
+                )
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "route":
+            task_type = "chat"
+            policy = "default"
+            if len(args) > 2:
+                task_type = args[2]
+            if "--policy" in args:
+                idx = args.index("--policy")
+                if idx + 1 < len(args):
+                    policy = args[idx + 1]
+
+            routing_req = RoutingRequest(
+                task_type=task_type,
+                estimated_input_tokens=100,
+                estimated_output_tokens=100,
+                routing_policy=policy,
             )
-        )
-        if exit_on_complete:
-            import sys
+            decision = universal_routing_engine.route(routing_req)
+            console.print(
+                Panel(
+                    f"Selected Provider: [bold green]{decision.provider}[/bold green]\n"
+                    f"Selected Model: [bold cyan]{decision.model}[/bold cyan]\n"
+                    f"Routing Score: [magenta]{decision.routing_score:.1f}[/magenta]\n"
+                    f"Reasoning: {decision.reasoning}",
+                    title=(
+                        f"[white]Routing Decision (Task: '{task_type}', "
+                        f"Policy: '{policy}')[/white]"
+                    ),
+                    border_style="blue",
+                )
+            )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
 
-            sys.exit(0)
-        return True
+        elif subcommand == "analytics":
+            stats = calculate_provider_analytics()
+            table = Table(title="Provider Usage & Analytics Summary", border_style="magenta")
+            table.add_column("Provider", style="bold magenta")
+            table.add_column("Total Requests", style="white")
+            table.add_column("Success Rate", style="green")
+            table.add_column("Avg Latency (ms)", style="cyan")
+            table.add_column("Total Cost (USD)", style="yellow")
+            table.add_column("Total Tokens", style="white")
+
+            for p_name, s in stats.items():
+                table.add_row(
+                    p_name,
+                    str(s["total_requests"]),
+                    f"{s['success_rate'] * 100.0:.1f}%",
+                    f"{s['avg_latency_ms']:.1f}",
+                    f"${s['total_cost']:.6f}",
+                    str(s["total_tokens"]),
+                )
+            console.print(table)
+
+            console.print("[cyan]Generating/updating markdown reports...[/cyan]")
+            try:
+                generate_reports()
+                console.print("[green]✓ Analytics reports generated successfully.[/green]")
+            except Exception as e:
+                console.print(f"[red]✗ Failed to generate reports: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
 
     elif args and args[0] == "chat":
         prompt = " ".join(args[1:]) if len(args) > 1 else ""
@@ -940,6 +1023,164 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(1)
             return True
 
+    elif args and args[0] == "workspace":
+        import sys
+        from pathlib import Path as _Path
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios workspace <scan|summary|status|graph|refresh>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+
+        from aios.registry import ServiceRegistry
+        from aios.services.developer_workspace import DeveloperWorkspaceService
+        from aios.services.workspace_intelligence import (
+            CodeIntelligenceService,
+            WorkspaceIntelligenceService,
+        )
+
+        service = None
+        if ServiceRegistry._global_registry:
+            service = ServiceRegistry._global_registry.get(WorkspaceIntelligenceService)
+
+        if not service:
+            from aios.bootstrap import bootstrap_kernel
+            kernel = bootstrap_kernel(_Path("config/config.toml"))
+            kernel.boot()
+            service = kernel.registry.get(WorkspaceIntelligenceService)
+
+        workspace_root = "."
+        try:
+            from aios.services.context import ContextService
+            ctx_svc = ServiceRegistry._global_registry.get(ContextService) if ServiceRegistry._global_registry else None
+            ctx = ctx_svc.get_current_context() if ctx_svc else None
+            if ctx:
+                workspace_root = ctx.project_root
+        except Exception:
+            pass
+
+        if subcommand == "scan":
+            with console.status(
+                "[bold blue]Scanning workspace architecture and mapping dependencies...", spinner="dots"
+            ):
+                service.analyze_repository(workspace_root)
+            console.print("[green]Workspace scanned successfully. Markdown reports generated in docs/.[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summary":
+            summary = service.analyze_repository(workspace_root)
+            
+            grid = Table.grid(padding=1)
+            grid.add_column(style="bold cyan", justify="right")
+            grid.add_column(style="white")
+            
+            grid.add_row("High-Level Architecture:", summary.high_level_architecture)
+            grid.add_row("Components:", ", ".join(summary.components))
+            grid.add_row("Design Patterns:", ", ".join(summary.design_patterns))
+            grid.add_row("Languages:", ", ".join([f"{lang} ({cnt})" for lang, cnt in summary.languages.items()]))
+            grid.add_row("Frameworks:", ", ".join(summary.frameworks))
+            grid.add_row("Package Managers:", ", ".join(summary.package_managers))
+            
+            health_grid = Table.grid(padding=1)
+            health_grid.add_column(style="bold green", justify="right")
+            health_grid.add_column(style="white")
+            health_grid.add_row("Files Count:", str(summary.health.file_count))
+            health_grid.add_row("Folders Count:", str(summary.health.folder_count))
+            health_grid.add_row("Test Count:", str(summary.health.test_count))
+            health_grid.add_row("Doc Coverage:", f"{summary.health.documentation_coverage:.1%}")
+            health_grid.add_row("README Coverage:", f"{summary.health.readme_coverage:.1%}")
+            health_grid.add_row("Config Completeness:", f"{summary.health.config_completeness:.1%}")
+            
+            console.print(Panel(grid, title="[bold white]Workspace Summary[/bold white]", border_style="cyan"))
+            console.print(Panel(health_grid, title="[bold white]Workspace Health[/bold white]", border_style="green"))
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "status":
+            dev_ws = None
+            if ServiceRegistry._global_registry:
+                dev_ws = ServiceRegistry._global_registry.get(DeveloperWorkspaceService)
+            if not dev_ws:
+                from aios.services.developer_workspace_impl import LocalDeveloperWorkspace
+                dev_ws = LocalDeveloperWorkspace()
+                
+            info = dev_ws.get_workspace_info(workspace_root)
+            
+            grid = Table.grid(padding=1)
+            grid.add_column(style="bold yellow", justify="right")
+            grid.add_column(style="white")
+            
+            grid.add_row("Git Branch:", info.extra.get("git_branch") or "unknown")
+            grid.add_row("Staged Files:", str(len(info.staged_files)))
+            grid.add_row("Unstaged Files:", str(len(info.unstaged_files)))
+            grid.add_row("Untracked Files:", str(len(info.untracked_files)))
+            grid.add_row("Build Systems:", ", ".join(info.build_systems))
+            grid.add_row("Linters:", ", ".join(info.linters))
+            grid.add_row("Detected Tests:", str(len(info.detected_tests)))
+            
+            console.print(Panel(grid, title="[bold white]Workspace Status[/bold white]", border_style="yellow"))
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "graph":
+            code_intel = None
+            if ServiceRegistry._global_registry:
+                code_intel = ServiceRegistry._global_registry.get(CodeIntelligenceService)
+            if not code_intel:
+                from aios.services.memory_impl import LocalMemoryService
+                from aios.services.project_intelligence_impl import LocalProjectIntelligence
+                from aios.services.workspace_intelligence_impl import LocalCodeIntelligenceService
+                code_intel = LocalCodeIntelligenceService(LocalProjectIntelligence(), LocalMemoryService())
+                code_intel.initialize()
+                
+            summary = code_intel.analyze_codebase(workspace_root)
+            
+            mermaid_lines = ["graph TD"]
+            for src, dests in list(summary.dependency_graph.items())[:25]:
+                src_name = Path(src).name
+                for dest in dests:
+                    dest_name = Path(dest).name
+                    mermaid_lines.append(f"    {src_name} --> {dest_name}")
+            
+            console.print("\n".join(mermaid_lines))
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "refresh":
+            for cache_file in (".aios_project_intelligence.json", ".aios_code_intelligence.json"):
+                cache_path = _Path(workspace_root) / cache_file
+                if cache_path.is_file():
+                    try:
+                        cache_path.unlink()
+                    except Exception:
+                        pass
+            with console.status(
+                "[bold blue]Rescanning workspace (force invalidating cache)...", spinner="dots"
+            ):
+                service.analyze_repository(workspace_root)
+            console.print("[green]Workspace refreshed successfully.[/green]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios workspace <scan|summary|status|graph|refresh>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
     elif args and args[0] == "notion":
         import sys
 
@@ -1253,6 +1494,8 @@ def main() -> None:
                     user_input in ("help", "health", "provider list", "model list")
                     or user_input.startswith("route ")
                     or user_input.startswith("chat ")
+                    or user_input.startswith("workspace ")
+                    or user_input.startswith("providers")
                 ):
                     cmd_str = user_input
 

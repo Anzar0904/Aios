@@ -209,6 +209,9 @@ class ProviderHealth:
     success_rate: float = 1.0
     failure_rate: float = 0.0
     health_score: float = 100.0
+    timeout_history: List[float] = field(default_factory=list)
+    last_successful_request: float = 0.0
+    last_failure_request: float = 0.0
 
 
 class ProviderHealthRegistry:
@@ -243,6 +246,51 @@ class ProviderHealthRegistry:
         # Automatically update updated last_checked timestamp unless explicitly passed
         if "last_checked" not in kwargs:
             current.last_checked = time.time()
+
+    def update_health_success(self, provider_name: str, latency_ms: float) -> None:
+        """Updates registry on successful request to a provider."""
+        health = self.get_health(provider_name)
+        health.available = True
+        health.latency_ms = latency_ms
+        health.last_checked = time.time()
+        health.last_successful_request = time.time()
+        
+        # update success/failure rate
+        success = health.success_rate * 0.9 + 0.1
+        health.success_rate = success
+        health.failure_rate = 1.0 - success
+        
+        # calculate dynamic health score
+        score = success * 100.0
+        if latency_ms > 1000:
+            score -= min(30.0, (latency_ms - 1000) / 100)
+        health.health_score = max(0.0, min(100.0, score))
+
+    def update_health_failure(self, provider_name: str, error_message: str) -> None:
+        """Updates registry on failed request to a provider."""
+        health = self.get_health(provider_name)
+        if "timeout" in error_message.lower() or "deadline" in error_message.lower():
+            health.timeout_history.append(time.time())
+            if len(health.timeout_history) > 10:
+                health.timeout_history.pop(0)
+                
+        health.last_checked = time.time()
+        health.last_failure_request = time.time()
+        health.last_error = error_message
+        
+        success = health.success_rate * 0.9
+        health.success_rate = success
+        health.failure_rate = 1.0 - success
+        
+        score = success * 100.0
+        now = time.time()
+        recent_timeouts = sum(1 for t in health.timeout_history if now - t < 300)
+        score -= min(40.0, recent_timeouts * 10)
+        
+        if success < 0.2:
+            health.available = False
+            
+        health.health_score = max(0.0, min(100.0, score))
 
 
 # Global singleton instance for system-wide access
@@ -361,6 +409,8 @@ class RoutingRequest:
     estimated_output_tokens: int = 100
     preferred_provider: Optional[str] = None
     preferred_model: Optional[str] = None
+    excluded_providers: List[str] = field(default_factory=list)
+    routing_policy: Optional[str] = None
 
 
 @dataclass
@@ -399,9 +449,8 @@ class RoutingEngine:
             pref_provider = request.preferred_provider
             pref_model = request.preferred_model or "default"
 
-            # Verify if registered
             provider_inst = self.provider_registry.lookup(pref_provider)
-            if provider_inst:
+            if provider_inst and pref_provider not in request.excluded_providers:
                 return RoutingDecision(
                     provider=pref_provider,
                     model=pref_model,
@@ -409,6 +458,32 @@ class RoutingEngine:
                     reasoning=f"Manual override requested for provider '{pref_provider}' "
                     f"and model '{pref_model}'.",
                 )
+
+        # Determine policy weights
+        policy = request.routing_policy or "default"
+        if policy == "default":
+            try:
+                from pathlib import Path
+
+                from aios.config import load_config
+                config = load_config(Path("config/config.toml"))
+                if (
+                    config
+                    and hasattr(config, "llm")
+                    and getattr(config.llm, "routing_policy", None)
+                ):
+                    policy = config.llm.routing_policy
+            except Exception:
+                pass
+
+        if policy == "cost-first":
+            health_w, latency_w, cost_w = 0.1, 0.0, 0.9
+        elif policy == "speed-first":
+            health_w, latency_w, cost_w = 0.1, 0.9, 0.0
+        elif policy == "quality-first":
+            health_w, latency_w, cost_w = 0.8, 0.1, 0.1
+        else:  # default or local-first
+            health_w, latency_w, cost_w = 0.4, 0.3, 0.3
 
         # 2. Iterate through all registered providers and evaluate them
         candidates: List[Tuple[str, str, float, str]] = []
@@ -421,7 +496,9 @@ class RoutingEngine:
                 p_name = model_info.provider
                 m_name = model_info.model_id
 
-                # Check if provider exists
+                if p_name in request.excluded_providers:
+                    continue
+
                 provider = self.provider_registry.lookup(p_name)
                 if not provider:
                     continue
@@ -429,7 +506,6 @@ class RoutingEngine:
                 # A. Capabilities Match
                 caps = self.capability_registry.get_capabilities(p_name, m_name)
 
-                # Verify task compatibility based on model_info properties
                 if request.task_type == "coding" and not (
                     model_info.supports_coding
                     or (
@@ -454,7 +530,6 @@ class RoutingEngine:
                 ):
                     continue
 
-                # Verify other custom required capabilities
                 if request.required_capabilities:
                     missing_caps = False
                     for cap_name in request.required_capabilities:
@@ -490,29 +565,52 @@ class RoutingEngine:
                     )
 
                 # E. Weighted Scoring
-                health_contrib = health.health_score * 0.4
+                health_contrib = health.health_score * health_w
                 if health.latency_ms > 0:
                     latency_score = max(0.0, 100.0 - (health.latency_ms / 50.0))
                 else:
                     latency_score = 80.0
-                latency_contrib = latency_score * 0.3
+                latency_contrib = latency_score * latency_w
                 cost_score = max(0.0, 100.0 - (est_cost * 100.0))
-                cost_contrib = cost_score * 0.3
+                cost_contrib = cost_score * cost_w
 
                 final_score = health_contrib + latency_contrib + cost_contrib
+                
+                is_local = False
+                if hasattr(model_info, "is_local"):
+                    is_local = getattr(model_info, "is_local", False)
+                if not is_local:
+                    meta = getattr(provider, "metadata", provider)
+                    is_local = getattr(meta, "is_local", False) or p_name in (
+                        "ollama",
+                        "lmstudio",
+                        "mock",
+                    )
+                
+                if policy == "local-first" and is_local:
+                    final_score += 100.0
+                    
+                if policy == "quality-first":
+                    if model_info.supports_reasoning:
+                        final_score += 30.0
+                    if model_info.supports_coding:
+                        final_score += 20.0
+
                 reason = (
-                    f"Selected based on weighted routing metrics. "
-                    f"Health score: {health.health_score:.1f} (40% weight), "
-                    f"latency: {health.latency_ms:.1f}ms (30% weight), "
-                    f"estimated cost: {est_cost:.4f} USD (30% weight)."
+                    f"Routed under policy '{policy}'. "
+                    f"Health score: {health.health_score:.1f} "
+                    f"({health_w * 100.0:.0f}% weight), "
+                    f"latency: {health.latency_ms:.1f}ms ({latency_w * 100.0:.0f}% weight), "
+                    f"estimated cost: {est_cost:.4f} USD ({cost_w * 100.0:.0f}% weight)."
                 )
 
                 candidates.append((p_name, m_name, final_score, reason))
         else:
-            # Fallback to the provider metadata supported_models loop (compatibility mode)
             registered_providers = self.provider_registry.list_providers()
 
             for p_name in registered_providers:
+                if p_name in request.excluded_providers:
+                    continue
                 provider = self.provider_registry.lookup(p_name)
                 if not provider:
                     continue
@@ -523,7 +621,6 @@ class RoutingEngine:
                     models_to_test = ["default"]
 
                 for m_name in models_to_test:
-                    # A. Capabilities Match
                     caps = self.capability_registry.get_capabilities(p_name, m_name)
                     if caps:
                         if request.task_type == "coding" and not (
@@ -542,7 +639,6 @@ class RoutingEngine:
                         ):
                             continue
 
-                        # Verify other custom required capabilities
                         missing_caps = False
                         for cap_name in request.required_capabilities:
                             if not getattr(caps, cap_name, False):
@@ -551,18 +647,15 @@ class RoutingEngine:
                         if missing_caps:
                             continue
                     else:
-                        # If no capabilities registered, assume basic support for compatibility
                         if request.task_type in ["embeddings", "vision"]:
                             continue
 
-                    # B. Health Check
                     health = self.health_registry.get_health(p_name)
                     if not health.available:
                         continue
-                    if health.health_score < 20.0:  # Skip highly degraded or failing providers
+                    if health.health_score < 20.0:
                         continue
 
-                    # C. Quota Verification
                     quota = self.quota_registry.get_quota(p_name)
                     if not quota.unlimited:
                         total_tokens = (
@@ -571,7 +664,6 @@ class RoutingEngine:
                         if quota.requests_remaining <= 0 or quota.tokens_remaining < total_tokens:
                             continue
 
-                    # D. Cost Estimation
                     cost_profile = self.cost_registry.get_cost(p_name, m_name)
                     est_cost = 0.0
                     if cost_profile:
@@ -579,42 +671,45 @@ class RoutingEngine:
                             request.estimated_input_tokens, request.estimated_output_tokens
                         )
 
-                    # E. Weighted Scoring
-                    health_contrib = health.health_score * 0.4
+                    health_contrib = health.health_score * health_w
                     if health.latency_ms > 0:
                         latency_score = max(0.0, 100.0 - (health.latency_ms / 50.0))
                     else:
                         latency_score = 80.0
-                    latency_contrib = latency_score * 0.3
+                    latency_contrib = latency_score * latency_w
                     cost_score = max(0.0, 100.0 - (est_cost * 100.0))
-                    cost_contrib = cost_score * 0.3
+                    cost_contrib = cost_score * cost_w
 
                     final_score = health_contrib + latency_contrib + cost_contrib
+                    
+                    is_local = p_name in ("ollama", "lmstudio", "mock")
+                    if policy == "local-first" and is_local:
+                        final_score += 100.0
+
                     reason = (
-                        f"Selected based on weighted routing metrics. "
-                        f"Health score: {health.health_score:.1f} (40% weight), "
-                        f"latency: {health.latency_ms:.1f}ms (30% weight), "
-                        f"estimated cost: {est_cost:.4f} USD (30% weight)."
+                        f"Routed under policy '{policy}'. "
+                        f"Health score: {health.health_score:.1f} "
+                        f"({health_w * 100.0:.0f}% weight), "
+                        f"latency: {health.latency_ms:.1f}ms "
+                        f"({latency_w * 100.0:.0f}% weight), "
+                        f"estimated cost: {est_cost:.4f} USD "
+                        f"({cost_w * 100.0:.0f}% weight)."
                     )
 
                     candidates.append((p_name, m_name, final_score, reason))
 
-        # 3. Preferred-model narrowing:
-        #    When the caller specifies a preferred_model, restrict the candidate pool to
-        #    providers that are registered to serve that exact model.  Weighted scoring
-        #    then runs only within that restricted pool.  If no registered provider
-        #    supports the model we fall back to the full candidate list so routing
-        #    remains operational rather than returning an error.
         if request.preferred_model and candidates:
             model_matched = [c for c in candidates if c[1] == request.preferred_model]
             if model_matched:
                 candidates = model_matched
 
         if not candidates:
-            # Fallback to default/first registered provider
             registered_providers = self.provider_registry.list_providers()
-            if registered_providers:
-                fb_p = registered_providers[0]
+            valid_providers = [
+                p for p in registered_providers if p not in request.excluded_providers
+            ]
+            if valid_providers:
+                fb_p = valid_providers[0]
                 provider = self.provider_registry.lookup(fb_p)
                 meta = getattr(provider, "metadata", provider)
                 fb_m = (
@@ -630,7 +725,6 @@ class RoutingEngine:
                     f"Falling back to default provider '{fb_p}'.",
                 )
 
-            # Absolute fallback
             return RoutingDecision(
                 provider="mock",
                 model="mock-model",
@@ -638,7 +732,6 @@ class RoutingEngine:
                 reasoning="No active providers registered. Falling back to mock provider.",
             )
 
-        # Sort candidates by final_score descending
         candidates.sort(key=lambda x: x[2], reverse=True)
         best = candidates[0]
         return RoutingDecision(
@@ -706,114 +799,165 @@ class OmniRouteEngine:
 
     def execute(self, request: OmniRouteRequest) -> OmniRouteResponse:
         """Routes, executes, and updates telemetry/metadata for the request."""
-        # Resolve preferred provider if preferred model is provided without a provider
-        preferred_provider = request.preferred_provider
-        if not preferred_provider and request.preferred_model:
-            preferred_provider = self.model_registry.get_provider_for_model(request.preferred_model)
+        import logging
+        logger = logging.getLogger(__name__)
 
-        # 1. Create a RoutingRequest from the OmniRouteRequest
-        routing_req = RoutingRequest(
-            task_type=request.task_type,
-            required_capabilities=request.required_capabilities,
-            estimated_input_tokens=request.estimated_input_tokens,
-            estimated_output_tokens=request.estimated_output_tokens,
-            preferred_provider=preferred_provider,
-            preferred_model=request.preferred_model,
-        )
+        excluded_providers = []
+        max_fallbacks = 3
+        fallback_count = 0
 
-        # 2. Select the best provider/model endpoint using RoutingEngine
-        decision = self.routing_engine.route(routing_req)
-
-        # 3. Retrieve the AIProvider instance
-        provider_instance = self.provider_registry.lookup(decision.provider)
-        if not provider_instance:
-            raise RuntimeError(
-                f"Selected provider '{decision.provider}' "
-                f"is not registered in the AIProviderRegistry."
-            )
-
-        # 4. Invoke generate() on the provider
-        start_time = time.time()
+        default_retries = 2
         try:
-            # Combine options for provider invocation
-            invoke_params = request.additional_params.copy()
-            if request.temperature is not None:
-                invoke_params["temperature"] = request.temperature
-            if request.max_tokens is not None:
-                invoke_params["max_tokens"] = request.max_tokens
+            from pathlib import Path
 
-            # Resolve canonical model to provider-specific model ID
-            resolved_model = self.model_registry.resolve_provider_model(
-                decision.provider, decision.model
+            from aios.config import load_config
+            config = load_config(Path("config/config.toml"))
+            if (
+                config
+                and hasattr(config, "llm")
+                and getattr(config.llm, "omniroute_retry_count", None) is not None
+            ):
+                default_retries = config.llm.omniroute_retry_count
+        except Exception:
+            pass
+
+        max_retries = request.additional_params.get("max_retries", default_retries)
+        last_error = None
+        routing_decision = None
+
+        while fallback_count <= max_fallbacks:
+            preferred_provider = request.preferred_provider
+            if not preferred_provider and request.preferred_model:
+                preferred_provider = self.model_registry.get_provider_for_model(
+                    request.preferred_model
+                )
+
+            routing_req = RoutingRequest(
+                task_type=request.task_type,
+                required_capabilities=request.required_capabilities,
+                estimated_input_tokens=request.estimated_input_tokens,
+                estimated_output_tokens=request.estimated_output_tokens,
+                preferred_provider=preferred_provider,
+                preferred_model=request.preferred_model,
+                excluded_providers=excluded_providers.copy(),
+                routing_policy=request.additional_params.get("routing_policy"),
             )
 
-            content = provider_instance.generate(
-                model=resolved_model,
-                prompt=request.prompt,
-                system_prompt=request.system_prompt,
-                **invoke_params,
-            )
-            latency_ms = (time.time() - start_time) * 1000.0
-            last_error = None
-            success = True
-        except Exception as e:
-            latency_ms = (time.time() - start_time) * 1000.0
-            last_error = str(e)
+            decision = self.routing_engine.route(routing_req)
+            routing_decision = decision
+            if not decision or (decision.provider == "mock" and excluded_providers):
+                break
+
+            provider_instance = self.provider_registry.lookup(decision.provider)
+            if not provider_instance:
+                excluded_providers.append(decision.provider)
+                continue
+
             success = False
-            content = f"Error during execution: {last_error}"
+            content = ""
+            latency_ms = 0.0
 
-        # 5. Estimate cost
-        cost_profile = self.cost_registry.get_cost(decision.provider, decision.model)
-        input_tokens = request.estimated_input_tokens
-        output_tokens = max(1, len(content) // 4)
-        est_cost = 0.0
-        if cost_profile:
-            est_cost = cost_profile.estimated_request_cost(input_tokens, output_tokens)
+            for retry in range(max_retries + 1):
+                start_time = time.time()
+                try:
+                    invoke_params = request.additional_params.copy()
+                    if request.temperature is not None:
+                        invoke_params["temperature"] = request.temperature
+                    if request.max_tokens is not None:
+                        invoke_params["max_tokens"] = request.max_tokens
 
-        # 6. Update Health Statistics dynamically based on execution outcome
-        health = self.health_registry.get_health(decision.provider)
-        prev_success_rate = health.success_rate
-        if success:
-            new_success_rate = (prev_success_rate * 0.9) + 0.1
-            new_failure_rate = 1.0 - new_success_rate
-        else:
-            new_success_rate = prev_success_rate * 0.9
-            new_failure_rate = 1.0 - new_success_rate
+                    resolved_model = self.model_registry.resolve_provider_model(
+                        decision.provider, decision.model
+                    )
 
-        new_health_score = max(0.0, min(100.0, new_success_rate * 100.0))
+                    content = provider_instance.generate(
+                        model=resolved_model,
+                        prompt=request.prompt,
+                        system_prompt=request.system_prompt,
+                        **invoke_params,
+                    )
+                    latency_ms = (time.time() - start_time) * 1000.0
+                    success = True
+                    break
+                except Exception as e:
+                    latency_ms = (time.time() - start_time) * 1000.0
+                    last_error = str(e)
+                    
+                    self.health_registry.update_health_failure(decision.provider, last_error)
+                    
+                    logger.warning(
+                        f"Provider '{decision.provider}' failed on attempt {retry + 1} "
+                        f"with error: {last_error}. Retrying..."
+                    )
+                    time.sleep(0.1 * (retry + 1))
 
-        self.health_registry.update_health(
-            decision.provider,
-            available=success or health.available,
-            latency_ms=latency_ms if success else health.latency_ms,
-            last_error=last_error,
-            success_rate=new_success_rate,
-            failure_rate=new_failure_rate,
-            health_score=new_health_score,
-        )
+            if success:
+                self.health_registry.update_health_success(decision.provider, latency_ms)
 
-        # 7. Update Quotas
-        quota = self.quota_registry.get_quota(decision.provider)
-        if not quota.unlimited:
-            new_reqs = max(0, quota.requests_remaining - 1)
-            new_tokens = max(0, quota.tokens_remaining - (input_tokens + output_tokens))
-            self.quota_registry.update_quota(
-                decision.provider,
-                requests_remaining=new_reqs,
-                tokens_remaining=new_tokens,
+                cost_profile = self.cost_registry.get_cost(decision.provider, decision.model)
+                input_tokens = request.estimated_input_tokens
+                output_tokens = max(1, len(content) // 4)
+                est_cost = 0.0
+                if cost_profile:
+                    est_cost = cost_profile.estimated_request_cost(input_tokens, output_tokens)
+
+                quota = self.quota_registry.get_quota(decision.provider)
+                if not quota.unlimited:
+                    new_reqs = max(0, quota.requests_remaining - 1)
+                    new_tokens = max(0, quota.tokens_remaining - (input_tokens + output_tokens))
+                    self.quota_registry.update_quota(
+                        decision.provider,
+                        requests_remaining=new_reqs,
+                        tokens_remaining=new_tokens,
+                    )
+
+                try:
+                    from aios.providers.benchmark import record_metric
+                    record_metric(
+                        decision.provider,
+                        decision.model,
+                        input_tokens,
+                        output_tokens,
+                        est_cost,
+                        latency_ms,
+                        True,
+                    )
+                except Exception:
+                    pass
+
+                return OmniRouteResponse(
+                    content=content,
+                    provider=decision.provider,
+                    model=decision.model,
+                    routing_decision=decision,
+                    usage={"input_tokens": input_tokens, "output_tokens": output_tokens},
+                    cost=est_cost,
+                    latency_ms=latency_ms,
+                )
+            else:
+                logger.error(
+                    f"Provider '{decision.provider}' failed after {max_retries} retries. "
+                    f"Initiating fallback..."
+                )
+                excluded_providers.append(decision.provider)
+                fallback_count += 1
+                
+                try:
+                    from aios.providers.benchmark import record_metric
+                    record_metric(decision.provider, decision.model, 0, 0, 0.0, latency_ms, False)
+                except Exception:
+                    pass
+
+        if not routing_decision:
+            routing_decision = RoutingDecision(
+                provider="unknown",
+                model="unknown",
+                routing_score=0.0,
+                reasoning="All fallback options failed."
             )
-
-        if not success:
-            raise RuntimeError(f"OmniRoute execution failed: {last_error}")
-
-        return OmniRouteResponse(
-            content=content,
-            provider=decision.provider,
-            model=decision.model,
-            routing_decision=decision,
-            usage={"input_tokens": input_tokens, "output_tokens": output_tokens},
-            cost=est_cost,
-            latency_ms=latency_ms,
+        raise RuntimeError(
+            f"OmniRoute execution failed. All fallback providers exhausted. "
+            f"Last error: {last_error}"
         )
 
 
