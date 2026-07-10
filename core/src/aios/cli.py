@@ -445,6 +445,8 @@ def handle_general_chat(
 
 
 def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) -> bool:
+    import sys
+
     from aios.providers.interface import (
         OmniRouteRequest,
         RoutingRequest,
