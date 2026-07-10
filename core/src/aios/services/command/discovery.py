@@ -891,3 +891,358 @@ def register_default_commands(registry: CommandRegistry, kernel: Any, conv_manag
         handle_brain_execute,
     )
 
+    # 5. Workspace Intelligence Commands
+    def handle_workspace_scan(args: str) -> None:
+        workspace_root = "."
+        try:
+            from aios.services.context import ContextService
+            ctx_svc = kernel.registry.get(ContextService)
+            ctx = ctx_svc.get_current_context()
+            if ctx:
+                workspace_root = ctx.project_root
+        except Exception:
+            pass
+
+        from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+        workspace_intel = kernel.registry.get(WorkspaceIntelligenceService) if kernel else None
+        if not workspace_intel:
+            print("Workspace Intelligence Service is not registered.")
+            return
+
+        print(f"Scanning workspace root: {workspace_root}...")
+        workspace_intel.analyze_repository(workspace_root)
+        print("Workspace scan completed successfully. Reports generated under docs/.")
+
+    def handle_workspace_summary_cmd(args: str) -> None:
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.console import Console
+        console = Console()
+        
+        workspace_root = "."
+        try:
+            from aios.services.context import ContextService
+            ctx_svc = kernel.registry.get(ContextService)
+            ctx = ctx_svc.get_current_context()
+            if ctx:
+                workspace_root = ctx.project_root
+        except Exception:
+            pass
+
+        from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+        workspace_intel = kernel.registry.get(WorkspaceIntelligenceService) if kernel else None
+        if not workspace_intel:
+            print("Workspace Intelligence Service is not registered.")
+            return
+
+        summary = workspace_intel.analyze_repository(workspace_root)
+        
+        grid = Table.grid(padding=1)
+        grid.add_column(style="bold cyan", justify="right")
+        grid.add_column(style="white")
+        
+        grid.add_row("High-Level Architecture:", summary.high_level_architecture)
+        grid.add_row("Components:", ", ".join(summary.components))
+        grid.add_row("Design Patterns:", ", ".join(summary.design_patterns))
+        grid.add_row("Languages:", ", ".join([f"{lang} ({cnt})" for lang, cnt in summary.languages.items()]))
+        grid.add_row("Frameworks:", ", ".join(summary.frameworks))
+        grid.add_row("Package Managers:", ", ".join(summary.package_managers))
+        
+        health_grid = Table.grid(padding=1)
+        health_grid.add_column(style="bold green", justify="right")
+        health_grid.add_column(style="white")
+        health_grid.add_row("Files Count:", str(summary.health.file_count))
+        health_grid.add_row("Folders Count:", str(summary.health.folder_count))
+        health_grid.add_row("Test Count:", str(summary.health.test_count))
+        health_grid.add_row("Doc Coverage:", f"{summary.health.documentation_coverage:.1%}")
+        health_grid.add_row("README Coverage:", f"{summary.health.readme_coverage:.1%}")
+        health_grid.add_row("Config Completeness:", f"{summary.health.config_completeness:.1%}")
+        
+        console.print(Panel(grid, title="[bold white]Workspace Summary[/bold white]", border_style="cyan"))
+        console.print(Panel(health_grid, title="[bold white]Workspace Health[/bold white]", border_style="green"))
+
+    def handle_workspace_status_cmd(args: str) -> None:
+        from rich.table import Table
+        from rich.console import Console
+        from rich.panel import Panel
+        console = Console()
+        
+        workspace_root = "."
+        try:
+            from aios.services.context import ContextService
+            ctx_svc = kernel.registry.get(ContextService)
+            ctx = ctx_svc.get_current_context()
+            if ctx:
+                workspace_root = ctx.project_root
+        except Exception:
+            pass
+
+        from aios.services.developer_workspace import DeveloperWorkspaceService
+        dev_ws = kernel.registry.get(DeveloperWorkspaceService) if kernel else None
+        if not dev_ws:
+            print("Developer Workspace Service is not registered.")
+            return
+            
+        info = dev_ws.get_workspace_info(workspace_root)
+        
+        grid = Table.grid(padding=1)
+        grid.add_column(style="bold yellow", justify="right")
+        grid.add_column(style="white")
+        
+        grid.add_row("Git Branch:", info.extra.get("git_branch") or "unknown")
+        grid.add_row("Staged Files:", str(len(info.staged_files)))
+        grid.add_row("Unstaged Files:", str(len(info.unstaged_files)))
+        grid.add_row("Untracked Files:", str(len(info.untracked_files)))
+        grid.add_row("Build Systems:", ", ".join(info.build_systems))
+        grid.add_row("Linters:", ", ".join(info.linters))
+        grid.add_row("Detected Tests:", str(len(info.detected_tests)))
+        
+        console.print(Panel(grid, title="[bold white]Workspace Status[/bold white]", border_style="yellow"))
+
+    def handle_workspace_graph_cmd(args: str) -> None:
+        from aios.services.workspace_intelligence import CodeIntelligenceService
+        code_intel = kernel.registry.get(CodeIntelligenceService) if kernel else None
+        if not code_intel:
+            print("Code Intelligence Service is not registered.")
+            return
+            
+        workspace_root = "."
+        try:
+            from aios.services.context import ContextService
+            ctx_svc = kernel.registry.get(ContextService)
+            ctx = ctx_svc.get_current_context()
+            if ctx:
+                workspace_root = ctx.project_root
+        except Exception:
+            pass
+
+        summary = code_intel.analyze_codebase(workspace_root)
+        
+        mermaid_lines = ["graph TD"]
+        for src, dests in list(summary.dependency_graph.items())[:25]:
+            src_name = Path(src).name
+            for dest in dests:
+                dest_name = Path(dest).name
+                mermaid_lines.append(f"    {src_name} --> {dest_name}")
+                
+        print("\n".join(mermaid_lines))
+
+    def handle_workspace_refresh_cmd(args: str) -> None:
+        workspace_root = "."
+        try:
+            from aios.services.context import ContextService
+            ctx_svc = kernel.registry.get(ContextService)
+            ctx = ctx_svc.get_current_context()
+            if ctx:
+                workspace_root = ctx.project_root
+        except Exception:
+            pass
+
+        # Clear caches
+        for cache_file in (".aios_project_intelligence.json", ".aios_code_intelligence.json"):
+            cache_path = Path(workspace_root) / cache_file
+            if cache_path.is_file():
+                try:
+                    cache_path.unlink()
+                except Exception:
+                    pass
+                    
+        from aios.services.workspace_intelligence import WorkspaceIntelligenceService
+        workspace_intel = kernel.registry.get(WorkspaceIntelligenceService) if kernel else None
+        if not workspace_intel:
+            print("Workspace Intelligence Service is not registered.")
+            return
+            
+        workspace_intel.analyze_repository(workspace_root)
+        print("Workspace refreshed successfully.")
+
+    registry.register_command(
+        CommandMetadata(
+            name="workspace scan",
+            description="Scans the repository structures, dependencies, health metrics, and generates markdown documentation reports.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="workspace scan",
+        ),
+        handle_workspace_scan,
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="workspace summary",
+            description="Displays the high-level architecture overview, components, tech stack, and health details.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="workspace summary",
+        ),
+        handle_workspace_summary_cmd,
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="workspace status",
+            description="Displays current branch status, uncommitted files, tracked test counts, and linters configuration.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="workspace status",
+        ),
+        handle_workspace_status_cmd,
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="workspace graph",
+            description="Generates and displays module/dependency graph representation using Mermaid notation.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="workspace graph",
+        ),
+        handle_workspace_graph_cmd,
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="workspace refresh",
+            description="Forces invalidation of incremental caches and runs a complete clean workspace rescan.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="workspace refresh",
+        ),
+        handle_workspace_refresh_cmd,
+    )
+
+    # --- Supabase Intelligence Interactive Commands ---
+    def handle_supabase_cmd(subcmd: str, args: str) -> None:
+        from aios.cli import execute_builtin_cli_command
+        cli_args = ["supabase", subcmd]
+        if args:
+            cli_args.extend(args.split())
+        execute_builtin_cli_command(cli_args, exit_on_complete=False)
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase login",
+            description="Log in to Supabase using personal access token or project URL + service role key.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase login --token sb_pat_xxx",
+        ),
+        lambda args: handle_supabase_cmd("login", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase status",
+            description="Show the current connection status to Supabase.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase status",
+        ),
+        lambda args: handle_supabase_cmd("status", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase projects",
+            description="List all discovered or configured Supabase projects.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase projects",
+        ),
+        lambda args: handle_supabase_cmd("projects", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase schema",
+            description="Explore the database schema of the active Supabase project.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase schema",
+        ),
+        lambda args: handle_supabase_cmd("schema", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase security",
+            description="Analyze security policies, public tables, and RLS state of the project.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase security",
+        ),
+        lambda args: handle_supabase_cmd("security", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase storage",
+            description="List storage buckets and check policies for public/private access.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase storage",
+        ),
+        lambda args: handle_supabase_cmd("storage", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase auth",
+            description="Analyze authentication providers, OAuth configuration, and MFA settings.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase auth",
+        ),
+        lambda args: handle_supabase_cmd("auth", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase migrations",
+            description="View migration logs, drift detection status, and pending migrations.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase migrations",
+        ),
+        lambda args: handle_supabase_cmd("migrations", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase functions",
+            description="List edge functions, their status, and deploy readiness.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase functions",
+        ),
+        lambda args: handle_supabase_cmd("functions", args),
+    )
+
+    registry.register_command(
+        CommandMetadata(
+            name="supabase summary",
+            description="Generate a high-level summary of the connected project and write markdown reports.",
+            category=CommandCategory.CLI,
+            required_agent="None",
+            required_tools=[],
+            example_usage="supabase summary",
+        ),
+        lambda args: handle_supabase_cmd("summary", args),
+    )
+
+
+

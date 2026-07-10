@@ -340,3 +340,53 @@ aios workflow sync path/to/workflow.json
 See [docs/runtime/ARCHITECTURE.md](docs/runtime/ARCHITECTURE.md) for full design details,
 data flows, version history schema, drift detection, failure recovery, and the complete
 CLI reference.
+
+
+## ⚡ Supabase Intelligence (Sprint 26)
+
+The **Supabase Intelligence** subsystem enables AI OS to discover, manage, analyze, secure, monitor, and automate Supabase projects.
+
+### Key Capabilities
+- **Connection Manager**: Secure connection and authentication using Personal Access Tokens (PAT), Project URLs, and Service Role Keys (stored securely with `0600` permissions).
+- **Schema & Database Intelligence**: Automatically discovers database schemas, tables, columns, views, triggers, and foreign key relationships to generate comprehensive ER summaries.
+- **Security Audit**: Scans database tables for missing RLS policies, alerts on public table exposures, checks storage bucket policies, and flags security drift.
+- **Migration & Drift Engine**: Tracks migration logs and applied versions in the remote database, detecting schema drift dynamically without applying destructive migrations automatically.
+- **Edge Functions & Storage**: Indexes storage buckets (public vs private limits) and lists active Deno Edge Functions with JWT authorization configurations.
+- **Runtime Reports**: Automatically outputs 6 markdown files (summary, schema, security, migrations, storage, auth reports) under `docs/supabase/`.
+
+### CLI Commands Reference
+```bash
+# 1. Log in to a Supabase project or account
+aios supabase login [--token <token>] [--url <url>] [--key <key>]
+
+# 2. Check current active project connection status
+aios supabase status
+
+# 3. List all discovered projects under account (requires PAT login)
+aios supabase projects
+
+# 4. Explore active database schema tables, views, and functions
+aios supabase schema
+
+# 5. Execute a security audit scan on RLS policies and exposures
+aios supabase security
+
+# 6. List storage buckets and check access permissions
+aios supabase storage
+
+# 7. View auth configuration, MFA states, and SMTP mailer configurations
+aios supabase auth
+
+# 8. Retrieve applied migration history and schema drift status
+aios supabase migrations
+
+# 9. List deployed Edge Functions and check JWT verification status
+aios supabase functions
+
+# 10. Compile a high-level summary and generate markdown reports
+aios supabase summary
+```
+
+### Architecture Reference
+See [docs/supabase/architecture.md](docs/supabase/architecture.md) for design details, APIs, credentials schemas, and the complete CLI guides.
+

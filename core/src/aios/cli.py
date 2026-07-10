@@ -1059,7 +1059,365 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 sys.exit(0)
             return True
 
+    elif args and args[0] == "github":
+        # ── GitHub Intelligence — Sprint 25 ─────────────────────────────────
+        import sys  # ensure sys is locally bound in this function scope
+
+        from aios.github.connection import GitHubConnectionManager
+        from aios.github.intelligence import GitHubIntelligenceEngine
+        from aios.github.reports import GitHubReportGenerator
+
+        sub = args[1] if len(args) > 1 else None
+
+        def _make_engine():
+            # model_service is optional; LLM calls degrade gracefully when None
+            return GitHubIntelligenceEngine(model_service=None)
+
+        if sub == "login":
+            token_arg = args[2] if len(args) > 2 else None
+            mgr = GitHubConnectionManager(token=token_arg)
+            result = mgr.login(token=token_arg)
+            if result["success"]:
+                console.print(
+                    f"[green]✓ Logged in as {result['user']}[/green]"
+                )
+            else:
+                console.print(
+                    f"[red]✗ Login failed: {result['message']}[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "status":
+            mgr = GitHubConnectionManager()
+            st = mgr.get_status()
+            if st.get("connected"):
+                console.print(
+                    f"[green]✓ Connected as {st['user']}[/green]"
+                )
+                console.print(
+                    f"  Token hint: {st.get('token_hint', 'n/a')}"
+                )
+            else:
+                console.print(
+                    "[yellow]Not connected. Run: aios github login[/yellow]"
+                )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "repos":
+            mgr = GitHubConnectionManager()
+            repos = mgr.list_user_repos()
+            if not repos:
+                console.print("[yellow]No repositories found or not authenticated.[/yellow]")
+            for r in repos:
+                priv = "[dim](private)[/dim]" if r.get("private") else ""
+                console.print(
+                    f"  [cyan]{r.get('full_name', r.get('name'))}[/cyan] "
+                    f"{priv} — {r.get('description') or ''}"
+                )
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "repo":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print("[red]Usage: aios github repo <owner/repo>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                repo = engine.inspect_repository(repo_name)
+                console.print(f"[bold]{repo.owner}/{repo.name}[/bold]")
+                console.print(f"  Description : {repo.description or 'N/A'}")
+                console.print(f"  Stars       : {repo.stars}")
+                console.print(f"  Forks       : {repo.forks}")
+                console.print(f"  Open Issues : {repo.open_issues_count}")
+                console.print(f"  Languages   : {', '.join(repo.languages) or 'N/A'}")
+                console.print(f"  Private     : {repo.is_private}")
+                console.print(f"  URL         : {repo.url}")
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "branches":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print("[red]Usage: aios github branches <owner/repo>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                branches = engine.list_branches(repo_name)
+                console.print(
+                    f"[cyan]{len(branches)} branch(es) in {repo_name}[/cyan]"
+                )
+                for b in branches:
+                    console.print(f"  {b.name}  ({b.sha[:7]})")
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "commits":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print("[red]Usage: aios github commits <owner/repo>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                commits = engine.get_commit_history(repo_name)
+                console.print(
+                    f"[cyan]Last {len(commits)} commit(s) in {repo_name}[/cyan]"
+                )
+                for c in commits:
+                    console.print(
+                        f"  [{c.sha[:7]}] {c.message[:72]} "
+                        f"— {c.author} ({c.date[:10]})"
+                    )
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "issues":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print("[red]Usage: aios github issues <owner/repo>[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                issues = engine.list_issues(repo_name)
+                console.print(
+                    f"[cyan]{len(issues)} open issue(s) in {repo_name}[/cyan]"
+                )
+                for i in issues:
+                    labels = ", ".join(i.get("labels", []))
+                    console.print(
+                        f"  #{i.get('number')} {i.get('title')} "
+                        f"[{labels or 'no labels'}]"
+                    )
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "pr":
+            # aios github pr <owner/repo> [pr_number]
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print(
+                    "[red]Usage: aios github pr <owner/repo> [number][/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                if len(args) > 3:
+                    pr_num = int(args[3])
+                    pr = engine.inspect_pull_request(repo_name, pr_num)
+                    console.print(
+                        f"[bold]PR #{pr.number}: {pr.title}[/bold]"
+                    )
+                    console.print(f"  State   : {pr.state}")
+                    console.print(f"  Author  : {pr.user}")
+                    console.print(f"  URL     : {pr.html_url}")
+                    console.print(f"  Draft   : {pr.is_draft}")
+                else:
+                    prs = engine.list_pull_requests(repo_name)
+                    console.print(
+                        f"[cyan]{len(prs)} PR(s) in {repo_name}[/cyan]"
+                    )
+                    for p in prs:
+                        console.print(
+                            f"  #{p.get('number')} {p.get('title')} "
+                            f"— {p.get('state')} by {p.get('user')}"
+                        )
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "releases":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print(
+                    "[red]Usage: aios github releases <owner/repo>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                releases = engine.get_release_history(repo_name)
+                console.print(
+                    f"[cyan]{len(releases)} release(s) in {repo_name}[/cyan]"
+                )
+                for r in releases:
+                    console.print(
+                        f"  {r.tag_name}  {r.name}  "
+                        f"({r.created_at[:10] if r.created_at else 'n/a'})"
+                    )
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "actions":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print(
+                    "[red]Usage: aios github actions <owner/repo>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            try:
+                workflows = engine.get_workflow_status(repo_name)
+                console.print(
+                    f"[cyan]{len(workflows)} action run(s) in {repo_name}[/cyan]"
+                )
+                for w in workflows:
+                    conclusion = w.conclusion or "pending"
+                    console.print(
+                        f"  #{w.id} {w.name}  "
+                        f"status={w.status}  conclusion={conclusion}"
+                    )
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif sub == "summary":
+            repo_name = args[2] if len(args) > 2 else None
+            if not repo_name:
+                console.print(
+                    "[red]Usage: aios github summary <owner/repo>[/red]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            engine = _make_engine()
+            rpt = GitHubReportGenerator()
+            try:
+                repo = engine.inspect_repository(repo_name)
+                prs = engine.list_pull_requests(repo_name)
+                issues = engine.list_issues(repo_name)
+                branches = engine.list_branches(repo_name)
+                releases = engine.get_release_history(repo_name)
+                workflows = engine.get_workflow_status(repo_name)
+
+                ai_summary = engine.generate_repo_summary(repo_name)
+                ai_actions = engine.summarise_actions(repo_name)
+
+                rpt.generate_all(
+                    repo={
+                        "owner": repo.owner,
+                        "name": repo.name,
+                        "description": repo.description,
+                        "stars": repo.stars,
+                        "forks": repo.forks,
+                        "languages": repo.languages,
+                        "url": repo.url,
+                        "is_private": repo.is_private,
+                        "open_issues_count": repo.open_issues_count,
+                    },
+                    prs=prs,
+                    issues=issues,
+                    branches=[
+                        {"name": b.name, "sha": b.sha} for b in branches
+                    ],
+                    releases=[
+                        {
+                            "tag_name": r.tag_name,
+                            "name": r.name,
+                            "created_at": r.created_at,
+                        }
+                        for r in releases
+                    ],
+                    workflows=[
+                        {
+                            "id": w.id,
+                            "name": w.name,
+                            "status": w.status,
+                            "conclusion": w.conclusion,
+                        }
+                        for w in workflows
+                    ],
+                    ai_repo_summary=ai_summary,
+                    ai_actions_summary=ai_actions,
+                )
+
+                console.print(
+                    f"[green]✓ GitHub Intelligence summary for "
+                    f"{repo.owner}/{repo.name} generated.[/green]"
+                )
+                console.print("[dim]Reports written to docs/github/[/dim]")
+                console.print(f"\n[bold]AI Summary:[/bold]\n{ai_summary[:500]}")
+            except Exception as exc:
+                console.print(f"[red]Error: {exc}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios github "
+                "<login|status|repos|repo|branches|commits|issues|pr|releases|actions|summary>"
+                "[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
     elif args and args[0] == "workflow":
+
         if len(args) < 2:
             console.print(
                 "[yellow]Usage: aios workflow "
@@ -2360,6 +2718,258 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             console.print(
                 "[yellow]Usage: aios notion <login|logout|status|sync|search|"
                 "summarize|create-page|update-page|list-databases>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+    elif args and args[0] == "supabase":
+        import sys
+
+        if len(args) < 2:
+            console.print(
+                "[yellow]Usage: aios supabase <login|status|projects|schema|"
+                "security|storage|auth|migrations|functions|summary>[/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        subcommand = args[1]
+        from aios.registry import ServiceRegistry
+        from aios.services.supabase import SupabaseService
+        from aios.services.supabase_impl import LocalSupabaseIntelligenceService
+
+        service = None
+        if ServiceRegistry._global_registry:
+            try:
+                service = ServiceRegistry._global_registry.get(SupabaseService)
+            except Exception:
+                pass
+        
+        if not service:
+            service = LocalSupabaseIntelligenceService()
+            service.initialize()
+            service.start()
+
+        if subcommand == "login":
+            token = None
+            url = None
+            key = None
+            ref = None
+
+            for i in range(len(args)):
+                if args[i] == "--token" and i + 1 < len(args):
+                    token = args[i+1]
+                elif args[i] == "--url" and i + 1 < len(args):
+                    url = args[i+1]
+                elif args[i] == "--key" and i + 1 < len(args):
+                    key = args[i+1]
+                elif args[i] == "--ref" and i + 1 < len(args):
+                    ref = args[i+1]
+
+            if not token and not (url and key):
+                token = input("Enter Supabase Personal Access Token (PAT) [Press Enter to Skip]: ").strip() or None
+                if not token:
+                    url = input("Enter Supabase Project URL (e.g., https://xyz.supabase.co): ").strip() or None
+                    key = input("Enter Supabase Service Role Key: ").strip() or None
+                    ref = input("Enter Project Ref (optional): ").strip() or None
+
+            success = service.login(access_token=token, project_url=url, service_role_key=key, project_ref=ref)
+            if success:
+                console.print("[green]✓ Successfully authenticated with Supabase.[/green]")
+                if exit_on_complete:
+                    sys.exit(0)
+            else:
+                console.print("[red]✗ Authentication failed. Please check your credentials.[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+            return True
+
+        elif subcommand == "status":
+            status = service.get_status()
+            table = Table(title="Supabase Connection Status", border_style="green")
+            table.add_column("Property", style="bold green")
+            table.add_column("Value", style="white")
+            table.add_row("Connected State", "[green]CONNECTED[/green]" if status["connected"] else "[red]DISCONNECTED[/red]")
+            table.add_row("Access Token Present", "Yes" if status["access_token_present"] else "No")
+            table.add_row("Active Project Ref", status["active_project_ref"] or "None")
+            table.add_row("Active Project URL", status["project_url"] or "None")
+            table.add_row("Projects Count", str(status["projects_count"]))
+            console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "projects":
+            projects = service.list_projects()
+            if not projects:
+                console.print("[yellow]No projects discovered. Run 'aios supabase login' first.[/yellow]")
+            else:
+                table = Table(title="Supabase Discovered Projects", border_style="cyan")
+                table.add_column("Project Name", style="bold cyan")
+                table.add_column("Reference (Ref)", style="white")
+                table.add_column("Region", style="green")
+                table.add_column("URL", style="dim")
+                for p in projects:
+                    table.add_row(p.get("name", "N/A"), p.get("ref", "N/A"), p.get("region", "N/A"), p.get("url", "N/A"))
+                console.print(table)
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "schema":
+            try:
+                schema = service.get_schema()
+                table = Table(title="Supabase Database Schema Exploration", border_style="magenta")
+                table.add_column("Table Name", style="bold magenta")
+                table.add_column("Columns count", style="white")
+                table.add_column("Columns Details", style="dim")
+                
+                for t in schema.get("tables", []):
+                    cols = t.get("columns", [])
+                    col_names = ", ".join([f"{c.get('name')}({c.get('type')})" for c in cols[:5]])
+                    if len(cols) > 5:
+                        col_names += ", ..."
+                    table.add_row(t.get("name"), str(len(cols)), col_names)
+                console.print(table)
+                
+                if schema.get("views"):
+                    console.print(Panel(f"Views: {', '.join([v.get('name', v) if isinstance(v, dict) else v for v in schema.get('views', [])])}", title="Views discovered", border_style="cyan"))
+                if schema.get("functions"):
+                    console.print(Panel(f"Functions: {', '.join([f.get('name', f) if isinstance(f, dict) else f for f in schema.get('functions', [])])}", title="Functions discovered", border_style="blue"))
+            except Exception as e:
+                console.print(f"[red]Error fetching schema: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "security":
+            try:
+                security = service.get_security_analysis()
+                console.print(Panel(
+                    f"[green]RLS Enabled Tables:[/green] {', '.join(security.get('rls_enabled_tables', [])) or 'None'}\n"
+                    f"[red]RLS Disabled Tables:[/red] {', '.join(security.get('rls_disabled_tables', [])) or 'None'}",
+                    title="Row Level Security (RLS) Status", border_style="yellow"
+                ))
+                
+                if security.get("security_recommendations"):
+                    console.print("[bold red]Security Recommendations:[/bold red]")
+                    for rec in security["security_recommendations"]:
+                        console.print(f"  - {rec}")
+                else:
+                    console.print("[green]✓ No critical security vulnerabilities detected.[/green]")
+            except Exception as e:
+                console.print(f"[red]Error fetching security analysis: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "storage":
+            try:
+                storage = service.get_storage()
+                table = Table(title="Supabase Storage Buckets", border_style="blue")
+                table.add_column("Bucket ID", style="bold blue")
+                table.add_column("Public Access", style="white")
+                table.add_column("File Size Limit (Bytes)", style="dim")
+                
+                for b in storage.get("buckets", []):
+                    table.add_row(b.get("id"), "Yes" if b.get("public") else "No", str(b.get("file_size_limit") or "Unlimited"))
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching storage stats: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "auth":
+            try:
+                auth = service.get_auth_config()
+                table = Table(title="Supabase Auth Provider Settings", border_style="yellow")
+                table.add_column("Provider / Setting", style="bold yellow")
+                table.add_column("State", style="white")
+                
+                providers = auth.get("providers", {})
+                for k, v in providers.items():
+                    state = "[green]Enabled[/green]" if v.get("enabled") else "[red]Disabled[/red]"
+                    table.add_row(k.capitalize(), state)
+                
+                mfa = auth.get("mfa", {})
+                for k, v in mfa.items():
+                    state = "[green]Enabled[/green]" if v.get("enabled") else "[red]Disabled[/red]"
+                    table.add_row(f"MFA - {k.upper()}", state)
+                
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching auth config: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "migrations":
+            try:
+                migrations = service.get_migrations()
+                table = Table(title="Supabase Migration Logs", border_style="cyan")
+                table.add_column("Version", style="bold cyan")
+                table.add_column("Migration Name", style="white")
+                table.add_column("Applied At", style="dim")
+                
+                for m in migrations.get("migration_history", []):
+                    table.add_row(m.get("version"), m.get("name"), m.get("applied_at"))
+                console.print(table)
+                
+                drift = "Yes" if migrations.get("drift_detected") else "No"
+                console.print(Panel(f"Drift Detected: {drift}", title="Drift Detection", border_style="red" if drift == "Yes" else "green"))
+            except Exception as e:
+                console.print(f"[red]Error fetching migrations history: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "functions":
+            try:
+                funcs = service.get_edge_functions()
+                table = Table(title="Supabase Edge Functions", border_style="magenta")
+                table.add_column("Function Name", style="bold magenta")
+                table.add_column("Status", style="green")
+                table.add_column("Verify JWT", style="white")
+                
+                for f in funcs.get("functions", []):
+                    table.add_row(f.get("name"), f.get("status"), "Yes" if f.get("verify_jwt") else "No")
+                console.print(table)
+            except Exception as e:
+                console.print(f"[red]Error fetching edge functions: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        elif subcommand == "summary":
+            try:
+                summary = service.get_project_summary()
+                table = Table(title=f"Supabase Project Summary: {summary.get('name')}", border_style="green")
+                table.add_column("Component", style="bold green")
+                table.add_column("Count / Details", style="white")
+                table.add_row("Project Reference", summary.get("project_ref"))
+                table.add_row("Region", summary.get("region"))
+                table.add_row("Tables Count", str(summary.get("tables_count")))
+                table.add_row("Views Count", str(summary.get("views_count")))
+                table.add_row("Storage Buckets", str(summary.get("buckets_count")))
+                table.add_row("Edge Functions", str(summary.get("functions_count")))
+                console.print(table)
+                
+                console.print("[cyan]Generating full markdown reports under docs/supabase/...[/cyan]")
+                service.generate_reports()
+                console.print("[green]✓ Reports generated successfully.[/green]")
+            except Exception as e:
+                console.print(f"[red]Error fetching project summary: {e}[/red]")
+            if exit_on_complete:
+                sys.exit(0)
+            return True
+
+        else:
+            console.print(
+                "[yellow]Usage: aios supabase <login|status|projects|schema|"
+                "security|storage|auth|migrations|functions|summary>[/yellow]"
             )
             if exit_on_complete:
                 sys.exit(1)

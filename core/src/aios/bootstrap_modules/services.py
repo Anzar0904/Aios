@@ -89,6 +89,8 @@ from aios.services.n8n_translation import WorkflowTranslator
 from aios.services.n8n_translation_impl import LocalWorkflowTranslator
 from aios.services.notion import NotionService
 from aios.services.notion_impl import LocalNotionService
+from aios.services.supabase import SupabaseService
+from aios.services.supabase_impl import LocalSupabaseIntelligenceService
 from aios.services.orchestrator import OrchestratorService
 from aios.services.orchestrator_impl import LocalOrchestratorService
 from aios.services.patch_generation import PatchGenerationService
@@ -642,6 +644,10 @@ def bootstrap_services(
     )
     notion_service.initialize()
     registry.register(NotionService, notion_service)
+
+    supabase_service = LocalSupabaseIntelligenceService()
+    supabase_service.initialize()
+    registry.register(SupabaseService, supabase_service)
 
     registry.register(SourceControlRegistry, sc_registry)
     registry.register(ProviderDiscovery, sc_discovery)
