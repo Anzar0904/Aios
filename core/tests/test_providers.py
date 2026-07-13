@@ -1,5 +1,5 @@
-import pytest
-from aios.providers.interface import universal_health_registry, universal_cost_registry
+from aios.providers.interface import universal_health_registry
+
 
 def test_provider_health_and_metrics():
     universal_health_registry.update_health("openai", available=True, latency_ms=100.0, last_error=None, success_rate=1.0, failure_rate=0.0, health_score=100.0)

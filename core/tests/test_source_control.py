@@ -1,33 +1,19 @@
 import os
-import shutil
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 from aios.source_control import (
-    SourceControlRegistry,
-    ProviderDiscovery,
-    ProviderConfigurationService,
-    ProviderHealthMonitor,
-    ProviderDiagnostics,
-    ProviderValidator,
-    SourceControlService,
-    LocalGitExecutor,
-    RepositoryManager,
-    BranchManager,
-    CommitManager,
-    TagManager,
-    MergeManager,
-    DiffManager,
-    WorkspaceRepositoryManager,
-    PullRequestManager,
-    IssueManager,
-    ReleaseManager,
-    WorkflowManager,
-    WebhookManager,
-    SourceControlTelemetry,
-    SourceControlStatistics,
-    SourceControlReportGenerator,
     GitHubProvider,
+    LocalGitExecutor,
+    ProviderConfigurationService,
+    ProviderDiagnostics,
+    ProviderDiscovery,
+    ProviderHealthMonitor,
+    ProviderValidator,
+    SourceControlRegistry,
+    SourceControlReportGenerator,
+    SourceControlStatistics,
+    SourceControlTelemetry,
 )
 
 

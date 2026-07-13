@@ -1,8 +1,12 @@
-import pytest
+from aios.providers.adapters import MockProvider
+from aios.providers.interface import (
+    ModelInfo,
+    universal_model_registry,
+    universal_provider_registry,
+)
 from aios.services.model import LLMRequest
 from aios.services.model_impl import LocalModelService
-from aios.providers.interface import universal_provider_registry, universal_model_registry, ModelInfo
-from aios.providers.adapters import MockProvider, OpenAIProvider, ClaudeProvider, GeminiProvider
+
 
 def test_model_registry():
     universal_model_registry.register_model(ModelInfo(provider="openai", model_id="gpt-4o", display_name="GPT-4o", family="GPT"))

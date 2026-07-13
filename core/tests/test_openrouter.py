@@ -1,6 +1,5 @@
-import pytest
-from aios.services.model import LLMRequest
 from aios.providers.nvidia import NVIDIAProvider
+
 
 def test_nvidia_provider_init():
     provider = NVIDIAProvider()

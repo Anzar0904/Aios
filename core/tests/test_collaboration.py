@@ -1,26 +1,23 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
 from aios.services.collaboration import (
-    ReviewerRole,
     ReviewAction,
-    Reviewer,
-    ReviewComment,
-    ReviewThread,
-    ReviewVote,
-    ReviewAuditLog,
-    ReviewTimeline,
     ReviewCollaborationReport,
+    ReviewComment,
+    Reviewer,
+    ReviewerRole,
+    ReviewVote,
 )
 from aios.services.collaboration_impl import (
     LocalReviewCollaborationService,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 
 
 @pytest.fixture
@@ -103,7 +100,7 @@ def test_audit_log_and_timeline(mock_memory_service):
     service.initialize()
 
     comment = ReviewComment("c1", "Alice", "Validation comments", "validation", time.time())
-    thread = service.create_thread("ws_1", "sess_1", comment)
+    service.create_thread("ws_1", "sess_1", comment)
     
     vote = ReviewVote("Bob", "approve_with_conditions", "Minor code style warnings.", time.time())
     service.cast_vote("ws_1", "sess_1", vote)
@@ -138,8 +135,8 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     comment = ReviewComment("c1", "Alice", "Doc issue", "documentation", time.time())
     service.create_thread(ws_id, "sess_collab_1", comment)
     
-    report = service.compile_collaboration_report(ws_id, "sess_collab_1")
-    expected_file = os.path.join(ws_root, "docs", "collaborations", f"COLLABORATION_REPORT_sess_collab_1.md")
+    service.compile_collaboration_report(ws_id, "sess_collab_1")
+    expected_file = os.path.join(ws_root, "docs", "collaborations", "COLLABORATION_REPORT_sess_collab_1.md")
     
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:

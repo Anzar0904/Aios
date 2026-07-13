@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Optional
 
 from aios.docgen.cert_analyzers import (
+    REQUIRED_FILES,
+    REQUIRED_README_SECTIONS,
     CompletenessAnalyzer,
     CoverageAnalyzer,
     CrossLinkAnalyzer,
@@ -27,13 +29,10 @@ from aios.docgen.cert_analyzers import (
     MarkdownAnalyzer,
     MermaidAnalyzer,
     OrphanAnalyzer,
-    REQUIRED_FILES,
-    REQUIRED_README_SECTIONS,
     _md_files,
 )
 from aios.docgen.cert_models import (
     CertificationResult,
-    CertificationStatus,
     CompletenessScore,
     ConsistencyScore,
     CrossReferenceScore,
@@ -261,7 +260,7 @@ class CertificationEngine:
         quality.coverage = result.quality.coverage  # already computed
 
         # Cross-reference score
-        total_links = len(result.broken_links) + sum(
+        len(result.broken_links) + sum(
             1 for f in result.findings if "crosslinks" in f.check and f.severity == Severity.PASS
         )
         # Better: count all link occurrences attempted

@@ -1,25 +1,24 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.architecture_documentation import (
     ArchitectureComponent,
-    ArchitectureLayer,
-    ArchitectureRelationship,
-    ArchitectureDiagram,
     ArchitectureDecision,
-    ArchitectureSummary,
-    ArchitectureReport,
+    ArchitectureDiagram,
+    ArchitectureLayer,
     ArchitectureRegistry,
+    ArchitectureReport,
+    ArchitectureSummary,
 )
 from aios.services.architecture_documentation_impl import (
     LocalArchitectureAnalyzer,
+    LocalArchitectureDocumentationService,
     LocalArchitectureDocumentPlanner,
     LocalArchitectureValidator,
-    LocalArchitectureDocumentationService,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 
 
 @pytest.fixture

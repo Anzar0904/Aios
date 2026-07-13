@@ -276,7 +276,7 @@ class ConversationManager:
                             f"Conversation Summary [{conversation.title}]\n"
                             f"Summary: {parsed['summary']}\n"
                             f"Decisions:\n" + "\n".join([f"- {d}" for d in parsed["decisions"]]) + "\n"
-                            f"Action Items:\n" + "\n".join([f"- {a}" for a in parsed["action_items"]])
+                            "Action Items:\n" + "\n".join([f"- {a}" for a in parsed["action_items"]])
                         )
                         metadata = {
                             "conversation_id": conversation.id,

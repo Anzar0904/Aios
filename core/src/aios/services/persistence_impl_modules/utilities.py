@@ -11,6 +11,16 @@ logger = logging.getLogger(__name__)
 def format_query(query: str, provider_name: str) -> str:
     """Helper to convert SQL query positional markers to Postgres formats dynamically."""
     if provider_name == "postgresql":
+        import re
+        # Convert INSERT OR REPLACE INTO table (cols) VALUES (vals) to ON CONFLICT (id) DO UPDATE SET
+        match = re.match(r"INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)", query, re.IGNORECASE)
+        if match:
+            table_name = match.group(1)
+            cols_str = match.group(2)
+            vals_str = match.group(3)
+            cols = [c.strip() for c in cols_str.split(",")]
+            update_clause = ", ".join([f"{col}=EXCLUDED.{col}" for col in cols if col != "id"])
+            query = f"INSERT INTO {table_name} ({cols_str}) VALUES ({vals_str}) ON CONFLICT (id) DO UPDATE SET {update_clause}"
         return query.replace("?", "%s")
     return query
 

@@ -1,35 +1,34 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 from aios.services.workflow_monitoring import (
-    WorkflowExecutionState,
     WorkflowExecutionMetrics,
     WorkflowExecutionRecord,
+    WorkflowExecutionState,
     WorkflowMonitoringService,
 )
 from aios.services.workflow_monitoring_impl import LocalWorkflowMonitoringService
 from aios.services.workflow_optimization import (
     WorkflowOptimizationCategory,
-    WorkflowOptimizationPriority,
     WorkflowOptimizationImpact,
-    WorkflowOptimizationRecommendation,
-    WorkflowOptimizationPlan,
-    WorkflowOptimizationReport,
     WorkflowOptimizationKnowledgeBase,
+    WorkflowOptimizationPlan,
+    WorkflowOptimizationPriority,
+    WorkflowOptimizationRecommendation,
+    WorkflowOptimizationReport,
 )
 from aios.services.workflow_optimization_impl import (
+    LocalWorkflowComplexityAnalyzer,
     LocalWorkflowCostAnalyzer,
     LocalWorkflowLatencyAnalyzer,
-    LocalWorkflowParallelizationAnalyzer,
-    LocalWorkflowComplexityAnalyzer,
-    LocalWorkflowOptimizationValidator,
     LocalWorkflowOptimizationService,
+    LocalWorkflowOptimizationValidator,
+    LocalWorkflowParallelizationAnalyzer,
 )
 
 

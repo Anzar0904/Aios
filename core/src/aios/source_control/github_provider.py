@@ -1,19 +1,18 @@
-import os
-import httpx
 import logging
-from typing import Dict, List, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
 
-from aios.source_control.service import SourceControlProvider
+import httpx
+
 from aios.source_control.models import (
-    RepositoryMetadata,
-    BranchInfo,
-    CommitInfo,
-    PullRequestInfo,
     IssueInfo,
+    PullRequestInfo,
     ReleaseInfo,
-    WorkflowInfo,
+    RepositoryMetadata,
     WebhookInfo,
+    WorkflowInfo,
 )
+from aios.source_control.service import SourceControlProvider
 
 logger = logging.getLogger(__name__)
 

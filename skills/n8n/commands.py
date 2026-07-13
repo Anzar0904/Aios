@@ -1,7 +1,7 @@
-import sys
 import json
+
 from aios.services.command.metadata import CommandCategory, CommandMetadata
-from aios.services.n8n import N8NService, InternalWorkflow, InternalNode, InternalConnection
+from aios.services.n8n import InternalWorkflow, N8NService
 
 
 def execute_workflow_create(args: str, kernel, conv_manager) -> None:

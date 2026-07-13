@@ -3,10 +3,10 @@ from typing import List, Optional
 
 from aios.brain.models import BrainContext
 from aios.services.context import ContextService
-from aios.services.memory import MemoryService
-from aios.services.project_intelligence import ProjectIntelligenceService
 from aios.services.developer_workspace import DeveloperWorkspaceService
+from aios.services.memory import MemoryService
 from aios.services.personal import PersonalService
+from aios.services.project_intelligence import ProjectIntelligenceService
 
 
 class ContextManager:

@@ -161,6 +161,7 @@ flowchart TD
     aios_services_docintel_intelligence["intelligence"]
     aios_services_docintel_generator["generator"]
     aios_services_docintel_indexer["indexer"]
+    aios_services_docintel_agent["agent"]
     aios_services_action_planner["planner"]
     aios_services_action_models["models"]
     aios_services_action___init__["__init__"]

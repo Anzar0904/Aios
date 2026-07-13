@@ -161,9 +161,7 @@ def test_business_cli_commands(temp_dir):
     registry = ServiceRegistry()
     registry.register(BusinessIntelligenceService, service)
 
-    with patch(
-        "aios.registry.ServiceRegistry._global_registry", registry
-    ):
+    with patch("aios.registry.ServiceRegistry._global_registry", registry):
         assert execute_builtin_cli_command(["business"], exit_on_complete=False)
         assert execute_builtin_cli_command(["business", "organizations"], exit_on_complete=False)
         assert execute_builtin_cli_command(["business", "clients"], exit_on_complete=False)

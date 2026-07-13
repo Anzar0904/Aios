@@ -1,9 +1,6 @@
-import sys
-import time
 from aios.services.command.metadata import CommandCategory, CommandMetadata
-from aios.services.personal import PersonalService
-from aios.services.project_intelligence import ProjectIntelligenceService
 from aios.services.developer_workspace import DeveloperWorkspaceService
+from aios.services.personal import PersonalService
 from aios.services.research import ResearchService
 
 

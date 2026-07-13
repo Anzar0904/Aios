@@ -1,27 +1,22 @@
 import os
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary
-from aios.services.model import ModelService, LLMResponse
-from aios.services.memory import MemoryService
 from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.test_generation import (
-    GeneratedTestArtifact,
-    TestGenerationReport,
-)
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.test_generation_impl import (
-    LocalTestPatternAnalyzer,
-    LocalTestTemplateEngine,
-    LocalTestCaseBuilder,
     LocalAssertionGenerator,
+    LocalEdgeCaseGenerator,
     LocalFixtureGenerator,
     LocalMockGenerator,
-    LocalEdgeCaseGenerator,
     LocalRegressionTestGenerator,
-    LocalTestGenerator,
+    LocalTestCaseBuilder,
     LocalTestGenerationService,
+    LocalTestGenerator,
+    LocalTestPatternAnalyzer,
+    LocalTestTemplateEngine,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 def test_pattern_analyzer():

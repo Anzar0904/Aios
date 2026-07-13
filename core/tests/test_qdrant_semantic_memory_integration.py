@@ -1,55 +1,43 @@
-import time
 import os
-import pytest
-import uuid
+import time
 import unittest.mock as mock
-from typing import Dict, Any, List
+import uuid
 from pathlib import Path
+from typing import Any, Dict, List
 
+import pytest
 from aios.bootstrap import bootstrap_kernel
-from aios.services.persistence import (
-    SemanticMemoryManager,
-    ConversationMemoryRepository,
-    WorkspaceMemoryRepository,
-    EngineeringMemoryRepository,
-    ResearchMemoryRepository,
-    DocumentationMemoryRepository,
-    ProjectMemoryRepository,
-    KnowledgeMemoryRepository,
-    RuntimeIntelligenceService,
-    PersistenceResult,
-    PersistenceStatus,
-    CollectionManager
-)
+from aios.services.agent import AgentRuntimeService
+from aios.services.context import ContextService
 from aios.services.conversation.manager import ConversationManager
 from aios.services.conversation.store import ConversationStore
-from aios.services.conversation.models import Conversation
-from aios.services.persistence import (
-    WorkspacePersistenceService,
-    EngineeringMemoryService,
-    PersistenceStatus
-)
 from aios.services.documentation_intelligence import (
-    DocumentationService,
     DocumentArtifact,
-    DocumentMetadata,
+    DocumentationService,
     DocumentCategory,
-    DocumentSource
+    DocumentMetadata,
+    DocumentSource,
+)
+from aios.services.intent import Intent, IntentType
+from aios.services.model import LLMResponse, ModelService
+from aios.services.persistence import (
+    CollectionManager,
+    EngineeringMemoryService,
+    PersistenceResult,
+    PersistenceStatus,
+    SemanticMemoryManager,
+    WorkspacePersistenceService,
 )
 from aios.services.research import ResearchService
-from aios.services.context import ContextService
-from aios.services.model import ModelService, LLMRequest, LLMResponse
-from aios.services.agent import AgentRuntimeService
-from aios.services.intent import Intent, IntentType
 
 
 @pytest.fixture
 def kernel_setup(monkeypatch):
     # Class-level monkeypatch to bypass PostgreSQL blocks
     from aios.services.persistence_impl import (
-        WorkspaceRepositoryImpl,
         DocumentationMetadataRepositoryImpl,
-        EngineeringTaskRepositoryImpl
+        EngineeringTaskRepositoryImpl,
+        WorkspaceRepositoryImpl,
     )
     mock_success_res = PersistenceResult(status=PersistenceStatus.SUCCESS, message="Mock success")
     monkeypatch.setattr(WorkspaceRepositoryImpl, "save", mock.Mock(return_value=mock_success_res))
@@ -57,8 +45,8 @@ def kernel_setup(monkeypatch):
     monkeypatch.setattr(EngineeringTaskRepositoryImpl, "save", mock.Mock(return_value=mock_success_res))
 
     # Class-level monkeypatch for Notion sync
-    from aios.services.knowledge_hub_impl import LocalKnowledgeHub
     from aios.services.knowledge_hub import KnowledgeSyncResult
+    from aios.services.knowledge_hub_impl import LocalKnowledgeHub
     monkeypatch.setattr(LocalKnowledgeHub, "sync_document", mock.Mock(return_value=KnowledgeSyncResult(
         document_id="mock_doc_id",
         provider="notion",

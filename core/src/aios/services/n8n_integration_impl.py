@@ -1,33 +1,36 @@
-import os
 import json
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.persistence import PersistenceStatus, WorkflowIntegrationRepository, PersistenceService
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.engineering_profile import EngineeringProfileService
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import ModelService
 from aios.services.n8n_integration import (
-    N8NServerInformation,
-    N8NConnectionProfile,
-    N8NIntegrationReport,
-    N8NAuthenticationProvider,
-    N8NConnectionManager,
     N8NClient,
-    N8NWorkflowRepository,
-    N8NExecutionRepository,
+    N8NConnectionProfile,
     N8NCredentialRepository,
+    N8NExecutionRepository,
     N8NHealthMonitor,
-    N8NWorkspaceMapper,
-    N8NValidator,
+    N8NIntegrationReport,
     N8NIntegrationService,
+    N8NValidator,
+    N8NWorkflowRepository,
+    N8NWorkspaceMapper,
+)
+from aios.services.persistence import (
+    PersistenceService,
+    PersistenceStatus,
+    WorkflowIntegrationRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,14 +46,14 @@ class LocalN8NClient(N8NClient):
 
         # Instantiate production managers
         from aios.n8n import (
-            N8NConfigurationService,
             N8NAuthenticationManager,
-            N8NConnectionManager as ProdConnManager,
-            N8NClient as ProdClient,
-            N8NWorkflowManager,
+            N8NConfigurationService,
+            N8NCredentialManager,
             N8NExecutionManager,
-            N8NCredentialManager
+            N8NWorkflowManager,
         )
+        from aios.n8n import N8NClient as ProdClient
+        from aios.n8n import N8NConnectionManager as ProdConnManager
         self._prod_config = N8NConfigurationService()
         self._prod_auth = N8NAuthenticationManager(self._prod_config)
         self._prod_conn = ProdConnManager(self._prod_config, self._prod_auth)
@@ -242,14 +245,10 @@ class LocalN8NHealthMonitor(N8NHealthMonitor):
     """Ping endpoints returning low latency and capabilities list, falling back to mock when offline."""
 
     def __init__(self) -> None:
-        from aios.n8n import (
-            N8NConfigurationService,
-            N8NAuthenticationManager,
-            N8NConnectionManager as ProdConnManager,
-            N8NClient as ProdClient,
-            N8NWorkflowManager,
-            N8NHealthMonitor as ProdHealthMonitor
-        )
+        from aios.n8n import N8NAuthenticationManager, N8NConfigurationService, N8NWorkflowManager
+        from aios.n8n import N8NClient as ProdClient
+        from aios.n8n import N8NConnectionManager as ProdConnManager
+        from aios.n8n import N8NHealthMonitor as ProdHealthMonitor
         self._prod_config = N8NConfigurationService()
         self._prod_auth = N8NAuthenticationManager(self._prod_config)
         self._prod_conn = ProdConnManager(self._prod_config, self._prod_auth)
@@ -377,11 +376,10 @@ class LocalN8NIntegrationService(N8NIntegrationService):
     def upload_workflow_json(self, workspace_id: str, workflow_json: Dict[str, Any]) -> str:
         logger.info(f"Uploading workflow json under workspace '{workspace_id}'")
 
-        profile_service = None
         timeout = 30
         if self._registry:
             try:
-                profile_service = self._registry.get(EngineeringProfileService)
+                self._registry.get(EngineeringProfileService)
             except Exception:
                 pass
 
@@ -410,7 +408,7 @@ class LocalN8NIntegrationService(N8NIntegrationService):
         return workflow_id
 
     def trigger_workflow(self, workflow_id: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        workspace_id = self._workspace_mapper.get_workspace_for_workflow(workflow_id) or "ws_unknown"
+        self._workspace_mapper.get_workspace_for_workflow(workflow_id) or "ws_unknown"
         res = self._client.execute_workflow(workflow_id, inputs)
         self._exec_repo.save_execution_metadata(res["id"], {"status": res["status"], "workflow_id": workflow_id})
         return res

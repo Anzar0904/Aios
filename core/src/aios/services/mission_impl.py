@@ -2,21 +2,20 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.agent import AgentRuntimeService, AgentResult
+from aios.services.agent import AgentRuntimeService
 from aios.services.intent import Intent, IntentType
 from aios.services.mission import (
+    Mission,
+    MissionContext,
+    MissionEngine,
+    MissionExecutor,
+    MissionMilestone,
+    MissionPlanner,
+    MissionRepository,
     MissionStatus,
     MissionTask,
-    MissionMilestone,
-    Mission,
-    MissionGoal,
-    MissionContext,
-    MissionPlanner,
-    MissionExecutor,
-    MissionRepository,
-    MissionEngine,
 )
 
 logger = logging.getLogger(__name__)
@@ -300,7 +299,11 @@ class LocalMissionEngine(MissionEngine):
         # Synchronize with Knowledge Hub on completion
         if success:
             try:
-                from aios.services.knowledge_hub import KnowledgeHubService, KnowledgeDocument, KnowledgeMetadata
+                from aios.services.knowledge_hub import (
+                    KnowledgeDocument,
+                    KnowledgeHubService,
+                    KnowledgeMetadata,
+                )
                 knowledge_hub = self._registry.get(KnowledgeHubService) if self._registry else None
                 if knowledge_hub:
                     md_content = f"# Mission Summary: {mission.title}\n\n## Objective\n{mission.objective}\n\n## Milestones\n"

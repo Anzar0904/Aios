@@ -29,7 +29,6 @@ from aios.docgen.diagram_models import DiagramGenerationResult
 from aios.docgen.diagram_renderers import (
     render_agent_interaction_flow,
     render_bootstrap_sequence,
-    render_di_graph,
     render_diagrams_index,
     render_hybrid_retrieval_pipeline,
     render_lifecycle_diagram,

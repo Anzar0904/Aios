@@ -8,7 +8,6 @@ handwritten documentation remains untouched.
 from pathlib import Path
 
 import pytest
-
 from aios.docgen.refgen_engine import ReferenceGeneratorEngine
 
 

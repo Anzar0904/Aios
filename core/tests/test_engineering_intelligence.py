@@ -1,26 +1,25 @@
-import pytest
 import time
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary, SymbolReference
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.project_intelligence import ProjectIntelligenceService, ProjectContext
-from aios.services.workspace_intelligence import WorkspaceIntelligenceService, CodeIntelligenceService
+import pytest
 from aios.services.engineering_intelligence import (
-    AffectedFile,
     AffectedComponent,
-    ChangeRecommendation,
-    EngineeringPlan,
-    EngineeringReport,
+    AffectedFile,
 )
 from aios.services.engineering_intelligence_impl import (
     LocalChangeImpactAnalyzer,
     LocalComplexityEstimator,
-    LocalRiskAnalyzer,
-    LocalImplementationPlanner,
-    LocalEngineeringAnalyzer,
     LocalEngineeringIntelligenceService,
+    LocalImplementationPlanner,
+    LocalRiskAnalyzer,
+)
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.workspace_intelligence import (
+    CodeIntelligenceService,
+    CodeStructureSummary,
+    SymbolReference,
+    WorkspaceIntelligenceService,
 )
 
 

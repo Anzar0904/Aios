@@ -1,60 +1,47 @@
-import os
 import time
-import pytest
-from typing import Dict, Any, List
 from unittest.mock import MagicMock
 
+import pytest
 from aios.registry import ServiceRegistry
 from aios.services.persistence import (
-    PersistenceConfigurationService,
-    PersistenceRegistry,
-    RepositoryRegistry,
-    PersistenceService,
-    WorkspaceRepository,
-    EngineeringProfileRepository,
-    ConfigurationRepository,
-    PersistenceStatus,
+    CacheDiagnostics,
+    CacheHealthMonitor,
+    CacheInvalidationManager,
     CachePolicy,
     CachePolicyManager,
-    CacheInvalidationManager,
-    CacheWarmupService,
     CacheRebuildService,
-    CacheStatisticsCollector,
-    CacheHealthMonitor,
-    CacheDiagnostics,
     CacheRecommendationEngine,
+    CacheStatisticsCollector,
+    CacheWarmupService,
+    PersistenceConfigurationService,
+    PersistenceRegistry,
+    PersistenceService,
+    PersistenceStatus,
     RedisCacheService,
     RedisProvider,
+    RepositoryRegistry,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    WorkspaceRepositoryImpl,
-    EngineeringProfileRepositoryImpl,
-    ConfigurationRepositoryImpl,
-    PersistenceBootstrapper,
-    RedisConfigurationService,
-    RedisConnectionManager,
-    RedisTransportImpl,
-    RedisProviderImpl,
-    RedisTelemetry,
-    RedisStatistics,
-    RedisDiagnostics,
-    RedisHealthMonitor,
-    RedisValidator,
-    RedisReportGenerator,
-    RedisRuntimeServiceImpl,
-    FakeRedisClient,
-    CachePolicyManagerImpl,
-    CacheStatisticsCollectorImpl,
     CacheDiagnosticsImpl,
     CacheHealthMonitorImpl,
-    CacheRecommendationEngineImpl,
     CacheInvalidationManagerImpl,
-    CacheWarmupServiceImpl,
+    CachePolicyManagerImpl,
     CacheRebuildServiceImpl,
+    CacheRecommendationEngineImpl,
+    CacheStatisticsCollectorImpl,
+    CacheWarmupServiceImpl,
+    ConfigurationRepositoryImpl,
+    EngineeringProfileRepositoryImpl,
+    FakeRedisClient,
+    PersistenceBootstrapper,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
     RedisCacheServiceImpl,
+    RedisConfigurationService,
+    RedisConnectionManager,
+    RedisProviderImpl,
+    RedisTransportImpl,
+    WorkspaceRepositoryImpl,
 )
 
 from tests.test_persistence import SQLiteTransportForTests
@@ -209,7 +196,7 @@ def test_cache_policy_write_through(test_env):
     workspace_repo = test_env["workspace_repo"]
     cache_stats = test_env["cache_stats"]
     cache_policy_mgr = test_env["cache_policy_mgr"]
-    redis_cache_service = test_env["redis_cache_service"]
+    test_env["redis_cache_service"]
 
     # Explicit Write-Through Policy
     cache_policy_mgr.set_policy("workspace", CachePolicy.WRITE_THROUGH)
@@ -307,7 +294,7 @@ def test_ttl_expiration(test_env):
 
 
 def test_cache_invalidation_manager(test_env):
-    workspace_repo = test_env["workspace_repo"]
+    test_env["workspace_repo"]
     cache_inval = test_env["cache_inval"]
     redis_cache_service = test_env["redis_cache_service"]
 
@@ -363,7 +350,7 @@ def test_cache_rebuild_service(test_env):
     workspace_repo = test_env["workspace_repo"]
     cache_rebuild = test_env["cache_rebuild"]
     redis_cache_service = test_env["redis_cache_service"]
-    redis_provider = test_env["redis_provider"]
+    test_env["redis_provider"]
 
     ws = {
         "id": "ws-rebuild",
@@ -397,7 +384,7 @@ def test_cache_rebuild_service(test_env):
 
 def test_redis_unavailable_fallback(test_env):
     workspace_repo = test_env["workspace_repo"]
-    redis_cache_service = test_env["redis_cache_service"]
+    test_env["redis_cache_service"]
     redis_provider = test_env["redis_provider"]
 
     ws = {

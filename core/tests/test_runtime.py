@@ -1,13 +1,11 @@
 import time
 from unittest.mock import MagicMock
 
-from aios.services.runtime import RuntimeState, BackgroundTask, Watcher
+from aios.services.runtime import BackgroundTask, RuntimeState, Watcher
 from aios.services.runtime_impl import (
     LocalEventDispatcher,
     LocalHealthMonitor,
     LocalRuntime,
-    WorkspaceWatcher,
-    GitWatcher,
 )
 
 

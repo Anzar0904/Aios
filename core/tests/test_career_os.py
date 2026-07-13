@@ -1,24 +1,33 @@
 import json
-import time
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-from aios.services.model import ModelService, LLMRequest, LLMResponse
-from aios.services.personal import PersonalService, PersonalProfile, Contact, CareerProfile, Resume, ResumeVersion, Goal, Experience, ProjectReference
-from aios.services.github import GitHubService, GitHubRepository
+import pytest
 from aios.services.career import JobApplication
 from aios.services.career_impl import (
-    LocalCareerOSService,
-    LocalCareerProfileManager,
-    LocalJobAnalyzer,
-    LocalResumeOptimizer,
-    LocalATSAnalyzer,
-    LocalCoverLetterGenerator,
-    LocalPortfolioAnalyzer,
     LocalApplicationTracker,
-    LocalInterviewCoach,
+    LocalATSAnalyzer,
+    LocalCareerOSService,
     LocalCareerPlanner,
+    LocalCareerProfileManager,
+    LocalCoverLetterGenerator,
+    LocalInterviewCoach,
+    LocalJobAnalyzer,
     LocalJobMatcher,
+    LocalPortfolioAnalyzer,
+    LocalResumeOptimizer,
+)
+from aios.services.github import GitHubRepository, GitHubService
+from aios.services.model import LLMResponse, ModelService
+from aios.services.personal import (
+    CareerProfile,
+    Contact,
+    Experience,
+    Goal,
+    PersonalProfile,
+    PersonalService,
+    ProjectReference,
+    Resume,
+    ResumeVersion,
 )
 
 

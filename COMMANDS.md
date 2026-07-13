@@ -392,6 +392,69 @@ This document is automatically generated from the Command Registry.
 
 ## CLI Commands
 
+### `approval approve`
+- **Description**: Approve a request by request ID.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval approve [request_id]`
+
+### `approval cancel`
+- **Description**: Cancel a request by request ID.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval cancel [request_id]`
+
+### `approval history`
+- **Description**: Display the governance execution audit log history.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval history`
+
+### `approval pending`
+- **Description**: List pending governance decisions in the queue.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval pending`
+
+### `approval policies`
+- **Description**: Display configured scope policies mapping.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval policies`
+
+### `approval preview`
+- **Description**: Generate/display execution preview details for a request.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval preview [request_id]`
+
+### `approval queue`
+- **Description**: List all requests in the governance approval queue.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval queue`
+
+### `approval reject`
+- **Description**: Reject a request by request ID.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval reject [request_id]`
+
+### `approval status`
+- **Description**: Display current status of a request by request ID.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `approval status [request_id]`
+
 ### `brain`
 - **Description**: Runs a multi-skill query or objective through the Brain orchestrator.
 - **Category**: CLI
@@ -419,6 +482,76 @@ This document is automatically generated from the Command Registry.
 - **Required Agent**: None
 - **Required Tools**: None
 - **Example**: `brain trace wf_abcd`
+
+### `business analytics`
+- **Description**: Display active client counts, success rates and revenue.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business analytics`
+
+### `business clients`
+- **Description**: List and filter registered agency clients database.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business clients`
+
+### `business leads`
+- **Description**: List and review sales lead pipeline and scores.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business leads`
+
+### `business organizations`
+- **Description**: List or manage multiple business agency profiles and teams.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business organizations`
+
+### `business projects`
+- **Description**: View active portfolio projects linked to clients.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business projects`
+
+### `business proposals`
+- **Description**: Display agency proposals and timeline estimates.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business proposals`
+
+### `business summary`
+- **Description**: Compile business operations status and write reports.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business summary`
+
+### `business tasks`
+- **Description**: List agency project tasks and milestones.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business tasks`
+
+### `business timeline`
+- **Description**: Generate aggregated client timeline history.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business timeline [client_id]`
+
+### `business workflows`
+- **Description**: Inspect client workflow ownership and n8n stats.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `business workflows`
 
 ### `career analyze`
 - **Description**: Command to perform career analyze action on Career details.
@@ -503,6 +636,20 @@ This document is automatically generated from the Command Registry.
 - **Required Agent**: None
 - **Required Tools**: None
 - **Example**: `commands developer`
+
+### `dashboard`
+- **Description**: Display the systems status dashboard panel.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `dashboard`
+
+### `diagnostics`
+- **Description**: Display telemetry performance and resource metrics.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `diagnostics`
 
 ### `generate research report`
 - **Description**: Generates a technical research report based on gathered source snippets.
@@ -644,12 +791,75 @@ This document is automatically generated from the Command Registry.
 - **Required Tools**: None
 - **Example**: `project add arguments`
 
-### `project list`
-- **Description**: Command to perform project list action on personal details.
+### `project analyze`
+- **Description**: Auto-discover framework, package manager and config at path.
 - **Category**: CLI
 - **Required Agent**: None
 - **Required Tools**: None
-- **Example**: `project list arguments`
+- **Example**: `project analyze [path]`
+
+### `project architecture`
+- **Description**: Retrieve project component service mappings and module maps.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project architecture [project_id]`
+
+### `project graph`
+- **Description**: Query and display project knowledge graph node connections.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project graph [project_id]`
+
+### `project health`
+- **Description**: Display health scorecard including coverage and technical debt.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project health [project_id]`
+
+### `project list`
+- **Description**: List all registered projects under Project Intelligence.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project list`
+
+### `project memory`
+- **Description**: Perform semantic lookup over design decisions and resolutions.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project memory [project_id] [query]`
+
+### `project risks`
+- **Description**: Inspect coverage gaps, environment drift, and security risks.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project risks [project_id]`
+
+### `project status`
+- **Description**: Display the active project ID and overall registry statistics.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project status`
+
+### `project summary`
+- **Description**: Compile project profile summary and generate reports.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project summary [project_id]`
+
+### `project timeline`
+- **Description**: Generate aggregated historical timeline events.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `project timeline [project_id]`
 
 ### `research topic`
 - **Description**: Performs technical research on a topic and returns a cited markdown report.
@@ -756,6 +966,20 @@ This document is automatically generated from the Command Registry.
 - **Required Tools**: None
 - **Example**: `search web python git libraries`
 
+### `session`
+- **Description**: Display the CLI Session state details.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `session`
+
+### `setup`
+- **Description**: Run interactive onboarding guide configurations.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `setup`
+
 ### `skills`
 - **Description**: Lists all loaded skills.
 - **Category**: CLI
@@ -798,6 +1022,76 @@ This document is automatically generated from the Command Registry.
 - **Required Tools**: None
 - **Example**: `skills reload`
 
+### `supabase auth`
+- **Description**: Analyze authentication providers, OAuth configuration, and MFA settings.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase auth`
+
+### `supabase functions`
+- **Description**: List edge functions, their status, and deploy readiness.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase functions`
+
+### `supabase login`
+- **Description**: Log in to Supabase using personal access token or project URL + service role key.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase login --token sb_pat_xxx`
+
+### `supabase migrations`
+- **Description**: View migration logs, drift detection status, and pending migrations.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase migrations`
+
+### `supabase projects`
+- **Description**: List all discovered or configured Supabase projects.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase projects`
+
+### `supabase schema`
+- **Description**: Explore the database schema of the active Supabase project.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase schema`
+
+### `supabase security`
+- **Description**: Analyze security policies, public tables, and RLS state of the project.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase security`
+
+### `supabase status`
+- **Description**: Show the current connection status to Supabase.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase status`
+
+### `supabase storage`
+- **Description**: List storage buckets and check policies for public/private access.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase storage`
+
+### `supabase summary`
+- **Description**: Generate a high-level summary of the connected project and write markdown reports.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `supabase summary`
+
 ### `template create`
 - **Description**: Command to perform template create action on personal details.
 - **Category**: CLI
@@ -811,3 +1105,94 @@ This document is automatically generated from the Command Registry.
 - **Required Agent**: None
 - **Required Tools**: None
 - **Example**: `template list arguments`
+
+### `vercel deployments`
+- **Description**: Display recent deployments and rollback candidates.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel deployments`
+
+### `vercel domains`
+- **Description**: List custom domains, verification state and SSL status.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel domains`
+
+### `vercel env`
+- **Description**: List environment variables metadata (without exposing secrets).
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel env`
+
+### `vercel login`
+- **Description**: Log in to Vercel using personal access token.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel login --token vc_xxx`
+
+### `vercel logs`
+- **Description**: Retrieve build logs and AI failure diagnosis for a deployment.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel logs <deployment_id>`
+
+### `vercel projects`
+- **Description**: List discovered Vercel projects.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel projects`
+
+### `vercel status`
+- **Description**: Display connection state, active project, and scoped team.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel status`
+
+### `vercel summary`
+- **Description**: Compile project health metrics and generate markdown reports.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `vercel summary`
+
+### `workspace graph`
+- **Description**: Generates and displays module/dependency graph representation using Mermaid notation.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `workspace graph`
+
+### `workspace refresh`
+- **Description**: Forces invalidation of incremental caches and runs a complete clean workspace rescan.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `workspace refresh`
+
+### `workspace scan`
+- **Description**: Scans the repository structures, dependencies, health metrics, and generates markdown documentation reports.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `workspace scan`
+
+### `workspace status`
+- **Description**: Displays current branch status, uncommitted files, tracked test counts, and linters configuration.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `workspace status`
+
+### `workspace summary`
+- **Description**: Displays the high-level architecture overview, components, tech stack, and health details.
+- **Category**: CLI
+- **Required Agent**: None
+- **Required Tools**: None
+- **Example**: `workspace summary`

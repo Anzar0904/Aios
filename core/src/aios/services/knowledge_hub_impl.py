@@ -2,23 +2,21 @@ import hashlib
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
-import urllib.request
 import urllib.error
+import urllib.request
+from typing import Any, Dict, List, Optional
 
 from aios.config import NotionConfig
-from aios.services.personal import PersonalService, KnowledgeEntry
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeProvider,
     KnowledgeDocument,
-    KnowledgePage,
-    KnowledgeSyncResult,
-    KnowledgeSyncPolicy,
-    KnowledgeOperation,
+    KnowledgeHubService,
     KnowledgeMetadata,
+    KnowledgePage,
+    KnowledgeProvider,
     KnowledgeReference,
+    KnowledgeSyncResult,
 )
+from aios.services.personal import KnowledgeEntry, PersonalService
 
 logger = logging.getLogger(__name__)
 

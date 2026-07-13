@@ -1,19 +1,15 @@
-import os
-import pytest
-from unittest.mock import MagicMock, patch
 import subprocess
+from unittest.mock import MagicMock, patch
 
-from aios.services.memory import MemoryService
 from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 from aios.services.test_execution import (
     ExecutionTarget,
-    ExecutionSession,
 )
 from aios.services.test_execution_impl import (
-    PytestAdapter,
-    LocalTestRunner,
-    LocalTestExecutor,
     LocalTestExecutionService,
+    LocalTestExecutor,
+    PytestAdapter,
 )
 
 

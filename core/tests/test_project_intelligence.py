@@ -1,4 +1,3 @@
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -90,7 +89,7 @@ def test_incremental_indexing():
         # Mutate file and timestamp
         main_py.write_text("print('updated')\n# TODO: updated_todo", encoding="utf-8")
         # Ensure st_mtime shifts
-        mtime = main_py.stat().st_mtime
+        main_py.stat().st_mtime
         main_py.stat() # reload cache
 
         # Third scan - cache miss because file content and timestamp changed

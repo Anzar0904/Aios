@@ -1,16 +1,14 @@
 import os
-import shutil
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.ai_workspace import WorkspaceChange, WorkspaceSnapshot, WorkspaceSession
+import pytest
+from aios.services.ai_workspace import WorkspaceChange
 from aios.services.ai_workspace_impl import (
-    LocalWorkspaceValidator,
-    LocalWorkspaceCleaner,
     LocalAIWorkspaceService,
+    LocalWorkspaceValidator,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 
 
 @pytest.fixture

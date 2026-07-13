@@ -1,15 +1,14 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
+import pytest
 from aios.services.engineering_profile import EngineeringProfile
 from aios.services.engineering_profile_impl import (
-    LocalProfileSerializer,
-    LocalProfileLoader,
-    LocalProfileManager,
     LocalEngineeringProfileService,
+    LocalProfileManager,
+    LocalProfileSerializer,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 
 
 @pytest.fixture

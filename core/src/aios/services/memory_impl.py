@@ -6,25 +6,24 @@ from typing import Any, Dict, List, Optional
 
 from aios.services.context import ContextLoadedEvent
 from aios.services.event_bus import EventBusService
-from aios.services.model import ModelService, LLMRequest
 from aios.services.memory import (
     Memory,
+    MemoryCategory,
+    MemoryClassifier,
+    MemoryFilter,
+    MemoryImportance,
+    MemoryIndexer,
     MemoryMetadata,
+    MemoryRetriever,
+    MemorySelector,
     MemoryService,
     MemoryType,
-    MemoryCategory,
-    MemoryImportance,
-    MemoryReference,
-    MemoryClassifier,
-    MemoryIndexer,
     RetrievalContext,
     RetrievalStrategy,
-    MemoryFilter,
-    MemorySelector,
-    MemoryRetriever,
 )
 from aios.services.memory_storage import MemoryStorage
 from aios.services.memory_storage_impl import LocalJSONMemoryStorage
+from aios.services.model import LLMRequest, ModelService
 from aios.services.session import SessionEndedEvent, SessionStartedEvent
 
 logger = logging.getLogger(__name__)

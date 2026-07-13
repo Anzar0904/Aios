@@ -1,25 +1,18 @@
-import time
 from typing import List
 from unittest.mock import MagicMock
-import pytest
 
-from aios.registry import ServiceRegistry
-from aios.services.project_intelligence import ProjectIntelligenceService, ProjectContext
-from aios.services.memory import MemoryService, MemoryType
+import pytest
 from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
-from aios.services.workspace_intelligence import (
-    WorkspaceIntelligenceService,
-    RepositorySummary,
-    RepositoryHealth,
-)
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
+from aios.services.project_intelligence import ProjectContext, ProjectIntelligenceService
 from aios.services.workspace_intelligence_impl import (
-    LocalWorkspaceIntelligenceService,
-    LocalRepositoryAnalyzer,
     LocalArchitectureAnalyzer,
     LocalDependencyAnalyzer,
-    LocalTechnologyAnalyzer,
     LocalDocumentationAnalyzer,
+    LocalRepositoryAnalyzer,
+    LocalTechnologyAnalyzer,
+    LocalWorkspaceIntelligenceService,
 )
 
 
@@ -145,14 +138,13 @@ def test_workspace_intelligence_service(mock_project_intel, mock_memory_service,
 from aios.services.workspace_intelligence import (
     LanguageASTParser,
     SymbolReference,
-    CodeIntelligenceService,
 )
 from aios.services.workspace_intelligence_impl import (
-    PythonASTParser,
-    TypeScriptASTParser,
-    LocalDependencyGraphBuilder,
     LocalCallGraphBuilder,
     LocalCodeIntelligenceService,
+    LocalDependencyGraphBuilder,
+    PythonASTParser,
+    TypeScriptASTParser,
 )
 
 

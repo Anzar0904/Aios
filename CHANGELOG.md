@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0-rc1] - 2026-07-13
+
+### Fixed
+- **REC-001 (Security)**: Added `.agent/` and credential wildcards to git ignore to prevent hardcoded credentials leaks.
+- **REC-002 (Integrity)**: Replaced mock-based database validation reports with strict live connection checks for PostgreSQL and Qdrant.
+- **REC-003 (Code Quality)**: Cleaned up global file exclusions in Ruff linter and resolved over 980 import and type-resolution lints. Fixed a critical undefined variable bug in `discoverers.py`.
+- **REC-004 (Performance)**: Implemented asynchronous Qdrant server connection threads and lazy-loaded SentenceTransformer model loading, decreasing startup latency below 100ms.
+
 ## [1.0.0] - 2026-07-11
 
 ### Added

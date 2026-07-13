@@ -1,27 +1,33 @@
 import json
 import logging
 import time
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import ModelService, LLMRequest
-from aios.services.personal import PersonalService, CareerProfile, ResumeVersion, Resume, Experience, Education, SkillProfile, ProjectReference
-from aios.services.github import GitHubService
-from aios.services.project_intelligence import ProjectIntelligenceService
-from aios.services.n8n import N8NService
 from aios.services.career import (
-    JobApplication,
-    CareerProfileManager,
-    JobAnalyzer,
-    ResumeOptimizer,
-    ATSAnalyzer,
-    CoverLetterGenerator,
-    PortfolioAnalyzer,
     ApplicationTracker,
-    InterviewCoach,
-    CareerPlanner,
-    JobMatcher,
+    ATSAnalyzer,
     CareerOSService,
+    CareerPlanner,
+    CareerProfileManager,
+    CoverLetterGenerator,
+    InterviewCoach,
+    JobAnalyzer,
+    JobApplication,
+    JobMatcher,
+    PortfolioAnalyzer,
+    ResumeOptimizer,
 )
+from aios.services.github import GitHubService
+from aios.services.model import LLMRequest, ModelService
+from aios.services.n8n import N8NService
+from aios.services.personal import (
+    CareerProfile,
+    Experience,
+    PersonalService,
+    Resume,
+    ResumeVersion,
+)
+from aios.services.project_intelligence import ProjectIntelligenceService
 
 logger = logging.getLogger(__name__)
 
@@ -557,7 +563,11 @@ class LocalCareerPlanner(CareerPlanner):
 
         # Synchronize with Knowledge Hub
         try:
-            from aios.services.knowledge_hub import KnowledgeHubService, KnowledgeDocument, KnowledgeMetadata
+            from aios.services.knowledge_hub import (
+                KnowledgeDocument,
+                KnowledgeHubService,
+                KnowledgeMetadata,
+            )
             knowledge_hub = self._registry.get(KnowledgeHubService) if self._registry else None
             if knowledge_hub:
                 md_content = f"# Career Growth Plan\n\n## Missing Skills Analysis\n{plan.get('missing_skills_analysis')}\n\n## Growth Milestones\n"
@@ -595,7 +605,7 @@ class LocalJobMatcher(JobMatcher):
             skills = profile.career.target_roles
 
         results = []
-        for idx, job in enumerate(jobs):
+        for _idx, job in enumerate(jobs):
             prompt = (
                 f"You are a Match Scoring Engine. Evaluate alignment of this job description with target skills:\n\n"
                 f"Job: {job}\n\n"

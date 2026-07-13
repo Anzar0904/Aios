@@ -1,26 +1,229 @@
-import json
-import time
-import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+from __future__ import annotations
 
-from aios.services.base import ServiceLifecycle
+import ast
+import json
+import logging
+import os
+import re
+import subprocess
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from aios.services.developer_workspace import DeveloperWorkspaceService
+from aios.services.knowledge_hub import KnowledgeDocument, KnowledgeHubService
+from aios.services.knowledge_hub import KnowledgeMetadata as KHMetadata
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
 from aios.services.model import LLMRequest, ModelService
-from aios.services.project_intelligence import ProjectIntelligenceService, ProjectContext
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import KnowledgeHubService, KnowledgeDocument, KnowledgeMetadata as KHMetadata
+from aios.services.project_intelligence import ProjectContext, ProjectIntelligenceService
 from aios.services.workspace_intelligence import (
+    ArchitectureAnalyzer,
+    ASTAnalyzer,
+    CallGraphBuilder,
+    CodeIntelligenceService,
+    CodeStructureSummary,
+    DependencyAnalyzer,
+    DependencyGraphBuilder,
+    DocumentationAnalyzer,
+    FileMetadata,
+    LanguageASTParser,
+    RepositoryAnalyzer,
     RepositoryHealth,
     RepositorySummary,
-    RepositoryAnalyzer,
-    ArchitectureAnalyzer,
-    DependencyAnalyzer,
+    SymbolIndexer,
+    SymbolReference,
     TechnologyAnalyzer,
-    DocumentationAnalyzer,
+    WorkspaceContext,
     WorkspaceIntelligenceService,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def detect_project_boundary(workspace_root: str) -> str:
+    """Walk up from workspace_root to find the project boundary.
+
+    Strategy:
+    1. If a .git directory exists anywhere in the ancestor chain, that directory
+       is the definitive project root (handles monorepos correctly).
+    2. Otherwise fall back to the innermost ancestor that contains a recognised
+       package manifest (pyproject.toml, package.json, Cargo.toml, go.mod, …).
+    """
+    path = Path(workspace_root).resolve()
+    git_root: Optional[Path] = None
+    package_root: Optional[Path] = None
+
+    current = path
+    while True:
+        if (current / ".git").exists():
+            git_root = current
+            break  # .git is unambiguous — stop here
+        if package_root is None:
+            package_indicators = {
+                "pyproject.toml", "package.json", "Cargo.toml",
+                "go.mod", "setup.py", "requirements.txt", "pom.xml", "build.gradle",
+            }
+            if any((current / ind).exists() for ind in package_indicators):
+                package_root = current
+        if current.parent == current:
+            break
+        current = current.parent
+
+    return str(git_root or package_root or path)
+
+
+def find_all_workspaces(project_root: str, default_ignores: set) -> List[str]:
+    workspaces = []
+    root_path = Path(project_root).resolve()
+    config_names = {"package.json", "Cargo.toml", "go.mod", "pyproject.toml", "build.gradle", "pom.xml"}
+    
+    for root, dirs, files in os.walk(root_path):
+        dirs[:] = [d for d in dirs if d not in default_ignores and not d.startswith(".")]
+        if any(f in config_names for f in files):
+            try:
+                rel_path = Path(root).relative_to(root_path)
+                if str(rel_path) == ".":
+                    workspaces.append(".")
+                else:
+                    workspaces.append(str(rel_path))
+            except Exception:
+                pass
+    return workspaces
+
+
+def load_aiosignore_rules(root_path: Path) -> List[str]:
+    rules = []
+    aiosignore = root_path / ".aiosignore"
+    if aiosignore.is_file():
+        try:
+            for line in aiosignore.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    rules.append(line)
+        except Exception:
+            pass
+    return rules
+
+
+def symbol_to_dict(sym: SymbolReference) -> Dict[str, Any]:
+    return {
+        "symbol_id": sym.symbol_id,
+        "name": sym.name,
+        "symbol_type": sym.symbol_type,
+        "file_path": sym.file_path,
+        "start_line": sym.start_line,
+        "end_line": sym.end_line,
+        "dependencies": sym.dependencies,
+        "decorators": sym.decorators,
+        "is_public": sym.is_public,
+        "meta": sym.meta
+    }
+
+
+def dict_to_symbol(d: Dict[str, Any]) -> SymbolReference:
+    return SymbolReference(
+        symbol_id=d["symbol_id"],
+        name=d["name"],
+        symbol_type=d["symbol_type"],
+        file_path=d["file_path"],
+        start_line=d["start_line"],
+        end_line=d["end_line"],
+        dependencies=d.get("dependencies", []),
+        decorators=d.get("decorators", []),
+        is_public=d.get("is_public", True),
+        meta=d.get("meta", {})
+    )
+
+
+def classify_architecture(workspace_root: str, structure: List[str], code_intel: Optional[Any] = None) -> Dict[str, List[str]]:
+    arch_map = {
+        "services": [],
+        "controllers": [],
+        "apis_routes": [],
+        "models": [],
+        "database_layer": [],
+        "middleware": [],
+        "utilities": [],
+        "configuration": []
+    }
+    
+    for file in structure:
+        file_path = Path(workspace_root) / file
+        file_lower = file.lower()
+        ext = file_path.suffix.lower()
+        
+        if ext in (".toml", ".json", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (".gitignore", ".env", "dockerfile", "docker-compose.yml"):
+            arch_map["configuration"].append(file)
+            continue
+            
+        if ext not in (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".cpp", ".c", ".h"):
+            continue
+            
+        purpose = "source"
+        if "test_" in file_lower or "_test" in file_lower or file_lower.endswith((".test.js", ".spec.ts", ".test.ts")):
+            purpose = "test"
+            
+        if purpose == "test":
+            continue
+            
+        exports = []
+        if code_intel:
+            try:
+                meta = code_intel.get_file_metadata(file)
+                if meta:
+                    exports = meta.exports
+            except Exception:
+                pass
+                
+        name_stem = file_path.stem.lower()
+        
+        if "service" in name_stem or any("service" in exp.lower() for exp in exports) or "services/" in file:
+            arch_map["services"].append(file)
+        elif "controller" in name_stem or any("controller" in exp.lower() for exp in exports):
+            arch_map["controllers"].append(file)
+        elif "model" in name_stem or any("model" in exp.lower() for exp in exports) or "models/" in file:
+            arch_map["models"].append(file)
+        elif any(db_word in name_stem for db_word in ("db", "database", "repository", "repo", "query", "postgres", "sql", "redis", "qdrant")):
+            arch_map["database_layer"].append(file)
+        elif "middleware" in name_stem or any("middleware" in exp.lower() for exp in exports):
+            arch_map["middleware"].append(file)
+        elif any(util_word in name_stem for util_word in ("util", "helper", "common", "tool", "shared")) or "utils/" in file or "helpers/" in file:
+            arch_map["utilities"].append(file)
+            
+        is_route = False
+        if any(route_word in name_stem for route_word in ("route", "api", "endpoint")):
+            is_route = True
+        else:
+            try:
+                content = file_path.read_text(encoding="utf-8", errors="ignore")
+                route_patterns = ("@app.get", "@app.post", "@router.get", "@router.post", "@blueprint.route", "router.get", "app.get")
+                if any(pat in content for pat in route_patterns):
+                    is_route = True
+            except Exception:
+                pass
+        if is_route and file not in arch_map["services"] and file not in arch_map["controllers"]:
+            arch_map["apis_routes"].append(file)
+            
+    return arch_map
+
+
+def detect_coding_conventions(symbols: List[SymbolReference]) -> Dict[str, Any]:
+    conventions = {
+        "class_naming": "PascalCase",
+        "function_naming": "snake_case",
+        "method_naming": "snake_case",
+    }
+    [s.name for s in symbols if s.symbol_type == "class"]
+    func_names = [s.name for s in symbols if s.symbol_type == "function"]
+    
+    if func_names:
+        snake_count = sum(1 for name in func_names if "_" in name)
+        camel_count = sum(1 for name in func_names if any(c.isupper() for c in name) and "_" not in name)
+        if camel_count > snake_count:
+            conventions["function_naming"] = "camelCase"
+            conventions["method_naming"] = "camelCase"
+            
+    return conventions
 
 
 class LocalRepositoryAnalyzer(RepositoryAnalyzer):
@@ -140,19 +343,117 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
     def analyze(self, workspace_root: str, project_context: Any) -> Dict[str, Any]:
         context: ProjectContext = project_context["context"]
         exts = context.languages.keys()
+        files = context.structure
 
         languages = []
         if ".py" in exts:
             languages.append("Python")
-        if ".js" in exts or ".ts" in exts:
+        if ".js" in exts or ".ts" in exts or ".tsx" in exts or ".jsx" in exts:
             languages.append("JavaScript/TypeScript")
         if ".go" in exts:
             languages.append("Go")
         if ".rs" in exts:
             languages.append("Rust")
+        if ".java" in exts:
+            languages.append("Java")
+        if ".dart" in exts:
+            languages.append("Dart")
+        if ".cpp" in exts or ".c" in exts or ".h" in exts:
+            languages.append("C/C++")
 
-        frameworks = context.frameworks
-        package_managers = context.package_managers
+        frameworks = list(context.frameworks)
+        package_managers = list(context.package_managers)
+        build_systems = []
+        runtimes = []
+        deployment_configs = []
+
+        # Analyze files list for ecosystem indicators
+        files_set = set(files)
+        
+        # Next.js / Express / React
+        if "package.json" in files_set:
+            if "npm/yarn" not in package_managers:
+                package_managers.append("npm/yarn")
+            build_systems.append("npm scripts")
+            runtimes.append("Node.js")
+            try:
+                content = (Path(workspace_root) / "package.json").read_text(encoding="utf-8", errors="ignore").lower()
+                if "next" in content and "Next.js" not in frameworks:
+                    frameworks.append("Next.js")
+                if "express" in content and "Express" not in frameworks:
+                    frameworks.append("Express")
+                if "react" in content and "React" not in frameworks:
+                    frameworks.append("React")
+                if "vue" in content and "Vue" not in frameworks:
+                    frameworks.append("Vue")
+                if "angular" in content and "Angular" not in frameworks:
+                    frameworks.append("Angular")
+            except Exception:
+                pass
+
+        # FastAPI / Django / Flask / Python
+        if "pyproject.toml" in files_set or "requirements.txt" in files_set or "setup.py" in files_set:
+            if "poetry/pip" not in package_managers:
+                package_managers.append("poetry/pip")
+            build_systems.append("setuptools/poetry")
+            runtimes.append("Python Runtime")
+            
+            try:
+                for f in ("pyproject.toml", "requirements.txt"):
+                    f_path = Path(workspace_root) / f
+                    if f_path.is_file():
+                        content = f_path.read_text(encoding="utf-8", errors="ignore").lower()
+                        if "fastapi" in content and "FastAPI" not in frameworks:
+                            frameworks.append("FastAPI")
+                        if "django" in content and "Django" not in frameworks:
+                            frameworks.append("Django")
+                        if "flask" in content and "Flask" not in frameworks:
+                            frameworks.append("Flask")
+            except Exception:
+                pass
+
+        # Rust
+        if "Cargo.toml" in files_set:
+            if "cargo" not in package_managers:
+                package_managers.append("cargo")
+            build_systems.append("cargo build")
+            runtimes.append("Rust compiled binary")
+
+        # Go
+        if "go.mod" in files_set:
+            if "go-modules" not in package_managers:
+                package_managers.append("go-modules")
+            build_systems.append("go build")
+            runtimes.append("Go compiled binary")
+
+        # Flutter / Dart
+        if "pubspec.yaml" in files_set:
+            package_managers.append("pub")
+            build_systems.append("flutter build")
+            frameworks.append("Flutter")
+            runtimes.append("Dart VM / Flutter Native")
+
+        # Java Spring Boot / Maven / Gradle
+        if "pom.xml" in files_set:
+            package_managers.append("maven")
+            build_systems.append("maven package")
+            runtimes.append("JVM")
+            frameworks.append("Spring Boot")
+        elif "build.gradle" in files_set:
+            package_managers.append("gradle")
+            build_systems.append("gradle build")
+            runtimes.append("JVM")
+            frameworks.append("Spring Boot")
+
+        # Deployment indicators
+        if "Dockerfile" in files_set or "docker-compose.yml" in files_set:
+            deployment_configs.append("Docker")
+        if any(f.startswith(".github/workflows") for f in files):
+            deployment_configs.append("GitHub Actions")
+        if "vercel.json" in files_set:
+            deployment_configs.append("Vercel")
+        if "supabase.js" in files_set or "supabase/config.toml" in files_set:
+            deployment_configs.append("Supabase")
 
         testing_frameworks = []
         linters = []
@@ -160,14 +461,22 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
         clouds = ["AWS/GCP/Mock"]
 
         all_deps = set(context.dependencies)
-        if "pytest" in all_deps or any("test" in f for f in context.structure):
+        if "pytest" in all_deps or any("test" in f for f in files):
             testing_frameworks.append("pytest")
+        if "jest" in all_deps:
+            testing_frameworks.append("jest")
+        if "vitest" in all_deps:
+            testing_frameworks.append("vitest")
         if "ruff" in all_deps:
             linters.append("ruff")
         if "eslint" in all_deps:
             linters.append("eslint")
-        if "sqlite3" in all_deps or "postgresql" in all_deps:
-            databases.append("Relational Database")
+        if "sqlite3" in all_deps or "postgresql" in all_deps or "psycopg2" in all_deps or "psycopg2-binary" in all_deps:
+            databases.append("PostgreSQL / Relational Database")
+        if "redis" in all_deps:
+            databases.append("Redis Cache")
+        if "qdrant-client" in all_deps:
+            databases.append("Qdrant Vector Store")
 
         return {
             "languages": languages,
@@ -177,7 +486,11 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
             "linters": linters,
             "databases": databases,
             "clouds": clouds,
+            "runtimes": runtimes,
+            "build_systems": build_systems,
+            "deployment_configs": deployment_configs,
         }
+
 
 
 class LocalDocumentationAnalyzer(DocumentationAnalyzer):
@@ -234,13 +547,44 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
     def analyze_repository(self, workspace_root: str) -> RepositorySummary:
         logger.info(f"Workspace Intelligence analyzing repository at: '{workspace_root}'")
 
+        # 1. Project Boundary Detection
+        boundary = detect_project_boundary(workspace_root)
+        
+        # 2. Default Ignores & Monorepos workspaces
+        default_ignores = {".git", "node_modules", ".venv", "venv", ".pytest_cache", ".ruff_cache", "__pycache__", "dist", "build"}
+        workspaces = find_all_workspaces(boundary, default_ignores)
+
+        # 3. Analyze raw repo data
         repo_data = self._analyzer.analyze(workspace_root)
+        
+        # 4. Custom Ignore patterns (.aiosignore rules)
+        aiosignore_rules = load_aiosignore_rules(Path(boundary))
+        context: ProjectContext = repo_data["context"]
+        if aiosignore_rules:
+            filtered_structure = []
+            for f in context.structure:
+                is_ignored = False
+                f_clean = f.replace("\\", "/")
+                for rule in aiosignore_rules:
+                    rule_clean = rule.replace("\\", "/")
+                    if rule_clean.endswith("/"):
+                        if f_clean.startswith(rule_clean) or f"/{rule_clean}" in f_clean:
+                            is_ignored = True
+                            break
+                    else:
+                        if rule_clean in f_clean:
+                            is_ignored = True
+                            break
+                if not is_ignored:
+                    filtered_structure.append(f)
+            context.structure = filtered_structure
+            context.statistics["total_files"] = len(filtered_structure)
+
         arch_data = self._arch_analyzer.analyze(workspace_root, repo_data)
         dep_data = self._dep_analyzer.analyze(workspace_root, repo_data)
         tech_data = self._tech_analyzer.analyze(workspace_root, repo_data)
         doc_data = self._doc_analyzer.analyze(workspace_root, repo_data)
 
-        context: ProjectContext = repo_data["context"]
         total_files = context.statistics.get("total_files", 0)
         total_folders = context.statistics.get("total_folders", 0)
 
@@ -278,18 +622,119 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 "has_docker": repo_data["has_docker"],
                 "env_files": repo_data["env_files"],
                 "cicd_workflows": repo_data["cicd_workflows"],
+                "workspaces": workspaces,
+                "project_boundary": boundary,
+                "circular_dependencies": [],
+                "unused_modules": [],
+                # Technology detail fields
+                "runtimes": tech_data.get("runtimes", []),
+                "build_systems": tech_data.get("build_systems", []),
+                "testing_frameworks": tech_data.get("testing_frameworks", []),
+                "databases": tech_data.get("databases", []),
+                "deployment_configs": tech_data.get("deployment_configs", []),
             }
         )
+
+        # 5. Dependency & Call graph details with CodeIntelligenceService
+        code_intel = self._registry.get(CodeIntelligenceService) if self._registry else None
+        code_summary = None
+        if code_intel:
+            try:
+                code_summary = code_intel.analyze_codebase(workspace_root)
+                
+                # Circular dependency detection
+                dep_graph = code_summary.dependency_graph
+                visited = {}
+                path = []
+                circular_deps = []
+                
+                def detect_cycle(node):
+                    visited[node] = 1
+                    path.append(node)
+                    for neighbor in dep_graph.get(node, []):
+                        if visited.get(neighbor) == 1:
+                            cycle_start = path.index(neighbor)
+                            cycle = path[cycle_start:] + [neighbor]
+                            try:
+                                rel_cycle = [str(Path(p).relative_to(Path(workspace_root))) for p in cycle]
+                                if rel_cycle not in circular_deps:
+                                    circular_deps.append(rel_cycle)
+                            except Exception:
+                                pass
+                        elif neighbor not in visited:
+                            detect_cycle(neighbor)
+                    path.pop()
+                    visited[node] = 2
+
+                for node in dep_graph:
+                    if node not in visited:
+                        detect_cycle(node)
+
+                summary.metadata["circular_dependencies"] = circular_deps
+
+                # Unused modules detection
+                all_imported = set()
+                for imports in dep_graph.values():
+                    for imp in imports:
+                        all_imported.add(imp)
+                        
+                entry_points_abs = [str(Path(workspace_root) / ep) for ep in summary.entry_points]
+                unused_modules = []
+                
+                for file_abs in dep_graph:
+                    try:
+                        rel_file = str(Path(file_abs).relative_to(Path(workspace_root)))
+                        meta = code_intel.get_file_metadata(rel_file)
+                        if meta and meta.purpose == "source" and file_abs not in all_imported and file_abs not in entry_points_abs:
+                            unused_modules.append(rel_file)
+                    except Exception:
+                        pass
+                summary.metadata["unused_modules"] = unused_modules
+                
+            except Exception as e:
+                logger.debug(f"Codebase analysis integration failed: {e}")
+
+        # Automatically generate markdown reports
+        try:
+            self.generate_markdown_reports(workspace_root, summary, code_summary)
+        except Exception as e:
+            logger.warning(f"Failed to generate workspace markdown reports: {e}")
 
         return summary
 
     def store_summary_in_memory(self, summary: RepositorySummary) -> None:
+        auth_locations = []
+        db_locations = []
+        api_entrypoints = []
+        build_deployment_config = []
+
+        code_intel = self._registry.get(CodeIntelligenceService) if self._registry else None
+        if code_intel:
+            try:
+                for meta in code_intel.list_all_files_metadata():
+                    file = meta.file_path
+                    file_lower = file.lower()
+                    if "auth" in file_lower or "login" in file_lower or "jwt" in file_lower:
+                        auth_locations.append(file)
+                    if "db" in file_lower or "database" in file_lower or "postgres" in file_lower or "sql" in file_lower:
+                        db_locations.append(file)
+                    if "route" in file_lower or "api" in file_lower or "controller" in file_lower:
+                        api_entrypoints.append(file)
+                    if meta.purpose == "config" or "docker" in file_lower or "github/workflows" in file_lower or "deployment" in file_lower:
+                        build_deployment_config.append(file)
+            except Exception:
+                pass
+
         summary_content = (
             f"Repository Architecture Summary:\n"
             f"Architecture: {summary.high_level_architecture}\n"
             f"Components: {summary.components}\n"
             f"Design Patterns: {summary.design_patterns}\n"
-            f"Health stats: files={summary.health.file_count}, folders={summary.health.folder_count}"
+            f"Health stats: files={summary.health.file_count}, folders={summary.health.folder_count}\n"
+            f"Auth Locations: {auth_locations[:5]}\n"
+            f"Database Locations: {db_locations[:5]}\n"
+            f"API Entrypoints: {api_entrypoints[:5]}\n"
+            f"Build/Deployment Config: {build_deployment_config[:5]}"
         )
         self._memory.add_memory(
             content=summary_content,
@@ -297,7 +742,7 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
             metadata=MemoryMetadata(
                 workspace_id="default_workspace",
                 session_id="workspace_intelligence_session",
-                tags=["repository_summary", "architecture_summary"],
+                tags=["repository_summary", "architecture_summary", "project_knowledge", "auth_location", "database_location", "api_entrypoint", "build_configuration", "deployment_configuration"],
                 importance=2,
                 source_subsystem="workspace_intelligence"
             )
@@ -305,8 +750,9 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 
         try:
             if self._registry:
-                from aios.services.persistence import SemanticMemoryManager
                 import time
+
+                from aios.services.persistence import SemanticMemoryManager
                 sem_mgr = self._registry.get(SemanticMemoryManager)
                 if sem_mgr:
                     ws_id = "default_workspace"
@@ -354,19 +800,286 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
         )
         self._knowledge_hub.sync_document(doc, "notion")
 
+    def get_workspace_context(self, workspace_root: str) -> WorkspaceContext:
+        boundary = detect_project_boundary(workspace_root)
+        summary = self.analyze_repository(workspace_root)
+        
+        default_ignores = {".git", "node_modules", ".venv", "venv", ".pytest_cache", ".ruff_cache", "__pycache__", "dist", "build"}
+        workspaces = find_all_workspaces(boundary, default_ignores)
+        
+        # Analyze codebase symbols for conventions
+        code_intel = self._registry.get(CodeIntelligenceService) if self._registry else None
+        conventions = {"class_naming": "PascalCase", "function_naming": "snake_case", "method_naming": "snake_case"}
+        symbols = []
+        if code_intel:
+            try:
+                symbols = code_intel._indexer.list_symbols()
+                conventions = detect_coding_conventions(symbols)
+            except Exception:
+                pass
 
-import ast
-import re
-from aios.services.workspace_intelligence import (
-    SymbolReference,
-    CodeStructureSummary,
-    ASTAnalyzer,
-    SymbolIndexer,
-    DependencyGraphBuilder,
-    CallGraphBuilder,
-    CodeIntelligenceService,
-    LanguageASTParser,
-)
+        arch_map = classify_architecture(workspace_root, summary.health.statistics.get("structure", []), code_intel)
+        
+        project_type = "single-package"
+        if len(workspaces) > 1:
+            project_type = "monorepo"
+
+        tech_stack = {
+            "languages": list(summary.languages.keys()),
+            "frameworks": summary.frameworks,
+            "package_managers": summary.package_managers,
+        }
+
+        # Important directories: directories at root level
+        important_dirs = []
+        try:
+            for item in Path(workspace_root).iterdir():
+                if item.is_dir() and not item.name.startswith(".") and item.name not in default_ignores:
+                    important_dirs.append(item.name)
+        except Exception:
+            pass
+
+        return WorkspaceContext(
+            workspace_root=workspace_root,
+            technology_stack=tech_stack,
+            architecture={
+                "high_level_architecture": summary.high_level_architecture,
+                "components": summary.components,
+                "design_patterns": summary.design_patterns,
+                "segmentation": arch_map
+            },
+            dependencies=summary.dependencies,
+            project_type=project_type,
+            important_directories=important_dirs,
+            coding_conventions=conventions,
+            workspaces=workspaces,
+            metadata=summary.metadata
+        )
+
+    def generate_markdown_reports(self, workspace_root: str, summary: RepositorySummary, code_summary: Optional[CodeStructureSummary] = None) -> None:
+        docs_dir = Path(workspace_root) / "docs"
+        docs_dir.mkdir(exist_ok=True)
+
+        # Retrieve git info safely
+        dev_ws = self._registry.get(DeveloperWorkspaceService) if self._registry else None
+        git_branch = "unknown"
+        staged_files = []
+        unstaged_files = []
+        untracked_files = []
+        if dev_ws:
+            try:
+                ws_info = dev_ws.get_workspace_info(workspace_root)
+                git_branch = ws_info.extra.get("git_branch") or "unknown"
+                staged_files = ws_info.staged_files
+                unstaged_files = ws_info.unstaged_files
+                untracked_files = ws_info.untracked_files
+            except Exception:
+                pass
+
+        recent_commits = get_recent_commits(workspace_root)
+        recent_commits_list = "\n".join([f"- {c}" for c in recent_commits]) if recent_commits else "- None"
+        workspaces_list = "\n".join([f"- {ws}" for ws in summary.metadata.get("workspaces", [])])
+        
+        # 1. REPOSITORY_SUMMARY.md
+        repo_summary_md = f"""# Repository Summary
+
+## Overview
+- **Project Name**: {Path(workspace_root).name}
+- **Project Root**: `{workspace_root}`
+- **Git Branch**: `{git_branch}`
+- **Workspaces / Packages**:
+{workspaces_list}
+
+## Repository Statistics
+- **Total Files**: {summary.health.file_count}
+- **Total Folders**: {summary.health.folder_count}
+- **Test Files Count**: {summary.health.test_count}
+- **Documentation Coverage**: {summary.health.documentation_coverage:.1%}
+- **ADR Count**: {summary.health.adr_count}
+- **README Coverage**: {summary.health.readme_coverage:.1%}
+- **Config Completeness**: {summary.health.config_completeness:.1%}
+
+## Git Status Summary
+- **Staged Files**: {len(staged_files)}
+- **Unstaged Changes**: {len(unstaged_files)}
+- **Untracked Files**: {len(untracked_files)}
+
+### Recent Commits
+{recent_commits_list}
+"""
+        (docs_dir / "REPOSITORY_SUMMARY.md").write_text(repo_summary_md, encoding="utf-8")
+
+        # 2. ARCHITECTURE_SUMMARY.md
+        code_intel = self._registry.get(CodeIntelligenceService) if self._registry else None
+        arch_map = classify_architecture(workspace_root, summary.metadata.get("structure", []) or summary.health.statistics.get("structure", []), code_intel)
+        
+        def format_list(lst):
+            return "\n".join([f"- {item}" for item in lst]) if lst else "- None"
+
+        components_list = format_list(summary.components)
+        execution_paths_list = format_list(summary.execution_paths)
+        design_patterns_list = format_list(summary.design_patterns)
+        observations_list = format_list(summary.architectural_observations)
+
+        arch_summary_md = f"""# Architecture Summary
+
+## High-level Architecture
+{summary.high_level_architecture}
+
+## Key Components
+{components_list}
+
+## Execution Paths
+{execution_paths_list}
+
+## Design Patterns Detected
+{design_patterns_list}
+
+## Codebase Architecture Segmentation
+### Services
+{format_list(arch_map['services'])}
+
+### Controllers
+{format_list(arch_map['controllers'])}
+
+### APIs / Routes
+{format_list(arch_map['apis_routes'])}
+
+### Models
+{format_list(arch_map['models'])}
+
+### Database Layer
+{format_list(arch_map['database_layer'])}
+
+### Middleware
+{format_list(arch_map['middleware'])}
+
+### Utilities
+{format_list(arch_map['utilities'])}
+
+### Configuration
+{format_list(arch_map['configuration'])}
+
+## Architectural Observations
+{observations_list}
+"""
+        (docs_dir / "ARCHITECTURE_SUMMARY.md").write_text(arch_summary_md, encoding="utf-8")
+
+        # 3. DEPENDENCY_SUMMARY.md
+        circular_deps = summary.metadata.get("circular_dependencies", [])
+        circular_deps_str = "\n".join([f"- Cycle: {' -> '.join(cycle)}" for cycle in circular_deps]) if circular_deps else "- None detected"
+        
+        unused_mods = summary.metadata.get("unused_modules", [])
+        unused_mods_str = format_list(unused_mods)
+
+        relationships = []
+        for src, dests in list(summary.dependencies.items())[:20]:
+            if dests:
+                relationships.append(f"- `{src}` imports: {', '.join([f'`{d}`' for d in dests])}")
+        relationships_str = "\n".join(relationships) if relationships else "- None"
+
+        dependency_summary_md = f"""# Dependency Summary
+
+## Monorepo Workspaces
+{workspaces_list}
+
+## Circular Dependencies
+{circular_deps_str}
+
+## Unused Modules
+{unused_mods_str}
+
+## Module Import Relationships
+{relationships_str}
+"""
+        (docs_dir / "DEPENDENCY_SUMMARY.md").write_text(dependency_summary_md, encoding="utf-8")
+
+        # 4. TECHNOLOGY_STACK.md — derive from already-computed summary data
+        tech_stack_md = f"""# Technology Stack
+
+## Programming Languages
+{format_list(list(summary.languages.keys()))}
+
+## Frameworks
+{format_list(summary.frameworks)}
+
+## Package Managers
+{format_list(summary.package_managers)}
+
+## Build Systems
+{format_list(summary.metadata.get('build_systems', []))}
+
+## Runtimes
+{format_list(summary.metadata.get('runtimes', []))}
+
+## Testing Frameworks
+{format_list(summary.metadata.get('testing_frameworks', []))}
+
+## Databases
+{format_list(summary.metadata.get('databases', []))}
+
+## Deployment Configuration
+{format_list(summary.metadata.get('deployment_configs', []))}
+"""
+        (docs_dir / "TECHNOLOGY_STACK.md").write_text(tech_stack_md, encoding="utf-8")
+
+        # 5. WORKSPACE_HEALTH.md
+        overall_health = "Green"
+        health_score = (summary.health.documentation_coverage + summary.health.readme_coverage + summary.health.config_completeness) / 3.0
+        if health_score < 0.4:
+            overall_health = "Red"
+        elif health_score < 0.7:
+            overall_health = "Yellow"
+
+        # Gather todo markers from context structure if available
+        todos_count = 0
+        todos_list_str = "- None"
+        try:
+            proj_context = self._project_intel.analyze_workspace(workspace_root)
+            todos_count = len(proj_context.todo_markers)
+            todos_list_str = "\n".join([f"- `{t['file']}:L{t['line']}`: {t['text'][:100]}" for t in proj_context.todo_markers[:15]])
+        except Exception:
+            pass
+
+        workspace_health_md = f"""# Workspace Health Report
+
+## Health Scores
+- **Documentation Coverage**: {summary.health.documentation_coverage:.1%}
+- **README Coverage**: {summary.health.readme_coverage:.1%}
+- **Config Completeness**: {summary.health.config_completeness:.1%}
+- **Overall Code Health**: {overall_health}
+
+## Code Metrics
+- **Total Files**: {summary.health.file_count}
+- **Total Folders**: {summary.health.folder_count}
+- **Test Files Count**: {summary.health.test_count}
+- **Line Count**: {summary.health.statistics.get('total_lines', 0)}
+
+## Git Status Summary
+- **Uncommitted Changes**: {len(staged_files) + len(unstaged_files)}
+- **Untracked Files**: {len(untracked_files)}
+
+## TODO & FIXME Markers ({todos_count} found)
+{todos_list_str}
+"""
+        (docs_dir / "WORKSPACE_HEALTH.md").write_text(workspace_health_md, encoding="utf-8")
+
+
+def get_recent_commits(workspace_root: str) -> List[str]:
+    try:
+        res = subprocess.run(
+            ["git", "log", "-n", "5", "--oneline"],
+            cwd=workspace_root,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return [line.strip() for line in res.stdout.splitlines() if line.strip()]
+    except Exception:
+        return []
+
+
+
 
 
 class PythonSymbolVisitor(ast.NodeVisitor):
@@ -557,7 +1270,7 @@ class TypeScriptASTParser(LanguageASTParser):
         brace_level = 0
         pending_block = None
 
-        for idx, (line_raw, line_clean) in enumerate(zip(lines_raw, lines_clean), 1):
+        for idx, (line_raw, line_clean) in enumerate(zip(lines_raw, lines_clean, strict=False), 1):
             line_stripped = line_clean.strip()
             line_raw_stripped = line_raw.strip()
             if not line_stripped and not line_raw_stripped:
@@ -905,6 +1618,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
         self._indexer = LocalSymbolIndexer()
         self._dep_builder = LocalDependencyGraphBuilder()
         self._call_builder = LocalCallGraphBuilder()
+        self._files_metadata: Dict[str, FileMetadata] = {}
 
     def initialize(self) -> None:
         logger.info("Initializing LocalCodeIntelligenceService")
@@ -915,29 +1629,75 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
     def stop(self) -> None:
         pass
 
+    def get_file_metadata(self, file_path: str) -> Optional[FileMetadata]:
+        return self._files_metadata.get(file_path)
+
+    def list_all_files_metadata(self) -> List[FileMetadata]:
+        return list(self._files_metadata.values())
+
     def analyze_codebase(self, workspace_root: str) -> CodeStructureSummary:
         logger.info(f"Analyzing codebase at: '{workspace_root}'")
         context: ProjectContext = self._project_intel.analyze_workspace(workspace_root)
         
+        # Incremental AST parsing Cache
+        cache_path = Path(workspace_root) / ".aios_code_intelligence.json"
+        ast_cache = {}
+        if cache_path.is_file():
+            try:
+                ast_cache = json.loads(cache_path.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
         all_symbols = []
-        target_files = [f for f in context.structure if f.endswith(".py") or f.endswith(".ts") or f.endswith(".tsx") or f.endswith(".js") or f.endswith(".jsx")]
+        target_files = [f for f in context.structure if f.endswith((".py", ".ts", ".tsx", ".js", ".jsx"))]
         
-        for file in target_files:
+        new_ast_cache = {}
+        
+        # Parallel processor helper
+        def process_file(file):
             file_path = Path(workspace_root) / file
-            if file_path.is_file():
-                try:
-                    content = file_path.read_text(encoding="utf-8", errors="ignore")
-                    symbols = self._analyzer.parse_file(str(file_path), content)
-                    all_symbols.extend(symbols)
-                except Exception:
-                    pass
+            if not file_path.is_file():
+                return [], None
+            
+            try:
+                stat = file_path.stat()
+                mtime = stat.st_mtime
+                size = stat.st_size
+                
+                cached_entry = ast_cache.get(file)
+                if cached_entry and cached_entry.get("mtime") == mtime and cached_entry.get("size") == size:
+                    symbols_dicts = cached_entry.get("symbols", [])
+                    symbols = [dict_to_symbol(d) for d in symbols_dicts]
+                    return symbols, {"mtime": mtime, "size": size, "symbols": symbols_dicts}
+                
+                content = file_path.read_text(encoding="utf-8", errors="ignore")
+                symbols = self._analyzer.parse_file(str(file_path), content)
+                symbols_dicts = [symbol_to_dict(s) for s in symbols]
+                return symbols, {"mtime": mtime, "size": size, "symbols": symbols_dicts}
+            except Exception as e:
+                logger.debug(f"Error parsing file {file}: {e}")
+                return [], None
+
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(process_file, f): f for f in target_files}
+            for future in concurrent.futures.as_completed(futures):
+                file = futures[future]
+                symbols, cache_entry = future.result()
+                all_symbols.extend(symbols)
+                if cache_entry:
+                    new_ast_cache[file] = cache_entry
+
+        try:
+            cache_path.write_text(json.dumps(new_ast_cache, indent=2), encoding="utf-8")
+        except Exception:
+            pass
 
         self._indexer.index_symbols(all_symbols)
         unique_symbols = self._indexer.list_symbols()
 
-        dep_graph = self._dep_builder.build_graph(
-            [str(Path(workspace_root) / f) for f in target_files], unique_symbols
-        )
+        abs_target_paths = [str(Path(workspace_root) / f) for f in target_files]
+        dep_graph = self._dep_builder.build_graph(abs_target_paths, unique_symbols)
         call_graph = self._call_builder.build_call_graph(unique_symbols)
 
         inheritance_map = {}
@@ -958,6 +1718,108 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 inheritance_map[sym.name] = [sym.meta["extends"]]
             elif sym.symbol_type == "interface" and "extends" in sym.meta:
                 inheritance_map[sym.name] = sym.meta["extends"]
+
+        # Resolve imported_by relations
+        imported_by_map = {}
+        for src, dests in dep_graph.items():
+            for dest in dests:
+                imported_by_map.setdefault(dest, []).append(src)
+
+        file_relative_map = {str(Path(workspace_root) / f): f for f in target_files}
+
+        self._files_metadata = {}
+        for file in target_files:
+            abs_path_str = str(Path(workspace_root) / file)
+            file_path = Path(abs_path_str)
+            size = 0
+            try:
+                size = file_path.stat().st_size
+            except Exception:
+                pass
+            
+            ext = file_path.suffix.lower()
+            stem = file_path.stem
+            module_name = stem
+            if ext == ".py":
+                parts = file_path.relative_to(Path(workspace_root)).parts
+                if "src" in parts:
+                    idx = parts.index("src")
+                    module_name = ".".join(parts[idx+1:]).replace(".py", "")
+                else:
+                    module_name = ".".join(parts).replace(".py", "")
+            
+            purpose = "source"
+            file_lower = file.lower()
+            if "test_" in file_lower or "_test" in file_lower or file_lower.endswith((".test.js", ".spec.ts", ".test.ts")):
+                purpose = "test"
+            elif ext in (".md", ".txt", ".pdf"):
+                purpose = "documentation"
+            elif ext in (".json", ".toml", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (".gitignore", ".env"):
+                purpose = "config"
+            elif ext in (".sh", ".bat", ".cmd", ".ps1"):
+                purpose = "build"
+            elif ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico"):
+                purpose = "asset"
+
+            file_imports = []
+            file_exports = []
+            for sym in unique_symbols:
+                if sym.file_path == abs_path_str:
+                    if sym.symbol_type == "import":
+                        file_imports.append(sym.name)
+                    elif sym.symbol_type not in ("module", "import"):
+                        file_exports.append(sym.name)
+
+            rel_imports = [file_relative_map[p] for p in dep_graph.get(abs_path_str, []) if p in file_relative_map]
+            rel_imported_by = [file_relative_map[p] for p in imported_by_map.get(abs_path_str, []) if p in file_relative_map]
+
+            self._files_metadata[file] = FileMetadata(
+                file_path=file,
+                language=ext[1:].upper() if ext else "UNKNOWN",
+                module=module_name,
+                extension=ext,
+                size=size,
+                purpose=purpose,
+                imports=file_imports,
+                exports=file_exports,
+                relationships={
+                    "imports": rel_imports,
+                    "imported_by": rel_imported_by
+                }
+            )
+
+        # Index non-codebase files too
+        for file in context.structure:
+            if file not in self._files_metadata:
+                file_path = Path(workspace_root) / file
+                size = 0
+                try:
+                    size = file_path.stat().st_size
+                except Exception:
+                    pass
+                ext = file_path.suffix.lower()
+                purpose = "other"
+                file_lower = file.lower()
+                if ext in (".md", ".txt", ".pdf"):
+                    purpose = "documentation"
+                elif ext in (".json", ".toml", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (".gitignore", ".env"):
+                    purpose = "config"
+                elif ext in (".sh", ".bat", ".cmd", ".ps1"):
+                    purpose = "build"
+                elif ext in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico"):
+                    purpose = "asset"
+
+                self._files_metadata[file] = FileMetadata(
+                    file_path=file,
+                    language=ext[1:].upper() if ext else "UNKNOWN",
+                    module=file_path.stem,
+                    extension=ext,
+                    size=size,
+                    purpose=purpose,
+                    imports=[],
+                    exports=[],
+                    relationships={"imports": [], "imported_by": []}
+                )
 
         return CodeStructureSummary(
             summary_id=f"code_summary_{int(time.time())}",
@@ -1014,9 +1876,9 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
             return
 
         report_md = (
-            f"# Codebase Symbol & Graph Summary\n\n"
-            f"## Public APIs\n" + "\n".join([f"- {api}" for api in summary.public_apis[:20]]) + "\n\n"
-            f"## Inheritance Structure\n" + "\n".join([f"- {cls} extends {parent}" for cls, parent in summary.inheritance_map.items()]) + "\n\n"
+            "# Codebase Symbol & Graph Summary\n\n"
+            "## Public APIs\n" + "\n".join([f"- {api}" for api in summary.public_apis[:20]]) + "\n\n"
+            "## Inheritance Structure\n" + "\n".join([f"- {cls} extends {parent}" for cls, parent in summary.inheritance_map.items()]) + "\n\n"
             f"## Symbol Counts\n"
             f"- Total extracted symbols: {len(summary.symbols)}\n"
         )
@@ -1033,5 +1895,6 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
             )
         )
         self._knowledge_hub.sync_document(doc, "notion")
+
 
 

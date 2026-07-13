@@ -1,4 +1,3 @@
-import sys
 from aios.services.command.metadata import CommandCategory, CommandMetadata
 from aios.services.research import ResearchService
 

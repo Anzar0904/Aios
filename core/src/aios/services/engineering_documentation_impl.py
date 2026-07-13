@@ -1,29 +1,29 @@
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.engineering_documentation import (
+    ADRGenerator,
     DecisionRecord,
-    ImplementationSummary,
-    EngineeringTimeline,
-    ChangeSummary,
-    ValidationSummary,
-    RiskSummary,
     EngineeringDocumentArtifact,
     EngineeringDocumentationReport,
-    ADRGenerator,
-    EngineeringReportGenerator,
+    EngineeringDocumentationService,
     EngineeringDocumentPlanner,
     EngineeringDocumentValidator,
-    EngineeringDocumentationService,
+    EngineeringReportGenerator,
+    ImplementationSummary,
+    RiskSummary,
+    ValidationSummary,
 )
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +57,9 @@ class LocalEngineeringReportGenerator(EngineeringReportGenerator):
         files = "\n".join(f"- `{f}`" for f in summary.files_modified)
         
         return (
-            f"# Executive Implementation Report\n\n"
-            f"## Features Implemented\n" + (feats if feats else "- *None.*") + "\n\n"
-            f"## Modified File Mappings\n" + (files if files else "- *None.*") + "\n\n"
+            "# Executive Implementation Report\n\n"
+            "## Features Implemented\n" + (feats if feats else "- *None.*") + "\n\n"
+            "## Modified File Mappings\n" + (files if files else "- *None.*") + "\n\n"
             f"## Validation Results\n"
             f"- **Tests Executed**: {validation.tests_run_count}\n"
             f"- **Tests Passed**: {validation.passed_count}\n"

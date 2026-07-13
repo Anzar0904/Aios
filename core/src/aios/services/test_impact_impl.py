@@ -1,29 +1,31 @@
 import json
-import time
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.workspace_intelligence import CodeStructureSummary
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.test_impact import (
-    ImpactNode,
-    ImpactEdge,
-    ImpactGraph,
     AffectedComponent,
     AffectedTestSuite,
-    RegressionCandidate,
-    RiskAssessment,
+    ChangeImpactAnalyzer,
     CoverageTarget,
     ImpactAnalysisResult,
-    ChangeImpactAnalyzer,
+    ImpactEdge,
+    ImpactGraph,
+    ImpactNode,
+    RegressionCandidate,
+    RiskAssessment,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +90,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                     name=name,
                     file_path=f,
                     direct_impact=True,
-                    reason=f"Direct file modification requested in planning."
+                    reason="Direct file modification requested in planning."
                 )
             )
 
@@ -266,9 +268,9 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
             f"- **Dependency Chain Risk**: {result.risk_assessment.dep_chain_risk}\n\n"
             f"## Affected Components\n"
             + "\n".join(components_md) + "\n\n"
-            f"## Prioritized Test Suites\n"
+            "## Prioritized Test Suites\n"
             + "\n".join(suites_md) + "\n\n"
-            f"## Regression Candidates\n"
+            "## Regression Candidates\n"
             + ("\n".join(regression_md) if regression_md else "- *No indirect regression candidates identified.*")
         )
 

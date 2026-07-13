@@ -20,7 +20,6 @@ from aios.docgen.ops_models import (
     TroubleshootingEntry,
 )
 
-
 _TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 

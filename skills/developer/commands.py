@@ -1,6 +1,7 @@
+from aios.services.command.discovery import execute_agent_intent
 from aios.services.command.metadata import CommandCategory, CommandMetadata
 from aios.services.intent import IntentType
-from aios.services.command.discovery import execute_agent_intent
+
 
 def register_commands(registry, kernel, conv_manager) -> None:
     registry.register_command(

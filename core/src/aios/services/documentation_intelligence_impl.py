@@ -1,29 +1,35 @@
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, List, Optional
 
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
+from aios.services.documentation_intelligence import (
+    DocumentArtifact,
+    DocumentationPlanner,
+    DocumentationProfileAdapter,
+    DocumentationRegistry,
+    DocumentationResult,
+    DocumentationService,
+    DocumentationSession,
+    DocumentationWorkspace,
+    DocumentCategory,
+    DocumentMetadata,
+    DocumentSource,
+    DocumentTemplate,
 )
 from aios.services.engineering_profile import EngineeringProfileService
-from aios.services.documentation_intelligence import (
-    DocumentCategory,
-    DocumentSource,
-    DocumentMetadata,
-    DocumentTemplate,
-    DocumentArtifact,
-    DocumentationWorkspace,
-    DocumentationSession,
-    DocumentationResult,
-    DocumentationProfileAdapter,
-    DocumentationPlanner,
-    DocumentationRegistry,
-    DocumentationService,
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
 )
-from aios.services.persistence import PersistenceStatus, PersistencePolicy, DocumentationMetadataRepository
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.persistence import (
+    DocumentationMetadataRepository,
+    PersistencePolicy,
+    PersistenceStatus,
+)
 
 logger = logging.getLogger(__name__)
 

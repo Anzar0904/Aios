@@ -1,28 +1,23 @@
 import os
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary
-from aios.services.model import ModelService, LLMResponse
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
 from aios.services.code_generation import (
     GenerationPolicy,
-    GeneratedArtifact,
-    GenerationSession,
 )
 from aios.services.code_generation_impl import (
+    LocalCodeGenerationService,
     LocalCodePlanner,
     LocalContextAssembler,
-    LocalPromptBuilder,
-    LocalFileGenerator,
     LocalFileEditor,
-    LocalSyntaxValidator,
+    LocalFileGenerator,
+    LocalPromptBuilder,
     LocalStyleValidator,
-    LocalImportValidator,
-    LocalGenerationValidator,
-    LocalCodeGenerationService,
+    LocalSyntaxValidator,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 def test_code_planner():
@@ -68,7 +63,7 @@ def test_file_generator_editor(tmp_path):
     assert os.path.exists(os.path.join(ws_root, "test_gen.py"))
     assert art.checksum is not None
     
-    art_edit = editor.edit_file(ws_root, "test_gen.py", "print('edited')\n")
+    editor.edit_file(ws_root, "test_gen.py", "print('edited')\n")
     with open(os.path.join(ws_root, "test_gen.py"), "r") as fh:
         assert fh.read() == "print('edited')\n"
 

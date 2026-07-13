@@ -1,190 +1,119 @@
-import os
-import time
 import math
+import os
 import shutil
-import json
-from typing import Dict, Any, List, Callable, Optional
+import time
+from typing import List
 from unittest.mock import MagicMock
 
 from aios.registry import ServiceRegistry
 from aios.services.persistence import (
+    CachePolicy,
+    LockPolicy,
     PersistenceConfigurationService,
     PersistenceRegistry,
-    RepositoryRegistry,
     PersistenceService,
-    RedisProvider,
-    RuntimeIntelligenceService,
-    RedisRuntimeTelemetry,
-    RedisRuntimeAggregator,
-    RedisRuntimeHealthAnalyzer,
-    RedisCapacityAnalyzer,
-    RedisPerformanceAnalyzer,
-    RedisRecommendationEngine,
-    RedisRuntimeDiagnostics,
-    RedisRuntimeStatisticsCollector,
-    RedisRuntimeReporter,
-    RedisRuntimeValidator,
-    RedisRuntimeIntelligenceService,
-    RedisRateLimitService,
-    RedisQueueService,
-    RedisCoordinationService,
-    RedisSessionService,
-    RedisCacheService,
-    CachePolicy,
-    CachePolicyManager,
-    CacheStatisticsCollector,
-    CacheDiagnostics,
-    CacheHealthMonitor,
-    CacheRecommendationEngine,
-    CacheInvalidationManager,
-    CacheWarmupService,
-    CacheRebuildService,
-    SessionPolicy,
-    SessionRegistry,
-    SessionExpirationManager,
-    SessionRecoveryManager,
-    SessionStatisticsCollector,
-    SessionHealthMonitor,
-    SessionDiagnostics,
-    SessionRecommendationEngine,
-    SessionStore,
-    SessionManager,
-    LockPolicy,
-    LockRegistry,
-    LockLeaseManager,
-    LockRecoveryManager,
-    DeadlockDetector,
-    MutexManager,
-    CoordinationStatisticsCollector,
-    CoordinationHealthMonitor,
-    CoordinationDiagnostics,
-    CoordinationRecommendationEngine,
-    DistributedLockManager,
     QueuePriority,
-    QueueRegistry,
-    QueueManager,
-    PriorityQueueManager,
-    DelayedQueueManager,
-    RetryQueueManager,
-    QueueScheduler,
-    QueueWorkerCoordinator,
-    QueueRecoveryManager,
-    QueueStatisticsCollector as ServiceQueueStatisticsCollector,
-    QueueHealthMonitor as ServiceQueueHealthMonitor,
-    QueueDiagnostics as ServiceQueueDiagnostics,
-    QueueRecommendationEngine as ServiceQueueRecommendationEngine,
-    QuotaRegistry,
-    RateLimitManager,
-    TokenBucketManager,
-    SlidingWindowManager,
-    FixedWindowManager,
-    QuotaSynchronizationManager,
-    RateLimitRecoveryManager,
-    RateLimitStatisticsCollector,
-    RateLimitHealthMonitor,
-    RateLimitDiagnostics,
-    RateLimitRecommendationEngine,
-    WorkspaceRepository,
-    EngineeringProfileRepository,
-    ConfigurationRepository,
-    PersistenceStatus,
-    PersistenceResult,
-    JobState,
-    JobStateMachine,
+    RedisCacheService,
+    RedisCoordinationService,
+    RedisProvider,
+    RedisQueueService,
+    RedisRateLimitService,
+    RedisRuntimeIntelligenceService,
+    RedisSessionService,
+    RepositoryRegistry,
+    RuntimeIntelligenceService,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    PersistenceBootstrapper,
-    RedisConfigurationService,
-    RedisConnectionManager,
-    RedisTransportImpl,
-    RedisProviderImpl,
-    WorkspaceRepositoryImpl,
-    EngineeringProfileRepositoryImpl,
-    ConfigurationRepositoryImpl,
-    CachePolicyManagerImpl,
-    CacheStatisticsCollectorImpl,
     CacheDiagnosticsImpl,
     CacheHealthMonitorImpl,
-    CacheRecommendationEngineImpl,
     CacheInvalidationManagerImpl,
-    CacheWarmupServiceImpl,
+    CachePolicyManagerImpl,
     CacheRebuildServiceImpl,
-    RedisCacheServiceImpl,
-    SessionRegistryImpl,
-    SessionStatisticsCollectorImpl,
-    SessionDiagnosticsImpl,
-    SessionHealthMonitorImpl,
-    SessionRecommendationEngineImpl,
-    SessionStoreImpl,
-    SessionExpirationManagerImpl,
-    SessionRecoveryManagerImpl,
-    SessionManagerImpl,
-    RedisSessionServiceImpl,
-    LockRegistryImpl,
-    DeadlockDetectorImpl,
-    CoordinationStatisticsCollectorImpl,
+    CacheRecommendationEngineImpl,
+    CacheStatisticsCollectorImpl,
+    CacheWarmupServiceImpl,
+    ConfigurationRepositoryImpl,
     CoordinationDiagnosticsImpl,
     CoordinationHealthMonitorImpl,
     CoordinationRecommendationEngineImpl,
+    CoordinationStatisticsCollectorImpl,
+    DeadlockDetectorImpl,
+    DelayedQueueManagerImpl,
+    DistributedLockManagerImpl,
+    EngineeringProfileRepositoryImpl,
+    FixedWindowManagerImpl,
     LockLeaseManagerImpl,
     LockRecoveryManagerImpl,
+    LockRegistryImpl,
     MutexManagerImpl,
-    DistributedLockManagerImpl,
-    RedisCoordinationServiceImpl,
-    QueueRegistryImpl,
-    QueueStatisticsCollectorImpl,
+    PersistenceBootstrapper,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
+    PriorityQueueManagerImpl,
     QueueDiagnosticsImpl,
     QueueHealthMonitorImpl,
-    QueueRecommendationEngineImpl,
-    PriorityQueueManagerImpl,
-    DelayedQueueManagerImpl,
-    RetryQueueManagerImpl,
-    QueueSchedulerImpl,
-    QueueWorkerCoordinatorImpl,
-    QueueRecoveryManagerImpl,
     QueueManagerImpl,
-    RedisQueueServiceImpl,
+    QueueRecommendationEngineImpl,
+    QueueRecoveryManagerImpl,
+    QueueRegistryImpl,
+    QueueSchedulerImpl,
+    QueueStatisticsCollectorImpl,
+    QueueWorkerCoordinatorImpl,
     QuotaRegistryImpl,
-    TokenBucketManagerImpl,
-    SlidingWindowManagerImpl,
-    FixedWindowManagerImpl,
     QuotaSynchronizationManagerImpl,
-    RateLimitRecoveryManagerImpl,
-    RateLimitStatisticsCollectorImpl,
     RateLimitDiagnosticsImpl,
     RateLimitHealthMonitorImpl,
-    RateLimitRecommendationEngineImpl,
     RateLimitManagerImpl,
-    RedisRateLimitServiceImpl,
-    RedisRuntimeTelemetryImpl,
-    RedisRuntimeAggregatorImpl,
-    RedisRuntimeHealthAnalyzerImpl,
+    RateLimitRecommendationEngineImpl,
+    RateLimitRecoveryManagerImpl,
+    RateLimitStatisticsCollectorImpl,
+    RedisCacheServiceImpl,
     RedisCapacityAnalyzerImpl,
+    RedisConfigurationService,
+    RedisConnectionManager,
+    RedisCoordinationServiceImpl,
     RedisPerformanceAnalyzerImpl,
+    RedisProviderImpl,
+    RedisQueueServiceImpl,
+    RedisRateLimitServiceImpl,
     RedisRecommendationEngineImpl,
+    RedisRuntimeAggregatorImpl,
     RedisRuntimeDiagnosticsImpl,
-    RedisRuntimeStatisticsCollectorImpl,
-    RedisRuntimeReporterImpl,
-    RedisRuntimeValidatorImpl,
+    RedisRuntimeHealthAnalyzerImpl,
     RedisRuntimeIntelligenceServiceImpl,
-    RuntimeTelemetryCollector,
-    RuntimePerformanceAnalyzer,
+    RedisRuntimeReporterImpl,
+    RedisRuntimeStatisticsCollectorImpl,
+    RedisRuntimeTelemetryImpl,
+    RedisRuntimeValidatorImpl,
+    RedisSessionServiceImpl,
+    RedisTransportImpl,
+    RetryQueueManagerImpl,
     RuntimeCapacityAnalyzer,
-    RuntimeQueryProfiler,
-    RuntimeTransactionProfiler,
-    RuntimeRepositoryProfiler,
-    RuntimeLifecycleMonitor,
-    RuntimeStatisticsEngine,
     RuntimeDiagnosticsEngine,
-    RuntimeRecommendationEngine,
     RuntimeHealthMonitor,
-    RuntimeReportGenerator,
     RuntimeIntelligenceServiceImpl,
+    RuntimeLifecycleMonitor,
+    RuntimePerformanceAnalyzer,
+    RuntimeQueryProfiler,
+    RuntimeRecommendationEngine,
+    RuntimeReportGenerator,
+    RuntimeRepositoryProfiler,
+    RuntimeStatisticsEngine,
+    RuntimeTelemetryCollector,
+    RuntimeTransactionProfiler,
+    SessionDiagnosticsImpl,
+    SessionExpirationManagerImpl,
+    SessionHealthMonitorImpl,
+    SessionManagerImpl,
+    SessionRecommendationEngineImpl,
+    SessionRecoveryManagerImpl,
+    SessionRegistryImpl,
+    SessionStatisticsCollectorImpl,
+    SessionStoreImpl,
+    SlidingWindowManagerImpl,
+    TokenBucketManagerImpl,
+    WorkspaceRepositoryImpl,
     serialize_val,
-    deserialize_val,
 )
 
 from tests.test_persistence import SQLiteTransportForTests
@@ -643,12 +572,12 @@ def main():
 
     # 11. Runtime Intelligence Analytics
     print("\n--- 10. RUNTIME INTELLIGENCE telemetry verification ---")
-    metrics = redis_aggregator.aggregate_metrics()
+    redis_aggregator.aggregate_metrics()
     health = redis_health_analyzer.analyze_health()
     capacity = redis_capacity_analyzer.analyze_capacity()
-    perf = redis_perf_analyzer.analyze_performance()
+    redis_perf_analyzer.analyze_performance()
     diagnostics = redis_diagnostics.get_diagnostics()
-    recommendations = redis_recommend_engine.generate_recommendations()
+    redis_recommend_engine.generate_recommendations()
 
     # Forwarding validation
     global_telem = global_ri.get_telemetry()
@@ -778,7 +707,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.6 REDIS_CACHE_VALIDATION.md
     with open(f"{docs_dir}/REDIS_CACHE_VALIDATION.md", "w") as f:
-        f.write(f"""# Redis Cache Validation
+        f.write("""# Redis Cache Validation
 
 - **SET/GET/DELETE correctness**: 100% verified.
 - **TTL Expirations**: Checked and verified.
@@ -789,7 +718,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.7 REDIS_SESSION_VALIDATION.md
     with open(f"{docs_dir}/REDIS_SESSION_VALIDATION.md", "w") as f:
-        f.write(f"""# Redis Session Validation
+        f.write("""# Redis Session Validation
 
 - **Session CRUD Operations**: Verified.
 - **Sliding TTL Expire**: Heartbeat sliding updates verified.
@@ -799,7 +728,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.8 REDIS_COORDINATION_VALIDATION.md
     with open(f"{docs_dir}/REDIS_COORDINATION_VALIDATION.md", "w") as f:
-        f.write(f"""# Redis Coordination Validation
+        f.write("""# Redis Coordination Validation
 
 - **Exclusive Locks**: Mutual exclusion verified.
 - **Shared / Reentrant Locks**: Shared lease acquisition verified.
@@ -810,7 +739,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.9 REDIS_QUEUE_VALIDATION.md
     with open(f"{docs_dir}/REDIS_QUEUE_VALIDATION.md", "w") as f:
-        f.write(f"""# Redis Queue Validation
+        f.write("""# Redis Queue Validation
 
 - **Priority ordering**: Enqueued items dequeued in exact priority order.
 - **Delayed & Retry workers**: Bounded queue worker visibility verification passed.
@@ -820,7 +749,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.10 REDIS_RATE_LIMIT_VALIDATION.md
     with open(f"{docs_dir}/REDIS_RATE_LIMIT_VALIDATION.md", "w") as f:
-        f.write(f"""# Redis Rate Limit Validation
+        f.write("""# Redis Rate Limit Validation
 
 - **Token Bucket algorithm**: Refill capacity burst limits verified.
 - **Sliding Window algorithm**: Time-series log constraints verified.
@@ -830,7 +759,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.11 REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md
     with open(f"{docs_dir}/REDIS_RUNTIME_INTELLIGENCE_VALIDATION.md", "w") as f:
-        f.write(f"""# Redis Runtime Intelligence Validation
+        f.write("""# Redis Runtime Intelligence Validation
 
 - **Aggregator telemetry**: Aggregator collected all stats keys.
 - **Telemetry forwarding**: Global `RuntimeTelemetryCollector` contains the `"redis_telemetry"` section.
@@ -840,7 +769,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 12.12 REDIS_FAILURE_RECOVERY.md
     with open(f"{docs_dir}/REDIS_FAILURE_RECOVERY.md", "w") as f:
-        f.write(f"""# Redis Failure Recovery Validation
+        f.write("""# Redis Failure Recovery Validation
 
 - **Disconnections**: Detected connection drop within 2 seconds.
 - **Local fallback writes**: Cached items successfully written locally during simulation.

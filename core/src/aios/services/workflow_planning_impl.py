@@ -1,38 +1,39 @@
+import logging
 import os
 import time
-import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.automation import (
-    WorkflowNode,
-    WorkflowEdge,
-    WorkflowGraph,
-    WorkflowTrigger,
-    WorkflowAction,
     WorkflowDefinition,
+    WorkflowEdge,
     WorkflowExecutionPolicy,
+    WorkflowGraph,
+    WorkflowNode,
+)
+from aios.services.automation import (
     WorkflowMetadata as WFMetadata,
 )
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.workflow_planning import (
-    WorkflowTemplate,
-    WorkflowConstraint,
-    WorkflowPlanningSession,
-    WorkflowPlanningReport,
-    WorkflowIntentAnalyzer,
-    WorkflowTemplateRegistry,
-    WorkflowDependencyResolver,
-    WorkflowOptimizer,
-    WorkflowSuggestionEngine,
     WorkflowComposer,
+    WorkflowDependencyResolver,
+    WorkflowIntentAnalyzer,
+    WorkflowOptimizer,
     WorkflowPlanner,
+    WorkflowPlanningReport,
+    WorkflowPlanningSession,
+    WorkflowSuggestionEngine,
+    WorkflowTemplate,
+    WorkflowTemplateRegistry,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ class LocalWorkflowDependencyResolver(WorkflowDependencyResolver):
         # Simple topological sort
         visited = set()
         stack = []
-        node_map = {n.node_id: n for n in nodes}
+        {n.node_id: n for n in nodes}
 
         # Build adjacency list
         adj = {n.node_id: [] for n in nodes}
@@ -127,7 +128,7 @@ class LocalWorkflowOptimizer(WorkflowOptimizer):
             
             # Avoid self loop after merging duplicates
             if src == tgt:
-                optimizations.append(f"Removed self-loop edge resulting from duplicate nodes merge.")
+                optimizations.append("Removed self-loop edge resulting from duplicate nodes merge.")
                 continue
             
             # Avoid duplicate edges
@@ -464,7 +465,7 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             f"**Workspace ID**: `{session.workspace_id}`\n\n"
             f"## Planned Summary\n{plan_desc}\n\n"
             f"## Execution Topological Nodes\n" + (nodes_md if nodes_md else "- *None.*") + "\n\n"
-            f"## Applied Optimization Recommendations\n" + (opts_md if opts_md else "- *None.*")
+            "## Applied Optimization Recommendations\n" + (opts_md if opts_md else "- *None.*")
         )
         self._write_to_workspace(session.workspace_id, f"PLANNING_REPORT_{session.session_id}.md", report_md)
 

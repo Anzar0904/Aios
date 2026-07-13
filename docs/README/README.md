@@ -4,12 +4,12 @@ Welcome to the automatically generated documentation directory for Personal AI O
 
 ## Repository Structure Overview
 - **Packages Detected**: 18
-- **Modules Scanned**: 396
-- **Core Services**: 168
+- **Modules Scanned**: 398
+- **Core Services**: 169
 - **Active Providers**: 12
-- **Test Suites**: 131
-- **Configuration Files**: 357
-- **Documentation Files**: 768
+- **Test Suites**: 132
+- **Configuration Files**: 351
+- **Documentation Files**: 767
 
 ## Documentation Pages Map
 - [Architecture.md](Architecture.md): Package and service relation diagrams.

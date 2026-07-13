@@ -1,6 +1,6 @@
-import pytest
-from aios.services.engineer.graph import EngineeringGraph
 from aios.services.engineer.dependency import DependencyAnalyzer
+from aios.services.engineer.graph import EngineeringGraph
+
 
 def test_dependency_analyzer_exports_all_dot_graphs():
     mock_data = {

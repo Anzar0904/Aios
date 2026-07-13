@@ -58,4 +58,19 @@ mvp.pdf
 MagicMock/
 core/MagicMock/
 
-
+# Local credentials and agent runtime configurations
+.agent/
+.env*
+*credentials.json
+credentials/
+*cache/
+*logs/
+*.db
+node_modules/
+.agents/
+.claude/
+.opencode/
+temp/
+tmp/
+*.log
+qdrant/

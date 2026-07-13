@@ -1,16 +1,16 @@
-import time
 import logging
-from typing import Dict, List, Any, Optional, Callable
+import time
+from typing import Any, Callable, Dict, List, Optional
 
 from aios.services.runtime import (
-    RuntimeState,
-    RuntimeSession,
-    RuntimeConfiguration,
     BackgroundTask,
-    Watcher,
     EventDispatcher,
     HealthMonitor,
+    RuntimeConfiguration,
     RuntimeService,
+    RuntimeSession,
+    RuntimeState,
+    Watcher,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class BackgroundTaskManager:
                         task.next_run = now + task.interval
                     else:
                         task.status = "completed"
-                except Exception as e:
+                except Exception:
                     task.retries += 1
                     if task.retries < task.max_retries:
                         task.status = "pending"

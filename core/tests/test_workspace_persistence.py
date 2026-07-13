@@ -1,53 +1,33 @@
 import os
 import time
-import pytest
-from typing import Dict, Any, List
 
+import pytest
 from aios.services.persistence import (
+    ConfigurationRepository,
+    EngineeringProfileRepository,
     PersistenceConfigurationService,
     PersistenceRegistry,
-    RepositoryRegistry,
     PersistenceService,
+    ProjectRepository,
+    RepositoryRegistry,
     WorkspaceRepository,
     WorkspaceSessionRepository,
-    ProjectRepository,
-    EngineeringProfileRepository,
-    ConfigurationRepository,
-    WorkspacePersistenceService,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    PersistenceHealthMonitor,
+    ConfigurationRepositoryImpl,
+    EngineeringProfileRepositoryImpl,
+    PersistenceBootstrapper,
     PersistenceDiagnostics,
-    PersistenceValidator,
-    PersistenceReportGenerator,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
+    ProjectRepositoryImpl,
+    WorkspacePersistenceReportGenerator,
+    WorkspacePersistenceServiceImpl,
+    WorkspacePersistenceStatistics,
+    WorkspacePersistenceTelemetry,
+    WorkspacePersistenceValidator,
     WorkspaceRepositoryImpl,
     WorkspaceSessionRepositoryImpl,
-    ProjectRepositoryImpl,
-    EngineeringProfileRepositoryImpl,
-    ConfigurationRepositoryImpl,
-    WorkspacePersistenceValidator,
-    WorkspacePersistenceTelemetry,
-    WorkspacePersistenceStatistics,
-    WorkspacePersistenceServiceImpl,
-    WorkspacePersistenceReportGenerator,
-    PersistenceBootstrapper,
-)
-
-from aios.services.engineering_profile_impl import LocalEngineeringProfileService
-from aios.services.engineering_profile import (
-    ProjectProfile,
-    EngineeringProfile,
-    CodingProfile,
-    TestingProfile,
-    ExecutionProfile,
-    DocumentationProfile,
-    GitHubProfile,
-    ReleaseProfile,
-    AutomationProfile,
-    WorkspaceProfile,
 )
 
 from tests.test_persistence import SQLiteTransportForTests

@@ -1,15 +1,10 @@
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock
 
-from aios.bootstrap import bootstrap_kernel
 from aios.services.command import CommandRegistry
 from aios.services.command.metadata import CommandCategory, CommandMetadata
 from aios.services.orchestrator import (
-    SkillInvocation,
-    ExecutionPlan,
     ExecutionContext,
-    OrchestratorService,
+    ExecutionPlan,
+    SkillInvocation,
 )
 from aios.services.orchestrator_impl import LocalOrchestratorService
 
@@ -46,7 +41,7 @@ def test_dependency_level_grouping_and_cycles():
     )
     try:
         service._group_invocations_into_levels(plan_cycle.invocations)
-        assert False, "Should raise cycle error"
+        raise AssertionError("Should raise cycle error")
     except ValueError as e:
         assert "Circular dependency" in str(e)
 

@@ -1,44 +1,40 @@
+import logging
 import os
 import time
-import logging
-import json
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.persistence import PersistenceStatus, WorkflowRepository, WorkflowExecutionRepository, PersistenceService
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
-from aios.services.engineering_profile import EngineeringProfileService
 from aios.services.automation import (
-    WorkflowNode,
-    WorkflowEdge,
-    WorkflowGraph,
-    WorkflowTrigger,
-    WorkflowAction,
-    WorkflowCondition,
-    WorkflowVariable,
-    WorkflowCredentialReference,
-    WorkflowExecutionPolicy,
-    WorkflowMetadata,
-    WorkflowArtifact,
-    WorkflowDefinition,
-    AutomationSession,
-    AutomationResult,
-    AutomationReport,
+    AutomationManager,
     AutomationProvider,
-    N8NProvider,
-    GitHubActionsProvider,
-    TemporalProvider,
     AutomationProviderRegistry,
     AutomationRegistry,
-    AutomationValidator,
-    AutomationManager,
+    AutomationReport,
+    AutomationResult,
     AutomationService,
+    AutomationSession,
+    AutomationValidator,
+    GitHubActionsProvider,
+    N8NProvider,
+    TemporalProvider,
+    WorkflowDefinition,
+    WorkflowExecutionPolicy,
+)
+from aios.services.engineering_profile import EngineeringProfileService
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import (
+    PersistenceService,
+    PersistenceStatus,
+    WorkflowExecutionRepository,
+    WorkflowRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -186,9 +182,14 @@ class LocalAutomationRegistry(AutomationRegistry):
                 if res.status == PersistenceStatus.SUCCESS and res.payload:
                     payload = res.payload
                     from aios.services.automation import (
-                        WorkflowGraph, WorkflowDefinition, WorkflowMetadata,
-                        WorkflowExecutionPolicy, WorkflowTrigger, WorkflowAction,
-                        WorkflowCondition, WorkflowVariable
+                        WorkflowAction,
+                        WorkflowCondition,
+                        WorkflowDefinition,
+                        WorkflowExecutionPolicy,
+                        WorkflowGraph,
+                        WorkflowMetadata,
+                        WorkflowTrigger,
+                        WorkflowVariable,
                     )
                     metadata = WorkflowMetadata(
                         tags=payload.get("metadata", {}).get("tags", []),
@@ -649,7 +650,7 @@ class LocalAutomationService(AutomationService):
 
         # Fetch report details
         reports = self.get_history(session.workspace_id)
-        target_report = next((r for r in reports if r.session_id == session_id), None)
+        next((r for r in reports if r.session_id == session_id), None)
         
         # Form summary string. Never store credentials or source code.
         content = (

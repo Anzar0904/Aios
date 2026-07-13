@@ -18,7 +18,6 @@ from aios.docgen.diagram_models import (
     ServiceNode,
 )
 
-
 _TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 
@@ -191,7 +190,7 @@ def render_lifecycle_diagram(phases: List[LifecyclePhase]) -> str:
     for phase in sorted(phases, key=lambda p: p.order):
         phase_id = phase.name.capitalize()
         lines.append(f"    state {phase_id} {{\n")
-        for i, service in enumerate(phase.services[:8]):  # Limit to 8 per phase
+        for _i, service in enumerate(phase.services[:8]):  # Limit to 8 per phase
             service_short = service.replace("Service", "").replace("Impl", "")
             lines.append(f"        {service_short}\n")
         if len(phase.services) > 8:

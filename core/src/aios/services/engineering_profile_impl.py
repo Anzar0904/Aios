@@ -1,32 +1,38 @@
-import os
 import json
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
-from aios.services.persistence import EngineeringProfileRepository, PersistencePolicy, PersistenceStatus
 from aios.services.engineering_profile import (
-    ProjectProfile,
-    CodingProfile,
-    TestingProfile,
-    ExecutionProfile,
-    DocumentationProfile,
-    GitHubProfile,
-    ReleaseProfile,
     AutomationProfile,
-    WorkspaceProfile,
+    CodingProfile,
+    DocumentationProfile,
     EngineeringProfile,
-    ProfileSerializer,
+    EngineeringProfileService,
+    ExecutionProfile,
+    GitHubProfile,
     ProfileLoader,
     ProfileManager,
     ProfileRegistry,
-    EngineeringProfileService,
+    ProfileSerializer,
+    ProjectProfile,
+    ReleaseProfile,
+    TestingProfile,
+    WorkspaceProfile,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.persistence import (
+    EngineeringProfileRepository,
+    PersistencePolicy,
+    PersistenceStatus,
 )
 
 logger = logging.getLogger(__name__)

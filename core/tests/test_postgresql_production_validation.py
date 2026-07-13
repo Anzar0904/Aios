@@ -1,79 +1,85 @@
 import os
-import sys
-import time
+
 import pytest
-from typing import Dict, Any, List
-from unittest.mock import MagicMock
-
-# Inject mock psycopg2 module to prevent ImportError
-mock_psycopg = MagicMock()
-sys.modules['psycopg2'] = mock_psycopg
-
 from aios.services.persistence import (
     PersistenceConfigurationService,
-    PersistenceRegistry,
-    RepositoryRegistry,
-    PersistenceService,
-    PersistenceStatus,
     PersistencePolicy,
-    RuntimeIntelligenceService,
+    PersistenceRegistry,
+    PersistenceStatus,
+    RepositoryRegistry,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    PersistenceBootstrapper,
-    WorkspaceRepositoryImpl,
-    WorkspaceSessionRepositoryImpl,
-    EngineeringTaskRepositoryImpl,
-    PlanningRepositoryImpl,
-    ApprovalRepositoryImpl,
-    ReviewRepositoryImpl,
-    DocumentationMetadataRepositoryImpl,
-    TestSessionRepositoryImpl,
-    TestResultRepositoryImpl,
-    WorkflowRepositoryImpl,
-    WorkflowExecutionRepositoryImpl,
-    WorkflowMonitoringRepositoryImpl,
-    WorkflowOptimizationRepositoryImpl,
-    WorkflowVersionRepositoryImpl,
-    WorkflowTranslationRepositoryImpl,
-    WorkflowIntegrationRepositoryImpl,
-    AutomationTelemetryRepositoryImpl,
-    AutomationStatisticsRepositoryImpl,
+    AIMemoryRepositoryImpl,
     AIProviderRepositoryImpl,
+    AIUsageStatisticsRepositoryImpl,
+    ApprovalRepositoryImpl,
+    AutomationStatisticsRepositoryImpl,
+    AutomationTelemetryRepositoryImpl,
+    DocumentationMetadataRepositoryImpl,
+    EngineeringTaskRepositoryImpl,
+    PersistenceBootstrapper,
+    PersistenceServiceImpl,
+    PlanningRepositoryImpl,
+    PostgreSQLProvider,
     ProviderCapabilityRepositoryImpl,
+    ProviderCheckpointRepositoryImpl,
+    ProviderFailoverRepositoryImpl,
     ProviderHealthRepositoryImpl,
-    ProviderTelemetryRepositoryImpl,
-    ProviderStatisticsRepositoryImpl,
     ProviderQuotaRepositoryImpl,
     ProviderRoutingRepositoryImpl,
     ProviderSessionRepositoryImpl,
-    ProviderCheckpointRepositoryImpl,
-    ProviderFailoverRepositoryImpl,
-    AIUsageStatisticsRepositoryImpl,
-    AIMemoryRepositoryImpl,
-    RuntimeCorrelationManager,
+    ProviderStatisticsRepositoryImpl,
+    ProviderTelemetryRepositoryImpl,
+    ReviewRepositoryImpl,
+    TestResultRepositoryImpl,
+    TestSessionRepositoryImpl,
+    WorkflowExecutionRepositoryImpl,
+    WorkflowIntegrationRepositoryImpl,
+    WorkflowMonitoringRepositoryImpl,
+    WorkflowOptimizationRepositoryImpl,
+    WorkflowRepositoryImpl,
+    WorkflowTranslationRepositoryImpl,
+    WorkflowVersionRepositoryImpl,
+    WorkspaceRepositoryImpl,
+    WorkspaceSessionRepositoryImpl,
 )
-
-from tests.test_persistence import SQLiteTransportForTests
 
 
 @pytest.fixture
 def validation_env():
+    from aios.registry import ServiceRegistry
+    ServiceRegistry._global_registry = None
+
+    # Enforce strict psycopg2 dependency check
+    try:
+        import psycopg2  # noqa: F401
+    except ImportError:
+        pytest.fail("PostgreSQL database driver psycopg2 is missing. Live validation aborted.")
+
     config = PersistenceConfigurationService()
-    config.host = "localhost"
-    config.database = "postgres_live"
-    config.user = "admin"
-    config.password = "secret"
+    config.host = os.environ.get("POSTGRES_HOST", "localhost")
+    config.database = os.environ.get("POSTGRES_DATABASE", "postgres_live")
+    config.user = os.environ.get("POSTGRES_USER", "admin")
+    config.password = os.environ.get("POSTGRES_PASSWORD", "secret")
     config.policy = PersistencePolicy.STRICT
 
     registry = PersistenceRegistry()
     registry.register_provider("postgresql", PostgreSQLProvider)
     repos = RepositoryRegistry()
 
-    # SQLite backend simulating live postgres execution
-    transport = SQLiteTransportForTests(config)
+    # Use actual PostgreSQL database transport instead of SQLite mock
+    from aios.services.persistence_impl_modules.postgresql import PostgreSQLTransport
+    transport = PostgreSQLTransport(config)
+
+    # Attempt to connect to PostgreSQL; fail if unreachable
+    try:
+        transport.connect()
+    except Exception as e:
+        pytest.fail(f"Failed to connect to PostgreSQL database: {e}")
+
+    if not transport.is_connected_state:
+        pytest.fail("PostgreSQL live connection failed. Live validation aborted.")
+
     provider = PostgreSQLProvider(transport=transport)
 
     service = PersistenceServiceImpl(config, registry, repos)
@@ -141,7 +147,8 @@ def test_production_live_validation(validation_env):
     for name, repo in repos.items():
         try:
             # Create
-            c_res = repo.save({"id": "val_1", "key": "test_key", "value": "test_val", "name": "val_1", "version": "1.0"})
+            payload = {"id": "val_1", "key": "test_key", "value": "test_val", "name": "val_1", "version": 1 if name == "documentation_metadata" else "1.0"}
+            c_res = repo.save(payload)
             assert c_res.status == PersistenceStatus.SUCCESS
 
             # Read
@@ -161,8 +168,8 @@ def test_production_live_validation(validation_env):
             results[name] = f"FAILED: {e}"
 
     # Verify all 30 repositories passed validation
-    for name, status in results.items():
-        assert status == "PASSED", f"Repository {name} failed validation: {status}"
+    failed = {name: status for name, status in results.items() if status != "PASSED"}
+    assert not failed, f"Failed repositories: {failed}"
 
     # 3. GENERATE ALL PRODUCTION REPORTS
     r_dir = os.path.join(os.getcwd(), "docs", "persistence")

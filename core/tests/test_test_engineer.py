@@ -1,21 +1,18 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary
-from aios.services.model import ModelService, LLMResponse
-from aios.services.memory import MemoryService
+import pytest
 from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.test_engineer import (
     TestCategory,
-    TestPriority,
     TestStrategy,
-    TestPlan,
-    TestPlanningResult,
 )
 from aios.services.test_engineer_impl import (
-    LocalTestPlanner,
     LocalAITestEngineerService,
+    LocalTestPlanner,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 @pytest.fixture

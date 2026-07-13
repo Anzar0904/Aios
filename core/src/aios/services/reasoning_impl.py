@@ -1,17 +1,17 @@
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict
 
 from aios.services.reasoning import (
-    ReasoningStrategy,
-    ReasoningStep,
     ReasoningChain,
     ReasoningContext,
-    ReasoningResult,
-    ReasoningSession,
-    ReasoningEvaluator,
     ReasoningCritic,
+    ReasoningEvaluator,
+    ReasoningResult,
     ReasoningService,
+    ReasoningSession,
+    ReasoningStep,
+    ReasoningStrategy,
 )
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,8 @@ class LocalReasoningService(ReasoningService):
         strategy = self._select_strategy(objective)
         
         # 2. Context Collection
-        workspace_files = context.variables.get("staged_files", [])
-        profile_email = context.variables.get("contact_email", "")
+        context.variables.get("staged_files", [])
+        context.variables.get("contact_email", "")
 
         # 3. Create Reasoning Chain and critique pipeline
         chain = ReasoningChain(chain_id=f"chain_{int(time.time())}")

@@ -1,25 +1,23 @@
-import pytest
 import time
 from unittest.mock import MagicMock
 
-from aios.services.engineering_intelligence import EngineeringReport, EngineeringPlan as EngPlan
-from aios.services.memory import MemoryService, MemoryType
+import pytest
+from aios.services.engineering_intelligence import EngineeringPlan as EngPlan
+from aios.services.engineering_intelligence import EngineeringReport
 from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 from aios.services.software_engineer import (
-    ImplementationTask,
-    ValidationStep,
     DevelopmentPhase,
-    SoftwareEngineeringPlan,
+    ImplementationTask,
 )
 from aios.services.software_engineer_impl import (
-    LocalFeaturePlanner,
-    LocalTaskDecomposer,
-    LocalExecutionPlanner,
-    LocalFilePlanner,
-    LocalTestingPlanner,
     LocalDocumentationPlanner,
-    LocalImplementationPlanner,
+    LocalExecutionPlanner,
+    LocalFeaturePlanner,
+    LocalFilePlanner,
     LocalSoftwareEngineerService,
+    LocalTaskDecomposer,
+    LocalTestingPlanner,
 )
 
 

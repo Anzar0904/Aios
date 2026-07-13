@@ -1,19 +1,17 @@
-
 import logging
 from pathlib import Path
-from aios.config import load_config
 from typing import Any, Iterator, Optional
 
-from aios.services.model import LLMRequest, LLMResponse, ModelService
+from aios.config import load_config
+from aios.providers.adapters import ClaudeProvider, MockProvider, OpenAIProvider
 from aios.providers.interface import (
+    ModelInfo,
+    OmniRouteRequest,
+    universal_model_registry,
     universal_omniroute_engine,
     universal_provider_registry,
-    universal_model_registry,
-    OmniRouteRequest,
-    ModelInfo,
 )
-from aios.providers.adapters import MockProvider, OpenAIProvider, ClaudeProvider, GeminiProvider
-from aios.providers.nvidia import NVIDIAProvider
+from aios.services.model import LLMRequest, LLMResponse, ModelService
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +111,40 @@ class LocalModelService(ModelService):
             )
         if not universal_provider_registry.lookup("nvidia"):
             from aios.providers.nvidia import register_nvidia_provider
+
             register_nvidia_provider()
+
+        if not universal_provider_registry.lookup("ollama"):
+            from aios.providers.adapters import OllamaProvider
+
+            universal_provider_registry.register(OllamaProvider())
+            universal_model_registry.register_model(
+                ModelInfo(
+                    provider="ollama",
+                    model_id="llama3",
+                    display_name="Llama 3",
+                    family="Llama",
+                )
+            )
+
+        if not universal_provider_registry.lookup("ninerouter"):
+            from aios.providers.ninerouter import NineRouterProvider, discover_9router
+
+            base_url = "http://localhost:8080/v1"
+            api_key = None
+            timeout = 30
+            if config and hasattr(config, "llm") and getattr(config.llm, "ninerouter", None):
+                nr_cfg = config.llm.ninerouter
+                base_url = getattr(nr_cfg, "base_url", "http://localhost:8080/v1")
+                api_key = getattr(nr_cfg, "api_key", None)
+                timeout = getattr(nr_cfg, "timeout", 30)
+
+            nr_provider = NineRouterProvider(base_url=base_url, api_key=api_key, timeout=timeout)
+            universal_provider_registry.register(nr_provider)
+            try:
+                discover_9router(nr_provider)
+            except Exception as e:
+                logger.warning(f"Initial 9Router discovery failed: {e}")
 
         # ── Register the configured default model ────────────────────────────
         # If config.toml names a model (e.g. "qwen/qwen3-coder") that is not yet

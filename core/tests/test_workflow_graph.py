@@ -1,6 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from aios.brain.models import Workflow, WorkflowStep
 from aios.brain.workflow import (
     WorkflowExecutor,

@@ -1,14 +1,19 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
+import pytest
 from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.test_execution import ExecutionSummary, ExecutionMetrics, ExecutionResult, ExecutionTarget
+from aios.services.memory import MemoryService
 from aios.services.test_coverage import CoveragePolicy
 from aios.services.test_coverage_impl import (
+    LocalAITestCoverageService,
     LocalCoverageAnalyzer,
     LocalRegressionAnalyzer,
-    LocalAITestCoverageService,
+)
+from aios.services.test_execution import (
+    ExecutionMetrics,
+    ExecutionResult,
+    ExecutionSummary,
+    ExecutionTarget,
 )
 
 

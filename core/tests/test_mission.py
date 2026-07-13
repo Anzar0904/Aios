@@ -1,14 +1,11 @@
 import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock
 
-from aios.services.agent import AgentResult
-from aios.services.mission import MissionStatus, MissionGoal, MissionContext
+from aios.services.mission import MissionContext, MissionStatus
 from aios.services.mission_impl import (
-    LocalMissionPlanner,
     LocalMissionExecutor,
+    LocalMissionPlanner,
     LocalMissionRepository,
-    LocalMissionEngine,
 )
 
 

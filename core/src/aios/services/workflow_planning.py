@@ -1,8 +1,9 @@
 import abc
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
+
+from aios.services.automation import WorkflowDefinition, WorkflowEdge, WorkflowNode
 from aios.services.base import ServiceLifecycle
-from aios.services.automation import WorkflowNode, WorkflowEdge, WorkflowDefinition
 
 
 @dataclass

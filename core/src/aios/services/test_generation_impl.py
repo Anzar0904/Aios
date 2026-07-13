@@ -1,31 +1,33 @@
 import hashlib
-import time
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.workspace_intelligence import CodeStructureSummary
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.test_generation import (
+    AssertionGenerator,
+    EdgeCaseGenerator,
+    FixtureGenerator,
     GeneratedTestArtifact,
+    MockGenerator,
+    RegressionTestGenerator,
+    TestCaseBuilder,
     TestGenerationReport,
+    TestGenerationService,
+    TestGenerator,
     TestPatternAnalyzer,
     TestTemplateEngine,
-    TestCaseBuilder,
-    AssertionGenerator,
-    FixtureGenerator,
-    MockGenerator,
-    EdgeCaseGenerator,
-    RegressionTestGenerator,
-    TestGenerator,
-    TestGenerationService,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +262,7 @@ class LocalTestGenerationService(TestGenerationService):
 
             artifacts.append(artifact)
 
-        val_status = "passed" if len(warnings) == 0 else "failed"
+        "passed" if len(warnings) == 0 else "failed"
 
         report = TestGenerationReport(
             report_id=f"test_rep_{int(time.time())}",
@@ -319,7 +321,7 @@ class LocalTestGenerationService(TestGenerationService):
             f"**Confidence Estimate**: {report.confidence_estimate}\n\n"
             f"## Compilation Warnings\n"
             + ("\n".join(warnings_md) if warnings_md else "- *No warnings, syntax compiles cleanly.*") + "\n\n"
-            f"## Generated Test Code Previews\n"
+            "## Generated Test Code Previews\n"
             + "\n".join(suites_md)
         )
 

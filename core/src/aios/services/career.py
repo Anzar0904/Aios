@@ -1,9 +1,9 @@
 import abc
-from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 from aios.services.base import ServiceLifecycle
-from aios.services.personal import PersonalProfile, CareerProfile, ResumeVersion, Resume
+from aios.services.personal import CareerProfile, Resume, ResumeVersion
 
 
 @dataclass

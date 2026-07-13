@@ -1,46 +1,33 @@
 import os
 import time
-import pytest
-from typing import Dict, Any, List
 
+import pytest
 from aios.services.persistence import (
     PersistenceConfigurationService,
-    PersistenceRegistry,
-    RepositoryRegistry,
-    PersistenceService,
-    PersistenceStatus,
     PersistencePolicy,
-    WorkflowRepository,
-    WorkflowExecutionRepository,
-    WorkflowMonitoringRepository,
-    WorkflowOptimizationRepository,
-    WorkflowVersionRepository,
-    WorkflowTranslationRepository,
-    WorkflowIntegrationRepository,
-    AutomationTelemetryRepository,
-    AutomationStatisticsRepository,
-    AutomationPersistenceService,
+    PersistenceRegistry,
+    PersistenceStatus,
+    RepositoryRegistry,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    PersistenceBootstrapper,
-    WorkflowRepositoryImpl,
-    WorkflowExecutionRepositoryImpl,
-    WorkflowMonitoringRepositoryImpl,
-    WorkflowOptimizationRepositoryImpl,
-    WorkflowVersionRepositoryImpl,
-    WorkflowTranslationRepositoryImpl,
-    WorkflowIntegrationRepositoryImpl,
-    AutomationTelemetryRepositoryImpl,
-    AutomationStatisticsRepositoryImpl,
-    AutomationPersistenceValidator,
-    AutomationPersistenceTelemetry,
-    AutomationPersistenceStatistics,
     AutomationPersistenceHealthMonitor,
     AutomationPersistenceReportGenerator,
     AutomationPersistenceServiceImpl,
+    AutomationPersistenceStatistics,
+    AutomationPersistenceTelemetry,
+    AutomationPersistenceValidator,
+    AutomationStatisticsRepositoryImpl,
+    AutomationTelemetryRepositoryImpl,
+    PersistenceBootstrapper,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
+    WorkflowExecutionRepositoryImpl,
+    WorkflowIntegrationRepositoryImpl,
+    WorkflowMonitoringRepositoryImpl,
+    WorkflowOptimizationRepositoryImpl,
+    WorkflowRepositoryImpl,
+    WorkflowTranslationRepositoryImpl,
+    WorkflowVersionRepositoryImpl,
 )
 
 from tests.test_persistence import SQLiteTransportForTests

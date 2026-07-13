@@ -2,8 +2,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from aios.brain.brain import Brain
-from aios.brain.models import BrainContext, SkillSelection
 from aios.brain.planner import BrainPlanner
 from aios.brain.skill_selector import SkillSelector
 from aios.skills.base import BaseSkill

@@ -14,13 +14,11 @@ from typing import List, Optional
 from aios.docgen.diagram_models import (
     ArchitecturalComponent,
     BootstrapStep,
-    DIBinding,
     LifecyclePhase,
     PersistenceLayer,
     ServiceNode,
 )
 from aios.docgen.discoverers import (
-    DIBindingDiscoverer,
     ServiceDiscoverer,
     _parse_module,
     _python_files,

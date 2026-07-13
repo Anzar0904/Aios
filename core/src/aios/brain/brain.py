@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from aios.brain.context_manager import ContextManager
-from aios.brain.models import BrainContext, BrainResponse, Workflow
+from aios.brain.models import BrainResponse, Workflow
 from aios.brain.planner import BrainPlanner
 from aios.brain.provider_selector import ProviderSelector
 from aios.brain.skill_selector import SkillSelector
@@ -11,16 +11,13 @@ from aios.brain.workflow import WorkflowExecutor
 from aios.kernel import Kernel
 from aios.services.command import CommandRegistry
 from aios.services.context import ContextService
+from aios.services.developer_workspace import DeveloperWorkspaceService
 from aios.services.memory import MemoryService
 from aios.services.model import LLMRequest, ModelService
+from aios.services.personal import PersonalService
+from aios.services.project_intelligence import ProjectIntelligenceService
 from aios.skills.manager import SkillManager
 from aios.skills.registry import SkillRegistry
-from aios.services.project_intelligence import ProjectIntelligenceService
-from aios.services.developer_workspace import DeveloperWorkspaceService
-from aios.services.personal import PersonalService
-
-
-
 
 
 class Brain:

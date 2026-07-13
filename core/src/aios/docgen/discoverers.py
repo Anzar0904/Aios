@@ -11,18 +11,17 @@ import ast
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional
 
 from aios.docgen.models import (
-    DIBinding,
     DbModelEntry,
+    DIBinding,
     ProviderEntry,
     RepositoryEntry,
     RuntimeComponentEntry,
     ServiceEntry,
     SkillEntry,
 )
-
 
 # ---------------------------------------------------------------------------
 # AST helpers
@@ -434,6 +433,8 @@ class ProviderDiscoverer:
         name = kwargs.get("provider")
         if not name:
             return None
+
+        caps = kwargs.get("capabilities", {})
 
         return ProviderEntry(
             name=str(name),

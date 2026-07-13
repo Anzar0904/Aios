@@ -1,26 +1,22 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.workflow_monitoring import (
-    WorkflowExecutionState,
     WorkflowExecutionMetrics,
     WorkflowExecutionRecord,
-    WorkflowTelemetry,
-    WorkflowAlert,
-    WorkflowHealthScore,
-    WorkflowStatistics,
+    WorkflowExecutionState,
     WorkflowMonitoringReport,
 )
 from aios.services.workflow_monitoring_impl import (
+    LocalWorkflowMonitoringService,
     LocalWorkflowMonitoringValidator,
     LocalWorkflowPerformanceAnalyzer,
-    LocalWorkflowMonitoringService,
 )
 
 
@@ -153,7 +149,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     )
     service.record_execution(r)
 
-    report = service.get_telemetry_report(ws_id)
+    service.get_telemetry_report(ws_id)
     expected_file = os.path.join(ws_root, "docs", "monitors", f"TELEMETRY_REPORT_{ws_id}.md")
 
     assert os.path.exists(expected_file)

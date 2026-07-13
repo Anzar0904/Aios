@@ -9,18 +9,17 @@ independently.
 from __future__ import annotations
 
 import datetime
-from typing import List, Optional
+from typing import List
 
 from aios.docgen.models import (
-    DIBinding,
     DbModelEntry,
+    DIBinding,
     ProviderEntry,
     RepositoryEntry,
     RuntimeComponentEntry,
     ServiceEntry,
     SkillEntry,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -96,8 +95,8 @@ def render_service_catalog(services: List[ServiceEntry]) -> str:
 
         # Badges
         has_impl = "✅ Yes" if svc.implementation else "⚠️ No"
-        lines.append(f"| Field | Value |")
-        lines.append(f"|-------|-------|")
+        lines.append("| Field | Value |")
+        lines.append("|-------|-------|")
         lines.append(f"| **Module** | `{svc.module}` |")
         lines.append(f"| **File** | `{svc.file_path}` |")
         lines.append(f"| **Bases** | {', '.join(f'`{b}`' for b in svc.base_classes) or '—'} |")
@@ -120,8 +119,8 @@ def render_service_catalog(services: List[ServiceEntry]) -> str:
     # Stats
     lines.append("## Summary Statistics\n")
     with_impl = sum(1 for s in services if s.implementation)
-    lines.append(f"| Metric | Count |")
-    lines.append(f"|--------|-------|")
+    lines.append("| Metric | Count |")
+    lines.append("|--------|-------|")
     lines.append(f"| Total Services | {len(services)} |")
     lines.append(f"| With Implementations | {with_impl} |")
     lines.append(f"| Without Implementations | {len(services) - with_impl} |")
@@ -157,8 +156,8 @@ def render_repository_catalog(repositories: List[RepositoryEntry]) -> str:
     lines.append("## Repositories\n")
     for repo in repositories:
         lines.append(f"### {repo.name}\n")
-        lines.append(f"| Field | Value |")
-        lines.append(f"|-------|-------|")
+        lines.append("| Field | Value |")
+        lines.append("|-------|-------|")
         lines.append(f"| **Entity** | `{repo.entity or '—'}` |")
         lines.append(f"| **Module** | `{repo.module}` |")
         lines.append(f"| **File** | `{repo.file_path}` |")
@@ -179,8 +178,8 @@ def render_repository_catalog(repositories: List[RepositoryEntry]) -> str:
 
     lines.append("## Summary Statistics\n")
     with_impl = sum(1 for r in repositories if r.implementation)
-    lines.append(f"| Metric | Count |")
-    lines.append(f"|--------|-------|")
+    lines.append("| Metric | Count |")
+    lines.append("|--------|-------|")
     lines.append(f"| Total Repositories | {len(repositories)} |")
     lines.append(f"| With Implementations | {with_impl} |")
     lines.append(f"| Abstract Only | {len(repositories) - with_impl} |")
@@ -216,8 +215,8 @@ def render_skill_catalog(skills: List[SkillEntry]) -> str:
     lines.append("## Skills\n")
     for skill in skills:
         lines.append(f"### {skill.name}\n")
-        lines.append(f"| Field | Value |")
-        lines.append(f"|-------|-------|")
+        lines.append("| Field | Value |")
+        lines.append("|-------|-------|")
         lines.append(f"| **ID** | `{skill.skill_id}` |")
         lines.append(f"| **Version** | `{skill.version}` |")
         lines.append(f"| **Author** | {skill.author} |")
@@ -287,8 +286,8 @@ def render_provider_catalog(providers: List[ProviderEntry]) -> str:
     lines.append("## Providers\n")
     for p in sorted(providers, key=lambda x: x.priority):
         lines.append(f"### {p.name}\n")
-        lines.append(f"| Field | Value |")
-        lines.append(f"|-------|-------|")
+        lines.append("| Field | Value |")
+        lines.append("|-------|-------|")
         lines.append(f"| **Version** | `{p.version}` |")
         lines.append(f"| **Status** | `{p.status}` |")
         lines.append(f"| **Priority** | {p.priority} |")
@@ -367,8 +366,8 @@ def render_runtime_catalog(components: List[RuntimeComponentEntry]) -> str:
     lines.append("## Components\n")
     for comp in components:
         lines.append(f"### {comp.name}\n")
-        lines.append(f"| Field | Value |")
-        lines.append(f"|-------|-------|")
+        lines.append("| Field | Value |")
+        lines.append("|-------|-------|")
         lines.append(f"| **Module** | `{comp.module}` |")
         lines.append(f"| **File** | `{comp.file_path}` |")
         lines.append(f"| **Interface** | `{comp.interface or '—'}` |")
@@ -382,8 +381,8 @@ def render_runtime_catalog(components: List[RuntimeComponentEntry]) -> str:
 
     lines.append("## Summary Statistics\n")
     with_iface = sum(1 for c in components if c.interface)
-    lines.append(f"| Metric | Count |")
-    lines.append(f"|--------|-------|")
+    lines.append("| Metric | Count |")
+    lines.append("|--------|-------|")
     lines.append(f"| Total Components | {len(components)} |")
     lines.append(f"| With Identified Interface | {with_iface} |")
     lines.append(f"| Anonymous | {len(components) - with_iface} |")
@@ -474,8 +473,8 @@ def render_db_model_catalog(models: List[DbModelEntry]) -> str:
             return
         for m in section_models:
             lines.append(f"### {m.name}\n")
-            lines.append(f"| Field | Value |")
-            lines.append(f"|-------|-------|")
+            lines.append("| Field | Value |")
+            lines.append("|-------|-------|")
             lines.append(f"| **Kind** | `{m.kind}` |")
             lines.append(f"| **Module** | `{m.module}` |")
             lines.append(f"| **Line** | L{m.line_number} |")
@@ -498,8 +497,8 @@ def render_db_model_catalog(models: List[DbModelEntry]) -> str:
     _render_section(classes_, "Other Models")
 
     lines.append("## Summary Statistics\n")
-    lines.append(f"| Model Type | Count |")
-    lines.append(f"|------------|-------|")
+    lines.append("| Model Type | Count |")
+    lines.append("|------------|-------|")
     lines.append(f"| Enumerations | {len(enums)} |")
     lines.append(f"| Dataclasses | {len(dataclasses_)} |")
     lines.append(f"| Other Models | {len(classes_)} |")

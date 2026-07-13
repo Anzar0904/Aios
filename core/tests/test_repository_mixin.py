@@ -14,19 +14,16 @@ Verifies that:
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, patch
+from typing import Dict
+from unittest.mock import MagicMock
 
 import pytest
-
 from aios.services.persistence import (
     PersistencePolicy,
     PersistenceResult,
-    PersistenceService,
     PersistenceStatus,
 )
 from aios.services.persistence_impl_modules.repo_base import _RepositoryMixin
-
 
 # ─── Minimal concrete repo used only in these tests ───────────────────────────
 
@@ -416,8 +413,9 @@ def test_write_with_cache_failure_strict_raises():
 
 def test_write_with_cache_write_through(monkeypatch):
     """_write_with_cache calls cache_payload_fn and caches when WRITE_THROUGH policy."""
-    import aios.services.persistence_impl_modules.repo_base as rb
     from unittest.mock import MagicMock
+
+    import aios.services.persistence_impl_modules.repo_base as rb
 
     # Build fake cache, policy_mgr
     mock_cache = MagicMock()
@@ -472,8 +470,9 @@ def test_delete_with_cache_no_cache_service():
 
 def test_delete_with_cache_with_cache_service(monkeypatch):
     """_delete_with_cache calls cache.delete when cache service is available."""
-    import aios.services.persistence_impl_modules.repo_base as rb
     from unittest.mock import MagicMock
+
+    import aios.services.persistence_impl_modules.repo_base as rb
 
     mock_cache = MagicMock()
     monkeypatch.setattr(rb._RepositoryMixin, "_resolve_cache_svc", staticmethod(lambda: mock_cache))
@@ -557,8 +556,9 @@ def test_fetch_one_with_cache_strict_not_found_raises():
 
 def test_fetch_one_with_cache_uses_cache_service(monkeypatch):
     """_fetch_one_with_cache delegates to cache.get when cache service is available."""
-    import aios.services.persistence_impl_modules.repo_base as rb
     from unittest.mock import MagicMock
+
+    import aios.services.persistence_impl_modules.repo_base as rb
 
     mock_cache = MagicMock()
     cached_result = PersistenceResult(

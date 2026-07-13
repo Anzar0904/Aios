@@ -1,9 +1,10 @@
 import abc
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Any, Optional, Callable
+from typing import Callable, List, Optional
+
 from aios.services.base import ServiceLifecycle
-from aios.services.software_engineer import SoftwareEngineeringPlan, ImplementationTask
+from aios.services.software_engineer import ImplementationTask, SoftwareEngineeringPlan
 
 
 class ExecutionState(Enum):

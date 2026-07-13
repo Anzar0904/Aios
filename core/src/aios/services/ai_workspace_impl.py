@@ -1,29 +1,34 @@
+import json
+import logging
 import os
 import shutil
 import time
-import json
-import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import (
-    WorkspaceMetadata,
-    WorkspaceFile,
+    AIWorkspaceService,
     WorkspaceChange,
-    WorkspaceSnapshot,
+    WorkspaceCleaner,
+    WorkspaceMetadata,
     WorkspaceRecovery,
     WorkspaceSession,
-    WorkspaceSandbox,
+    WorkspaceSnapshot,
     WorkspaceValidator,
-    WorkspaceCleaner,
-    AIWorkspaceService,
 )
-from aios.services.persistence import PersistenceStatus, PersistencePolicy, WorkspaceRepository, WorkspaceSessionRepository
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.persistence import (
+    PersistencePolicy,
+    PersistenceStatus,
+    WorkspaceRepository,
+    WorkspaceSessionRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +66,7 @@ class LocalWorkspaceCleaner(WorkspaceCleaner):
             return count
 
         temp_extensions = (".tmp", ".temp", ".log")
-        for root, dirs, files in os.walk(workspace_root):
+        for root, _dirs, files in os.walk(workspace_root):
             for file in files:
                 if file.endswith(temp_extensions) or "workspace.json" not in file and file.startswith("."):
                     file_path = os.path.join(root, file)

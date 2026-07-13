@@ -18,16 +18,13 @@ from aios.docgen.discoverers import (
     _module_name,
     _parse_module,
     _python_files,
-    _read_source,
 )
 from aios.docgen.refgen_models import (
-    InterfaceImplementationPair,
     LifecycleMethod,
     MethodSignature,
     ParameterInfo,
     ServiceInterface,
 )
-
 
 # Lifecycle method names to track
 LIFECYCLE_METHODS = {

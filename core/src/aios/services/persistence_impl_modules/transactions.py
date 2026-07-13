@@ -50,7 +50,8 @@ class TransactionStackManager:
 
     def rollback(self) -> None:
         if not self.tx_stack:
-            raise RuntimeError("No active transaction to rollback")
+            logger.warning("rollback() called with no active transaction — ignoring")
+            return
         tx = self.tx_stack.pop()
         try:
             tx.rollback()

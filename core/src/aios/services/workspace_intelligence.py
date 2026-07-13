@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import abc
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from aios.services.base import ServiceLifecycle
 
 
@@ -34,6 +37,35 @@ class RepositorySummary:
     frameworks: List[str]
     package_managers: List[str]
     health: RepositoryHealth
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class FileMetadata:
+    """Represents indexed metadata for a project file."""
+    file_path: str
+    language: str
+    module: str
+    extension: str
+    size: int
+    purpose: str  # source, test, documentation, config, build, asset, other
+    imports: List[str] = field(default_factory=list)
+    exports: List[str] = field(default_factory=list)
+    relationships: Dict[str, List[str]] = field(default_factory=dict)  # {"imports": [...], "imported_by": [...]}
+    meta: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class WorkspaceContext:
+    """Unified context object describing the technology stack and architecture of the workspace."""
+    workspace_root: str
+    technology_stack: Dict[str, Any]
+    architecture: Dict[str, Any]
+    dependencies: Dict[str, List[str]]
+    project_type: str  # monorepo, single-package, etc.
+    important_directories: List[str]
+    coding_conventions: Dict[str, Any]
+    workspaces: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -99,6 +131,17 @@ class WorkspaceIntelligenceService(ServiceLifecycle, abc.ABC):
     def publish_to_knowledge_hub(self, summary: RepositorySummary) -> None:
         """Publishes the repository summary report to the Knowledge Hub."""
         pass
+
+    @abc.abstractmethod
+    def get_workspace_context(self, workspace_root: str) -> WorkspaceContext:
+        """Generates a Workspace Context object summarizing tech stack, architecture, etc."""
+        pass
+
+    @abc.abstractmethod
+    def generate_markdown_reports(self, workspace_root: str, summary: RepositorySummary, code_summary: CodeStructureSummary) -> None:
+        """Generates complete markdown reports under workspace docs directory."""
+        pass
+
 
 
 @dataclass
@@ -206,4 +249,15 @@ class CodeIntelligenceService(ServiceLifecycle, abc.ABC):
     def publish_code_report(self, summary: CodeStructureSummary) -> None:
         """Publishes the code structure summary report to the Knowledge Hub."""
         pass
+
+    @abc.abstractmethod
+    def get_file_metadata(self, file_path: str) -> Optional[FileMetadata]:
+        """Retrieves metadata for a specific indexed file."""
+        pass
+
+    @abc.abstractmethod
+    def list_all_files_metadata(self) -> List[FileMetadata]:
+        """Lists metadata for all indexed files in the workspace."""
+        pass
+
 

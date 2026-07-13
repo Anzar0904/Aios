@@ -1,15 +1,15 @@
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from aios.services.model import LLMRequest, ModelService
 from aios.services.n8n import (
-    InternalNode,
-    InternalConnection,
-    InternalWorkflow,
-    ExecutionMetrics,
     ConnectionHealth,
+    ExecutionMetrics,
+    InternalConnection,
+    InternalNode,
+    InternalWorkflow,
     N8NService,
 )
 

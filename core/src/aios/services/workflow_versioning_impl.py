@@ -1,34 +1,38 @@
-import os
-import time
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.persistence import PersistenceStatus, WorkflowVersionRepository, PersistenceService
-
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
+from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.ai_workspace import AIWorkspaceService
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import (
+    PersistenceStatus,
+    WorkflowVersionRepository,
+)
 from aios.services.workflow_versioning import (
-    WorkflowVersionMetadata,
+    WorkflowCompatibilityAnalyzer,
+    WorkflowEvolutionPlan,
+    WorkflowMigrationPlanner,
+    WorkflowRollbackPlan,
+    WorkflowSnapshot,
     WorkflowVersion,
+    WorkflowVersionDiff,
     WorkflowVersionGraph,
     WorkflowVersionHistory,
-    WorkflowVersionDiff,
-    WorkflowSnapshot,
-    WorkflowEvolutionPlan,
-    WorkflowRollbackPlan,
-    WorkflowVersionReport,
+    WorkflowVersionMetadata,
     WorkflowVersionRegistry,
-    WorkflowCompatibilityAnalyzer,
-    WorkflowMigrationPlanner,
-    WorkflowVersionValidator,
+    WorkflowVersionReport,
     WorkflowVersionService,
+    WorkflowVersionValidator,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,7 +110,10 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
                     comp_meta = payload.get("compatibility_metadata") or {}
                     graph_refs = payload.get("version_graph_references") or {}
                     
-                    from aios.services.workflow_versioning import WorkflowVersion, WorkflowVersionMetadata
+                    from aios.services.workflow_versioning import (
+                        WorkflowVersion,
+                        WorkflowVersionMetadata,
+                    )
                     metadata = WorkflowVersionMetadata(
                         author=v_meta.get("author", ""),
                         version_tag=v_meta.get("version_tag", ""),
@@ -193,7 +200,7 @@ class LocalWorkflowMigrationPlanner(WorkflowMigrationPlanner):
         steps = [
             f"Backup current workflow version '{from_ver.version_id}' configuration.",
             f"Read target workflow version '{to_ver.version_id}' IR payload.",
-            f"Update connection nodes mapping parameters.",
+            "Update connection nodes mapping parameters.",
             "Run integrity validation checks on target triggers.",
             f"Switch runtime pointers to version '{to_ver.version_id}'."
         ]
@@ -209,7 +216,7 @@ class LocalWorkflowMigrationPlanner(WorkflowMigrationPlanner):
 
     def create_rollback_plan(self, from_ver: WorkflowVersion, target_ver: WorkflowVersion) -> WorkflowRollbackPlan:
         migration_steps = [
-            f"Temporarily deactivate target execution triggers.",
+            "Temporarily deactivate target execution triggers.",
             f"Restore previous workflow IR schema matching version '{target_ver.version_id}' details.",
             "Verify all dependent webhook nodes connect properly.",
             f"Re-activate triggers on rollback target version '{target_ver.version_id}'."
@@ -541,7 +548,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
         return report
 
     def store_version_summary(self, workspace_id: str) -> None:
-        reports = self.get_history(workspace_id) # Wait, get_history gets workflow_id history.
+        self.get_history(workspace_id) # Wait, get_history gets workflow_id history.
         # Let's check reports map for workspace_id directly
         reports_list = self._reports.get(workspace_id, [])
         if not reports_list:

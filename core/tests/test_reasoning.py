@@ -1,11 +1,11 @@
 from aios.services.reasoning import (
-    ReasoningStrategy,
-    ReasoningStep,
     ReasoningContext,
+    ReasoningStep,
+    ReasoningStrategy,
 )
 from aios.services.reasoning_impl import (
-    LocalReasoningEvaluator,
     LocalReasoningCritic,
+    LocalReasoningEvaluator,
     LocalReasoningService,
 )
 

@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Optional
 
 from aios.docgen.discoverers import (
-    DIBindingDiscoverer,
     DbModelDiscoverer,
+    DIBindingDiscoverer,
     ProviderDiscoverer,
     RepositoryDiscoverer,
     RuntimeComponentDiscoverer,

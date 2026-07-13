@@ -1,14 +1,13 @@
 import time
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from aios.providers.models import ProviderStatus, DIInitializeMixin
+from aios.providers.models import DIInitializeMixin
 from aios.services.persistence import (
-    PersistenceStatus,
-    ProviderHealthRepository,
-    ProviderTelemetryRepository,
-    ProviderStatisticsRepository,
-    ProviderQuotaRepository,
     AIUsageStatisticsRepository,
+    ProviderHealthRepository,
+    ProviderQuotaRepository,
+    ProviderStatisticsRepository,
+    ProviderTelemetryRepository,
 )
 
 

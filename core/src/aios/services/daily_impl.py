@@ -1,31 +1,31 @@
 import json
 import logging
 import time
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import ModelService, LLMRequest
-from aios.services.personal import PersonalService
-from aios.services.github import GitHubService
-from aios.services.project_intelligence import ProjectIntelligenceService
 from aios.services.career import CareerOSService
 from aios.services.daily import (
-    DailyTask,
-    ScheduleItem,
-    DailySchedule,
-    WorkSession,
-    DailyReviewSummary,
+    DailyOSService,
     DailyPlan,
     DailyPlanner,
-    PriorityCalculator,
-    WorkloadEstimator,
-    ScheduleOptimizer,
-    TaskPrioritizer,
-    ProgressTracker,
-    SessionRecorder,
     DailyReview,
+    DailyReviewSummary,
+    DailySchedule,
+    DailyTask,
+    PriorityCalculator,
     ProductivityAnalyzer,
-    DailyOSService,
+    ProgressTracker,
+    ScheduleItem,
+    ScheduleOptimizer,
+    SessionRecorder,
+    TaskPrioritizer,
+    WorkloadEstimator,
+    WorkSession,
 )
+from aios.services.github import GitHubService
+from aios.services.model import LLMRequest, ModelService
+from aios.services.personal import PersonalService
+from aios.services.project_intelligence import ProjectIntelligenceService
 
 logger = logging.getLogger(__name__)
 
@@ -618,7 +618,11 @@ class LocalDailyReview(DailyReview):
 
         # Synchronize with Knowledge Hub
         try:
-            from aios.services.knowledge_hub import KnowledgeHubService, KnowledgeDocument, KnowledgeMetadata
+            from aios.services.knowledge_hub import (
+                KnowledgeDocument,
+                KnowledgeHubService,
+                KnowledgeMetadata,
+            )
             knowledge_hub = self._registry.get(KnowledgeHubService) if self._registry else None
             if knowledge_hub:
                 md_content = f"# Daily Review Summary\n\n## Productivity Summary\n{summary.productivity_summary}\n\n## Completed Tasks\n"
@@ -737,7 +741,6 @@ class LocalDailyPlanner(DailyPlanner):
 
     def plan_day(self) -> DailyPlan:
         # Retrieve memories dynamically based on objective
-        retrieved_memories = []
         try:
             from aios.services.memory import MemoryService, RetrievalContext, RetrievalStrategy
             memory_service = self._registry.get(MemoryService) if self._registry else None
@@ -747,13 +750,13 @@ class LocalDailyPlanner(DailyPlanner):
                     strategy=RetrievalStrategy.MIXED,
                     max_results=3
                 )
-                retrieved_memories = memory_service.retriever.retrieve(ctx)
+                memory_service.retriever.retrieve(ctx)
         except Exception:
             pass
 
         # Gather active tasks and context
         profile = self._personal.get_active_profile()
-        goals = [g.title for g in profile.goals] if profile else []
+        [g.title for g in profile.goals] if profile else []
 
 
         tasks = [

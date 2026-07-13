@@ -1,30 +1,29 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType, Memory
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
-from aios.services.engineering_profile import (
-    EngineeringProfileService,
-    EngineeringProfile,
-    DocumentationProfile,
-)
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
+from aios.services.engineering_profile import (
+    DocumentationProfile,
+    EngineeringProfile,
+    EngineeringProfileService,
+)
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import Memory, MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.release_documentation import (
-    ReleaseSummary,
     ReleaseArtifact,
     ReleaseDocumentationReport,
+    ReleaseSummary,
 )
 from aios.services.release_documentation_impl import (
-    LocalReleaseNotesGenerator,
     LocalChangelogGenerator,
     LocalMigrationGuideGenerator,
-    LocalUpgradeGuideGenerator,
-    LocalReleaseValidator,
-    LocalReleaseDocumentPlanner,
     LocalReleaseDocumentationService,
+    LocalReleaseNotesGenerator,
+    LocalReleaseValidator,
+    LocalUpgradeGuideGenerator,
 )
 
 

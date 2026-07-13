@@ -1,29 +1,31 @@
 import difflib
 import hashlib
 import json
-import time
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, List, Optional
 
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
 from aios.services.patch_generation import (
-    PatchMetadata,
-    PatchStatistics,
-    PatchPreview,
-    PatchBundle,
-    ReviewPackage,
-    DiffGenerator,
-    PatchGenerator,
-    PatchValidator,
     ConflictDetector,
-    PatchSerializer,
+    DiffGenerator,
+    PatchBundle,
     PatchGenerationService,
+    PatchGenerator,
+    PatchMetadata,
+    PatchPreview,
+    PatchSerializer,
+    PatchStatistics,
+    PatchValidator,
+    ReviewPackage,
 )
 
 logger = logging.getLogger(__name__)

@@ -1,34 +1,33 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
 from aios.services.automation import (
-    WorkflowNode,
-    WorkflowEdge,
-    WorkflowGraph,
-    WorkflowTrigger,
-    WorkflowAction,
-    WorkflowCondition,
-    WorkflowVariable,
-    WorkflowCredentialReference,
-    WorkflowExecutionPolicy,
-    WorkflowMetadata as WFMetadata,
-    WorkflowDefinition,
-    AutomationSession,
-    AutomationResult,
-    AutomationReport,
     AutomationProvider,
+    AutomationReport,
+    AutomationResult,
+    AutomationSession,
+    WorkflowAction,
+    WorkflowCredentialReference,
+    WorkflowDefinition,
+    WorkflowEdge,
+    WorkflowExecutionPolicy,
+    WorkflowGraph,
+    WorkflowNode,
+    WorkflowTrigger,
+)
+from aios.services.automation import (
+    WorkflowMetadata as WFMetadata,
 )
 from aios.services.automation_impl import (
-    LocalAutomationValidator,
-    LocalAutomationRegistry,
     LocalAutomationService,
+    LocalAutomationValidator,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 
 
 @pytest.fixture

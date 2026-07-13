@@ -1,13 +1,14 @@
-from aios.services.command.metadata import CommandCategory, CommandMetadata
 from aios.services.command.discovery import (
-    handle_new_conversation,
-    handle_list_conversations,
-    handle_resume_conversation,
-    handle_rename_conversation,
-    handle_delete_conversation,
     handle_current_conversation,
+    handle_delete_conversation,
+    handle_list_conversations,
+    handle_new_conversation,
+    handle_rename_conversation,
+    handle_resume_conversation,
     handle_show_history,
 )
+from aios.services.command.metadata import CommandCategory, CommandMetadata
+
 
 def register_commands(registry, kernel, conv_manager) -> None:
     registry.register_command(

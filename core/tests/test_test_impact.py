@@ -1,18 +1,11 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary
-from aios.services.model import ModelService, LLMResponse
-from aios.services.memory import MemoryService
+import pytest
 from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.test_impact import (
-    ImpactGraph,
-    AffectedComponent,
-    AffectedTestSuite,
-    RegressionCandidate,
-    RiskAssessment,
-)
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.test_impact_impl import LocalChangeImpactAnalyzer
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 @pytest.fixture

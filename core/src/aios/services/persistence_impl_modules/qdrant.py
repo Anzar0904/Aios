@@ -58,51 +58,58 @@ class QdrantConnectionManager(ServiceLifecycle):
         self._client = None
         self._connected = False
         self._failures = 0
+        import threading
+
+        self._lock = threading.Lock()
 
     def initialize(self) -> None:
         pass
 
     def start(self) -> None:
-        self.connect()
+        import threading
+
+        threading.Thread(target=self.connect, daemon=True).start()
 
     def stop(self) -> None:
         self.disconnect()
 
     def connect(self) -> None:
-        if self._connected:
-            return
-        try:
-            from qdrant_client import QdrantClient
-
-            self._client = QdrantClient(
-                host=self.config.host,
-                port=self.config.port,
-                grpc_port=self.config.grpc_port,
-                api_key=self.config.api_key,
-                https=self.config.https,
-                timeout=self.config.timeout,
-                prefer_grpc=False,
-            )
-            self._client.get_collections()
-            self._connected = True
-            self._failures = 0
-            logger.info("Successfully connected to Qdrant server.")
-        except Exception as e:
-            logger.warning(
-                f"Qdrant connection failed ({e}). "
-                "Automatically falling back to local-only in-memory QdrantClient."
-            )
+        with self._lock:
+            if self._connected:
+                return
             try:
                 from qdrant_client import QdrantClient
-                self._client = QdrantClient(location=":memory:")
+
+                self._client = QdrantClient(
+                    host=self.config.host,
+                    port=self.config.port,
+                    grpc_port=self.config.grpc_port,
+                    api_key=self.config.api_key,
+                    https=self.config.https,
+                    timeout=self.config.timeout,
+                    prefer_grpc=False,
+                )
                 self._client.get_collections()
                 self._connected = True
                 self._failures = 0
-                logger.info("Successfully initialized local-only in-memory QdrantClient.")
-            except Exception as e2:
-                logger.error(f"Failed to initialize local-only in-memory QdrantClient: {e2}")
-                self._connected = False
-                self._failures += 1
+                logger.info("Successfully connected to Qdrant server.")
+            except Exception as e:
+                logger.warning(
+                    f"Qdrant connection failed ({e}). "
+                    "Automatically falling back to local-only in-memory QdrantClient."
+                )
+                try:
+                    from qdrant_client import QdrantClient
+
+                    self._client = QdrantClient(location=":memory:")
+                    self._client.get_collections()
+                    self._connected = True
+                    self._failures = 0
+                    logger.info("Successfully initialized local-only in-memory QdrantClient.")
+                except Exception as e2:
+                    logger.error(f"Failed to initialize local-only in-memory QdrantClient: {e2}")
+                    self._connected = False
+                    self._failures += 1
 
     def disconnect(self) -> None:
         if self._client:
@@ -816,6 +823,7 @@ class QdrantRepositoryImpl(VectorMemoryRepository):
         self.provider = provider
         self.col_manager = col_manager
         import os
+
         self.dimensions = int(os.environ.get("QDRANT_DEFAULT_DIMENSIONS", dimensions))
         self.distance = distance
 

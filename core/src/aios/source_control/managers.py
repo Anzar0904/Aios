@@ -1,19 +1,16 @@
-import os
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from aios.providers.models import DIInitializeMixin
-from aios.source_control.service import SourceControlService
 from aios.source_control.git_local import LocalGitExecutor
 from aios.source_control.models import (
-    RepositoryMetadata,
-    BranchInfo,
-    CommitInfo,
-    PullRequestInfo,
     IssueInfo,
+    PullRequestInfo,
     ReleaseInfo,
-    WorkflowInfo,
+    RepositoryMetadata,
     WebhookInfo,
+    WorkflowInfo,
 )
+from aios.source_control.service import SourceControlService
 
 
 class RepositoryManager(DIInitializeMixin):

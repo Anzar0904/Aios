@@ -1,25 +1,31 @@
 import json
-import pytest
 from unittest.mock import MagicMock, patch
 
-from aios.services.model import ModelService, LLMRequest, LLMResponse
-from aios.services.personal import PersonalService, PersonalProfile, Contact, Goal
-from aios.services.github import GitHubService
-from aios.services.project_intelligence import ProjectIntelligenceService, ProjectContext
+import pytest
 from aios.services.career import CareerOSService, JobApplication
-from aios.services.mission import MissionEngine, Mission
-from aios.services.daily import DailyTask, ScheduleItem, DailySchedule, DailyPlan, WorkSession, DailyOSService
+from aios.services.daily import (
+    DailyOSService,
+    DailySchedule,
+    DailyTask,
+    ScheduleItem,
+    WorkSession,
+)
 from aios.services.daily_impl import (
     LocalDailyOSService,
     LocalDailyPlanner,
-    LocalPriorityCalculator,
-    LocalWorkloadEstimator,
-    LocalScheduleOptimizer,
-    LocalProgressTracker,
-    LocalSessionRecorder,
     LocalDailyReview,
+    LocalPriorityCalculator,
     LocalProductivityAnalyzer,
+    LocalProgressTracker,
+    LocalScheduleOptimizer,
+    LocalSessionRecorder,
+    LocalWorkloadEstimator,
 )
+from aios.services.github import GitHubService
+from aios.services.mission import Mission, MissionEngine
+from aios.services.model import LLMResponse, ModelService
+from aios.services.personal import Contact, Goal, PersonalProfile, PersonalService
+from aios.services.project_intelligence import ProjectContext, ProjectIntelligenceService
 
 
 @pytest.fixture

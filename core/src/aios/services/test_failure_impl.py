@@ -1,29 +1,31 @@
-import time
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.workspace_intelligence import CodeStructureSummary
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.test_execution import ExecutionSummary
 from aios.services.test_failure import (
-    FailureSeverity,
-    FailureConfidence,
-    FailureSignature,
-    FailurePattern,
-    FailureCluster,
-    FailureRecommendation,
     FailureAnalysisReport,
-    RootCauseAnalyzer,
-    FailureAnalyzer,
     FailureAnalysisService,
+    FailureAnalyzer,
+    FailureCluster,
+    FailureConfidence,
+    FailurePattern,
+    FailureRecommendation,
+    FailureSeverity,
+    FailureSignature,
+    RootCauseAnalyzer,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ class LocalFailureAnalyzer(FailureAnalyzer):
             clusters_map.setdefault(s.exception_class, []).append(s)
 
         clusters = []
-        for idx, (ex_class, sigs) in enumerate(clusters_map.items()):
+        for idx, (_ex_class, sigs) in enumerate(clusters_map.items()):
             pattern = self.classify_failure("".join(s.error_message for s in sigs))
             clusters.append(
                 FailureCluster(
@@ -274,7 +276,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
             f"**Confidence**: `{report.confidence.value.upper()}`\n\n"
             f"## Identified Failure Clusters\n"
             + ("\n".join(clusters_md) if clusters_md else "- *No failure clusters identified.*") + "\n\n"
-            f"## Corrective Action Recommendations\n"
+            "## Corrective Action Recommendations\n"
             + ("\n".join(recs_md) if recs_md else "- *No failures, no recommendations required.*")
         )
 

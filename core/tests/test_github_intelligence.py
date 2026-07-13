@@ -1,28 +1,17 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
 import httpx
-
+import pytest
 from aios.brain.skill_selector import SkillSelector
-from aios.brain.models import SkillSelection
-from aios.skills.registry import SkillRegistry
-from aios.skills.base import BaseSkill
-
-from aios.services.intent import Intent, IntentType
 from aios.services.agent import AgentContext
 from aios.services.agent_impl import CareerAgent
-from aios.services.model import LLMResponse
 from aios.services.github import (
     GitHubAuthentication,
-    GitHubCache,
-    GitHubRepository,
-    GitHubPullRequest,
-    GitHubIssue,
-    GitHubCommit,
-    GitHubBranch,
-    GitHubRelease,
-    GitHubWorkflow,
 )
 from aios.services.github_impl import LocalGitHubService
+from aios.services.intent import Intent, IntentType
+from aios.services.model import LLMResponse
+from aios.skills.base import BaseSkill
 
 
 def test_github_authentication():

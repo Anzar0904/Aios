@@ -1,0 +1,8 @@
+[runtime]
+name = "Personal AI OS"
+version = "1.0.0"
+debug = false
+
+[llm]
+provider = "openrouter"
+default_model = "qwen/qwen3-coder"

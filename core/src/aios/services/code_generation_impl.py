@@ -1,34 +1,36 @@
 import ast
 import hashlib
-import time
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
-from aios.services.workspace_intelligence import CodeStructureSummary
 from aios.services.code_generation import (
-    GenerationPolicy,
-    GeneratedArtifact,
-    GenerationReport,
-    GenerationSession,
+    CodeGenerationService,
     CodePlanner,
     ContextAssembler,
-    PromptBuilder,
-    FileGenerator,
     FileEditor,
-    SyntaxValidator,
-    StyleValidator,
-    ImportValidator,
+    FileGenerator,
+    GeneratedArtifact,
+    GenerationPolicy,
+    GenerationReport,
+    GenerationSession,
     GenerationValidator,
-    CodeGenerationService,
+    ImportValidator,
+    PromptBuilder,
+    StyleValidator,
+    SyntaxValidator,
 )
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +185,7 @@ class LocalImportValidator(ImportValidator):
                 tree = ast.parse(content)
                 for node in ast.walk(tree):
                     if isinstance(node, ast.Import):
-                        for alias in node.names:
+                        for _alias in node.names:
                             # Basic standard library checks or dependencies check
                             pass
                     elif isinstance(node, ast.ImportFrom):

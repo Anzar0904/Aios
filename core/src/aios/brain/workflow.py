@@ -1,7 +1,6 @@
 import contextlib
 import io
-import sys
-from typing import Any, List, Dict
+from typing import Any, Dict, List
 
 from aios.brain.models import Workflow, WorkflowStep
 from aios.services.action.approval import ApprovalManager

@@ -1189,18 +1189,18 @@ class PersistenceBootstrapper(ServiceLifecycle):
         mgr.register_migration(
             38,
             "Enhance pending_indexing_jobs with full audit columns",
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN entity_id TEXT;"
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN workspace_id TEXT;"
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN project_id TEXT;"
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN embedding_version TEXT;"
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN retry_count INTEGER DEFAULT 0;"
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN failure_reason TEXT;"
-            "ALTER TABLE pending_indexing_jobs ADD COLUMN updated_at REAL;",
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS entity_id TEXT;"
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS workspace_id TEXT;"
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS project_id TEXT;"
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS embedding_version TEXT;"
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS retry_count INTEGER DEFAULT 0;"
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS failure_reason TEXT;"
+            "ALTER TABLE pending_indexing_jobs ADD COLUMN IF NOT EXISTS updated_at REAL;",
         )
         mgr.register_migration(
             39,
             "Enhance pending_embedding_jobs with updated_at",
-            "ALTER TABLE pending_embedding_jobs ADD COLUMN updated_at REAL;",
+            "ALTER TABLE pending_embedding_jobs ADD COLUMN IF NOT EXISTS updated_at REAL;",
         )
 
         start_boot = time.time()

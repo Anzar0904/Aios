@@ -1022,6 +1022,13 @@
 - def `test_test_planner_prioritization` in file `core/tests/test_test_engineer.py`
 - def `test_test_engineer_service_flow` in file `core/tests/test_test_engineer.py`
 - def `test_backward_compatibility` in file `core/tests/test_test_engineer.py`
+- def `mock_index_path` in file `core/tests/test_docintel_agent.py`
+- def `test_agent_initialization` in file `core/tests/test_docintel_agent.py`
+- def `test_agent_fuzzy_symbol_search` in file `core/tests/test_docintel_agent.py`
+- def `test_agent_ask_specific_class` in file `core/tests/test_docintel_agent.py`
+- def `test_agent_ask_dependencies_and_dependents` in file `core/tests/test_docintel_agent.py`
+- def `test_agent_ask_special_queries` in file `core/tests/test_docintel_agent.py`
+- def `test_agent_ask_with_model_service` in file `core/tests/test_docintel_agent.py`
 - def `mock_memory_service` in file `core/tests/test_n8n_translation.py`
 - def `mock_workspace_service` in file `core/tests/test_n8n_translation.py`
 - def `mock_model_service` in file `core/tests/test_n8n_translation.py`

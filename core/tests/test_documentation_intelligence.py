@@ -1,25 +1,28 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.engineering_profile import EngineeringProfileService, EngineeringProfile, DocumentationProfile
+import pytest
 from aios.services.documentation_intelligence import (
-    DocumentCategory,
-    DocumentSource,
-    DocumentMetadata,
-    DocumentTemplate,
     DocumentArtifact,
-    DocumentationWorkspace,
-    DocumentationSession,
-    DocumentationResult,
     DocumentationProfileAdapter,
     DocumentationRegistry,
+    DocumentationResult,
+    DocumentationWorkspace,
+    DocumentCategory,
+    DocumentMetadata,
+    DocumentSource,
+    DocumentTemplate,
 )
 from aios.services.documentation_intelligence_impl import (
     LocalDocumentationPlanner,
     LocalDocumentationService,
 )
+from aios.services.engineering_profile import (
+    DocumentationProfile,
+    EngineeringProfile,
+    EngineeringProfileService,
+)
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 
 
 @pytest.fixture

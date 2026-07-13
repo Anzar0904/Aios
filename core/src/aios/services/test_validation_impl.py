@@ -1,30 +1,32 @@
-import time
 import json
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.test_execution import ExecutionSummary
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.test_coverage import CoverageReport
+from aios.services.test_execution import ExecutionSummary
 from aios.services.test_failure import FailureAnalysisReport
 from aios.services.test_validation import (
-    ValidationStatus,
     ValidationDecision,
-    ValidationFinding,
-    ValidationRecommendation,
     ValidationEvidence,
+    ValidationFinding,
     ValidationGate,
     ValidationMetrics,
-    ValidationScore,
-    ValidationSummary,
+    ValidationRecommendation,
     ValidationReport,
+    ValidationScore,
     ValidationService,
+    ValidationStatus,
+    ValidationSummary,
 )
 
 logger = logging.getLogger(__name__)
@@ -323,9 +325,9 @@ class LocalValidationService(ValidationService):
             f"{report.executive_summary}\n\n"
             f"## Gating Outcomes\n"
             + "\n".join(gates_md) + "\n\n"
-            f"## Validation Findings\n"
+            "## Validation Findings\n"
             + ("\n".join(findings_md) if findings_md else "- *No warnings or errors detected. Gating satisfies release criteria.*") + "\n\n"
-            f"## Corrective Action Recommendations\n"
+            "## Corrective Action Recommendations\n"
             + ("\n".join(recs_md) if recs_md else "- *No actions required.*")
         )
 

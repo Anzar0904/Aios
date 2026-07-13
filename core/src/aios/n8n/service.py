@@ -1,10 +1,10 @@
+import logging
 import os
 import time
-import httpx
-import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.base import ServiceLifecycle
+import httpx
+
 from aios.providers.models import DIInitializeMixin
 
 logger = logging.getLogger(__name__)
@@ -684,7 +684,7 @@ class N8NDiagnostics(DIInitializeMixin):
             issues.append({
                 "type": "Server unavailable",
                 "message": f"Could not connect to n8n server at {self.config_service.server_url}.",
-                "remediation": f"Ensure the self-hosted n8n server is started and listening on the configured port (e.g. run 'n8n start' or check Docker container status)."
+                "remediation": "Ensure the self-hosted n8n server is started and listening on the configured port (e.g. run 'n8n start' or check Docker container status)."
             })
         except Exception as e:
             status = "Awaiting Runtime Configuration"

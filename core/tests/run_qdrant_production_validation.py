@@ -1,50 +1,31 @@
+import json
+import math
 import os
+import shutil
 import sys
 import time
-import uuid
-import shutil
-import math
 import urllib.request
-import json
-from typing import Dict, Any, List
+import uuid
 from pathlib import Path
+from typing import Any, Dict
 
 # Ensure python path includes root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from aios.bootstrap import bootstrap_kernel
-from aios.registry import ServiceRegistry
 from aios.services.persistence import (
-    SemanticMemoryManager,
-    QdrantTransport,
-    QdrantProvider,
     CollectionManager,
-    QdrantRuntimeService,
     EmbeddingEngine,
     EmbeddingRequest,
-    SemanticSearchService,
-    HybridRetrievalService,
-    PersistencePolicy,
-    QdrantRuntimeTelemetry,
-    QdrantHealthAnalyzer,
-    QdrantCapacityAnalyzer,
-    QdrantPerformanceAnalyzer,
-    QdrantRecommendationEngine,
-    QdrantDiagnosticsEngine,
-    QdrantStatisticsCollector,
-    QdrantRuntimeReporter,
-    QdrantRuntimeValidator,
-    QdrantRuntimeCoordinator,
     EmbeddingService,
-    RepositoryRegistry
+    HybridRetrievalService,
+    QdrantRuntimeService,
+    SemanticMemoryManager,
 )
 from aios.services.persistence_impl import (
     QdrantConfigurationService,
-    QdrantConnectionManager,
     SentenceTransformerProvider,
-    QdrantProviderImpl
 )
-from aios.services.context import ContextService
 
 
 def run_connectivity_tests(config: QdrantConfigurationService) -> Dict[str, Any]:
@@ -216,7 +197,7 @@ def run_embedding_tests(engine: EmbeddingEngine) -> Dict[str, Any]:
     
     # Cache Check
     t1 = time.perf_counter()
-    resp_cached = engine.embed_text(EmbeddingRequest(text="Certification text sample"))
+    engine.embed_text(EmbeddingRequest(text="Certification text sample"))
     latency_cached = (time.perf_counter() - t1) * 1000.0
     
     # Metadata Check
@@ -362,6 +343,9 @@ def compile_reports(
     print("--- Generating Documentation Reports ---")
     os.makedirs(docs_dir, exist_ok=True)
     
+    latency_str = f"{conn_res['readyz']['latency_ms']:.2f}ms" if "latency_ms" in conn_res["readyz"] else "FAILED"
+    version_str = conn_res["version"].get("version", "unknown")
+
     # 1. QDRANT_PRODUCTION_VALIDATION_REPORT.md
     with open(f"{docs_dir}/QDRANT_PRODUCTION_VALIDATION_REPORT.md", "w") as f:
         f.write(f"""# Qdrant Production Live Validation Report
@@ -372,7 +356,7 @@ This report certifies the successful execution of **Qdrant Production Live Valid
 
 ## 1. Executive Certification
 
-The complete Qdrant vector database memory orchestration platform, including native transports, schema collections, pre-filtering indices, caching layers, SentenceTransformer local embeddings, hybrid retrieval context pipelines, and runtime diagnostics engines, has been validated against a real live local Qdrant server. 
+The complete Qdrant vector database memory orchestration platform, including native transports, schema collections, pre-filtering indices, caching layers, SentenceTransformer local embeddings, hybrid retrieval context pipelines, and runtime diagnostics engines, has been validated against a real live local Qdrant server.
 
 - **No Mocks**: Verified against localhost:6333 Qdrant server.
 - **Connection Health**: 100% healthy.
@@ -390,8 +374,8 @@ The complete Qdrant vector database memory orchestration platform, including nat
 - **Quantization**: Enabled (scalar quantization)
 
 ## 3. Connectivity Verification
-- **HTTP Endpoint**: OK (Latency: {conn_res['readyz']['latency_ms']:.2f}ms)
-- **Qdrant Version**: {conn_res['version']['version']}
+- **HTTP Endpoint**: {latency_str}
+- **Qdrant Version**: {version_str}
 - **Connection Pool**: Reconnect and timeout pooling checks passed.
 """)
 
@@ -453,7 +437,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
     # 6. QDRANT_COLLECTION_VALIDATION.md
     with open(f"{docs_dir}/QDRANT_COLLECTION_VALIDATION.md", "w") as f:
-        f.write(f"""# Qdrant Collection Validation
+        f.write("""# Qdrant Collection Validation
 
 All 9 default vector collections have been verified for creation, schema mapping, pre-filtering indexes, and distance metrics.
 
@@ -497,7 +481,7 @@ All 9 default vector collections have been verified for creation, schema mapping
 
     # 10. QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md
     with open(f"{docs_dir}/QDRANT_RUNTIME_INTELLIGENCE_VALIDATION.md", "w") as f:
-        f.write(f"""# Qdrant Runtime Intelligence Validation
+        f.write("""# Qdrant Runtime Intelligence Validation
 
 - **Stats Collector**: Captured counts and latencies.
 - **Diagnostics Engine**: Logged alerts and triggers.
@@ -605,6 +589,14 @@ def main():
     
     # 2. Run validations
     conn_res = run_connectivity_tests(config)
+    
+    # Enforce strict connection assertion
+    if not conn_res.get("readyz", {}).get("passed", False):
+        raise RuntimeError(
+            f"Qdrant live server is unreachable on {config.host}:{config.port}. "
+            "Production validation aborted."
+        )
+        
     col_res = run_collection_tests(col_mgr)
     crud_res = run_crud_tests(sem_mgr)
     search_res = run_search_tests(sem_mgr, hybrid_svc)

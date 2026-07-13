@@ -3,27 +3,26 @@ import json
 import logging
 import os
 import time
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 
-from aios.config import OSConfig
-from aios.services.model import ModelService, LLMRequest
-from aios.services.project_intelligence import ProjectIntelligenceService
 from aios.services.developer_workspace import DeveloperWorkspaceService
 from aios.services.github import (
     GitHubAuthentication,
-    GitHubCache,
-    GitHubContext,
-    GitHubService,
-    GitHubRepository,
-    GitHubPullRequest,
-    GitHubIssue,
-    GitHubCommit,
     GitHubBranch,
+    GitHubCache,
+    GitHubCommit,
+    GitHubContext,
+    GitHubIssue,
+    GitHubPullRequest,
     GitHubRelease,
+    GitHubRepository,
+    GitHubService,
     GitHubWorkflow,
 )
+from aios.services.model import LLMRequest, ModelService
+from aios.services.project_intelligence import ProjectIntelligenceService
 
 logger = logging.getLogger(__name__)
 

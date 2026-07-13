@@ -1,7 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
 
 from aios.services.developer_workspace import DeveloperWorkspaceInfo, DeveloperWorkspaceService
 

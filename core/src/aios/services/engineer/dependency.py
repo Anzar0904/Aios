@@ -1,7 +1,9 @@
 import os
 import re
 from typing import List
+
 from aios.services.engineer.graph import EngineeringGraph
+
 
 class DependencyAnalyzer:
     def __init__(self, graph: EngineeringGraph) -> None:

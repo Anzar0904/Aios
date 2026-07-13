@@ -2156,6 +2156,30 @@ in other docs/ subdirectories.
 
 do not trigger duplicate calls on services.
 
+## Module: core/tests/test_docintel_agent.py
+
+### def `mock_index_path`
+- `def mock_index_path(tmpdir)`
+- **Decorators**: `pytest.fixture`
+
+### def `test_agent_initialization`
+- `def test_agent_initialization(mock_index_path)`
+
+### def `test_agent_fuzzy_symbol_search`
+- `def test_agent_fuzzy_symbol_search(mock_index_path)`
+
+### def `test_agent_ask_specific_class`
+- `def test_agent_ask_specific_class(mock_index_path)`
+
+### def `test_agent_ask_dependencies_and_dependents`
+- `def test_agent_ask_dependencies_and_dependents(mock_index_path)`
+
+### def `test_agent_ask_special_queries`
+- `def test_agent_ask_special_queries(mock_index_path)`
+
+### def `test_agent_ask_with_model_service`
+- `def test_agent_ask_with_model_service(mock_index_path)`
+
 ## Module: core/tests/test_n8n_translation.py
 
 ### def `mock_memory_service`
@@ -16357,6 +16381,30 @@ initialize -> start -> ready -> shutdown.
   * Fallback to unparse or name extraction for type annotations/bases.
 - `def _estimate_complexity(self, node: ast.FunctionDef) -> int`
   * Estimates cyclomatic complexity based on branch nodes in AST.
+
+## Module: core/src/aios/services/docintel/agent.py
+
+### class `DocumentationAgent`
+- **Inherits from**: ServiceLifecycle
+
+> AI Documentation Agent querying the DocumentationIndex.
+
+**Methods:**
+
+- `def __init__(self, model_service: Optional[ModelService], index_path: str) -> None`
+- `def initialize(self) -> None`
+- `def start(self) -> None`
+- `def stop(self) -> None`
+- `def _fuzzy_score(self, query: str, target: str) -> float`
+- `def search_class(self, query: str) -> List[Dict[str, Any]]`
+- `def search_function(self, query: str) -> List[Dict[str, Any]]`
+- `def search_service(self, query: str) -> List[Dict[str, Any]]`
+- `def search_module(self, query: str) -> List[Dict[str, Any]]`
+- `def search_file(self, query: str) -> List[Dict[str, Any]]`
+- `def search_symbol(self, query: str) -> List[Dict[str, Any]]`
+- `def _get_dependencies(self, filepath: str) -> List[str]`
+- `def _get_dependents(self, filepath: str) -> List[str]`
+- `def ask(self, query: str) -> str`
 
 ## Module: core/src/aios/services/action/planner.py
 

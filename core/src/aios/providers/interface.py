@@ -444,6 +444,98 @@ class RoutingEngine:
 
     def route(self, request: RoutingRequest) -> RoutingDecision:
         """Determines the best provider/model routing decision based on active registry metrics."""
+        # 0. Check if 9Router is active and is the primary gateway
+        use_ninerouter = True
+        if request.preferred_provider and request.preferred_provider != "ninerouter":
+            use_ninerouter = False
+
+        ninerouter_provider = self.provider_registry.lookup("ninerouter")
+        is_ninerouter_active = ninerouter_provider and ninerouter_provider.health()
+
+        if use_ninerouter and is_ninerouter_active:
+            preferred_model = request.preferred_model
+            preferred_backend = None
+            try:
+                from pathlib import Path
+
+                from aios.config import load_config
+                config = load_config(Path("config/config.toml"))
+                if config and hasattr(config, "llm") and getattr(config.llm, "ninerouter", None):
+                    preferred_model = preferred_model or config.llm.ninerouter.preferred_model
+                    preferred_backend = config.llm.ninerouter.preferred_backend
+            except Exception:
+                pass
+
+            nr_models = self.model_registry.list_models("ninerouter")
+            selected_model = preferred_model
+
+            if not selected_model and nr_models:
+                task = request.task_type
+                if task == "coding":
+                    matches = [m.model_id for m in nr_models if m.supports_coding]
+                    if not matches:
+                        matches = [
+                            m.model_id
+                            for m in nr_models
+                            if "coder" in m.model_id.lower() or "qwen" in m.model_id.lower()
+                        ]
+                    if matches:
+                        selected_model = matches[0]
+                elif task == "reasoning":
+                    matches = [m.model_id for m in nr_models if m.supports_reasoning]
+                    if not matches:
+                        matches = [
+                            m.model_id
+                            for m in nr_models
+                            if "o1" in m.model_id.lower() or "r1" in m.model_id.lower()
+                        ]
+                    if matches:
+                        selected_model = matches[0]
+                elif task == "vision":
+                    matches = [m.model_id for m in nr_models if m.supports_vision]
+                    if not matches:
+                        matches = [
+                            m.model_id
+                            for m in nr_models
+                            if "vision" in m.model_id.lower() or "gpt-4o" in m.model_id.lower()
+                        ]
+                    if matches:
+                        selected_model = matches[0]
+                elif task == "embeddings":
+                    matches = [m.model_id for m in nr_models if m.supports_embeddings]
+                    if not matches:
+                        matches = [
+                            m.model_id
+                            for m in nr_models
+                            if "embed" in m.model_id.lower()
+                        ]
+                    if matches:
+                        selected_model = matches[0]
+
+                if not selected_model:
+                    matches = [m.model_id for m in nr_models if m.supports_chat]
+                    if matches:
+                        selected_model = matches[0]
+                    else:
+                        selected_model = nr_models[0].model_id if nr_models else "gpt-4o"
+
+            if not selected_model:
+                selected_model = "gpt-4o"
+
+            reason = (
+                f"Selected model '{selected_model}' "
+                f"for task '{request.task_type}' and routed through 9Router gateway."
+            )
+            if preferred_backend:
+                reason += f" Preferred backend: {preferred_backend}."
+
+            return RoutingDecision(
+                provider="ninerouter",
+                model=selected_model,
+                routing_score=100.0,
+                reasoning=reason,
+            )
+
         # 1. Check for manual provider override
         if request.preferred_provider:
             pref_provider = request.preferred_provider

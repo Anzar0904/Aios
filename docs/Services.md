@@ -122,6 +122,7 @@
 - **intelligence.py** (Path: `file:///core/src/aios/services/docintel/intelligence.py`)
 - **generator.py** (Path: `file:///core/src/aios/services/docintel/generator.py`)
 - **indexer.py** (Path: `file:///core/src/aios/services/docintel/indexer.py`)
+- **agent.py** (Path: `file:///core/src/aios/services/docintel/agent.py`)
 - **planner.py** (Path: `file:///core/src/aios/services/action/planner.py`)
 - **models.py** (Path: `file:///core/src/aios/services/action/models.py`)
 - **__init__.py** (Path: `file:///core/src/aios/services/action/__init__.py`)

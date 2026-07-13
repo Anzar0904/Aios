@@ -117,8 +117,9 @@ def test_memory_storage_crud(tmp_path):
 def test_memory_intelligence_milestone1(tmp_path):
     import json
     from unittest.mock import MagicMock
-    from aios.services.memory import MemoryCategory, MemoryImportance, MemoryMetadata
-    from aios.services.model import ModelService, LLMResponse
+
+    from aios.services.memory import MemoryCategory, MemoryImportance
+    from aios.services.model import LLMResponse, ModelService
 
     storage_file = tmp_path / "test_memory_intelligence.json"
     storage = LocalJSONMemoryStorage(storage_file)
@@ -227,7 +228,12 @@ def test_backward_compatibility():
 
 
 def test_memory_retrieval_milestone2(tmp_path):
-    from aios.services.memory import RetrievalContext, RetrievalStrategy, MemoryCategory, MemoryImportance
+    from aios.services.memory import (
+        MemoryCategory,
+        MemoryImportance,
+        RetrievalContext,
+        RetrievalStrategy,
+    )
 
     storage_file = tmp_path / "test_memory_retrieval.json"
     storage = LocalJSONMemoryStorage(storage_file)

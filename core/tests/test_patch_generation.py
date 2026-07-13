@@ -1,17 +1,16 @@
-import os
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
+import pytest
 from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.patch_generation import PatchBundle, PatchMetadata, PatchStatistics
+from aios.services.memory import MemoryService
+from aios.services.patch_generation import PatchBundle
 from aios.services.patch_generation_impl import (
-    LocalDiffGenerator,
-    LocalPatchGenerator,
-    LocalPatchValidator,
     LocalConflictDetector,
-    LocalPatchSerializer,
+    LocalDiffGenerator,
     LocalPatchGenerationService,
+    LocalPatchGenerator,
+    LocalPatchSerializer,
+    LocalPatchValidator,
 )
 
 

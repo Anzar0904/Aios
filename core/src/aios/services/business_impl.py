@@ -15,28 +15,22 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
     def __init__(self, base_dir: Optional[Path] = None) -> None:
         self.base_dir = base_dir or Path(".agent/business")
         self._org_store = BusinessDataStore(
-            "organizations.json",
-            path=self.base_dir / "organizations.json" if base_dir else None
+            "organizations.json", path=self.base_dir / "organizations.json" if base_dir else None
         )
         self._client_store = BusinessDataStore(
-            "clients.json",
-            path=self.base_dir / "clients.json" if base_dir else None
+            "clients.json", path=self.base_dir / "clients.json" if base_dir else None
         )
         self._lead_store = BusinessDataStore(
-            "leads.json",
-            path=self.base_dir / "leads.json" if base_dir else None
+            "leads.json", path=self.base_dir / "leads.json" if base_dir else None
         )
         self._proposal_store = BusinessDataStore(
-            "proposals.json",
-            path=self.base_dir / "proposals.json" if base_dir else None
+            "proposals.json", path=self.base_dir / "proposals.json" if base_dir else None
         )
         self._workflow_store = BusinessDataStore(
-            "workflows.json",
-            path=self.base_dir / "workflows.json" if base_dir else None
+            "workflows.json", path=self.base_dir / "workflows.json" if base_dir else None
         )
         self._task_store = BusinessDataStore(
-            "tasks.json",
-            path=self.base_dir / "tasks.json" if base_dir else None
+            "tasks.json", path=self.base_dir / "tasks.json" if base_dir else None
         )
 
     def initialize(self) -> None:
@@ -92,6 +86,7 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
         projects_list = []
         try:
             from aios.services.project_intelligence import ProjectIntelligenceService
+
             proj_service = ServiceRegistry._global_registry.get(ProjectIntelligenceService)
             if proj_service:
                 projects_list = proj_service.list_projects()
@@ -106,20 +101,22 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
                     "name": "Acme Web Portal",
                     "framework": "nextjs",
                     "creation_date": "2026-07-08",
-                    "status": "active"
+                    "status": "active",
                 }
             ]
 
         portfolio = []
         for p in projects_list:
-            portfolio.append({
-                "project_id": p.get("project_id"),
-                "name": p.get("name"),
-                "framework": p.get("framework"),
-                "client_id": "c1",  # Link to c1 default
-                "github_repo": "https://github.com/Anzar0904/Aios",
-                "status": p.get("status", "active")
-            })
+            portfolio.append(
+                {
+                    "project_id": p.get("project_id"),
+                    "name": p.get("name"),
+                    "framework": p.get("framework"),
+                    "client_id": "c1",  # Link to c1 default
+                    "github_repo": "https://github.com/Anzar0904/Aios",
+                    "status": p.get("status", "active"),
+                }
+            )
         return portfolio
 
     # --- Proposal Management ---
@@ -132,7 +129,7 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
                 "proposal_id": proposal_id,
                 "title": "AI Integration Proposal",
                 "budget": 5000,
-                "version": 1
+                "version": 1,
             }
         return data[proposal_id]
 
@@ -154,7 +151,7 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
                     "name": "Lead Intake Automation",
                     "client_id": "c1",
                     "success_rate": 99.2,
-                    "runs_count": 142
+                    "runs_count": 142,
                 }
             ]
         return list(data.values())
@@ -170,7 +167,7 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
                     "name": "Setup DB Schema",
                     "priority": "high",
                     "deadline": "2026-07-15",
-                    "progress": 80
+                    "progress": 80,
                 }
             ]
         return list(data.values())
@@ -190,7 +187,7 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
             "success_rate": 98.5,
             "project_completion_rate": 90.0,
             "revenue_estimate": "$25,000",
-            "productivity_score": "94%"
+            "productivity_score": "94%",
         }
 
     # --- Client Timeline ---
@@ -199,7 +196,7 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
         events = [
             {"date": "2026-07-08", "type": "meeting", "desc": "Discovery kickoff session"},
             {"date": "2026-07-09", "type": "deploy", "desc": "Initial Next.js portal setup"},
-            {"date": "2026-07-10", "type": "proposal", "desc": "Draft proposal version 1"}
+            {"date": "2026-07-10", "type": "proposal", "desc": "Draft proposal version 1"},
         ]
         return {"client_id": client_id, "events": events}
 
@@ -281,11 +278,11 @@ class LocalBusinessIntelligenceService(BusinessIntelligenceService):
         # 6. Analytics Report
         analytics_md = f"""# Business Analytics Report
 
-- **Active Clients:** {analytics.get('active_clients')}
-- **Active Projects:** {analytics.get('active_projects')}
-- **Workflows Online:** {analytics.get('workflows_count')}
-- **Success Rate:** {analytics.get('success_rate')}%
-- **Revenue Estimate:** {analytics.get('revenue_estimate')}
+- **Active Clients:** {analytics.get("active_clients")}
+- **Active Projects:** {analytics.get("active_projects")}
+- **Workflows Online:** {analytics.get("workflows_count")}
+- **Success Rate:** {analytics.get("success_rate")}%
+- **Revenue Estimate:** {analytics.get("revenue_estimate")}
 """
         with open(out_path / "analytics_report.md", "w", encoding="utf-8") as f:
             f.write(analytics_md.strip())

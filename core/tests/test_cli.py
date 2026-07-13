@@ -1,13 +1,11 @@
-import sys
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import MagicMock
 
 from aios.cli import (
     handle_conversation_command,
-    print_help_table,
-    print_skills_table,
-    print_providers_table,
     handle_model_switch,
+    print_help_table,
+    print_providers_table,
+    print_skills_table,
 )
 from aios.skills.base import BaseSkill
 from aios.skills.metadata import SkillMetadata

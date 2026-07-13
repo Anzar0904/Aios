@@ -1,40 +1,44 @@
+import json
+import logging
 import os
 import time
-import logging
-import json
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.persistence import PersistenceStatus, WorkflowOptimizationRepository, PersistenceService
-
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.automation import AutomationService
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import (
+    PersistenceService,
+    WorkflowOptimizationRepository,
+)
 from aios.services.workflow_monitoring import WorkflowMonitoringService
 from aios.services.workflow_optimization import (
-    WorkflowOptimizationCategory,
-    WorkflowOptimizationPriority,
-    WorkflowOptimizationImpact,
-    WorkflowOptimizationRecommendation,
-    WorkflowOptimizationPlan,
-    WorkflowOptimizationReport,
-    WorkflowOptimizationKnowledgeBase,
+    WorkflowComplexityAnalyzer,
     WorkflowCostAnalyzer,
     WorkflowLatencyAnalyzer,
+    WorkflowOptimizationAnalyzer,
+    WorkflowOptimizationCategory,
+    WorkflowOptimizationImpact,
+    WorkflowOptimizationKnowledgeBase,
+    WorkflowOptimizationPlan,
+    WorkflowOptimizationPlanner,
+    WorkflowOptimizationPriority,
+    WorkflowOptimizationRecommendation,
+    WorkflowOptimizationReport,
+    WorkflowOptimizationService,
+    WorkflowOptimizationValidator,
     WorkflowParallelizationAnalyzer,
     WorkflowRedundancyAnalyzer,
-    WorkflowSchedulingAnalyzer,
     WorkflowResourceAnalyzer,
-    WorkflowComplexityAnalyzer,
-    WorkflowOptimizationValidator,
-    WorkflowOptimizationAnalyzer,
-    WorkflowOptimizationPlanner,
-    WorkflowOptimizationService,
+    WorkflowSchedulingAnalyzer,
 )
 
 logger = logging.getLogger(__name__)
@@ -396,7 +400,6 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         logger.info(f"Auditing workspace '{workspace_id}' to compile workflow optimizations.")
 
         # 1. Retrieve telemetry and graphs
-        telemetry = []
         monitoring_service = None
         automation_service = None
         if self._registry:
@@ -408,9 +411,9 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
 
         workflow_ids = ["wf_system"]
         if monitoring_service and hasattr(monitoring_service, "_tracker"):
-            tracker = getattr(monitoring_service, "_tracker")
+            tracker = monitoring_service._tracker
             if hasattr(tracker, "_records"):
-                records_dict = getattr(tracker, "_records")
+                records_dict = tracker._records
                 ws_wfs = []
                 for w_id, recs in records_dict.items():
                     if any(r.workspace_id == workspace_id for r in recs):

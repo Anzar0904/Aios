@@ -1,22 +1,30 @@
-import pytest
 import os
 from pathlib import Path
 
 from aios.bootstrap import bootstrap_kernel
-from aios.registry import ServiceRegistry
 from aios.services.persistence import (
-    QdrantTransport, QdrantProvider, CollectionManager, QdrantRuntimeService,
-    EmbeddingMetadata, EmbeddingBatchRequest, EmbeddingBatchResponse,
-    EmbeddingProvider, EmbeddingService, EmbeddingVersionManager, EmbeddingCache,
-    ChunkMetadata, ChunkStrategy, ChunkResult, ChunkingService,
-    ContextCandidate, ContextRanking, ContextAssembly, ContextBuilder,
-    RuntimeIntelligenceService
+    ChunkingService,
+    ChunkStrategy,
+    CollectionManager,
+    ContextBuilder,
+    ContextCandidate,
+    EmbeddingCache,
+    EmbeddingService,
+    EmbeddingVersionManager,
+    QdrantProvider,
+    QdrantRuntimeService,
+    QdrantTransport,
+    RuntimeIntelligenceService,
 )
 from aios.services.persistence_impl import (
-    QdrantConfigurationService, QdrantConnectionManager, QdrantTransportImpl, QdrantProviderImpl,
-    CollectionManagerImpl, QdrantRuntimeServiceImpl,
-    MockEmbeddingProvider, EmbeddingServiceImpl, EmbeddingVersionManagerImpl, EmbeddingCacheImpl,
-    ChunkingServiceImpl, ContextBuilderImpl
+    ChunkingServiceImpl,
+    CollectionManagerImpl,
+    ContextBuilderImpl,
+    EmbeddingCacheImpl,
+    QdrantConfigurationService,
+    QdrantConnectionManager,
+    QdrantProviderImpl,
+    QdrantTransportImpl,
 )
 
 
@@ -48,10 +56,17 @@ def test_qdrant_configuration():
 
     # Cleanup environment variables
     for key in [
-        "QDRANT_HOST", "QDRANT_PORT", "QDRANT_GRPC_PORT", "QDRANT_API_KEY",
-        "QDRANT_HTTPS", "QDRANT_TIMEOUT", "QDRANT_RETRY_COUNT",
-        "QDRANT_DEFAULT_DIMENSIONS", "QDRANT_DEFAULT_DISTANCE",
-        "QDRANT_ON_DISK_PAYLOAD", "QDRANT_QUANTIZATION"
+        "QDRANT_HOST",
+        "QDRANT_PORT",
+        "QDRANT_GRPC_PORT",
+        "QDRANT_API_KEY",
+        "QDRANT_HTTPS",
+        "QDRANT_TIMEOUT",
+        "QDRANT_RETRY_COUNT",
+        "QDRANT_DEFAULT_DIMENSIONS",
+        "QDRANT_DEFAULT_DISTANCE",
+        "QDRANT_ON_DISK_PAYLOAD",
+        "QDRANT_QUANTIZATION",
     ]:
         os.environ.pop(key, None)
 
@@ -67,6 +82,13 @@ def test_qdrant_connection_manager_and_transport():
     conn_mgr = QdrantConnectionManager(config)
     conn_mgr.initialize()
     conn_mgr.start()
+
+    import time
+
+    for _ in range(50):
+        if conn_mgr.is_connected():
+            break
+        time.sleep(0.1)
 
     assert conn_mgr.is_connected() is True
     assert conn_mgr.get_client() is not None
@@ -113,12 +135,17 @@ def test_qdrant_provider_and_collection_manager():
 
     # Get Stats
     stats = col_mgr.get_statistics(collection_name)
-    assert "green" in stats["status"].lower() or "ok" in stats["status"].lower() or "yellow" in stats["status"].lower()
+    assert (
+        "green" in stats["status"].lower()
+        or "ok" in stats["status"].lower()
+        or "yellow" in stats["status"].lower()
+    )
 
     # Upsert point
-    upsert_success = provider.upsert_points(collection_name, [
-        {"id": 1, "vector": [0.1, 0.2, 0.3, 0.4], "payload": {"category": "test"}}
-    ])
+    upsert_success = provider.upsert_points(
+        collection_name,
+        [{"id": 1, "vector": [0.1, 0.2, 0.3, 0.4], "payload": {"category": "test"}}],
+    )
     assert upsert_success is True
 
     # Search Vector
@@ -177,9 +204,15 @@ def test_chunking_service():
 def test_context_builder():
     builder = ContextBuilderImpl()
     candidates = [
-        ContextCandidate(text="Point 1 text", score=0.8, metadata={}, source_collection="coll", point_id="1"),
-        ContextCandidate(text="Point 2 text", score=0.6, metadata={}, source_collection="coll", point_id="2"),
-        ContextCandidate(text="Point 1 text", score=0.85, metadata={}, source_collection="coll", point_id="1"), # Duplicate text
+        ContextCandidate(
+            text="Point 1 text", score=0.8, metadata={}, source_collection="coll", point_id="1"
+        ),
+        ContextCandidate(
+            text="Point 2 text", score=0.6, metadata={}, source_collection="coll", point_id="2"
+        ),
+        ContextCandidate(
+            text="Point 1 text", score=0.85, metadata={}, source_collection="coll", point_id="1"
+        ),  # Duplicate text
     ]
 
     # Rank
@@ -240,16 +273,24 @@ def test_dependency_injection_and_runtime_intelligence():
 
 def test_repositories_dependency_injection():
     from aios.services.persistence import RepositoryRegistry
+
     config_path = Path("aios.toml")
     kernel = bootstrap_kernel(config_path)
     registry = kernel.registry
 
     # Verify registered in ServiceRegistry
     from aios.services.persistence import (
-        EngineeringMemoryRepository, WorkspaceMemoryRepository, ProjectMemoryRepository,
-        DocumentationMemoryRepository, ConversationMemoryRepository, AutomationMemoryRepository,
-        ProviderMemoryRepository, ResearchMemoryRepository, KnowledgeMemoryRepository
+        AutomationMemoryRepository,
+        ConversationMemoryRepository,
+        DocumentationMemoryRepository,
+        EngineeringMemoryRepository,
+        KnowledgeMemoryRepository,
+        ProjectMemoryRepository,
+        ProviderMemoryRepository,
+        ResearchMemoryRepository,
+        WorkspaceMemoryRepository,
     )
+
     assert registry.get(EngineeringMemoryRepository) is not None
     assert registry.get(WorkspaceMemoryRepository) is not None
     assert registry.get(ProjectMemoryRepository) is not None
@@ -276,6 +317,7 @@ def test_repositories_dependency_injection():
 
 def test_repository_operations():
     from aios.services.persistence import EngineeringMemoryRepository
+
     config_path = Path("aios.toml")
     kernel = bootstrap_kernel(config_path)
     registry = kernel.registry
@@ -288,7 +330,7 @@ def test_repository_operations():
     assert repo.count() == 0
 
     memory_id = "test-mem-id-1"
-    vector = [0.2, 0.4, 0.6, 0.8] + [0.0] * 1532 # 1536 dim
+    vector = [0.2, 0.4, 0.6, 0.8] + [0.0] * 1532  # 1536 dim
     payload = {
         "workspace_id": "ws-123",
         "project_id": "proj-456",
@@ -297,7 +339,7 @@ def test_repository_operations():
         "tags": ["python", "pytest"],
         "importance": 5,
         "created_at": 1700000000.0,
-        "updated_at": 1700000000.0
+        "updated_at": 1700000000.0,
     }
 
     # Save
@@ -324,11 +366,11 @@ def test_repository_operations():
     assert len(search_res_range) == 1
 
     # Combined filter
-    search_res_combined = repo.search(vector, filter_query={
-        "workspace_id": "ws-123",
-        "importance": {"gt": 3},
-        "tags": ["python"]
-    }, limit=1)
+    search_res_combined = repo.search(
+        vector,
+        filter_query={"workspace_id": "ws-123", "importance": {"gt": 3}, "tags": ["python"]},
+        limit=1,
+    )
     assert len(search_res_combined) == 1
 
     # Count
@@ -339,13 +381,13 @@ def test_repository_operations():
         {
             "id": "test-mem-id-2",
             "vector": [0.1] * 1536,
-            "payload": {"workspace_id": "ws-123", "importance": 2, "tags": ["rust"]}
+            "payload": {"workspace_id": "ws-123", "importance": 2, "tags": ["rust"]},
         },
         {
             "id": "test-mem-id-3",
             "vector": [0.3] * 1536,
-            "payload": {"workspace_id": "ws-999", "importance": 8, "tags": ["python"]}
-        }
+            "payload": {"workspace_id": "ws-999", "importance": 8, "tags": ["python"]},
+        },
     ]
     assert repo.batch_upsert(points) is True
     assert repo.count() == 3
@@ -369,9 +411,15 @@ def test_repository_operations():
 
 
 def test_embedding_engine_and_semantic_search():
-    from aios.services.persistence import EmbeddingEngine, SemanticSearchService, EmbeddingRequest, SemanticQuery
-    from aios.services.persistence_impl import SentenceTransformerProvider
     import time
+
+    from aios.services.persistence import (
+        EmbeddingEngine,
+        EmbeddingRequest,
+        SemanticQuery,
+        SemanticSearchService,
+    )
+    from aios.services.persistence_impl import SentenceTransformerProvider
 
     config_path = Path("aios.toml")
     kernel = bootstrap_kernel(config_path)
@@ -395,7 +443,7 @@ def test_embedding_engine_and_semantic_search():
     req = EmbeddingRequest(text="Query semantic search text", provider_name="mock")
     res = engine.embed_text(req)
     assert res.error is None
-    assert len(res.vector) == 1532 or len(res.vector) == 1536 # matches mock provider dimensions
+    assert len(res.vector) == 1532 or len(res.vector) == 1536  # matches mock provider dimensions
 
     # Test cache logic (duplicate vector prevention)
     res2 = engine.embed_text(req)
@@ -404,24 +452,25 @@ def test_embedding_engine_and_semantic_search():
 
     # Prepare repository and collection
     from aios.services.persistence import EngineeringMemoryRepository
+
     repo = registry.get(EngineeringMemoryRepository)
-    repo.dimensions = 1536 # Align repo with mock provider vector size
+    repo.dimensions = 1536  # Align repo with mock provider vector size
     repo.clear()
 
     # Save point with vector
     memory_id = "test-query-id-1"
-    repo.save(memory_id, res.vector, {
-        "text": "Query semantic search text",
-        "workspace_id": "ws-777",
-        "project_id": "proj-888"
-    })
+    repo.save(
+        memory_id,
+        res.vector,
+        {"text": "Query semantic search text", "workspace_id": "ws-777", "project_id": "proj-888"},
+    )
 
     # Test SemanticSearch query
     query = SemanticQuery(
         query_text="Query semantic search text",
         collection_name="engineering_memory",
         workspace_id="ws-777",
-        limit=5
+        limit=5,
     )
 
     prev_active = engine._active_provider
@@ -431,6 +480,7 @@ def test_embedding_engine_and_semantic_search():
 
     assert len(search_res) == 1
     import uuid
+
     expected_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, memory_id))
     assert search_res[0].id == expected_uuid
     assert search_res[0].text == "Query semantic search text"
@@ -441,18 +491,21 @@ def test_embedding_engine_and_semantic_search():
     assert cross_res[0].id == expected_uuid
 
     # Test Failure Recovery (Simulating Qdrant write block and retries)
-    from aios.services.persistence import PersistenceService
     import sys
+
+    from aios.services.persistence import PersistenceService
+
     sys.path.insert(0, str(Path(__file__).parent))
     from test_persistence import SQLiteTransportForTests
+
     db = registry.get(PersistenceService)
-    
+
     # Inject SQLite test transport safely
     db.fallback_to_sqlite()
     test_transport = SQLiteTransportForTests(db.config)
     db.active_provider.transport = test_transport
     db.active_provider.transport.connect()
-    
+
     # Explicitly create tables on the SQLite test instance
     db.execute(
         "CREATE TABLE IF NOT EXISTS pending_embedding_jobs ("
@@ -467,18 +520,18 @@ def test_embedding_engine_and_semantic_search():
         "  failure_reason TEXT, attempts INTEGER, last_error TEXT, created_at REAL, updated_at REAL"
         ")"
     )
-    
+
     # Save a fake pending embedding job
     job_id = "pending-job-uuid-1"
     past_time = time.time() - 100
     db.execute(
         "INSERT INTO pending_embedding_jobs (id, text, provider_name, collection_name, status, attempts, created_at, updated_at) VALUES (?, ?, ?, ?, 'PENDING', 0, ?, ?)",
-        (job_id, "pending text message", "mock", "engineering_memory", past_time, past_time)
+        (job_id, "pending text message", "mock", "engineering_memory", past_time, past_time),
     )
-    
+
     # Let the retry worker process it
     engine.run_retry_cycle()
-    
+
     # Check that job has been processed and cleared
     rows = db.execute("SELECT id FROM pending_embedding_jobs WHERE id = ?", (job_id,))
     assert len(rows) == 0
@@ -488,11 +541,18 @@ def test_embedding_engine_and_semantic_search():
 
 
 def test_hybrid_retrieval_pipeline():
-    from aios.services.persistence import (
-        QueryAnalysisService, CollectionSelector, CandidateRanker, ContextOptimizer,
-        RetrievalCache, HybridRetrievalService, RetrievalCandidate, EngineeringMemoryRepository
-    )
     import time
+
+    from aios.services.persistence import (
+        CandidateRanker,
+        CollectionSelector,
+        ContextOptimizer,
+        EngineeringMemoryRepository,
+        HybridRetrievalService,
+        QueryAnalysisService,
+        RetrievalCache,
+        RetrievalCandidate,
+    )
 
     config_path = Path("aios.toml")
     kernel = bootstrap_kernel(config_path)
@@ -505,6 +565,7 @@ def test_hybrid_retrieval_pipeline():
     cache = registry.get(RetrievalCache)
     hybrid_retrieval = registry.get(HybridRetrievalService)
     from aios.services.persistence import SemanticSearchService
+
     search_service = registry.get(SemanticSearchService)
 
     # Test Query Analysis intent detection
@@ -518,14 +579,24 @@ def test_hybrid_retrieval_pipeline():
 
     # Test Candidate Ranker score weighting and decay
     c1 = RetrievalCandidate(
-        id="cand-1", text="some source code block", score=0.0, metadata={},
-        source_collection="engineering_memory", similarity_score=0.8,
-        importance_score=0.9, freshness_score=0.7
+        id="cand-1",
+        text="some source code block",
+        score=0.0,
+        metadata={},
+        source_collection="engineering_memory",
+        similarity_score=0.8,
+        importance_score=0.9,
+        freshness_score=0.7,
     )
     c2 = RetrievalCandidate(
-        id="cand-2", text="older code documentation", score=0.0, metadata={},
-        source_collection="engineering_memory", similarity_score=0.9,
-        importance_score=0.4, freshness_score=0.3
+        id="cand-2",
+        text="older code documentation",
+        score=0.0,
+        metadata={},
+        source_collection="engineering_memory",
+        similarity_score=0.9,
+        importance_score=0.4,
+        freshness_score=0.3,
     )
 
     ranked = ranker.rank_candidates([c2, c1])
@@ -535,12 +606,24 @@ def test_hybrid_retrieval_pipeline():
     # Test Context Optimizer token budgeting and duplicate elimination
     # token budget 20 tokens (approx 80 characters)
     c_opt_1 = RetrievalCandidate(
-        id="cand-opt-1", text="A very long text chunk that should exceed the token budget if combined with other chunks.",
-        score=0.9, metadata={}, source_collection="engineering_memory", similarity_score=0.9, importance_score=0.8, freshness_score=0.8
+        id="cand-opt-1",
+        text="A very long text chunk that should exceed the token budget if combined with other chunks.",
+        score=0.9,
+        metadata={},
+        source_collection="engineering_memory",
+        similarity_score=0.9,
+        importance_score=0.8,
+        freshness_score=0.8,
     )
     c_opt_2 = RetrievalCandidate(
-        id="cand-opt-2", text="Short text", score=0.8, metadata={}, source_collection="engineering_memory",
-        similarity_score=0.8, importance_score=0.8, freshness_score=0.8
+        id="cand-opt-2",
+        text="Short text",
+        score=0.8,
+        metadata={},
+        source_collection="engineering_memory",
+        similarity_score=0.8,
+        importance_score=0.8,
+        freshness_score=0.8,
     )
     res = optimizer.optimize_context([c_opt_1, c_opt_2], token_budget=15)
     # The first candidate (len // 4 = 90 // 4 = 22 tokens) exceeds budget 15, so it is skipped.
@@ -559,28 +642,25 @@ def test_hybrid_retrieval_pipeline():
 
     # Populate Qdrant repository for end-to-end pipeline test
     repo = registry.get(EngineeringMemoryRepository)
-    repo.dimensions = 384 # Align repo with sentence_transformer vector size
+    repo.dimensions = 384  # Align repo with sentence_transformer vector size
     repo.clear()
-    
+
     # Save test item
-    import uuid
     from aios.services.persistence import EmbeddingEngine, EmbeddingRequest
+
     engine = registry.get(EmbeddingEngine)
     res_embed = engine.embed_text(EmbeddingRequest(text="def hello_world_func(): print(123)"))
-    
+
     # Save record with metadata
     memory_id = "test-retrieval-query-1"
-    repo.save(memory_id, res_embed.vector, {
-        "text": "def hello_world_func(): print(123)",
-        "importance": 9,
-        "created_at": time.time()
-    })
+    repo.save(
+        memory_id,
+        res_embed.vector,
+        {"text": "def hello_world_func(): print(123)", "importance": 9, "created_at": time.time()},
+    )
 
     # Test Hybrid retrieval service execution
-    pipeline_res = hybrid_retrieval.retrieve(
-        query_text="def hello_world_func",
-        token_budget=1000
-    )
+    pipeline_res = hybrid_retrieval.retrieve(query_text="def hello_world_func", token_budget=1000)
     assert len(pipeline_res.candidates_included) >= 1
     assert "def hello_world_func" in pipeline_res.context_text
 
@@ -589,31 +669,41 @@ def test_hybrid_retrieval_pipeline():
     # causing Qdrant query to fail and fallback to look up PG database ai_memory table.
     from aios.services.persistence import PersistenceService
     from test_persistence import SQLiteTransportForTests
+
     db = registry.get(PersistenceService)
-    
+
     # Swap to test SQLite db
     db.fallback_to_sqlite()
     test_transport = SQLiteTransportForTests(db.config)
     db.active_provider.transport = test_transport
     db.active_provider.transport.connect()
-    
+
     # Create schema and populate mock record
-    db.execute("CREATE TABLE IF NOT EXISTS ai_memory (id TEXT PRIMARY KEY, key TEXT, value TEXT, metadata TEXT, created_at REAL, updated_at REAL)")
+    db.execute(
+        "CREATE TABLE IF NOT EXISTS ai_memory (id TEXT PRIMARY KEY, key TEXT, value TEXT, metadata TEXT, created_at REAL, updated_at REAL)"
+    )
     db.execute(
         "INSERT INTO ai_memory (id, key, value, metadata, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-        ("fallback-id-123", "lexical_key", "lexical fallback text message content match", "{}", time.time(), time.time())
+        (
+            "fallback-id-123",
+            "lexical_key",
+            "lexical fallback text message content match",
+            "{}",
+            time.time(),
+            time.time(),
+        ),
     )
 
     # Force SemanticSearch to raise an exception by mocking it
     # which will trigger lexical fallback lookup against ai_memory table
     original_search = search_service.search
     from unittest.mock import MagicMock
+
     search_service.search = MagicMock(side_effect=Exception("Mocked Qdrant Offline"))
-    
+
     try:
         fallback_res = hybrid_retrieval.retrieve(
-            query_text="lexical fallback text message",
-            token_budget=1000
+            query_text="lexical fallback text message", token_budget=1000
         )
         assert len(fallback_res.candidates_included) >= 1
         assert "lexical fallback text message content match" in fallback_res.context_text
@@ -625,13 +715,21 @@ def test_hybrid_retrieval_pipeline():
 
 
 def test_qdrant_runtime_intelligence():
-    from aios.services.persistence import (
-        QdrantRuntimeTelemetry, QdrantHealthAnalyzer, QdrantCapacityAnalyzer,
-        QdrantPerformanceAnalyzer, QdrantRecommendationEngine, QdrantDiagnosticsEngine,
-        QdrantStatisticsCollector, QdrantRuntimeReporter, QdrantRuntimeValidator,
-        QdrantRuntimeCoordinator, RuntimeIntelligenceService
-    )
     from pathlib import Path
+
+    from aios.services.persistence import (
+        QdrantCapacityAnalyzer,
+        QdrantDiagnosticsEngine,
+        QdrantHealthAnalyzer,
+        QdrantPerformanceAnalyzer,
+        QdrantRecommendationEngine,
+        QdrantRuntimeCoordinator,
+        QdrantRuntimeReporter,
+        QdrantRuntimeTelemetry,
+        QdrantRuntimeValidator,
+        QdrantStatisticsCollector,
+        RuntimeIntelligenceService,
+    )
 
     config_path = Path("aios.toml")
     kernel = bootstrap_kernel(config_path)
@@ -672,7 +770,15 @@ def test_qdrant_runtime_intelligence():
     assert "status" in health_data
     assert health_data["status"] in ["HEALTHY", "DEGRADED", "OFFLINE"]
     assert "components" in health_data
-    for comp in ["collection", "embedding", "search", "transport", "provider", "retry_queue", "cache"]:
+    for comp in [
+        "collection",
+        "embedding",
+        "search",
+        "transport",
+        "provider",
+        "retry_queue",
+        "cache",
+    ]:
         assert comp in health_data["components"]
         assert "score" in health_data["components"][comp]
         assert "status" in health_data["components"][comp]
@@ -695,7 +801,12 @@ def test_qdrant_runtime_intelligence():
     assert "p50" in perf_data
     assert "p95" in perf_data
     assert "p99" in perf_data
-    for l_key in ["embedding_latency", "batch_embedding_latency", "search_latency", "retrieval_latency"]:
+    for l_key in [
+        "embedding_latency",
+        "batch_embedding_latency",
+        "search_latency",
+        "retrieval_latency",
+    ]:
         assert l_key in perf_data["latencies"]
 
     # 6. Diagnostics check
@@ -754,7 +865,3 @@ def test_qdrant_runtime_intelligence():
 
     global_learning = global_ri.get_learning_payload()
     assert "qdrant_learning" in global_learning
-
-
-
-

@@ -1,6 +1,7 @@
 import time
+
 from aios.services.command.metadata import CommandCategory, CommandMetadata
-from aios.services.runtime import RuntimeService, RuntimeState
+from aios.services.runtime import RuntimeService
 
 
 def execute_runtime_start(args: str, kernel, conv_manager) -> None:

@@ -1,21 +1,20 @@
 import json
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.base import ServiceLifecycle
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, RetrievalContext, RetrievalStrategy
-from aios.services.reasoning import ReasoningService, ReasoningContext
 from aios.services.intent_engine import (
-    IntentContext,
-    IntentPlan,
-    IntentResult,
-    IntentClassifier,
     IntentAnalyzer,
-    IntentResolver,
+    IntentClassifier,
+    IntentContext,
     IntentEngine,
+    IntentPlan,
+    IntentResolver,
+    IntentResult,
 )
+from aios.services.memory import MemoryService, RetrievalContext
+from aios.services.model import LLMRequest, ModelService
+from aios.services.reasoning import ReasoningContext, ReasoningService
 
 logger = logging.getLogger(__name__)
 

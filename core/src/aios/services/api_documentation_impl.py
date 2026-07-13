@@ -1,29 +1,29 @@
-import time
-import json
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
+from aios.services.api_documentation import (
+    APIAnalyzer,
+    APIDocumentArtifact,
+    APIDocumentationPlanner,
+    APIDocumentationService,
+    APIDocumentValidator,
+    APIEndpoint,
+    APIParameter,
+    APIRegistry,
+    APIReport,
+    APIResponse,
+    APISchema,
+)
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.api_documentation import (
-    APIParameter,
-    APISchema,
-    APIExample,
-    APIResponse,
-    APIEndpoint,
-    APIDocumentArtifact,
-    APIReport,
-    APIAnalyzer,
-    APIDocumentationPlanner,
-    APIDocumentValidator,
-    APIRegistry,
-    APIDocumentationService,
-)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 
 logger = logging.getLogger(__name__)
 
@@ -262,7 +262,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
             f"**Undocumented Routes count**: {len(report.undocumented_endpoints)}\n\n"
             f"## Discovered Undocumented Endpoints\n"
             + (missing_md if missing_md else "- *No undocumented routes discovered.*") + "\n\n"
-            f"## Action Recommendations\n"
+            "## Action Recommendations\n"
             + (recs_md if recs_md else "- *No actions recommended.*")
         )
 

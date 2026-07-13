@@ -1,28 +1,29 @@
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
+from aios.services.architecture_documentation import (
+    ArchitectureAnalyzer,
+    ArchitectureComponent,
+    ArchitectureDiagram,
+    ArchitectureDocumentationService,
+    ArchitectureDocumentPlanner,
+    ArchitectureLayer,
+    ArchitectureRegistry,
+    ArchitectureRelationship,
+    ArchitectureReport,
+    ArchitectureSummary,
+    ArchitectureValidator,
+)
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.architecture_documentation import (
-    ArchitectureComponent,
-    ArchitectureLayer,
-    ArchitectureRelationship,
-    ArchitectureDiagram,
-    ArchitectureDecision,
-    ArchitectureSummary,
-    ArchitectureReport,
-    ArchitectureAnalyzer,
-    ArchitectureDocumentPlanner,
-    ArchitectureValidator,
-    ArchitectureRegistry,
-    ArchitectureDocumentationService,
-)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +233,7 @@ class LocalArchitectureDocumentationService(ArchitectureDocumentationService):
             f"**Workspace ID**: `{report.workspace_id}`\n\n"
             f"## Decoupling Layer Violations\n"
             + (violations_md if violations_md else "- *No layer decoupling violations detected.*") + "\n\n"
-            f"## Circular Dependencies Paths\n"
+            "## Circular Dependencies Paths\n"
             + (circular_md if circular_md else "- *No circular dependency nodes found.*")
         )
 

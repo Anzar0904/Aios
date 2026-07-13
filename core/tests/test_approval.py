@@ -1,33 +1,31 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType, Memory
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
 from aios.services.approval import (
-    ApprovalStatus,
     ApprovalDecision,
     ApprovalEvidence,
     ApprovalPackage,
-    ApprovalRequest,
-    ApprovalSummary,
     ApprovalReport,
+    ApprovalRequest,
     ApprovalRule,
+    ApprovalStatus,
+    ApprovalSummary,
 )
 from aios.services.approval_impl import (
+    CriticalFailureThresholdRule,
+    LocalApprovalEngineService,
+    LocalApprovalManager,
+    LocalApprovalValidator,
+    MaxRiskLevelRule,
     MinValidationScoreRule,
     RequiredCoverageRule,
-    MaxRiskLevelRule,
-    DocumentationCompletenessRule,
-    CriticalFailureThresholdRule,
-    EngineeringProfileRequirementsRule,
-    LocalApprovalValidator,
-    LocalApprovalManager,
-    LocalApprovalEngineService,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 
 
 @pytest.fixture

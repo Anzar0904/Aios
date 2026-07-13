@@ -1,5 +1,6 @@
 # ruff: noqa: F403, F405, E501, N802, E402, N806, B007
 from __future__ import annotations
+
 import logging
 import os
 import time

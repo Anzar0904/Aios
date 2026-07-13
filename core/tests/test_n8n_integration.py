@@ -1,26 +1,24 @@
-import os
 import json
+import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
 from aios.services.n8n_integration import (
-    N8NServerInformation,
-    N8NConnectionProfile,
-    N8NIntegrationReport,
     APIKeyAuthenticationProvider,
     BearerTokenAuthenticationProvider,
     N8NConnectionManager,
+    N8NConnectionProfile,
+    N8NIntegrationReport,
 )
 from aios.services.n8n_integration_impl import (
     LocalN8NClient,
     LocalN8NHealthMonitor,
-    LocalN8NValidator,
     LocalN8NIntegrationService,
+    LocalN8NValidator,
 )
 
 

@@ -1,33 +1,38 @@
-import os
 import json
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.persistence import PersistenceStatus, WorkflowTranslationRepository, PersistenceService
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.automation import WorkflowDefinition
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.n8n_translation import (
-    WorkflowIR,
+    N8NConnectionMapper,
+    N8NCredentialMapper,
+    N8NNodeMapper,
+    N8NTranslationEngine,
+    N8NWorkflowBuilder,
     TranslationContext,
     TranslationReport,
-    N8NNodeMapper,
-    N8NConnectionMapper,
-    N8NExpressionBuilder,
-    N8NCredentialMapper,
-    N8NWorkflowBuilder,
     TranslationValidator,
     WorkflowCompiler,
+    WorkflowIR,
     WorkflowSerializer,
-    N8NTranslationEngine,
     WorkflowTranslator,
+)
+from aios.services.persistence import (
+    PersistenceService,
+    PersistenceStatus,
+    WorkflowTranslationRepository,
 )
 
 logger = logging.getLogger(__name__)
@@ -120,7 +125,7 @@ class LocalTranslationValidator(TranslationValidator):
         for src_name, targets in connections.items():
             if src_name not in node_names:
                 errors.append(f"Broken Connection: Source node name '{src_name}' does not match any node.")
-            for conn_type, links in targets.items():
+            for _conn_type, links in targets.items():
                 for link_list in links:
                     for link in link_list:
                         tgt_name = link.get("node")

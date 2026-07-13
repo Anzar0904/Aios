@@ -1,25 +1,20 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
-from aios.services.automation import WorkflowNode, WorkflowEdge
+from aios.services.automation import WorkflowEdge, WorkflowNode
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.workflow_planning import (
-    WorkflowTemplate,
-    WorkflowConstraint,
-    WorkflowPlanningSession,
     WorkflowPlanningReport,
 )
 from aios.services.workflow_planning_impl import (
-    LocalWorkflowIntentAnalyzer,
     LocalWorkflowDependencyResolver,
+    LocalWorkflowIntentAnalyzer,
     LocalWorkflowOptimizer,
-    LocalWorkflowSuggestionEngine,
-    LocalWorkflowComposer,
     LocalWorkflowPlanner,
 )
 
@@ -122,7 +117,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     planner.initialize()
 
     session = planner.create_planning_session(ws_id, "Analyze and run security scan checks")
-    report = planner.generate_plan(session)
+    planner.generate_plan(session)
 
     expected_file = os.path.join(ws_root, "docs", "planners", f"PLANNING_REPORT_{session.session_id}.md")
     

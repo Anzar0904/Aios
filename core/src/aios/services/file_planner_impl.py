@@ -1,28 +1,30 @@
 import json
-import time
-import os
 import logging
-from typing import Dict, List, Any, Optional
+import os
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
+from aios.services.file_planner import (
+    AffectedDirectory,
+    AffectedFile,
+    ChangePlanner,
+    FileDependencyResolver,
+    FileImpactAnalyzer,
+    FilePlanner,
+    ImplementationScope,
+    ModificationType,
+    PlanningResult,
+)
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.workspace_intelligence import CodeStructureSummary
-from aios.services.file_planner import (
-    ModificationType,
-    AffectedFile,
-    AffectedDirectory,
-    ImplementationScope,
-    PlanningResult,
-    FileImpactAnalyzer,
-    FileDependencyResolver,
-    ChangePlanner,
-    FilePlanner,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -345,8 +347,9 @@ class LocalFilePlanner(FilePlanner):
         )
 
         try:
-            from aios.services.persistence import SemanticMemoryManager
             import time
+
+            from aios.services.persistence import SemanticMemoryManager
             sem_mgr = self._registry.get(SemanticMemoryManager) if self._registry else None
             if sem_mgr:
                 ws_id = result.scope.workspace_id or "default"
@@ -381,7 +384,7 @@ class LocalFilePlanner(FilePlanner):
             f"**Timestamp**: {result.timestamp}\n\n"
             f"## Affected Files Scope\n"
             + "\n".join(files_md) + "\n\n"
-            f"## Implementation Order Sequence\n"
+            "## Implementation Order Sequence\n"
             + "\n".join([f"{idx}. `{f_path}`" for idx, f_path in enumerate(result.implementation_sequence, 1)]) + "\n\n"
             f"## Risk Classifications & Mitigations\n"
             f"- **Circular Dependency Risks**: {result.circular_dependency_risks}\n"

@@ -1,21 +1,18 @@
-import pytest
-from unittest.mock import MagicMock, patch
-from pathlib import Path
+from unittest.mock import MagicMock
 
 from aios.brain.context_manager import ContextManager
-from aios.brain.models import BrainContext, BrainObjective, Workflow, WorkflowStep
+from aios.brain.models import Workflow, WorkflowStep
 from aios.brain.planner import BrainPlanner
 from aios.brain.provider_selector import ProviderSelector
 from aios.brain.skill_selector import SkillSelector
 from aios.brain.workflow import WorkflowExecutor
-from aios.brain.brain import Brain
+from aios.services.context import WorkspaceContext
+from aios.services.memory import Memory, MemoryMetadata, MemoryType
+from aios.services.model import LLMResponse
+from aios.services.tool import ToolResult
 from aios.skills.base import BaseSkill
 from aios.skills.metadata import SkillMetadata
 from aios.skills.registry import SkillRegistry
-from aios.services.context import WorkspaceContext
-from aios.services.memory import Memory, MemoryMetadata, MemoryType
-from aios.services.model import LLMRequest, LLMResponse
-from aios.services.tool import ToolResult
 
 
 def test_skill_selection():

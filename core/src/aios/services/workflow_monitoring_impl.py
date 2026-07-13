@@ -1,34 +1,37 @@
+import json
+import logging
 import os
 import time
-import logging
-import json
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.persistence import PersistenceStatus, WorkflowMonitoringRepository, WorkflowExecutionRepository, PersistenceService
-
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
+from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.ai_workspace import AIWorkspaceService
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import (
+    PersistenceService,
+    WorkflowExecutionRepository,
+    WorkflowMonitoringRepository,
+)
 from aios.services.workflow_monitoring import (
-    WorkflowExecutionState,
-    WorkflowExecutionMetrics,
-    WorkflowExecutionRecord,
-    WorkflowTelemetry,
     WorkflowAlert,
-    WorkflowHealthScore,
-    WorkflowStatistics,
-    WorkflowMonitoringReport,
+    WorkflowExecutionRecord,
+    WorkflowExecutionState,
     WorkflowExecutionTracker,
-    WorkflowPerformanceAnalyzer,
     WorkflowFailureAnalyzer,
-    WorkflowRetryAnalyzer,
-    WorkflowMonitoringValidator,
+    WorkflowHealthScore,
+    WorkflowMonitoringReport,
     WorkflowMonitoringService,
+    WorkflowMonitoringValidator,
+    WorkflowPerformanceAnalyzer,
+    WorkflowRetryAnalyzer,
+    WorkflowStatistics,
 )
 
 logger = logging.getLogger(__name__)
@@ -395,7 +398,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
             f"**Workspace ID**: `{workspace_id}`\n\n"
             f"## Reliability Overview\n{recs_desc}\n\n"
             f"## Subsystem Statistics\n" + (stats_md if stats_md else "- *None.*") + "\n\n"
-            f"## Subsystem Alerts Anomaly Checks\n" + (alerts_md if alerts_md else "- *None.*")
+            "## Subsystem Alerts Anomaly Checks\n" + (alerts_md if alerts_md else "- *None.*")
         )
         self._write_to_workspace(workspace_id, f"TELEMETRY_REPORT_{workspace_id}.md", report_md)
 

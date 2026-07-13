@@ -1,7 +1,8 @@
 import abc
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
+
 from aios.services.base import ServiceLifecycle
 from aios.services.test_execution import ExecutionSummary
 from aios.services.workspace_intelligence import CodeStructureSummary

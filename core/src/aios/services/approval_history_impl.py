@@ -1,33 +1,35 @@
+import json
+import logging
 import os
 import time
-import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.approval_history import (
-    ApprovalState,
     VALID_TRANSITIONS,
-    ApprovalStateTransition,
-    ApprovalHistoryEntry,
     ApprovalDecisionRecord,
-    ApprovalStatistics,
-    ApprovalTrend,
+    ApprovalHistoryAnalyzer,
+    ApprovalHistoryEntry,
+    ApprovalHistoryReport,
+    ApprovalHistoryService,
+    ApprovalHistoryValidator,
     ApprovalPattern,
     ApprovalRecommendationHistory,
-    ApprovalHistoryReport,
-    ApprovalHistoryValidator,
-    ApprovalHistoryAnalyzer,
-    ApprovalHistoryService,
+    ApprovalState,
+    ApprovalStateTransition,
+    ApprovalStatistics,
+    ApprovalTrend,
 )
-from aios.services.persistence import PersistenceStatus, PersistencePolicy, ReviewRepository
-import json
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import PersistencePolicy, PersistenceStatus, ReviewRepository
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +59,7 @@ class LocalApprovalHistoryValidator(ApprovalHistoryValidator):
         for trend in report.trends:
             if trend.values_over_time:
                 prev_time = -1.0
-                for ts, val in trend.values_over_time:
+                for ts, _val in trend.values_over_time:
                     if ts < prev_time:
                         errors.append(f"Timeline Consistency Warning: Time sequence in trend '{trend.trend_id}' is out of chronological order.")
                     prev_time = ts
@@ -105,7 +107,7 @@ class LocalApprovalHistoryAnalyzer(ApprovalHistoryAnalyzer):
         trends = []
         metrics = ["validation_score", "coverage_pct", "confidence_score"]
 
-        for idx, m in enumerate(metrics):
+        for _idx, m in enumerate(metrics):
             values = []
             for r in sorted_recs:
                 val = getattr(r, m, 0.0)
@@ -545,7 +547,7 @@ class LocalApprovalHistoryService(ApprovalHistoryService):
             f"- **Rejected Runs**: `{stats.rejected_count}`\n"
             f"- **Average Quality Confidence**: `{stats.average_confidence:.2f}`\n\n"
             f"## Metric Trends\n" + "\n".join(trends_md) + "\n\n"
-            f"## Discovered Blocker Patterns\n" + ("\n".join(patterns_md) if patterns_md else "- *No recurring blocker patterns found.*")
+            "## Discovered Blocker Patterns\n" + ("\n".join(patterns_md) if patterns_md else "- *No recurring blocker patterns found.*")
         )
         self._write_to_workspace(workspace_id, f"APPROVAL_HISTORY_{workspace_id}.md", report_md)
 

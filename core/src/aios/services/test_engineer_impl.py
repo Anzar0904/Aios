@@ -1,29 +1,31 @@
 import json
-import time
 import logging
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.workspace_intelligence import CodeStructureSummary
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.test_engineer import (
-    TestCategory,
-    TestPriority,
-    TestStrategy,
-    TestRequirement,
-    TestTarget,
-    TestScope,
-    TestSuite,
-    TestPlan,
-    TestPlanningResult,
-    TestPlanner,
     AITestEngineerService,
+    TestCategory,
+    TestPlan,
+    TestPlanner,
+    TestPlanningResult,
+    TestPriority,
+    TestRequirement,
+    TestScope,
+    TestStrategy,
+    TestSuite,
+    TestTarget,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +183,7 @@ class LocalAITestEngineerService(AITestEngineerService):
         if self._model:
             try:
                 target_names = [t.file_path for t in result.plan.scope.targets]
-                categories_val = [c.category.value for c in result.plan.suites]
+                [c.category.value for c in result.plan.suites]
                 
                 prompt = (
                     "You are the Lead Quality Assurance Architect for the Personal AI OS.\n"
@@ -265,9 +267,9 @@ class LocalAITestEngineerService(AITestEngineerService):
             f"**Coverage Target**: {result.plan.scope.coverage_goal}%\n\n"
             f"## Targets In Scope\n"
             + "\n".join(targets_md) + "\n\n"
-            f"## Prioritized Test Suites\n"
+            "## Prioritized Test Suites\n"
             + "\n".join(suites_md) + "\n\n"
-            f"## Validation Checkpoints\n"
+            "## Validation Checkpoints\n"
             + "\n".join([f"- {cp}" for cp in result.validation_checkpoints])
         )
 

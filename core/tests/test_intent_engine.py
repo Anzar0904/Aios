@@ -1,18 +1,18 @@
 import json
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import MagicMock
 
+import pytest
 from aios.registry import ServiceRegistry
-from aios.services.memory import MemoryService, Memory, MemoryType, MemoryMetadata, RetrievalContext
-from aios.services.reasoning import ReasoningService, ReasoningContext, ReasoningResult
-from aios.services.model import ModelService, LLMResponse
-from aios.services.intent_engine import IntentEngine, IntentPlan, IntentContext
+from aios.services.intent_engine import IntentContext, IntentEngine
 from aios.services.intent_engine_impl import (
-    LocalIntentEngine,
-    LocalIntentClassifier,
     LocalIntentAnalyzer,
+    LocalIntentClassifier,
+    LocalIntentEngine,
     LocalIntentResolver,
 )
+from aios.services.memory import Memory, MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMResponse, ModelService
+from aios.services.reasoning import ReasoningResult, ReasoningService
 
 
 @pytest.fixture

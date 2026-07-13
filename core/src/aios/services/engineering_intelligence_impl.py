@@ -1,33 +1,35 @@
 import json
-import time
 import logging
+import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, List, Optional
 
+from aios.services.engineering_intelligence import (
+    AffectedComponent,
+    AffectedFile,
+    ChangeImpactAnalyzer,
+    ChangeRecommendation,
+    ComplexityEstimator,
+    EngineeringAnalyzer,
+    EngineeringIntelligenceService,
+    EngineeringPlan,
+    EngineeringReport,
+    ImplementationPlanner,
+    RiskAnalyzer,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
 from aios.services.model import LLMRequest, ModelService
 from aios.services.workspace_intelligence import (
     CodeIntelligenceService,
-    WorkspaceIntelligenceService,
     CodeStructureSummary,
-)
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
-from aios.services.engineering_intelligence import (
-    AffectedFile,
-    AffectedComponent,
-    ChangeRecommendation,
-    EngineeringPlan,
-    EngineeringReport,
-    ChangeImpactAnalyzer,
-    ComplexityEstimator,
-    RiskAnalyzer,
-    ImplementationPlanner,
-    EngineeringAnalyzer,
-    EngineeringIntelligenceService,
+    WorkspaceIntelligenceService,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                 )
 
         # 2. Match symbols by keyword
-        for name, sym in code_summary.symbols.items():
+        for _name, sym in code_summary.symbols.items():
             sym_name_lower = sym.name.lower()
             if any(k in sym_name_lower for k in keywords):
                 affected_components.append(
@@ -233,7 +235,7 @@ class LocalEngineeringAnalyzer(EngineeringAnalyzer):
                 target_files = list(code_summary.dependency_graph.keys())[:40]
                 public_apis = code_summary.public_apis[:25]
                 symbols_summary = []
-                for name, sym in list(code_summary.symbols.items())[:30]:
+                for _name, sym in list(code_summary.symbols.items())[:30]:
                     symbols_summary.append(f"{sym.symbol_type} {sym.name} in {sym.file_path}")
 
                 prompt = (
@@ -442,9 +444,9 @@ class LocalEngineeringIntelligenceService(EngineeringIntelligenceService):
             f"- **Estimated Effort**: {report.plan.estimated_effort_hours} hours\n"
             f"- **Timestamp**: {report.timestamp}\n\n"
             f"## Affected Files\n" + "\n".join([f"- `{f.file_path}` ({f.change_type}): {f.reason}" for f in report.affected_files]) + "\n\n"
-            f"## Affected Components\n" + "\n".join([f"- `{c.name}` ({c.component_type}) [{c.impact_level}]: {c.description}" for c in report.affected_components]) + "\n\n"
-            f"## Implementation Plan\n" + "\n".join([f"{idx}. **{step.get('description', '')}**\n   - Actions: {', '.join(step.get('actions', []))}" for idx, step in enumerate(report.plan.ordered_steps, 1)]) + "\n\n"
-            f"## Risks & Mitigations\n" + "\n".join([f"- {risk}" for risk in report.plan.risks]) + "\n\n"
+            "## Affected Components\n" + "\n".join([f"- `{c.name}` ({c.component_type}) [{c.impact_level}]: {c.description}" for c in report.affected_components]) + "\n\n"
+            "## Implementation Plan\n" + "\n".join([f"{idx}. **{step.get('description', '')}**\n   - Actions: {', '.join(step.get('actions', []))}" for idx, step in enumerate(report.plan.ordered_steps, 1)]) + "\n\n"
+            "## Risks & Mitigations\n" + "\n".join([f"- {risk}" for risk in report.plan.risks]) + "\n\n"
             f"## Validation Strategy\n{report.plan.validation_strategy}\n"
         )
         

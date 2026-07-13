@@ -1,9 +1,6 @@
 import logging
 from typing import Any, Dict, Optional
 
-from aios.services.career import JobApplication
-from aios.services.personal import Resume, ResumeVersion
-
 from aios.services.agent import (
     Agent,
     AgentCompletedEvent,
@@ -13,11 +10,13 @@ from aios.services.agent import (
     AgentRuntimeService,
     AgentStartedEvent,
 )
+from aios.services.career import JobApplication
 from aios.services.context import ContextService
 from aios.services.event_bus import EventBusService
 from aios.services.intent import Intent, IntentType
 from aios.services.memory import MemoryService, MemoryType
 from aios.services.model import LLMRequest, ModelService
+from aios.services.personal import Resume, ResumeVersion
 from aios.services.tool import ToolService
 
 logger = logging.getLogger(__name__)
@@ -412,9 +411,10 @@ class DeveloperAgent(Agent):
 
             # Store useful knowledge after reasoning
             try:
+                import time
+
                 from aios.registry import ServiceRegistry
                 from aios.services.persistence import SemanticMemoryManager
-                import time
                 registry = ServiceRegistry._global_registry
                 if registry:
                     sem_mgr = registry.get(SemanticMemoryManager)
@@ -494,8 +494,8 @@ class CareerAgent(Agent):
         return "Career Agent to help prepare job applications."
 
     def execute(self, agent_context: AgentContext) -> AgentResult:
-        from pathlib import Path
         import json
+        from pathlib import Path
 
         from aios.services.developer.builder import PromptBuilder
 

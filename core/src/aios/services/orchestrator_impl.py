@@ -1,15 +1,15 @@
 import contextlib
 import io
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
 
 from aios.services.command import CommandRegistry
 from aios.services.orchestrator import (
-    SkillInvocation,
-    ExecutionPlan,
     ExecutionContext,
-    ResultAggregator,
+    ExecutionPlan,
     OrchestratorService,
+    ResultAggregator,
+    SkillInvocation,
 )
 
 logger = logging.getLogger(__name__)

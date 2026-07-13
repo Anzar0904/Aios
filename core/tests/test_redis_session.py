@@ -1,48 +1,44 @@
-import os
-import time
-import pytest
-from typing import Dict, Any, List
 from unittest.mock import MagicMock
 
+import pytest
 from aios.registry import ServiceRegistry
 from aios.services.persistence import (
     PersistenceConfigurationService,
     PersistenceRegistry,
-    RepositoryRegistry,
     PersistenceService,
-    SessionPolicy,
-    SessionRegistry,
-    SessionExpirationManager,
-    SessionRecoveryManager,
-    SessionStatisticsCollector,
-    SessionHealthMonitor,
-    SessionDiagnostics,
-    SessionRecommendationEngine,
-    SessionStore,
-    SessionManager,
-    RedisSessionService,
     RedisProvider,
+    RedisSessionService,
+    RepositoryRegistry,
+    SessionDiagnostics,
+    SessionExpirationManager,
+    SessionHealthMonitor,
+    SessionManager,
+    SessionPolicy,
+    SessionRecommendationEngine,
+    SessionRecoveryManager,
+    SessionRegistry,
+    SessionStatisticsCollector,
+    SessionStore,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
+    FakeRedisClient,
     PersistenceBootstrapper,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
     RedisConfigurationService,
     RedisConnectionManager,
-    RedisTransportImpl,
     RedisProviderImpl,
-    FakeRedisClient,
+    RedisSessionServiceImpl,
+    RedisTransportImpl,
+    SessionDiagnosticsImpl,
+    SessionExpirationManagerImpl,
+    SessionHealthMonitorImpl,
+    SessionManagerImpl,
+    SessionRecommendationEngineImpl,
+    SessionRecoveryManagerImpl,
     SessionRegistryImpl,
     SessionStatisticsCollectorImpl,
-    SessionDiagnosticsImpl,
-    SessionHealthMonitorImpl,
-    SessionRecommendationEngineImpl,
     SessionStoreImpl,
-    SessionExpirationManagerImpl,
-    SessionRecoveryManagerImpl,
-    SessionManagerImpl,
-    RedisSessionServiceImpl,
 )
 
 from tests.test_persistence import SQLiteTransportForTests
@@ -210,7 +206,7 @@ def test_session_creation_read_update_delete(session_env):
 def test_sliding_expiration_and_heartbeat(session_env):
     mgr = session_env["session_manager"]
     stats = session_env["session_stats"]
-    provider = session_env["redis_provider"]
+    session_env["redis_provider"]
 
     mgr.create_session("ai", "session-exp", {"status": "ok"})
     
@@ -256,7 +252,7 @@ def test_session_recovery_and_reconstruct(session_env):
 
 def test_session_outage_fallback(session_env):
     mgr = session_env["session_manager"]
-    store = session_env["session_store"]
+    session_env["session_store"]
     provider = session_env["redis_provider"]
 
     # Simulate connection outage on low-level client

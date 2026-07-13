@@ -3,8 +3,8 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from aios.services.persistence import *
 
@@ -357,14 +357,13 @@ class SentenceTransformerProvider(EmbeddingProvider):
         self.model_name = model_name
         self.dimensions = dimensions
         self.model = None
+        import threading
+
+        self._lock = threading.Lock()
 
     def initialize(self) -> None:
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            self.model = SentenceTransformer(self.model_name)
-        except Exception:
-            self.model = None
+        # Defer model loading to run lazily on first embedding request
+        pass
 
     def start(self) -> None:
         pass
@@ -372,7 +371,19 @@ class SentenceTransformerProvider(EmbeddingProvider):
     def stop(self) -> None:
         pass
 
+    def _ensure_model(self) -> None:
+        if self.model is None:
+            with self._lock:
+                if self.model is None:
+                    try:
+                        from sentence_transformers import SentenceTransformer
+
+                        self.model = SentenceTransformer(self.model_name)
+                    except Exception:
+                        self.model = None
+
     def embed_text(self, text: str) -> List[float]:
+        self._ensure_model()
         if self.model is not None:
             return self.model.encode(text).tolist()
         vec = []
@@ -382,6 +393,7 @@ class SentenceTransformerProvider(EmbeddingProvider):
         return vec
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        self._ensure_model()
         if self.model is not None:
             return self.model.encode(texts).tolist()
         return [self.embed_text(t) for t in texts]

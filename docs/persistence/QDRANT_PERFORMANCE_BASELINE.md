@@ -8,13 +8,13 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
 | Operation | Average | P50 | P95 | P99 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Ping Connection** | 0.001 | 0.001 | 0.002 | 0.003 |
-| **Embedding Generation** | 0.962 | 0.961 | 1.178 | 1.194 |
-| **Vector Search** | 2.254 | 2.251 | 3.042 | 3.607 |
-| **CRUD Upsert** | 2.017 | 1.844 | 2.403 | 17.399 |
+| **Ping Connection** | 0.001 | 0.001 | 0.002 | 0.004 |
+| **Embedding Generation** | 1.072 | 0.998 | 1.464 | 1.549 |
+| **Vector Search** | 2.240 | 2.198 | 2.868 | 3.644 |
+| **CRUD Upsert** | 2.099 | 1.819 | 3.500 | 15.285 |
 
 ---
 
 ## 2. Telemetry Summaries
-- **Search Throughput**: 443.7 queries/sec
-- **Cache Hits**: Reused calculations returned in 0.006ms
+- **Search Throughput**: 446.4 queries/sec
+- **Cache Hits**: Reused calculations returned in 0.007ms

@@ -10,7 +10,7 @@ This documentation outlines the security mitigations implemented in Personal AI 
 Previously, `FilesystemTool` allowed directory traversal, absolute path usage, and symbolic link dereferencing that could read or modify arbitrary files outside the active workspace (e.g., `/etc/passwd`, home directory files, or `.env` secrets).
 
 ### Resolution Strategy
-We introduced a centralized validation module in [security.py](file:///Users/anzarakhtar/aios/core/src/aios/services/security.py) implementing a strict path-containment validation function `validate_workspace_path`.
+We introduced a centralized validation module in [security.py](security.py) implementing a strict path-containment validation function `validate_workspace_path`.
 
 1. **Active Workspace Resolution**:
    - The active workspace root is resolved dynamically by subscribing the `LocalToolManager` to `ContextLoadedEvent` and `SessionStartedEvent`.

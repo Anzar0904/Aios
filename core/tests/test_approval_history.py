@@ -1,28 +1,24 @@
 import os
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
 from aios.services.approval_history import (
-    ApprovalState,
-    ApprovalStateTransition,
-    ApprovalHistoryEntry,
     ApprovalDecisionRecord,
-    ApprovalStatistics,
-    ApprovalTrend,
-    ApprovalPattern,
-    ApprovalRecommendationHistory,
+    ApprovalHistoryEntry,
     ApprovalHistoryReport,
+    ApprovalState,
+    ApprovalStatistics,
 )
 from aios.services.approval_history_impl import (
-    LocalApprovalHistoryValidator,
     LocalApprovalHistoryAnalyzer,
     LocalApprovalHistoryService,
+    LocalApprovalHistoryValidator,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 
 
 @pytest.fixture
@@ -144,7 +140,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     record = ApprovalDecisionRecord("rec_1", "sess_1", ws_id, ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time())
     service.record_decision(record)
     
-    report = service.run_history_analysis(ws_id)
+    service.run_history_analysis(ws_id)
     expected_file = os.path.join(ws_root, "docs", "histories", f"APPROVAL_HISTORY_{ws_id}.md")
     
     assert os.path.exists(expected_file)

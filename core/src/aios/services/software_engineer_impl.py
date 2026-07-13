@@ -1,32 +1,38 @@
 import json
-import time
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
+from aios.services.engineering_intelligence import EngineeringReport
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
-from aios.services.engineering_intelligence import EngineeringReport
-from aios.services.software_engineer import (
-    ImplementationTask,
-    ValidationStep,
-    DevelopmentPhase,
-    SoftwareEngineeringPlan,
-    FeaturePlanner,
-    TaskDecomposer,
-    ExecutionPlanner,
-    FilePlanner,
-    TestingPlanner,
-    DocumentationPlanner,
-    ImplementationPlanner,
-    SoftwareEngineerService,
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
+from aios.services.persistence import (
+    EngineeringTaskRepository,
+    PersistencePolicy,
+    PersistenceStatus,
+    PlanningRepository,
 )
-from aios.services.persistence import PersistenceStatus, PersistencePolicy, EngineeringTaskRepository, PlanningRepository
+from aios.services.software_engineer import (
+    DevelopmentPhase,
+    DocumentationPlanner,
+    ExecutionPlanner,
+    FeaturePlanner,
+    FilePlanner,
+    ImplementationPlanner,
+    ImplementationTask,
+    SoftwareEngineeringPlan,
+    SoftwareEngineerService,
+    TaskDecomposer,
+    TestingPlanner,
+    ValidationStep,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -454,7 +460,7 @@ class LocalSoftwareEngineerService(SoftwareEngineerService):
                 f"## Phase: {p.name}\n"
                 f"*{p.description}*\n\n"
                 + "\n".join(tasks_md) + "\n"
-                f"### Phase Validation Steps\n" + "\n".join(steps_md)
+                "### Phase Validation Steps\n" + "\n".join(steps_md)
             )
 
         report_md = (

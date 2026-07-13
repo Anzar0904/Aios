@@ -1,18 +1,20 @@
 from pathlib import Path
-from aios.services.command.metadata import CommandCategory, CommandMetadata
+
 from aios.services.command.discovery import (
     execute_system_status,
+    handle_action_approve,
+    handle_action_execute,
+    handle_action_history,
+    handle_action_plan,
+    handle_action_reject,
+    handle_action_rollback,
     handle_run_task,
-    handle_task_status,
     handle_task_history,
     handle_task_resume,
-    handle_action_plan,
-    handle_action_approve,
-    handle_action_reject,
-    handle_action_execute,
-    handle_action_rollback,
-    handle_action_history,
+    handle_task_status,
 )
+from aios.services.command.metadata import CommandCategory, CommandMetadata
+
 
 def register_commands(registry, kernel, conv_manager) -> None:
     # Determine workspace root

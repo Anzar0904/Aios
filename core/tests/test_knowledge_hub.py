@@ -1,19 +1,17 @@
 import json
 import time
 from unittest.mock import MagicMock, patch
-import pytest
 
+import pytest
 from aios.config import NotionConfig
 from aios.registry import ServiceRegistry
-from aios.services.personal import PersonalService, PersonalProfile, KnowledgeEntry, Contact
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
     KnowledgeMetadata,
-    KnowledgeSyncResult,
 )
 from aios.services.knowledge_hub_impl import LocalKnowledgeHub, NotionProvider
-from aios.services.memory import MemoryType
+from aios.services.personal import Contact, PersonalProfile, PersonalService
 
 
 @pytest.fixture
@@ -168,8 +166,8 @@ def test_subsystem_integrations_mocked(mock_personal_service):
     assert len(hub._sync_registry) == 2
 
     # 3. Mission Engine Integration
+    from aios.services.mission import Mission, MissionStatus
     from aios.services.mission_impl import LocalMissionEngine
-    from aios.services.mission import Mission, MissionMilestone, MissionStatus
     engine = LocalMissionEngine(MagicMock(), registry=registry)
     mission = Mission(
         mission_id="m_123",

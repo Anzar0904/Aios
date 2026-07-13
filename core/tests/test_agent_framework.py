@@ -1,5 +1,3 @@
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock
 
 from aios.services.agent import (
@@ -8,7 +6,6 @@ from aios.services.agent import (
     AgentFactory,
     AgentLifecycle,
     AgentRegistry,
-    AgentResult,
     AgentTask,
     LocalAgentManager,
 )

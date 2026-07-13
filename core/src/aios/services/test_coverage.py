@@ -1,9 +1,10 @@
 import abc
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
+
 from aios.services.base import ServiceLifecycle
-from aios.services.test_impact import CoverageTarget, RegressionCandidate
 from aios.services.test_execution import ExecutionSummary
+from aios.services.test_impact import CoverageTarget, RegressionCandidate
 
 
 @dataclass

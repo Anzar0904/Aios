@@ -1,28 +1,28 @@
-import pytest
+from typing import List, Optional
 from unittest.mock import MagicMock
-from typing import List, Dict, Any, Optional
 
+import pytest
 from aios.services.persistence import (
-    PersistenceConfigurationService,
-    PersistenceRegistry,
-    RepositoryRegistry,
-    PersistenceService,
     DatabaseTransport,
-    TransportTransaction,
-    TransportResult,
+    PersistenceConfigurationService,
+    PersistencePolicy,
+    PersistenceRegistry,
+    PersistenceResult,
+    PersistenceStatus,
+    RepositoryRegistry,
     TransportCapabilities,
     TransportHealth,
-    PersistencePolicy,
-    PersistenceStatus,
-    PersistenceResult,
+    TransportResult,
+    TransportTransaction,
 )
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    WorkspaceRepositoryImpl,
     MigrationManager,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
     TransactionStackManager,
+    WorkspaceRepositoryImpl,
 )
+
 
 class OfflineDatabaseTransport(DatabaseTransport):
     """Database transport simulating an offline state."""
@@ -181,8 +181,8 @@ def test_persistence_result_attributes():
     assert res.timestamp is not None
 
 def test_profile_service_strict_policy_fails_on_db_disconnect():
-    from aios.services.engineering_profile_impl import LocalEngineeringProfileService
     from aios.services.engineering_profile import EngineeringProfile
+    from aios.services.engineering_profile_impl import LocalEngineeringProfileService
     from aios.services.memory import MemoryService
     from aios.services.persistence_impl import EngineeringProfileRepositoryImpl
 
@@ -209,8 +209,15 @@ def test_profile_service_strict_policy_fails_on_db_disconnect():
     )
 
     from aios.services.engineering_profile import (
-        ProjectProfile, CodingProfile, TestingProfile, ExecutionProfile,
-        DocumentationProfile, GitHubProfile, ReleaseProfile, AutomationProfile, WorkspaceProfile
+        AutomationProfile,
+        CodingProfile,
+        DocumentationProfile,
+        ExecutionProfile,
+        GitHubProfile,
+        ProjectProfile,
+        ReleaseProfile,
+        TestingProfile,
+        WorkspaceProfile,
     )
     profile = EngineeringProfile(
         profile_id="test_profile",
@@ -231,8 +238,8 @@ def test_profile_service_strict_policy_fails_on_db_disconnect():
     assert "Strict persistence save failure" in str(excinfo.value)
 
 def test_profile_service_best_effort_policy_registers_in_memory():
-    from aios.services.engineering_profile_impl import LocalEngineeringProfileService
     from aios.services.engineering_profile import EngineeringProfile
+    from aios.services.engineering_profile_impl import LocalEngineeringProfileService
     from aios.services.memory import MemoryService
     from aios.services.persistence_impl import EngineeringProfileRepositoryImpl
 
@@ -259,8 +266,15 @@ def test_profile_service_best_effort_policy_registers_in_memory():
     )
 
     from aios.services.engineering_profile import (
-        ProjectProfile, CodingProfile, TestingProfile, ExecutionProfile,
-        DocumentationProfile, GitHubProfile, ReleaseProfile, AutomationProfile, WorkspaceProfile
+        AutomationProfile,
+        CodingProfile,
+        DocumentationProfile,
+        ExecutionProfile,
+        GitHubProfile,
+        ProjectProfile,
+        ReleaseProfile,
+        TestingProfile,
+        WorkspaceProfile,
     )
     profile = EngineeringProfile(
         profile_id="test_profile",

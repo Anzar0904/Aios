@@ -1,23 +1,21 @@
-import pytest
 import time
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary, SymbolReference
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
+import pytest
 from aios.services.file_planner import (
-    ModificationType,
     AffectedFile,
-    AffectedDirectory,
     ImplementationScope,
-    PlanningResult,
+    ModificationType,
 )
 from aios.services.file_planner_impl import (
-    LocalFileImpactAnalyzer,
-    LocalFileDependencyResolver,
     LocalChangePlanner,
+    LocalFileDependencyResolver,
+    LocalFileImpactAnalyzer,
     LocalFilePlanner,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 @pytest.fixture

@@ -1,17 +1,22 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.workspace_intelligence import CodeStructureSummary
-from aios.services.model import ModelService, LLMResponse
-from aios.services.memory import MemoryService
+import pytest
 from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.test_execution import ExecutionSummary, ExecutionResult, ExecutionTarget, ExecutionMetrics
-from aios.services.test_failure import FailureSeverity, FailureConfidence
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
+from aios.services.test_execution import (
+    ExecutionMetrics,
+    ExecutionResult,
+    ExecutionSummary,
+    ExecutionTarget,
+)
+from aios.services.test_failure import FailureConfidence, FailureSeverity
 from aios.services.test_failure_impl import (
+    LocalFailureAnalysisService,
     LocalFailureAnalyzer,
     LocalRootCauseAnalyzer,
-    LocalFailureAnalysisService,
 )
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 @pytest.fixture

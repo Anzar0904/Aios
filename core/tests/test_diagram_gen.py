@@ -8,7 +8,6 @@ idempotency, and handwritten documentation preservation.
 from pathlib import Path
 
 import pytest
-
 from aios.docgen.diagram_engine import DiagramGeneratorEngine
 
 

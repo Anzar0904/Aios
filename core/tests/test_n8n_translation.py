@@ -1,33 +1,30 @@
 import os
-import json
 import time
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
+import pytest
 from aios.services.ai_workspace import AIWorkspaceService, WorkspaceMetadata
 from aios.services.automation import (
-    WorkflowNode,
-    WorkflowEdge,
-    WorkflowTrigger,
-    WorkflowAction,
     WorkflowDefinition,
+    WorkflowEdge,
     WorkflowExecutionPolicy,
+    WorkflowNode,
+)
+from aios.services.automation import (
     WorkflowMetadata as WFMetadata,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 from aios.services.n8n_translation import (
-    WorkflowIR,
+    N8NNodeMapper,
     TranslationContext,
     TranslationReport,
-    N8NNodeMapper,
 )
 from aios.services.n8n_translation_impl import (
-    LocalWorkflowCompiler,
     LocalN8NTranslationEngine,
     LocalTranslationValidator,
-    LocalWorkflowSerializer,
+    LocalWorkflowCompiler,
     LocalWorkflowTranslator,
 )
 
@@ -59,7 +56,7 @@ def dummy_workflow():
     n_act = WorkflowNode("n_act", "HTTP Post", "action", {"action_type": "http_request", "url": "https://deploy.org"})
     edge = WorkflowEdge("e1", "n_trig", "n_act")
     
-    graph = WorkflowGraph = MagicMock()
+    graph = MagicMock()
     graph.nodes = [n_trig, n_act]
     graph.edges = [edge]
     
@@ -148,9 +145,9 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     )
     translator.initialize()
 
-    report = translator.translate_workflow(dummy_workflow, ws_id)
-    expected_report = os.path.join(ws_root, "docs", "automations", f"TRANSLATION_REPORT_wf_deploy.md")
-    expected_json = os.path.join(ws_root, "docs", "automations", f"N8N_WORKFLOW_wf_deploy.json")
+    translator.translate_workflow(dummy_workflow, ws_id)
+    expected_report = os.path.join(ws_root, "docs", "automations", "TRANSLATION_REPORT_wf_deploy.md")
+    expected_json = os.path.join(ws_root, "docs", "automations", "N8N_WORKFLOW_wf_deploy.json")
 
     assert os.path.exists(expected_report)
     assert os.path.exists(expected_json)

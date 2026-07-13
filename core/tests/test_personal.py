@@ -1,15 +1,12 @@
 import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock
 
 from aios.brain.context_manager import ContextManager
 from aios.services.context import WorkspaceContext
 from aios.services.personal import (
     Contact,
-    PersonalProfile,
-    Preference,
     Goal,
-    LearningItem,
+    PersonalProfile,
     PortfolioProject,
     Resume,
     ResumeVersion,

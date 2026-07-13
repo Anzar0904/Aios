@@ -12,9 +12,7 @@ Tests verify:
 
 from __future__ import annotations
 
-import os
 import re
-import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -39,8 +37,6 @@ def generated_dir(tmp_path_factory):
     Run the generator once against the real source tree but write output
     to a temp directory so handwritten docs are untouched.
     """
-    from aios.docgen.engine import DocGeneratorEngine
-
     from aios.docgen.engine import DocGeneratorEngine
     from aios.docgen.models import ProviderEntry
 
@@ -431,10 +427,10 @@ class TestHandwrittenDocsUntouched:
 
         mtime_before = full_path.stat().st_mtime
 
-        from aios.docgen.engine import DocGeneratorEngine
-
         # Run generator to a temp dir to avoid touching real output
         import tempfile
+
+        from aios.docgen.engine import DocGeneratorEngine
         with tempfile.TemporaryDirectory() as tmp:
             engine = DocGeneratorEngine(project_root=_REPO_ROOT)
             engine._output_dir = Path(tmp)  # type: ignore[attr-defined]

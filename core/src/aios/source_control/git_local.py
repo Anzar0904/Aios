@@ -1,7 +1,7 @@
-import subprocess
-import os
 import logging
-from typing import List, Dict, Any, Optional
+import os
+import subprocess
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ class LocalGitExecutor(DIInitializeMixin):
         return self.run_git(cmd, cwd=cwd)
 
     def log(self, max_count: int = 20, cwd: Optional[str] = None) -> str:
-        return self.run_git(["log", f"-n", str(max_count), "--oneline"], cwd=cwd)
+        return self.run_git(["log", "-n", str(max_count), "--oneline"], cwd=cwd)
 
     def detect_conflicts(self, cwd: Optional[str] = None) -> List[str]:
         """Scans workspace for conflict marker tags."""

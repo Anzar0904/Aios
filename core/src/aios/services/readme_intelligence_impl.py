@@ -1,28 +1,29 @@
+import logging
 import re
 import time
-import json
-import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType, MemoryMetadata
 from aios.services.knowledge_hub import (
-    KnowledgeHubService,
     KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
     KnowledgeMetadata as KHMetadata,
 )
+from aios.services.memory import MemoryMetadata, MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 from aios.services.readme_intelligence import (
-    READMESection,
-    READMETemplate,
-    READMEArtifact,
-    READMESummary,
-    READMEReport,
     READMEAnalyzer,
-    READMEPlanner,
-    READMEValidator,
+    READMEArtifact,
     READMEGenerator,
-    READMEUpdater,
     READMEIntelligenceService,
+    READMEPlanner,
+    READMEReport,
+    READMESection,
+    READMESummary,
+    READMETemplate,
+    READMEUpdater,
+    READMEValidator,
 )
 
 logger = logging.getLogger(__name__)
@@ -261,7 +262,7 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
             f"**Analysis Summary**: {report.analysis_summary}\n\n"
             f"## Missing Standard Headers\n"
             + (missing_md if missing_md else "- *All standard headers present.*") + "\n\n"
-            f"## Recommended Action Adjustments\n"
+            "## Recommended Action Adjustments\n"
             + (recs_md if recs_md else "- *No recommendations.*")
         )
 

@@ -1,37 +1,63 @@
-# Release Notes — Personal AI OS v1.0.0 (Release Candidate)
+# AI OS v1.0.0 — RELEASE NOTES
+## Official Release of the Personal AI OS Kernel
 
-We are thrilled to present the first stable production release of the Personal AI OS!
-
-This release transitions the system from independent subsystems into a unified, secure, polished, and production-grade terminal operating system.
-
----
-
-## 🌟 Key Highlights
-
-### 1. Unified Operating System Shell (`aios`)
-- Launches a premium startup boot loading experience with active health status checks.
-- Connects an interactive shell with auto-completion (Tab), Ctrl+K fuzzy command palette, Ctrl+L screen clear, and multi-line modes.
-- Supports 16 slash commands (e.g., `/project`, `/status`, `/models`, `/clear`, `/exit`) to inspect and configure subsystems.
-
-### 2. Approval Engine & Governance Middleware (Sprint 30)
-- Guardrails all high-impact actions (deletes, deploys, merges) behind a centralized middleware gateway.
-- Enforces scoped security policies (`Action -> Project -> Client -> Global`) configured in `.agent/approval/policies.json`.
-- Restricts queue file permissions securely to owner-only (`0600`).
-
-### 3. Business & Project Intelligence (Sprint 28-29)
-- Registers all workspaces, scans file dependencies, and assesses technical project risks.
-- Manages client agencies portfolios, budgets, timelines, and n8n workflow task allocations.
+We are proud to announce the official release of **AI OS v1.0.0**. This release introduces a local-first, modular command and runtime environment designed to orchestrate software projects, local model engines, and external cloud workflows.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Key Features
+
+### 💻 Interactive AI OS Shell & Boot Loader
+- Premium startup sequence rendering ASCII art, DB checks, and telemetry statistics.
+- Auto-completion (Tab), command history, and custom slash commands (e.g. `/status`, `/models`, `/palette`).
+- Diagnostic observability telemetry dashboard tracking latencies.
+
+### 🧠 Resilient LLM Gateway (OmniRoute)
+- Instantiates `universal_provider_registry` to register local (Ollama) and cloud (OpenRouter) engines.
+- Automatic routing logic selects providers based on criteria, costs, and availability.
+- **Fail-Safe Fallbacks**: Catch connection timeouts, automatically re-routing inference requests between cloud and local engines in <2.2s.
+
+### 🛡️ Governance Middleware & Cryptographic Approvals
+- Intercepts protected high-impact operations (Supabase resets, Vercel production deploys, n8n workflow deletions) at the kernel boundary.
+- Stores request tickets in an owner-only queue (`queue.json`).
+- Prevents replay attacks using single-use verification tokens.
+
+### 🤖 n8n Workflow Intelligence & Runtime
+- Generates, validates, and optimizes workflow graphs locally.
+- Syncs local configurations against live n8n servers, offering deployment version control, history audits, and safe rollback capabilities.
+
+### ⚡ Supabase & Vercel Subsystems
+- **Supabase**: Discovers database tables, identifies Row-Level Security (RLS) policies, and audits storage/auth configs.
+- **Vercel**: Tracks production builds, checks custom DNS certificates, and delivers AI-powered build diagnostics.
+
+---
+
+## 📦 Installation Instructions
+
+### Setup Virtual Environment
 ```bash
-# 1. Install local packages
-pip install -e .
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-# 2. Run the onboarding setup wizard
-aios setup
+### Install Dependencies in Editable Mode
+```bash
+pip install -e ./core pytest ruff
+```
 
-# 3. Start the interactive shell
+### Boot System
+```bash
 aios
 ```
+
+---
+
+## ⚠️ Known Limitations
+- **Local Model Load Latency**: Loading large local models (14B+) from an external HDD partition can cause a first-time load latency of 20-80s depending on host RAM and disk transfer rates (subsequent tokens process at ~41/sec).
+- **PostgreSQL Concurrent Suite Pollution**: Running the full test suite concurrently can cause intermittent db schema locks. Individual test runs are 100% clean.
+
+---
+
+## 🗺️ Roadmap (v1.1)
+- **Web UI Dashboard**: Constructing a React/Next.js dashboard using TypeScript and Tailwind CSS to replace terminal commands with interactive visual controls.
+- **Multi-Agent Orchestration**: Introducing parallel event buses to allow multiple subagents to process independent project tasks concurrently.

@@ -1,21 +1,17 @@
+import logging
 import os
-import time
 import shutil
 import subprocess
-import logging
-from typing import Dict, List, Any, Optional, Type
+from typing import Any, Dict, List, Optional
 
-from aios.services.base import ServiceLifecycle
 from aios.providers.models import DIInitializeMixin
 from aios.source_control.models import (
-    RepositoryMetadata,
-    BranchInfo,
-    CommitInfo,
-    PullRequestInfo,
     IssueInfo,
+    PullRequestInfo,
     ReleaseInfo,
-    WorkflowInfo,
+    RepositoryMetadata,
     WebhookInfo,
+    WorkflowInfo,
 )
 
 logger = logging.getLogger(__name__)

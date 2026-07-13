@@ -1,48 +1,46 @@
-import time
-import pytest
 from unittest.mock import MagicMock
 
+import pytest
 from aios.registry import ServiceRegistry
 from aios.services.persistence import (
+    CoordinationDiagnostics,
+    CoordinationHealthMonitor,
+    CoordinationRecommendationEngine,
+    CoordinationStatisticsCollector,
+    DeadlockDetector,
+    DistributedLockManager,
+    LockLeaseManager,
+    LockPolicy,
+    LockRecoveryManager,
+    LockRegistry,
+    MutexManager,
     PersistenceConfigurationService,
     PersistenceRegistry,
-    RepositoryRegistry,
     PersistenceService,
-    RedisProvider,
-    LockPolicy,
-    LockRegistry,
-    LockLeaseManager,
-    LockRecoveryManager,
-    DeadlockDetector,
-    MutexManager,
-    CoordinationStatisticsCollector,
-    CoordinationHealthMonitor,
-    CoordinationDiagnostics,
-    CoordinationRecommendationEngine,
-    DistributedLockManager,
     RedisCoordinationService,
+    RedisProvider,
+    RepositoryRegistry,
 )
-
 from aios.services.persistence_impl import (
-    PostgreSQLProvider,
-    PersistenceServiceImpl,
-    PersistenceBootstrapper,
-    RedisConfigurationService,
-    RedisConnectionManager,
-    RedisTransportImpl,
-    RedisProviderImpl,
-    FakeRedisClient,
-    LockRegistryImpl,
-    DeadlockDetectorImpl,
-    CoordinationStatisticsCollectorImpl,
     CoordinationDiagnosticsImpl,
     CoordinationHealthMonitorImpl,
     CoordinationRecommendationEngineImpl,
+    CoordinationStatisticsCollectorImpl,
+    DeadlockDetectorImpl,
+    DistributedLockManagerImpl,
+    FakeRedisClient,
     LockLeaseManagerImpl,
     LockRecoveryManagerImpl,
+    LockRegistryImpl,
     MutexManagerImpl,
-    DistributedLockManagerImpl,
+    PersistenceBootstrapper,
+    PersistenceServiceImpl,
+    PostgreSQLProvider,
+    RedisConfigurationService,
+    RedisConnectionManager,
     RedisCoordinationServiceImpl,
+    RedisProviderImpl,
+    RedisTransportImpl,
 )
 
 from tests.test_persistence import SQLiteTransportForTests
@@ -171,7 +169,7 @@ def test_lock_ownership_registry(coordination_env):
 
 def test_lock_acquisition_exclusive_shared_reentrant(coordination_env):
     mgr = coordination_env["dist_lock_mgr"]
-    lease_mgr = coordination_env["lock_lease_mgr"]
+    coordination_env["lock_lease_mgr"]
 
     # 1. Exclusive Lock
     acquired1 = mgr.acquire("workspace", "lock-1", "owner-a", LockPolicy.EXCLUSIVE)
@@ -232,7 +230,7 @@ def test_lease_management_and_heartbeats(coordination_env):
 
 def test_deadlock_detection_and_recovery(coordination_env):
     deadlock = coordination_env["deadlock_detector"]
-    mgr = coordination_env["dist_lock_mgr"]
+    coordination_env["dist_lock_mgr"]
 
     # Manually configure a cycle: Node A waits for Node B, Node B waits for Node A
     deadlock.lock_owners["workflow:lock-a"] = "owner-b"

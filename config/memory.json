@@ -3165,5 +3165,1297 @@
             "importance": 1,
             "additional": {}
         }
+    },
+    {
+        "memory_id": "c076fd98-48ed-4c23-a4a2-31e22cefcdc9",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783439428.126009,
+        "updated_at": 1783439428.126009,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "a725044c-fb22-4524-85b0-2c4cea000cc6",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "89554251-c1c6-4b0b-89c7-e37f4edcf6a4",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783440295.449758,
+        "updated_at": 1783440295.449758,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "0b480ffc-da5a-4886-a71c-04cfef68088e",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "ea8c27cc-d314-48e7-8770-c6ab8ff2639a",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783440906.362862,
+        "updated_at": 1783440906.362862,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "55079a62-7b81-472c-8c2f-78934c1970cd",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "163311eb-91dd-4619-8c2f-d109dfe749fc",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783441810.682505,
+        "updated_at": 1783441810.682505,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "e9d8a887-0c80-4aa3-bfa9-e99bb9335f45",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "f7cdc6a5-1c5a-4a43-b20a-1fb10a39951b",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783442118.567339,
+        "updated_at": 1783442118.567339,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "39547ad0-1065-41c0-84c2-6f56cfc2baba",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "3889b006-26e6-4b08-81de-f1540a28183d",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783458902.743625,
+        "updated_at": 1783458902.743625,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "89bee646-7ec3-4e93-bfe8-de54529e21aa",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "37dce3e7-d0b9-4847-8023-9429411b0174",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783499521.453343,
+        "updated_at": 1783499521.453343,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "b6c091b6-cf63-4dc3-8eea-abe0e3cad522",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "c887cdf3-a7f0-4e6b-9679-f936cd4e97bd",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783500283.684754,
+        "updated_at": 1783500283.684754,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "11a2c0fc-31f7-47c6-86f2-b12a3476bf5c",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "666211b1-52f2-4217-ad48-d931ea4b4275",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783513559.7585669,
+        "updated_at": 1783513559.7585669,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "eaeb8f03-9d86-4e32-bd28-951ea5ad2df5",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "660dccb3-4ac8-4fe5-ad8a-bcf1e18e3dba",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783514446.602879,
+        "updated_at": 1783514446.602879,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "40bdd229-1462-440e-93bc-f22e7663504e",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "9bb267cc-9aa2-4158-8557-8d157fafaea3",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783514728.257312,
+        "updated_at": 1783514728.257312,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "bec8c22c-1958-4508-8a15-7a3b0f0dac3f",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "c7a93616-d7f1-47ab-bbf8-bca5bb7747ae",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783533068.133533,
+        "updated_at": 1783533068.133533,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "097e2062-f8ba-4fc4-8c88-85d425ae9ae8",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "93f82e0e-a72e-4746-8659-18b677514323",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783631750.444403,
+        "updated_at": 1783631750.444403,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "4643b900-6493-467a-acf3-fdc4f1e8a4d3",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "97c38b15-31de-4676-a217-f81a890a614b",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783631770.2367842,
+        "updated_at": 1783631770.2367842,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "42856943-99a1-4f5a-ba51-37b16222ae9c",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "38aabaed-79d0-4eef-9394-fdc5876fdb65",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783631787.388313,
+        "updated_at": 1783631787.388313,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "ce68b6f2-0602-4d71-9eb4-efa7094834d2",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "329a060b-74fc-4690-8354-0c301ba9b575",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783702085.834893,
+        "updated_at": 1783702085.834893,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "2ecac757-ed2c-4f19-bb21-7899b8583478",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "80791880-e133-4168-afe8-9c8ff13387f9",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783702670.1177,
+        "updated_at": 1783702670.1177,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "3bac7fcd-ad65-4aa1-8044-ecf626ed76f8",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "cd07d2ea-023f-4afc-ad42-3fa5a02ddb8d",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783703051.407522,
+        "updated_at": 1783703051.407522,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "113d81e3-3fe2-4cc1-9ec6-35b6084c1669",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "fcf4a2aa-b619-4faa-a5c9-9d670e9b785a",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783703867.7186859,
+        "updated_at": 1783703867.7186859,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "30960f2b-e32d-4613-9ee1-633c0b950b72",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "94f95677-eee9-4173-8d66-da5799e1a1d2",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783705774.045523,
+        "updated_at": 1783705774.045523,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "701e29ab-2f81-4120-8fe5-199ee2767dce",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "bda7999c-bb66-4761-95db-698f8eee1c46",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783706592.165188,
+        "updated_at": 1783706592.165188,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "af00c54c-4dc6-4088-b212-87063a829e22",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "8e1d3f8c-beba-4285-9c80-c2751d8d03b6",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783707863.052943,
+        "updated_at": 1783707863.052943,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "a9b44d33-2be5-4000-a67b-9e0b0a891216",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "94a38f61-35c1-4526-a6fa-2d7fa4bfb718",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783708761.965525,
+        "updated_at": 1783708761.965525,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "ddadb5c3-cbed-40eb-80e2-fd166436d80d",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "0af6eb16-d75e-4f11-abac-49eec995d4b8",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783709610.1862311,
+        "updated_at": 1783709610.1862311,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "14df8aaa-5fd4-4e8d-890a-39591ae26855",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "913a9399-9189-42b7-8d98-10d73cfbadc7",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783711034.969694,
+        "updated_at": 1783711034.969694,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "ecd625c4-6362-4a56-948a-eacb3221850c",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "365c3d53-c662-4530-91f4-e19e392052ce",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783711767.172672,
+        "updated_at": 1783711767.172672,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "49e2fc4b-f1fc-4d16-bdcd-3b93d8b9f977",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "e04b32bf-85a8-497f-ab5c-478fc6a5bf9c",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783712573.711294,
+        "updated_at": 1783712573.711294,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "046375ba-1625-48c3-b6c0-8f9d8f5d5622",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "7b2aa9ca-e0ff-46a7-8e26-772ac5964910",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783713441.821794,
+        "updated_at": 1783713441.821794,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "17d9a515-a99a-40ce-9f02-70ca65a2d448",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "127234a9-eef0-4b98-9ec7-0cda3b194d61",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783946026.140457,
+        "updated_at": 1783946026.140457,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "31023958-fdb8-4bac-b209-ac0e59c0ccc8",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "3d4f7e8c-609d-4d82-8d98-ca1ef844142e",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783948285.445951,
+        "updated_at": 1783948285.445951,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "0f75b482-ee08-43bb-83c7-a58a8135175f",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-0",
+        "content": "Stress test memory index 0",
+        "memory_type": "note",
+        "created_at": 1783948570.1102011,
+        "updated_at": 1783948570.1102011,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-1",
+        "content": "Stress test memory index 1",
+        "memory_type": "note",
+        "created_at": 1783948570.110214,
+        "updated_at": 1783948570.110214,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-2",
+        "content": "Stress test memory index 2",
+        "memory_type": "note",
+        "created_at": 1783948570.1102169,
+        "updated_at": 1783948570.1102169,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-3",
+        "content": "Stress test memory index 3",
+        "memory_type": "note",
+        "created_at": 1783948570.110219,
+        "updated_at": 1783948570.110219,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-4",
+        "content": "Stress test memory index 4",
+        "memory_type": "note",
+        "created_at": 1783948570.1102211,
+        "updated_at": 1783948570.1102211,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-5",
+        "content": "Stress test memory index 5",
+        "memory_type": "note",
+        "created_at": 1783948570.110222,
+        "updated_at": 1783948570.110222,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-6",
+        "content": "Stress test memory index 6",
+        "memory_type": "note",
+        "created_at": 1783948570.1102238,
+        "updated_at": 1783948570.1102238,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-7",
+        "content": "Stress test memory index 7",
+        "memory_type": "note",
+        "created_at": 1783948570.110226,
+        "updated_at": 1783948570.110226,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-8",
+        "content": "Stress test memory index 8",
+        "memory_type": "note",
+        "created_at": 1783948570.110228,
+        "updated_at": 1783948570.110228,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-9",
+        "content": "Stress test memory index 9",
+        "memory_type": "note",
+        "created_at": 1783948570.11023,
+        "updated_at": 1783948570.11023,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-10",
+        "content": "Stress test memory index 10",
+        "memory_type": "note",
+        "created_at": 1783948570.110236,
+        "updated_at": 1783948570.110236,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-11",
+        "content": "Stress test memory index 11",
+        "memory_type": "note",
+        "created_at": 1783948570.110237,
+        "updated_at": 1783948570.110237,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-12",
+        "content": "Stress test memory index 12",
+        "memory_type": "note",
+        "created_at": 1783948570.110239,
+        "updated_at": 1783948570.110239,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-13",
+        "content": "Stress test memory index 13",
+        "memory_type": "note",
+        "created_at": 1783948570.110241,
+        "updated_at": 1783948570.110241,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-14",
+        "content": "Stress test memory index 14",
+        "memory_type": "note",
+        "created_at": 1783948570.110243,
+        "updated_at": 1783948570.110243,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-15",
+        "content": "Stress test memory index 15",
+        "memory_type": "note",
+        "created_at": 1783948570.1102452,
+        "updated_at": 1783948570.1102452,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-16",
+        "content": "Stress test memory index 16",
+        "memory_type": "note",
+        "created_at": 1783948570.110246,
+        "updated_at": 1783948570.110246,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-17",
+        "content": "Stress test memory index 17",
+        "memory_type": "note",
+        "created_at": 1783948570.1102479,
+        "updated_at": 1783948570.1102479,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-18",
+        "content": "Stress test memory index 18",
+        "memory_type": "note",
+        "created_at": 1783948570.11025,
+        "updated_at": 1783948570.11025,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-19",
+        "content": "Stress test memory index 19",
+        "memory_type": "note",
+        "created_at": 1783948570.110251,
+        "updated_at": 1783948570.110251,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-20",
+        "content": "Stress test memory index 20",
+        "memory_type": "note",
+        "created_at": 1783948570.110253,
+        "updated_at": 1783948570.110253,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-21",
+        "content": "Stress test memory index 21",
+        "memory_type": "note",
+        "created_at": 1783948570.110255,
+        "updated_at": 1783948570.110255,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-22",
+        "content": "Stress test memory index 22",
+        "memory_type": "note",
+        "created_at": 1783948570.110257,
+        "updated_at": 1783948570.110257,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-23",
+        "content": "Stress test memory index 23",
+        "memory_type": "note",
+        "created_at": 1783948570.1102579,
+        "updated_at": 1783948570.1102579,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-24",
+        "content": "Stress test memory index 24",
+        "memory_type": "note",
+        "created_at": 1783948570.11026,
+        "updated_at": 1783948570.11026,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-25",
+        "content": "Stress test memory index 25",
+        "memory_type": "note",
+        "created_at": 1783948570.110262,
+        "updated_at": 1783948570.110262,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-26",
+        "content": "Stress test memory index 26",
+        "memory_type": "note",
+        "created_at": 1783948570.110263,
+        "updated_at": 1783948570.110263,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-27",
+        "content": "Stress test memory index 27",
+        "memory_type": "note",
+        "created_at": 1783948570.110265,
+        "updated_at": 1783948570.110265,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-28",
+        "content": "Stress test memory index 28",
+        "memory_type": "note",
+        "created_at": 1783948570.110267,
+        "updated_at": 1783948570.110267,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-29",
+        "content": "Stress test memory index 29",
+        "memory_type": "note",
+        "created_at": 1783948570.1102679,
+        "updated_at": 1783948570.1102679,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-30",
+        "content": "Stress test memory index 30",
+        "memory_type": "note",
+        "created_at": 1783948570.11027,
+        "updated_at": 1783948570.11027,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-31",
+        "content": "Stress test memory index 31",
+        "memory_type": "note",
+        "created_at": 1783948570.110272,
+        "updated_at": 1783948570.110272,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-32",
+        "content": "Stress test memory index 32",
+        "memory_type": "note",
+        "created_at": 1783948570.110274,
+        "updated_at": 1783948570.110274,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-33",
+        "content": "Stress test memory index 33",
+        "memory_type": "note",
+        "created_at": 1783948570.1102772,
+        "updated_at": 1783948570.1102772,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-34",
+        "content": "Stress test memory index 34",
+        "memory_type": "note",
+        "created_at": 1783948570.110278,
+        "updated_at": 1783948570.110278,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-35",
+        "content": "Stress test memory index 35",
+        "memory_type": "note",
+        "created_at": 1783948570.11028,
+        "updated_at": 1783948570.11028,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-36",
+        "content": "Stress test memory index 36",
+        "memory_type": "note",
+        "created_at": 1783948570.110282,
+        "updated_at": 1783948570.110282,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-37",
+        "content": "Stress test memory index 37",
+        "memory_type": "note",
+        "created_at": 1783948570.110283,
+        "updated_at": 1783948570.110283,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-38",
+        "content": "Stress test memory index 38",
+        "memory_type": "note",
+        "created_at": 1783948570.110288,
+        "updated_at": 1783948570.110288,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-39",
+        "content": "Stress test memory index 39",
+        "memory_type": "note",
+        "created_at": 1783948570.1102898,
+        "updated_at": 1783948570.1102898,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-40",
+        "content": "Stress test memory index 40",
+        "memory_type": "note",
+        "created_at": 1783948570.110292,
+        "updated_at": 1783948570.110292,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-41",
+        "content": "Stress test memory index 41",
+        "memory_type": "note",
+        "created_at": 1783948570.110294,
+        "updated_at": 1783948570.110294,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-42",
+        "content": "Stress test memory index 42",
+        "memory_type": "note",
+        "created_at": 1783948570.110296,
+        "updated_at": 1783948570.110296,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-43",
+        "content": "Stress test memory index 43",
+        "memory_type": "note",
+        "created_at": 1783948570.1102982,
+        "updated_at": 1783948570.1102982,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-44",
+        "content": "Stress test memory index 44",
+        "memory_type": "note",
+        "created_at": 1783948570.1102998,
+        "updated_at": 1783948570.1102998,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-45",
+        "content": "Stress test memory index 45",
+        "memory_type": "note",
+        "created_at": 1783948570.110302,
+        "updated_at": 1783948570.110302,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-46",
+        "content": "Stress test memory index 46",
+        "memory_type": "note",
+        "created_at": 1783948570.110304,
+        "updated_at": 1783948570.110304,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-47",
+        "content": "Stress test memory index 47",
+        "memory_type": "note",
+        "created_at": 1783948570.110306,
+        "updated_at": 1783948570.110306,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-48",
+        "content": "Stress test memory index 48",
+        "memory_type": "note",
+        "created_at": 1783948570.110307,
+        "updated_at": 1783948570.110307,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "stress-test-49",
+        "content": "Stress test memory index 49",
+        "memory_type": "note",
+        "created_at": 1783948570.1103091,
+        "updated_at": 1783948570.1103091,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "stress-session",
+            "tags": [
+                "stress-test"
+            ],
+            "importance": 5,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "cert-mem-001",
+        "content": "CERTIFICATION: Memory write test at RC1",
+        "memory_type": "note",
+        "created_at": 1783949447.916002,
+        "updated_at": 1783949447.916002,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "cert-session",
+            "tags": [
+                "certification"
+            ],
+            "importance": 9,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "f040a924-956b-4b14-afd0-2de78b7dfd29",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783953560.47697,
+        "updated_at": 1783953560.47697,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "fa4ea666-56ed-4f5f-89ba-c003e6814976",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "556f20da-27f6-4073-8913-3f6f8f4630f9",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783953624.890187,
+        "updated_at": 1783953624.890187,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "34ce363d-e2cc-465c-9d63-1b37e3139203",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "dcd7b558-8e7d-4231-9f5c-1efec9b1ddb5",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783953661.4703062,
+        "updated_at": 1783953661.4703062,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "c39540f3-166c-4982-9e9c-fde4b1249427",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
+    },
+    {
+        "memory_id": "5b69f390-cfc7-430c-8a52-2bf79ca585da",
+        "content": "Kernel is running fine",
+        "memory_type": "note",
+        "created_at": 1783953703.327595,
+        "updated_at": 1783953703.327595,
+        "metadata": {
+            "workspace_id": "/Users/anzarakhtar/aios",
+            "session_id": "3bb59c29-545b-47c4-a614-e8eb8c254c73",
+            "tags": [],
+            "importance": 1,
+            "additional": {}
+        }
     }
 ]

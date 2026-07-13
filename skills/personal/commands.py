@@ -1,19 +1,18 @@
-import sys
-import json
 import time
+
 from aios.services.command.metadata import CommandCategory, CommandMetadata
 from aios.services.personal import (
-    PersonalService,
-    PersonalProfile,
     Contact,
     Goal,
-    LearningItem,
     KnowledgeEntry,
-    Preference,
-    Template,
+    LearningItem,
+    PersonalProfile,
+    PersonalService,
     PortfolioProject,
+    Preference,
     Resume,
     ResumeVersion,
+    Template,
 )
 
 

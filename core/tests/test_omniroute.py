@@ -1,6 +1,10 @@
-import pytest
-from aios.providers.interface import universal_omniroute_engine, OmniRouteRequest, universal_provider_registry
 from aios.providers.adapters import MockProvider
+from aios.providers.interface import (
+    OmniRouteRequest,
+    universal_omniroute_engine,
+    universal_provider_registry,
+)
+
 
 def test_omniroute_successful_generate():
     from aios.providers.interface import ModelInfo, universal_model_registry

@@ -33,8 +33,6 @@ class PostgreSQLTransport(DatabaseTransport):
             errors.append("POSTGRES_DATABASE configuration is missing.")
         if not self.config.user:
             errors.append("POSTGRES_USER configuration is missing.")
-        if not self.config.password:
-            errors.append("POSTGRES_PASSWORD configuration is missing.")
         return errors
 
     def connect(self) -> None:
@@ -187,7 +185,7 @@ class PostgreSQLTransport(DatabaseTransport):
 
         if self.tx_depth == 0:
             self.active_conn = self.pool.getconn()
-            self.active_conn.autocommit = False  # disable autocommit for transaction
+            self.active_conn.autocommit = True  # use explicit transactions under autocommit=True
 
             # Execute BEGIN on the acquired active connection
             cursor = self.active_conn.cursor()
@@ -210,8 +208,7 @@ class PostgreSQLTransport(DatabaseTransport):
                         cursor.execute("COMMIT")
                     finally:
                         cursor.close()
-                    # Reset connection and return to pool
-                    self.transport.active_conn.autocommit = True
+                    # Return connection to pool
                     self.transport.pool.putconn(self.transport.active_conn)
                     self.transport.active_conn = None
 
@@ -226,8 +223,7 @@ class PostgreSQLTransport(DatabaseTransport):
                             cursor.close()
                     except Exception:
                         pass
-                    # Reset connection and return to pool
-                    self.transport.active_conn.autocommit = True
+                    # Return connection to pool
                     self.transport.pool.putconn(self.transport.active_conn)
                     self.transport.active_conn = None
 

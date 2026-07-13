@@ -1,12 +1,10 @@
-import json
 import tempfile
-from pathlib import Path
 from typing import List
 from unittest.mock import MagicMock
 
 from aios.services.model import LLMResponse
-from aios.services.research import Source, Citation, ResearchResult, SearchProvider
-from aios.services.research_impl import LocalResearchService, MockSearchProvider
+from aios.services.research import ResearchResult, SearchProvider, Source
+from aios.services.research_impl import LocalResearchService
 
 
 class CustomTestSearchProvider(SearchProvider):

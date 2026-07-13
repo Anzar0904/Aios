@@ -228,7 +228,7 @@ class Kernel:
         for service in self.registry.get_all():
             if not getattr(service, "_lifecycle_initialized", False):
                 service.initialize()
-                setattr(service, "_lifecycle_initialized", True)
+                service._lifecycle_initialized = True
 
     def _transition_to_ready(self) -> None:
         """Invokes the on_ready stage on all registered services and publishes startup event."""
@@ -237,7 +237,7 @@ class Kernel:
         for service in self.registry.get_all():
             if not getattr(service, "_lifecycle_ready", False):
                 service.start()
-                setattr(service, "_lifecycle_ready", True)
+                service._lifecycle_ready = True
 
         event_bus.publish(KernelStartedEvent(version=self.config.runtime.version))
 
@@ -261,7 +261,7 @@ class Kernel:
                 try:
                     if not getattr(service, "_lifecycle_teardown", False):
                         service.shutdown()
-                        setattr(service, "_lifecycle_teardown", True)
+                        service._lifecycle_teardown = True
                 except Exception as e:
                     # Engineering Constitution: fail loudly in development, safely in production
                     print(f"Error during service teardown: {e}", file=sys.stderr)

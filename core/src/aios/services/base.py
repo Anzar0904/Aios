@@ -13,7 +13,7 @@ class ServiceLifecycle:
         if orig_init:
             def wrapped_init(self, *args, **kwargs):
                 if not getattr(self, "_lifecycle_initialized", False):
-                    setattr(self, "_lifecycle_initialized", True)
+                    self._lifecycle_initialized = True
                     orig_init(self, *args, **kwargs)
             cls.initialize = wrapped_init
 
@@ -22,7 +22,7 @@ class ServiceLifecycle:
         if orig_start:
             def wrapped_start(self, *args, **kwargs):
                 if not getattr(self, "_lifecycle_start", False):
-                    setattr(self, "_lifecycle_start", True)
+                    self._lifecycle_start = True
                     orig_start(self, *args, **kwargs)
             cls.start = wrapped_start
 
@@ -31,21 +31,21 @@ class ServiceLifecycle:
         if orig_shutdown:
             def wrapped_shutdown(self, *args, **kwargs):
                 if not getattr(self, "_lifecycle_shutdown", False):
-                    setattr(self, "_lifecycle_shutdown", True)
+                    self._lifecycle_shutdown = True
                     orig_shutdown(self, *args, **kwargs)
             cls.shutdown = wrapped_shutdown
 
     def initialize(self) -> None:
         if not getattr(self, "_lifecycle_initialized", False):
-            setattr(self, "_lifecycle_initialized", True)
+            self._lifecycle_initialized = True
 
     def start(self) -> None:
         if not getattr(self, "_lifecycle_start", False):
-            setattr(self, "_lifecycle_start", True)
+            self._lifecycle_start = True
 
     def ready(self) -> bool:
         return True
 
     def shutdown(self) -> None:
         if not getattr(self, "_lifecycle_shutdown", False):
-            setattr(self, "_lifecycle_shutdown", True)
+            self._lifecycle_shutdown = True

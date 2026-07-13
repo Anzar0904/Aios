@@ -1,26 +1,23 @@
-import pytest
 from unittest.mock import MagicMock
 
-from aios.services.memory import MemoryService
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.model import ModelService, LLMResponse
 from aios.services.engineering_documentation import (
     DecisionRecord,
-    ImplementationSummary,
-    EngineeringTimeline,
-    ChangeSummary,
-    ValidationSummary,
-    RiskSummary,
     EngineeringDocumentArtifact,
     EngineeringDocumentationReport,
+    ImplementationSummary,
+    RiskSummary,
+    ValidationSummary,
 )
 from aios.services.engineering_documentation_impl import (
     LocalADRGenerator,
-    LocalEngineeringReportGenerator,
+    LocalEngineeringDocumentationService,
     LocalEngineeringDocumentPlanner,
     LocalEngineeringDocumentValidator,
-    LocalEngineeringDocumentationService,
+    LocalEngineeringReportGenerator,
 )
+from aios.services.knowledge_hub import KnowledgeHubService
+from aios.services.memory import MemoryService
+from aios.services.model import LLMResponse, ModelService
 
 
 def test_adr_generation():

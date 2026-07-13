@@ -1,4 +1,3 @@
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -6,10 +5,10 @@ from unittest.mock import MagicMock, patch
 from aios.bootstrap import bootstrap_kernel
 from aios.brain.brain import Brain
 from aios.services.command import CommandRegistry
-from aios.services.project_intelligence import ProjectIntelligenceService
 from aios.services.developer_workspace import DeveloperWorkspaceService
-from aios.services.research import ResearchService, ResearchResult, Source
-from aios.services.n8n import N8NService, InternalWorkflow, InternalNode, InternalConnection
+from aios.services.n8n import InternalConnection, InternalNode, InternalWorkflow, N8NService
+from aios.services.project_intelligence import ProjectIntelligenceService
+from aios.services.research import ResearchResult, ResearchService, Source
 
 
 def test_end_to_end_research_to_n8n_integration():
@@ -63,7 +62,6 @@ def test_end_to_end_research_to_n8n_integration():
                 mock_research_call.assert_called_once_with(research_topic)
 
             # 3. Run Scenario 2: Generate an automation workflow from the research
-            nl_description = "Check sandbox compliance daily and send report"
             generated_wf = InternalWorkflow(
                 id=None,
                 name="Sandbox Compliance Sync",

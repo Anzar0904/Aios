@@ -368,6 +368,9 @@ class LocalNotionService(NotionService):
                         pass
 
             if memory_service:
+                # Ensure workspace context is initialized before writing memories
+                if getattr(memory_service, "_workspace_id", None) is None:
+                    memory_service._workspace_id = workspace_name  # type: ignore[attr-defined]
                 for page in pages:
                     page_id = page["id"]
                     cached_page = cached_pages_by_id.get(page_id)

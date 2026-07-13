@@ -10,13 +10,10 @@ import datetime
 from typing import List
 
 from aios.docgen.refgen_models import (
-    InterfaceImplementationPair,
-    LifecycleMethod,
     MethodSignature,
     ParameterInfo,
     ServiceInterface,
 )
-
 
 _TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
 

@@ -1,31 +1,28 @@
+import logging
 import os
 import time
-import logging
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from aios.services.model import LLMRequest, ModelService
-from aios.services.memory import MemoryService, MemoryType
-from aios.services.knowledge_hub import (
-    KnowledgeHubService,
-    KnowledgeDocument,
-    KnowledgeMetadata as KHMetadata,
-)
 from aios.services.ai_workspace import AIWorkspaceService
 from aios.services.collaboration import (
-    ReviewerRole,
     ReviewAction,
-    Reviewer,
-    ReviewComment,
-    ReviewThread,
-    ReviewVote,
     ReviewAuditLog,
-    ReviewTimeline,
-    ReviewCheckpoint,
-    ReviewResolution,
-    ReviewFeedback,
     ReviewCollaborationReport,
     ReviewCollaborationService,
+    ReviewComment,
+    ReviewThread,
+    ReviewTimeline,
+    ReviewVote,
 )
+from aios.services.knowledge_hub import (
+    KnowledgeDocument,
+    KnowledgeHubService,
+)
+from aios.services.knowledge_hub import (
+    KnowledgeMetadata as KHMetadata,
+)
+from aios.services.memory import MemoryService, MemoryType
+from aios.services.model import LLMRequest, ModelService
 
 logger = logging.getLogger(__name__)
 
@@ -332,7 +329,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
             f"**Workspace ID**: `{workspace_id}`\n\n"
             f"## Consensus Summary\n{consensus}\n\n"
             f"## Discussion Threads\n" + "\n\n".join(threads_md) + "\n\n"
-            f"## Audit Timeline History\n" + "\n".join(events_md)
+            "## Audit Timeline History\n" + "\n".join(events_md)
         )
         self._write_to_workspace(workspace_id, f"COLLABORATION_REPORT_{session_id}.md", report_md)
         return report

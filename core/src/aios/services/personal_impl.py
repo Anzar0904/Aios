@@ -1,29 +1,28 @@
 import json
-import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
 from aios.services.personal import (
-    Contact,
-    SocialProfile,
-    Experience,
-    Education,
-    SkillProfile,
-    ProjectReference,
-    ResumeVersion,
-    Resume,
-    PortfolioProject,
-    CareerProfile,
-    Goal,
-    LearningItem,
-    Certificate,
     Achievement,
-    Preference,
-    Template,
-    KnowledgeEntry,
+    CareerProfile,
+    Certificate,
+    Contact,
     DocumentReference,
+    Education,
+    Experience,
+    Goal,
+    KnowledgeEntry,
+    LearningItem,
     PersonalProfile,
     PersonalService,
+    PortfolioProject,
+    Preference,
+    ProjectReference,
+    Resume,
+    ResumeVersion,
+    SkillProfile,
+    SocialProfile,
+    Template,
 )
 
 

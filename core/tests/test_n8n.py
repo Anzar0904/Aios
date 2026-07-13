@@ -1,13 +1,11 @@
 import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock
 
 from aios.services.model import LLMResponse
 from aios.services.n8n import (
-    InternalNode,
     InternalConnection,
+    InternalNode,
     InternalWorkflow,
-    N8NService,
 )
 from aios.services.n8n_impl import LocalN8NService
 

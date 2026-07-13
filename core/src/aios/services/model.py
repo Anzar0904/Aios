@@ -1,7 +1,7 @@
 
 import abc
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, Optional
 
 from aios.services.base import ServiceLifecycle
 

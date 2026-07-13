@@ -88,9 +88,9 @@ class LocalContextService(ContextService):
         token_budget: int = 4000
     ) -> Dict[str, Any]:
         """Assembles enriched context from various sources."""
+
         from aios.registry import ServiceRegistry
         from aios.services.persistence import SemanticMemoryManager
-        import time
         
         registry = ServiceRegistry._global_registry
         sem_mgr = None
@@ -158,7 +158,6 @@ class LocalContextService(ContextService):
         if len(assembled_text) > max_chars:
             assembled_text = assembled_text[:max_chars] + "\n...[TRUNCATED TO FIT BUDGET]..."
 
-        from typing import Dict, Any, List
         return {
             "assembled_text": assembled_text,
             "runtime_state": runtime_state,

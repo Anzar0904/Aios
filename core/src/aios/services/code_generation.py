@@ -1,10 +1,11 @@
 import abc
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List
+
 from aios.services.base import ServiceLifecycle
-from aios.services.workspace_intelligence import CodeStructureSummary
 from aios.services.model import LLMRequest
+from aios.services.workspace_intelligence import CodeStructureSummary
 
 
 class GenerationPolicy(Enum):
