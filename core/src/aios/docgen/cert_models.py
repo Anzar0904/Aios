@@ -43,12 +43,12 @@ class CertificationStatus(str, Enum):
 class Finding:
     """A single validation finding (error, warning, or pass)."""
 
-    check: str                       # name of the check
-    severity: Severity               # error / warning / info / pass
-    file: str                        # relative path of the affected doc
-    message: str                     # human-readable description
-    line: Optional[int] = None       # line number if applicable
-    detail: Optional[str] = None     # extra context
+    check: str  # name of the check
+    severity: Severity  # error / warning / info / pass
+    file: str  # relative path of the affected doc
+    message: str  # human-readable description
+    line: Optional[int] = None  # line number if applicable
+    detail: Optional[str] = None  # extra context
 
 
 @dataclass

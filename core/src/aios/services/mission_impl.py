@@ -32,30 +32,24 @@ class LocalMissionPlanner(MissionPlanner):
                 MissionMilestone(
                     milestone_id="m1-research",
                     name="Identify target AI internships today",
-                    tasks=[
-                        MissionTask("t1-search", "Find opportunities", "career_agent")
-                    ]
+                    tasks=[MissionTask("t1-search", "Find opportunities", "career_agent")],
                 ),
                 MissionMilestone(
                     milestone_id="m2-optimize",
                     name="Resume tailored optimization analysis",
-                    tasks=[
-                        MissionTask("t2-ats", "ATS Scoring & suggestions", "career_agent")
-                    ]
+                    tasks=[MissionTask("t2-ats", "ATS Scoring & suggestions", "career_agent")],
                 ),
                 MissionMilestone(
                     milestone_id="m3-application",
                     name="Draft custom application cover letters",
-                    tasks=[
-                        MissionTask("t3-letter", "Generate tailored letter", "career_agent")
-                    ]
-                )
+                    tasks=[MissionTask("t3-letter", "Generate tailored letter", "career_agent")],
+                ),
             ]
             return Mission(
                 mission_id=mission_id,
                 title="Career Internship Acquisition",
                 objective=objective,
-                milestones=milestones
+                milestones=milestones,
             )
 
         # 2. Learning Mission Planning
@@ -66,21 +60,19 @@ class LocalMissionPlanner(MissionPlanner):
                     name="Research core K8s production topics",
                     tasks=[
                         MissionTask("t1-syllabus", "Generate learning syllabus", "career_agent")
-                    ]
+                    ],
                 ),
                 MissionMilestone(
                     milestone_id="m2-schedule",
                     name="Establish weekly study goals",
-                    tasks=[
-                        MissionTask("t2-schedule", "Build weekly plan", "career_agent")
-                    ]
-                )
+                    tasks=[MissionTask("t2-schedule", "Build weekly plan", "career_agent")],
+                ),
             ]
             return Mission(
                 mission_id=mission_id,
                 title="Production Kubernetes Certification",
                 objective=objective,
-                milestones=milestones
+                milestones=milestones,
             )
 
         # 3. Project Mission Planning (Default)
@@ -91,21 +83,21 @@ class LocalMissionPlanner(MissionPlanner):
                     name="Analyze active repository and workspace structure",
                     tasks=[
                         MissionTask("t1-workspace", "Get Git status and stats", "developer_agent")
-                    ]
+                    ],
                 ),
                 MissionMilestone(
                     milestone_id="m2-refactor",
                     name="Build safe automation scripts",
                     tasks=[
                         MissionTask("t2-workflow", "Generate n8n compiler flow", "developer_agent")
-                    ]
-                )
+                    ],
+                ),
             ]
             return Mission(
                 mission_id=mission_id,
                 title="Personal AI OS Core Roadmap",
                 objective=objective,
-                milestones=milestones
+                milestones=milestones,
             )
 
 
@@ -144,11 +136,13 @@ class LocalMissionExecutor(MissionExecutor):
 
                 # Compose Intent to dispatch to Agent Runtime
                 intent = Intent(
-                    intent_type=IntentType.CAREER if "career" in task.assigned_agent else IntentType.DEVELOPER,
+                    intent_type=IntentType.CAREER
+                    if "career" in task.assigned_agent
+                    else IntentType.DEVELOPER,
                     action=task.name,
                     parameters={"objective": mission.objective},
                     target_service=task.assigned_agent,
-                    confidence=1.0
+                    confidence=1.0,
                 )
 
                 try:
@@ -228,13 +222,13 @@ class LocalMissionRepository(MissionRepository):
                             "name": t.name,
                             "assigned_agent": t.assigned_agent,
                             "status": t.status.name,
-                            "result": t.result
+                            "result": t.result,
                         }
                         for t in ms.tasks
-                    ]
+                    ],
                 }
                 for ms in m.milestones
-            ]
+            ],
         }
 
     def _deserialize_mission(self, data: Dict[str, Any]) -> Mission:
@@ -248,7 +242,7 @@ class LocalMissionRepository(MissionRepository):
                         name=t_data["name"],
                         assigned_agent=t_data["assigned_agent"],
                         status=MissionStatus[t_data["status"]],
-                        result=t_data.get("result")
+                        result=t_data.get("result"),
                     )
                 )
             milestones.append(
@@ -256,7 +250,7 @@ class LocalMissionRepository(MissionRepository):
                     milestone_id=ms_data["milestone_id"],
                     name=ms_data["name"],
                     tasks=tasks,
-                    status=MissionStatus[ms_data["status"]]
+                    status=MissionStatus[ms_data["status"]],
                 )
             )
 
@@ -266,12 +260,17 @@ class LocalMissionRepository(MissionRepository):
             objective=data["objective"],
             milestones=milestones,
             status=MissionStatus[data["status"]],
-            current_milestone_index=data.get("current_milestone_index", 0)
+            current_milestone_index=data.get("current_milestone_index", 0),
         )
 
 
 class LocalMissionEngine(MissionEngine):
-    def __init__(self, agent_runtime: AgentRuntimeService, workspace_root: str = ".", registry: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        agent_runtime: AgentRuntimeService,
+        workspace_root: str = ".",
+        registry: Optional[Any] = None,
+    ) -> None:
         self._planner = LocalMissionPlanner()
         self._executor = LocalMissionExecutor(agent_runtime)
         self._repository = LocalMissionRepository(workspace_root=workspace_root)
@@ -304,6 +303,7 @@ class LocalMissionEngine(MissionEngine):
                     KnowledgeHubService,
                     KnowledgeMetadata,
                 )
+
                 knowledge_hub = self._registry.get(KnowledgeHubService) if self._registry else None
                 if knowledge_hub:
                     md_content = f"# Mission Summary: {mission.title}\n\n## Objective\n{mission.objective}\n\n## Milestones\n"
@@ -320,8 +320,8 @@ class LocalMissionEngine(MissionEngine):
                             unique_id=f"mission_{mission.mission_id}",
                             timestamp=time.time(),
                             source_subsystem="mission_engine",
-                            category="Mission"
-                        )
+                            category="Mission",
+                        ),
                     )
                     knowledge_hub.sync_document(doc, "notion")
             except Exception:

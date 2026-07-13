@@ -109,7 +109,6 @@ def mock_registry():
     return registry
 
 
-
 def test_priority_calculator(
     mock_model_service,
     mock_personal_service,
@@ -161,10 +160,22 @@ def test_schedule_optimizer(mock_model_service):
     optimizer = LocalScheduleOptimizer(mock_model_service)
 
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps([
-            {"time_slot": "09:00 - 10:30", "task_id": "t1", "task_title": "Fix DB", "item_type": "focus"},
-            {"time_slot": "10:30 - 10:45", "task_id": "break", "task_title": "Break", "item_type": "break"},
-        ]),
+        content=json.dumps(
+            [
+                {
+                    "time_slot": "09:00 - 10:30",
+                    "task_id": "t1",
+                    "task_title": "Fix DB",
+                    "item_type": "focus",
+                },
+                {
+                    "time_slot": "10:30 - 10:45",
+                    "task_id": "break",
+                    "task_title": "Break",
+                    "item_type": "break",
+                },
+            ]
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -235,18 +246,20 @@ def test_daily_review(
     )
 
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "completed_tasks": ["Task 1"],
-            "incomplete_tasks": [],
-            "mission_progress": ["databases Scaled"],
-            "career_progress": ["ATS Resume Optimized"],
-            "learning_progress": ["System design prep"],
-            "project_activity": ["Git committed workspace changes"],
-            "github_activity": [],
-            "productivity_summary": "Highly productive day.",
-            "tomorrow_priorities": ["Refactoring"],
-            "suggested_improvements": ["Increase morning focus block duration"],
-        }),
+        content=json.dumps(
+            {
+                "completed_tasks": ["Task 1"],
+                "incomplete_tasks": [],
+                "mission_progress": ["databases Scaled"],
+                "career_progress": ["ATS Resume Optimized"],
+                "learning_progress": ["System design prep"],
+                "project_activity": ["Git committed workspace changes"],
+                "github_activity": [],
+                "productivity_summary": "Highly productive day.",
+                "tomorrow_priorities": ["Refactoring"],
+                "suggested_improvements": ["Increase morning focus block duration"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -273,18 +286,26 @@ def test_productivity_analyzer(mock_personal_service, mock_registry):
     # Mock progress tracker and session recorder
     mock_tracker = MagicMock()
     mock_tracker.list_tasks.return_value = [
-        DailyTask(task_id="t1", title="Task 1", priority="High", effort_hours=2.0, estimated_duration_mins=120.0, actual_duration_mins=120.0, completed=True)
+        DailyTask(
+            task_id="t1",
+            title="Task 1",
+            priority="High",
+            effort_hours=2.0,
+            estimated_duration_mins=120.0,
+            actual_duration_mins=120.0,
+            completed=True,
+        )
     ]
     mock_recorder = MagicMock()
     mock_recorder.list_sessions.return_value = [
-        WorkSession(session_id="s1", start_time=0.0, end_time=3600.0, duration_mins=60.0, category="focus")
+        WorkSession(
+            session_id="s1", start_time=0.0, end_time=3600.0, duration_mins=60.0, category="focus"
+        )
     ]
 
     daily_os.progress_tracker = mock_tracker
     daily_os.session_recorder = mock_recorder
     mock_registry.get.side_effect = lambda cls: daily_os
-
-
 
     metrics = analyzer.analyze_productivity()
     assert metrics["completion_rate"] == 100.0
@@ -323,6 +344,7 @@ def test_daily_planner(
         if cls == DailyOSService:
             return service
         from aios.services.mission import MissionEngine
+
         if cls == MissionEngine:
             mission_engine = MagicMock(spec=MissionEngine)
             mock_repo = MagicMock()
@@ -340,9 +362,13 @@ def test_daily_planner(
         provider_name="mock-provider",
     )
 
-    with patch.object(service.schedule_optimizer, 'optimize_schedule') as mock_opt:
+    with patch.object(service.schedule_optimizer, "optimize_schedule") as mock_opt:
         mock_opt.return_value = DailySchedule(
-            items=[ScheduleItem(time_slot="09:00 - 11:00", task_id="task_1", task_title="Review missions")]
+            items=[
+                ScheduleItem(
+                    time_slot="09:00 - 11:00", task_id="task_1", task_title="Review missions"
+                )
+            ]
         )
         plan = planner.plan_day()
         assert plan.date == "2026-07-04"

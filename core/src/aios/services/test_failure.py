@@ -10,6 +10,7 @@ from aios.services.workspace_intelligence import CodeStructureSummary
 
 class FailureSeverity(Enum):
     """Enumerate failure severity classifications."""
+
     __test__ = False
     LOW = "low"
     MEDIUM = "medium"
@@ -19,6 +20,7 @@ class FailureSeverity(Enum):
 
 class FailureConfidence(Enum):
     """Enumerate failure confidence classifications."""
+
     __test__ = False
     LOW = "low"
     MEDIUM = "medium"
@@ -29,6 +31,7 @@ class FailureConfidence(Enum):
 @dataclass
 class FailureSignature:
     """Represents a unique trace of a test execution failure."""
+
     __test__ = False
     signature_id: str
     error_message: str
@@ -39,6 +42,7 @@ class FailureSignature:
 @dataclass
 class FailurePattern:
     """Standard pattern classifying a failure family class."""
+
     __test__ = False
     pattern_id: str
     pattern_name: str  # "assertion_failure", "import_failure", "syntax_failure", "runtime_exception", "timeout"
@@ -48,6 +52,7 @@ class FailurePattern:
 @dataclass
 class FailureCluster:
     """Groups of similar failures based on pattern classification."""
+
     __test__ = False
     cluster_id: str
     pattern: FailurePattern
@@ -57,6 +62,7 @@ class FailureCluster:
 @dataclass
 class FailureRecommendation:
     """Actionable recommendation to address identified execution failures."""
+
     __test__ = False
     recommendation_id: str
     recommendation_type: str  # "additional_tests", "implementation_change", "config_correction", "fixture_fix", "dependency_fix", "documentation", "manual_review"
@@ -67,6 +73,7 @@ class FailureRecommendation:
 @dataclass
 class FailureAnalysisReport:
     """Assembled report containing clustered failure diagnoses."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -80,13 +87,12 @@ class FailureAnalysisReport:
 
 class RootCauseAnalyzer(abc.ABC):
     """Analyzes workspace dependencies and logs to isolate failure originations."""
+
     __test__ = False
 
     @abc.abstractmethod
     def analyze_root_cause(
-        self,
-        execution_summary: ExecutionSummary,
-        code_summary: CodeStructureSummary
+        self, execution_summary: ExecutionSummary, code_summary: CodeStructureSummary
     ) -> Dict[str, Any]:
         """Correlates call graphs and log histories to map origin paths."""
         pass
@@ -94,6 +100,7 @@ class RootCauseAnalyzer(abc.ABC):
 
 class FailureAnalyzer(abc.ABC):
     """Identifies patterns, exception classes, and stacks signatures."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -109,6 +116,7 @@ class FailureAnalyzer(abc.ABC):
 
 class FailureAnalysisService(ServiceLifecycle, abc.ABC):
     """Coordinating diagnosis service executing failure analyses, caching outcomes, and publishing reports."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -116,7 +124,7 @@ class FailureAnalysisService(ServiceLifecycle, abc.ABC):
         self,
         workspace_id: str,
         execution_summary: ExecutionSummary,
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> FailureAnalysisReport:
         """Runs overall failure analysis diagnostic routines."""
         pass

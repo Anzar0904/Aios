@@ -48,20 +48,24 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
             "Deployment Notes",
             "Rollback Notes",
         ]
-        
+
         # Read ordering from details or default
         ordering = details.get("section_ordering", default_ordering)
         list_style = details.get("markdown_preferences", {}).get("list_style", "-")
         bold_headers = details.get("markdown_preferences", {}).get("bold_headers", True)
-        
+
         header_prefix = "**" if bold_headers else ""
         header_suffix = "**" if bold_headers else ""
 
         lines = []
         lines.append(f"# Release Notes - Version {summary.version} ({summary.channel.upper()})")
-        lines.append(f"Release Date: {time.strftime('%Y-%m-%d', time.gmtime(summary.release_date))}\n")
+        lines.append(
+            f"Release Date: {time.strftime('%Y-%m-%d', time.gmtime(summary.release_date))}\n"
+        )
         lines.append("## Overview")
-        lines.append(f"This is the official release of version `{summary.version}` on the `{summary.channel}` channel.")
+        lines.append(
+            f"This is the official release of version `{summary.version}` on the `{summary.channel}` channel."
+        )
         lines.append(f"- Features added: {summary.features_count}")
         lines.append(f"- Bug fixes: {summary.fixes_count}")
         lines.append(f"- Breaking changes: {summary.breaking_changes_count}\n")
@@ -76,7 +80,7 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                 else:
                     lines.append(f"{list_style} *No new features in this release.*")
                 lines.append("")
-                
+
             elif section == "Bug Fix Summary":
                 fixes = details.get("fixes", [])
                 lines.append(f"## {header_prefix}Bug Fixes{header_suffix}")
@@ -86,27 +90,31 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                 else:
                     lines.append(f"{list_style} *No bug fixes in this release.*")
                 lines.append("")
-                
+
             elif section == "Breaking Changes":
                 breaking = details.get("breaking_changes", [])
                 lines.append(f"## {header_prefix}Breaking Changes{header_suffix}")
                 if breaking:
                     lines.append("> [!IMPORTANT]")
-                    lines.append("> This release contains breaking changes that require manual migration action.")
+                    lines.append(
+                        "> This release contains breaking changes that require manual migration action."
+                    )
                     for b in breaking:
                         lines.append(f"> {list_style} {b}")
                 else:
                     lines.append(f"{list_style} *No breaking changes introduced in this release.*")
                 lines.append("")
-                
+
             elif section == "Validation Summary":
                 validation = details.get("validation_summary", {})
                 lines.append(f"## {header_prefix}Validation & Testing Summary{header_suffix}")
                 lines.append(f"- **Overall Status**: {validation.get('status', 'PASS')}")
                 lines.append(f"- **Tests Executed**: {validation.get('tests_run_count', 0)}")
-                lines.append(f"- **Statement Coverage**: {validation.get('coverage_pct', 0.0):.1f}%")
+                lines.append(
+                    f"- **Statement Coverage**: {validation.get('coverage_pct', 0.0):.1f}%"
+                )
                 lines.append("")
-                
+
             elif section == "Known Issues":
                 issues = details.get("known_issues", [])
                 lines.append(f"## {header_prefix}Known Issues{header_suffix}")
@@ -116,7 +124,7 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                 else:
                     lines.append(f"{list_style} *No known issues outstanding.*")
                 lines.append("")
-                
+
             elif section == "Compatibility Notes":
                 compat = details.get("compatibility_notes", [])
                 lines.append(f"## {header_prefix}Compatibility & Environment Notes{header_suffix}")
@@ -124,9 +132,11 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                     for c in compat:
                         lines.append(f"{list_style} {c}")
                 else:
-                    lines.append(f"{list_style} *Fully backward compatible with previous patch versions.*")
+                    lines.append(
+                        f"{list_style} *Fully backward compatible with previous patch versions.*"
+                    )
                 lines.append("")
-                
+
             elif section == "Future Improvements":
                 improvements = details.get("future_improvements", [])
                 lines.append(f"## {header_prefix}Future Improvements{header_suffix}")
@@ -136,7 +146,7 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                 else:
                     lines.append(f"{list_style} *None scheduled at this time.*")
                 lines.append("")
-                
+
             elif section == "Release Checklist":
                 checklist = details.get("release_checklist", [])
                 lines.append(f"## {header_prefix}Release Checklist{header_suffix}")
@@ -146,7 +156,7 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                 else:
                     lines.append(f"{list_style} *No checklist tasks defined.*")
                 lines.append("")
-                
+
             elif section == "Deployment Notes":
                 deploy = details.get("deployment_notes", [])
                 lines.append(f"## {header_prefix}Deployment Notes{header_suffix}")
@@ -158,13 +168,15 @@ class LocalReleaseNotesGenerator(ReleaseNotesGenerator):
                 else:
                     lines.append(f"{list_style} *Deploy by pulling from production branch.*")
                 lines.append("")
-                
+
             elif section == "Rollback Notes":
                 rollback = details.get("rollback_notes", [])
                 lines.append(f"## {header_prefix}Rollback Procedures{header_suffix}")
                 if rollback:
                     lines.append("> [!WARNING]")
-                    lines.append("> In case of validation gate failures on production, use the following rollback plan:")
+                    lines.append(
+                        "> In case of validation gate failures on production, use the following rollback plan:"
+                    )
                     for r in rollback:
                         lines.append(f"> {list_style} {r}")
                 else:
@@ -178,15 +190,19 @@ class LocalChangelogGenerator(ChangelogGenerator):
     """Formats commits lists into Keep a Changelog standard format."""
 
     def generate_changelog(self, summary: ReleaseSummary, commits: List[Dict[str, Any]]) -> str:
-        date_str = time.strftime('%Y-%m-%d', time.gmtime(summary.release_date))
-        
+        date_str = time.strftime("%Y-%m-%d", time.gmtime(summary.release_date))
+
         lines = []
         lines.append("# Changelog")
         lines.append("All notable changes to this project will be documented in this file.\n")
-        lines.append("The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),")
-        lines.append("and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n")
+        lines.append(
+            "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+        )
+        lines.append(
+            "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n"
+        )
         lines.append(f"## [{summary.version}] - {date_str}")
-        
+
         added = []
         changed = []
         fixed = []
@@ -196,8 +212,12 @@ class LocalChangelogGenerator(ChangelogGenerator):
             msg = c.get("message", "")
             msg_lower = msg.lower()
             formatted_item = f"{msg} (commit: `{c.get('hash', 'head')[:7]}`)"
-            
-            if msg_lower.startswith("feat") or msg_lower.startswith("add") or "feature" in msg_lower:
+
+            if (
+                msg_lower.startswith("feat")
+                or msg_lower.startswith("add")
+                or "feature" in msg_lower
+            ):
                 added.append(formatted_item)
             elif msg_lower.startswith("fix") or "bug" in msg_lower:
                 fixed.append(formatted_item)
@@ -205,7 +225,7 @@ class LocalChangelogGenerator(ChangelogGenerator):
                 security.append(formatted_item)
             else:
                 changed.append(formatted_item)
-                
+
         # Fill in defaults if completely empty
         if not commits:
             added.append(f"Initial v{summary.version} features sync.")
@@ -216,19 +236,19 @@ class LocalChangelogGenerator(ChangelogGenerator):
             for item in added:
                 lines.append(f"- {item}")
             lines.append("")
-            
+
         if changed:
             lines.append("### Changed")
             for item in changed:
                 lines.append(f"- {item}")
             lines.append("")
-            
+
         if security:
             lines.append("### Security")
             for item in security:
                 lines.append(f"- {item}")
             lines.append("")
-            
+
         if fixed:
             lines.append("### Fixed")
             for item in fixed:
@@ -241,22 +261,28 @@ class LocalChangelogGenerator(ChangelogGenerator):
 class LocalMigrationGuideGenerator(MigrationGuideGenerator):
     """Formats breaking changes instructions into a clean step-by-step migration layout."""
 
-    def generate_migration_guide(self, version_from: str, version_to: str, instructions: List[str]) -> str:
+    def generate_migration_guide(
+        self, version_from: str, version_to: str, instructions: List[str]
+    ) -> str:
         lines = []
         lines.append(f"# Migration Guide: v{version_from} to v{version_to}\n")
         lines.append("> [!WARNING]")
         lines.append("> Before attempting migration, ensure you have taken a full database backup.")
         lines.append("")
         lines.append("## Step-by-Step Instructions\n")
-        
+
         if instructions:
             for idx, inst in enumerate(instructions, 1):
                 lines.append(f"{idx}. [ ] **{inst}**")
         else:
-            lines.append("1. [ ] No manual migration steps are needed. Database schemas are backward compatible.")
-            
+            lines.append(
+                "1. [ ] No manual migration steps are needed. Database schemas are backward compatible."
+            )
+
         lines.append("\n## Verification Checklist")
-        lines.append("- [ ] Run repository test suite with `pytest` to confirm backward compatibility.")
+        lines.append(
+            "- [ ] Run repository test suite with `pytest` to confirm backward compatibility."
+        )
         lines.append("- [ ] Check service logs for initialization errors.")
 
         return "\n".join(lines)
@@ -272,7 +298,7 @@ class LocalUpgradeGuideGenerator(UpgradeGuideGenerator):
         lines.append("- Python 3.10+ installed")
         lines.append("- Verified network access to dependencies\n")
         lines.append("## Upgrade Steps Checklist\n")
-        
+
         if checklist:
             for item in checklist:
                 lines.append(f"- [ ] {item}")
@@ -280,7 +306,7 @@ class LocalUpgradeGuideGenerator(UpgradeGuideGenerator):
             lines.append("- [ ] Pull latest changes from stable branch.")
             lines.append("- [ ] Run virtualenv sync using poetry or pip install.")
             lines.append("- [ ] Restart the AI OS Kernel process.")
-            
+
         lines.append("\n## Sanity Check & Validation")
         lines.append("- Verify system status report through agy cli dashboard.")
         lines.append("- Run baseline test execution suite.")
@@ -300,14 +326,20 @@ class LocalReleaseValidator(ReleaseValidator):
         # 1. Semantic Version Checking
         semver_regex = r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?$"
         if not re.match(semver_regex, artifact.version):
-            errors.append(f"Invalid semantic version structure: '{artifact.version}'. Must match X.Y.Z scheme.")
+            errors.append(
+                f"Invalid semantic version structure: '{artifact.version}'. Must match X.Y.Z scheme."
+            )
 
         # 2. Check for Duplicate Release Entries
         try:
-            memories = self._memory.search_memory(artifact.version, memory_type=MemoryType.PROJECT, tags=["release_summary"])
+            memories = self._memory.search_memory(
+                artifact.version, memory_type=MemoryType.PROJECT, tags=["release_summary"]
+            )
             for m in memories:
                 if f"Version: {artifact.version}" in m.content:
-                    errors.append(f"Duplicate release entry detected: Version '{artifact.version}' already registered in project history.")
+                    errors.append(
+                        f"Duplicate release entry detected: Version '{artifact.version}' already registered in project history."
+                    )
         except Exception as e:
             logger.debug(f"Memory check for duplicate release failed: {e}")
 
@@ -321,12 +353,16 @@ class LocalReleaseValidator(ReleaseValidator):
             required_sections = ["Features", "Bug Fixes", "Breaking Changes"]
             for s in required_sections:
                 if not re.search(rf"#+\s+{s}", artifact.content, re.IGNORECASE):
-                    errors.append(f"Section completeness warning: Missing standard release notes section: '{s}'.")
+                    errors.append(
+                        f"Section completeness warning: Missing standard release notes section: '{s}'."
+                    )
 
         # Migration guides should check for checkbox placeholders if breaking changes are present
         if "migration" in artifact.artifact_id:
             if "[ ]" not in artifact.content:
-                errors.append("Migration guide completeness warning: No migration instruction checkboxes found.")
+                errors.append(
+                    "Migration guide completeness warning: No migration instruction checkboxes found."
+                )
 
         return errors
 
@@ -378,7 +414,7 @@ class LocalReleaseDocumentPlanner(ReleaseDocumentPlanner):
             release_date=time.time(),
             features_count=features_count,
             fixes_count=fixes_count,
-            breaking_changes_count=breaking_changes_count
+            breaking_changes_count=breaking_changes_count,
         )
 
 
@@ -415,7 +451,9 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
     def stop(self) -> None:
         pass
 
-    def _write_to_workspace(self, workspace_id: str, filename_template: str, content: str, **kwargs) -> str:
+    def _write_to_workspace(
+        self, workspace_id: str, filename_template: str, content: str, **kwargs
+    ) -> str:
         workspace_root = None
         workspace_service = None
         if self._registry:
@@ -435,7 +473,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
         filename = filename_template.format(**kwargs)
         releases_dir = os.path.join(workspace_root, "docs", "releases")
         os.makedirs(releases_dir, exist_ok=True)
-        
+
         file_path = os.path.join(releases_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -453,12 +491,14 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             "naming_conventions": getattr(doc, "naming_conventions", {}),
         }
 
-    def create_release_notes(self, workspace_id: str, summary: ReleaseSummary, details: Dict[str, Any]) -> ReleaseArtifact:
+    def create_release_notes(
+        self, workspace_id: str, summary: ReleaseSummary, details: Dict[str, Any]
+    ) -> ReleaseArtifact:
         logger.info(f"Generating Release Notes for version '{summary.version}'")
-        
+
         prefs = self._get_profile_preferences()
         merged_details = {**prefs, **details}
-        
+
         content = self._notes_generator.generate_release_notes(summary, merged_details)
 
         # AI Refinement
@@ -473,7 +513,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown text directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -490,22 +530,26 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             version=summary.version,
             channel=summary.channel,
             content=content,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
-        
+
         errors = self._validator.validate_release_document(artifact)
         if errors:
             logger.warning(f"Release Notes validation warnings: {errors}")
 
         # Write only in AI Workspace
-        filename_template = prefs.get("naming_conventions", {}).get("release_notes", "RELEASE_NOTES_{version}.md")
+        filename_template = prefs.get("naming_conventions", {}).get(
+            "release_notes", "RELEASE_NOTES_{version}.md"
+        )
         self._write_to_workspace(workspace_id, filename_template, content, version=summary.version)
 
         return artifact
 
-    def create_changelog(self, workspace_id: str, summary: ReleaseSummary, commits: List[Dict[str, Any]]) -> ReleaseArtifact:
+    def create_changelog(
+        self, workspace_id: str, summary: ReleaseSummary, commits: List[Dict[str, Any]]
+    ) -> ReleaseArtifact:
         logger.info(f"Generating Changelog for version '{summary.version}'")
-        
+
         content = self._changelog_generator.generate_changelog(summary, commits)
 
         if self._model:
@@ -519,7 +563,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -535,7 +579,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             version=summary.version,
             channel=summary.channel,
             content=content,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         errors = self._validator.validate_release_document(artifact)
@@ -548,10 +592,14 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
 
         return artifact
 
-    def create_migration_guide(self, workspace_id: str, version_from: str, version_to: str, instructions: List[str]) -> ReleaseArtifact:
+    def create_migration_guide(
+        self, workspace_id: str, version_from: str, version_to: str, instructions: List[str]
+    ) -> ReleaseArtifact:
         logger.info(f"Generating Migration Guide from '{version_from}' to '{version_to}'")
-        
-        content = self._migration_generator.generate_migration_guide(version_from, version_to, instructions)
+
+        content = self._migration_generator.generate_migration_guide(
+            version_from, version_to, instructions
+        )
 
         if self._model:
             try:
@@ -564,7 +612,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -580,7 +628,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             version=version_to,
             channel="stable",
             content=content,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         errors = self._validator.validate_release_document(artifact)
@@ -588,14 +636,20 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             logger.warning(f"Migration Guide validation warnings: {errors}")
 
         prefs = self._get_profile_preferences()
-        filename_template = prefs.get("naming_conventions", {}).get("migration_guide", "MIGRATION_GUIDE_{from}_TO_{to}.md")
-        self._write_to_workspace(workspace_id, filename_template, content, **{"from": version_from, "to": version_to})
+        filename_template = prefs.get("naming_conventions", {}).get(
+            "migration_guide", "MIGRATION_GUIDE_{from}_TO_{to}.md"
+        )
+        self._write_to_workspace(
+            workspace_id, filename_template, content, **{"from": version_from, "to": version_to}
+        )
 
         return artifact
 
-    def create_upgrade_guide(self, workspace_id: str, target_version: str, checklist: List[str]) -> ReleaseArtifact:
+    def create_upgrade_guide(
+        self, workspace_id: str, target_version: str, checklist: List[str]
+    ) -> ReleaseArtifact:
         logger.info(f"Generating Upgrade Guide for version '{target_version}'")
-        
+
         content = self._upgrade_generator.generate_upgrade_guide(target_version, checklist)
 
         if self._model:
@@ -609,7 +663,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -625,7 +679,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             version=target_version,
             channel="stable",
             content=content,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         errors = self._validator.validate_release_document(artifact)
@@ -633,7 +687,9 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             logger.warning(f"Upgrade Guide validation warnings: {errors}")
 
         prefs = self._get_profile_preferences()
-        filename_template = prefs.get("naming_conventions", {}).get("upgrade_guide", "UPGRADE_GUIDE_{version}.md")
+        filename_template = prefs.get("naming_conventions", {}).get(
+            "upgrade_guide", "UPGRADE_GUIDE_{version}.md"
+        )
         self._write_to_workspace(workspace_id, filename_template, content, version=target_version)
 
         return artifact
@@ -647,7 +703,7 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
             f"Artifact ID: {artifact.artifact_id}\n"
             f"Timestamp: {time.ctime(artifact.timestamp)}"
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -658,8 +714,8 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
                 "version": artifact.version,
                 "channel": artifact.channel,
                 "workspace_id": artifact.workspace_id,
-                "release_timestamp": artifact.timestamp
-            }
+                "release_timestamp": artifact.timestamp,
+            },
         )
 
     def publish_release_report(self, report: ReleaseDocumentationReport) -> None:
@@ -685,8 +741,8 @@ class LocalReleaseDocumentationService(ReleaseDocumentationService):
                 unique_id=f"release_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="release_documentation_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         # Expose summary Notion document sync on demand
         self._knowledge_hub.sync_document(doc, "notion")

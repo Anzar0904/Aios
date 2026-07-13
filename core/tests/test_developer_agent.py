@@ -69,7 +69,9 @@ def test_developer_agent_analyze_repository():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(DeveloperAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        DeveloperAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     # Track runtime events
     started = []
@@ -120,7 +122,9 @@ def test_developer_agent_explain_file():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(DeveloperAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        DeveloperAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     intent = Intent(
         intent_type=IntentType.DEVELOPER,
@@ -165,7 +169,9 @@ def test_developer_agent_git_review():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(DeveloperAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        DeveloperAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     intent = Intent(
         intent_type=IntentType.DEVELOPER,

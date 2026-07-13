@@ -9,6 +9,7 @@ from aios.services.workspace_intelligence import CodeStructureSummary
 
 class TestCategory(Enum):
     """Supported testing disciplines."""
+
     __test__ = False
     UNIT = "unit"
     INTEGRATION = "integration"
@@ -26,6 +27,7 @@ class TestCategory(Enum):
 
 class TestPriority(Enum):
     """Gauges prioritization sequence weights."""
+
     __test__ = False
     LOW = "low"
     MEDIUM = "medium"
@@ -35,6 +37,7 @@ class TestPriority(Enum):
 
 class TestStrategy(Enum):
     """Refers to validation depth bounds."""
+
     __test__ = False
     MINIMAL = "minimal"
     STANDARD = "standard"
@@ -45,6 +48,7 @@ class TestStrategy(Enum):
 @dataclass
 class TestRequirement:
     """Requirement criteria for satisfying validation targets."""
+
     __test__ = False
     requirement_id: str
     description: str
@@ -55,6 +59,7 @@ class TestRequirement:
 @dataclass
 class TestTarget:
     """Specific code target (file path or symbol class/function)."""
+
     __test__ = False
     target_id: str
     file_path: str
@@ -65,6 +70,7 @@ class TestTarget:
 @dataclass
 class TestScope:
     """Encloses target lists, goals, and risk levels."""
+
     __test__ = False
     targets: List[TestTarget]
     excluded_targets: List[str]
@@ -75,6 +81,7 @@ class TestScope:
 @dataclass
 class TestSuite:
     """Packaged collection of test definitions targeting specific modules."""
+
     __test__ = False
     suite_id: str
     name: str
@@ -86,6 +93,7 @@ class TestSuite:
 @dataclass
 class TestPlan:
     """Complete testing plan specification."""
+
     __test__ = False
     plan_id: str
     objective: str
@@ -98,6 +106,7 @@ class TestPlan:
 @dataclass
 class TestPlanningResult:
     """Ordered result sequence of test planner run."""
+
     __test__ = False
     result_id: str
     plan: TestPlan
@@ -108,14 +117,12 @@ class TestPlanningResult:
 
 class TestPlanner(abc.ABC):
     """Core logic engine mapping changes to testing strategies and prioritization queues."""
+
     __test__ = False
 
     @abc.abstractmethod
     def plan_tests(
-        self,
-        objective: str,
-        affected_files: List[str],
-        code_summary: CodeStructureSummary
+        self, objective: str, affected_files: List[str], code_summary: CodeStructureSummary
     ) -> TestPlanningResult:
         """Determines strategies, scopes, suites, prioritization order, and estimated timelines."""
         pass
@@ -130,7 +137,7 @@ class AITestEngineerService(ServiceLifecycle, abc.ABC):
         workspace_id: str,
         objective: str,
         affected_files: List[str],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> TestPlanningResult:
         """Orchestrates test planning result generation."""
         pass

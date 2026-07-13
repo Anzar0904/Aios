@@ -67,7 +67,7 @@ class RepositoryEntry:
     file_path: str
     docstring: Optional[str]
     base_classes: List[str] = field(default_factory=list)
-    entity: Optional[str] = None          # e.g. "Workspace" from WorkspaceRepository
+    entity: Optional[str] = None  # e.g. "Workspace" from WorkspaceRepository
     implementation: Optional[str] = None
     impl_file: Optional[str] = None
     methods: List[str] = field(default_factory=list)
@@ -132,7 +132,7 @@ class DbModelEntry:
     module: str
     file_path: str
     docstring: Optional[str]
-    kind: str = "dataclass"   # "dataclass" | "enum" | "class"
+    kind: str = "dataclass"  # "dataclass" | "enum" | "class"
     fields: List[str] = field(default_factory=list)
     line_number: int = 0
 

@@ -319,7 +319,12 @@ class TestPersistenceArchitecture:
 
     def test_has_persistence_layers(self, content):
         """Persistence diagram should show layers."""
-        assert "SQLite" in content or "PostgreSQL" in content or "Redis" in content or "Qdrant" in content
+        assert (
+            "SQLite" in content
+            or "PostgreSQL" in content
+            or "Redis" in content
+            or "Qdrant" in content
+        )
 
 
 # ==============================================================================

@@ -9,6 +9,7 @@ from ..utilities import deserialize_val, serialize_val
 
 logger = logging.getLogger(__name__)
 
+
 class QuotaRegistryImpl(QuotaRegistry):
     def __init__(self) -> None:
         self.configs: Dict[str, Dict[str, Any]] = {}
@@ -642,5 +643,3 @@ class RedisRateLimitServiceImpl(RedisRateLimitService):
 
     def get_stats(self) -> RateLimitStatisticsCollector:
         return self.stats
-
-

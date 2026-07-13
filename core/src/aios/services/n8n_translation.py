@@ -9,6 +9,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class WorkflowIR:
     """Canonical Intermediate Representation (IR) of a workflow."""
+
     ir_id: str
     workflow_id: str
     name: str
@@ -22,6 +23,7 @@ class WorkflowIR:
 @dataclass
 class TranslationContext:
     """Carries local session state variables, configurations and validation errors."""
+
     workspace_id: str
     session_id: str
     variables_mapping: Dict[str, str] = field(default_factory=dict)
@@ -31,6 +33,7 @@ class TranslationContext:
 @dataclass
 class TranslationReport:
     """Outcome report describing compiles count, warnings, and path targets."""
+
     report_id: str
     session_id: str
     workspace_id: str
@@ -53,23 +56,23 @@ class N8NNodeMapper(abc.ABC):
 class N8NConnectionMapper:
     """Compiles workflow edges into main execution connection structures."""
 
-    def map_connections(self, edges: List[Dict[str, Any]], context: TranslationContext) -> Dict[str, Any]:
+    def map_connections(
+        self, edges: List[Dict[str, Any]], context: TranslationContext
+    ) -> Dict[str, Any]:
         connections = {}
         for edge in edges:
             src = edge.get("source_node_id")
             tgt = edge.get("target_node_id")
             if not src or not tgt:
-                context.errors.append(f"Connection Error: Edge '{edge.get('edge_id')}' has missing endpoints.")
+                context.errors.append(
+                    f"Connection Error: Edge '{edge.get('edge_id')}' has missing endpoints."
+                )
                 continue
 
             # n8n connection schema
             if src not in connections:
                 connections[src] = {"main": [[]]}
-            connections[src]["main"][0].append({
-                "node": tgt,
-                "type": "main",
-                "index": 0
-            })
+            connections[src]["main"][0].append({"node": tgt, "type": "main", "index": 0})
         return connections
 
 
@@ -84,10 +87,12 @@ class N8NExpressionBuilder:
 class N8NCredentialMapper:
     """Associates credential vault pointers to secure nodes properties."""
 
-    def map_credential(self, cred_ref: Dict[str, Any], context: TranslationContext) -> Dict[str, Any]:
+    def map_credential(
+        self, cred_ref: Dict[str, Any], context: TranslationContext
+    ) -> Dict[str, Any]:
         name = cred_ref.get("credential_name")
         p_type = cred_ref.get("provider_type")
-        
+
         # Maps providers into n8n credential formats
         n8n_cred_name = "n8nApi"
         if p_type == "github":
@@ -95,33 +100,26 @@ class N8NCredentialMapper:
         elif p_type == "temporal":
             n8n_cred_name = "temporalApi"
 
-        return {
-            n8n_cred_name: {
-                "id": f"cred_id_{name}",
-                "name": name
-            }
-        }
+        return {n8n_cred_name: {"id": f"cred_id_{name}", "name": name}}
 
 
 class N8NWorkflowBuilder:
     """Constructs final JSON payloads compliant with n8n schema standards."""
 
     def build_workflow_json(
-        self, 
-        ir: WorkflowIR, 
-        nodes: List[Dict[str, Any]], 
-        connections: Dict[str, Any], 
-        context: TranslationContext
+        self,
+        ir: WorkflowIR,
+        nodes: List[Dict[str, Any]],
+        connections: Dict[str, Any],
+        context: TranslationContext,
     ) -> Dict[str, Any]:
         return {
             "name": ir.name,
             "nodes": nodes,
             "connections": connections,
             "active": True,
-            "settings": {
-                "executionTimeout": ir.policy.get("timeout_seconds", 3600)
-            },
-            "tags": ir.metadata.get("tags", [])
+            "settings": {"executionTimeout": ir.policy.get("timeout_seconds", 3600)},
+            "tags": ir.metadata.get("tags", []),
         }
 
 
@@ -165,7 +163,9 @@ class WorkflowTranslator(ServiceLifecycle, abc.ABC):
     """Main gateway coordinating translation runs, memory stores, and reports updates."""
 
     @abc.abstractmethod
-    def translate_workflow(self, definition: WorkflowDefinition, workspace_id: str) -> TranslationReport:
+    def translate_workflow(
+        self, definition: WorkflowDefinition, workspace_id: str
+    ) -> TranslationReport:
         """Executes full translation compiler pipeline, writes workspace reports and json target."""
         pass
 

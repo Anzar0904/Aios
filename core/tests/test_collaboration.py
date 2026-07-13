@@ -46,7 +46,7 @@ def test_reviewer_roles():
         reviewer_id="rev_1",
         name="Alice",
         role=ReviewerRole.ARCHITECT,
-        permissions=["resolve_thread", "cast_vote"]
+        permissions=["resolve_thread", "cast_vote"],
     )
     assert reviewer.role == ReviewerRole.ARCHITECT
     assert "cast_vote" in reviewer.permissions
@@ -63,7 +63,7 @@ def test_comment_and_thread_lifecycle(mock_memory_service):
         content="This is an architectural issue.",
         comment_type="architecture",
         timestamp=time.time(),
-        linked_artifacts=["core/kernel.py"]
+        linked_artifacts=["core/kernel.py"],
     )
     thread = service.create_thread("ws_1", "sess_1", comment)
     assert thread.root_comment.author == "Alice"
@@ -76,10 +76,10 @@ def test_comment_and_thread_lifecycle(mock_memory_service):
         author="Bob",
         content="I will fix it in the next patch.",
         comment_type="general",
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.reply_to_comment("ws_1", thread.thread_id, "c1", reply)
-    
+
     threads = service.get_threads("ws_1", "sess_1")
     assert len(threads[0].root_comment.replies) == 1
     assert threads[0].root_comment.replies[0].author == "Bob"
@@ -101,7 +101,7 @@ def test_audit_log_and_timeline(mock_memory_service):
 
     comment = ReviewComment("c1", "Alice", "Validation comments", "validation", time.time())
     service.create_thread("ws_1", "sess_1", comment)
-    
+
     vote = ReviewVote("Bob", "approve_with_conditions", "Minor code style warnings.", time.time())
     service.cast_vote("ws_1", "sess_1", vote)
 
@@ -126,18 +126,17 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalReviewCollaborationService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalReviewCollaborationService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
     comment = ReviewComment("c1", "Alice", "Doc issue", "documentation", time.time())
     service.create_thread(ws_id, "sess_collab_1", comment)
-    
+
     service.compile_collaboration_report(ws_id, "sess_collab_1")
-    expected_file = os.path.join(ws_root, "docs", "collaborations", "COLLABORATION_REPORT_sess_collab_1.md")
-    
+    expected_file = os.path.join(
+        ws_root, "docs", "collaborations", "COLLABORATION_REPORT_sess_collab_1.md"
+    )
+
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
         content = f.read()
@@ -145,9 +144,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalReviewCollaborationService(
-        memory_service=mock_memory_service
-    )
+    service = LocalReviewCollaborationService(memory_service=mock_memory_service)
     service.initialize()
 
     comment = ReviewComment("c1", "Alice", "General comments", "general", time.time())
@@ -169,8 +166,7 @@ def test_memory_integration(mock_memory_service):
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
     service = LocalReviewCollaborationService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
+        memory_service=mock_memory_service, knowledge_hub=mock_kh
     )
     service.initialize()
 
@@ -179,7 +175,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         workspace_id="ws_1",
         session_id="sess_1",
         vote_summary={"approve": 1},
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.publish_collaboration_report(report)
 

@@ -60,7 +60,9 @@ def ri_setup():
     ri_lifecycle = RuntimeLifecycleMonitor()
     ri_stats = RuntimeStatisticsEngine(service)
     ri_diag = RuntimeDiagnosticsEngine()
-    ri_recommend = RuntimeRecommendationEngine(ri_telem, ri_perf, ri_capacity, ri_query_prof, ri_tx_prof, ri_repo_prof)
+    ri_recommend = RuntimeRecommendationEngine(
+        ri_telem, ri_perf, ri_capacity, ri_query_prof, ri_tx_prof, ri_repo_prof
+    )
     ri_health = RuntimeHealthMonitor(service, ri_telem)
     ri_report = RuntimeReportGenerator(os.getcwd(), None)
 
@@ -76,7 +78,7 @@ def ri_setup():
         ri_tx_prof,
         ri_repo_prof,
         ri_lifecycle,
-        ri_report
+        ri_report,
     )
     ri_report.intelligence = ri_service
     service.ri_service = ri_service
@@ -115,10 +117,7 @@ def ri_setup():
 def test_correlation_manager():
     # Test setting context
     corr_id = RuntimeCorrelationManager.set_context(
-        workspace_id="ws_123",
-        project_id="proj_456",
-        repository="test_repo",
-        operation="save"
+        workspace_id="ws_123", project_id="proj_456", repository="test_repo", operation="save"
     )
     assert corr_id is not None
 
@@ -197,7 +196,7 @@ def test_diagnostics_and_recommendations(ri_setup):
 
 def test_report_generation(ri_setup):
     ri_service = ri_setup["ri_service"]
-    
+
     # Execute report generation
     ri_service.generate_reports()
 

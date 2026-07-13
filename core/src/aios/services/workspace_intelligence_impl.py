@@ -60,8 +60,14 @@ def detect_project_boundary(workspace_root: str) -> str:
             break  # .git is unambiguous — stop here
         if package_root is None:
             package_indicators = {
-                "pyproject.toml", "package.json", "Cargo.toml",
-                "go.mod", "setup.py", "requirements.txt", "pom.xml", "build.gradle",
+                "pyproject.toml",
+                "package.json",
+                "Cargo.toml",
+                "go.mod",
+                "setup.py",
+                "requirements.txt",
+                "pom.xml",
+                "build.gradle",
             }
             if any((current / ind).exists() for ind in package_indicators):
                 package_root = current
@@ -75,8 +81,15 @@ def detect_project_boundary(workspace_root: str) -> str:
 def find_all_workspaces(project_root: str, default_ignores: set) -> List[str]:
     workspaces = []
     root_path = Path(project_root).resolve()
-    config_names = {"package.json", "Cargo.toml", "go.mod", "pyproject.toml", "build.gradle", "pom.xml"}
-    
+    config_names = {
+        "package.json",
+        "Cargo.toml",
+        "go.mod",
+        "pyproject.toml",
+        "build.gradle",
+        "pom.xml",
+    }
+
     for root, dirs, files in os.walk(root_path):
         dirs[:] = [d for d in dirs if d not in default_ignores and not d.startswith(".")]
         if any(f in config_names for f in files):
@@ -116,7 +129,7 @@ def symbol_to_dict(sym: SymbolReference) -> Dict[str, Any]:
         "dependencies": sym.dependencies,
         "decorators": sym.decorators,
         "is_public": sym.is_public,
-        "meta": sym.meta
+        "meta": sym.meta,
     }
 
 
@@ -131,11 +144,13 @@ def dict_to_symbol(d: Dict[str, Any]) -> SymbolReference:
         dependencies=d.get("dependencies", []),
         decorators=d.get("decorators", []),
         is_public=d.get("is_public", True),
-        meta=d.get("meta", {})
+        meta=d.get("meta", {}),
     )
 
 
-def classify_architecture(workspace_root: str, structure: List[str], code_intel: Optional[Any] = None) -> Dict[str, List[str]]:
+def classify_architecture(
+    workspace_root: str, structure: List[str], code_intel: Optional[Any] = None
+) -> Dict[str, List[str]]:
     arch_map = {
         "services": [],
         "controllers": [],
@@ -144,28 +159,49 @@ def classify_architecture(workspace_root: str, structure: List[str], code_intel:
         "database_layer": [],
         "middleware": [],
         "utilities": [],
-        "configuration": []
+        "configuration": [],
     }
-    
+
     for file in structure:
         file_path = Path(workspace_root) / file
         file_lower = file.lower()
         ext = file_path.suffix.lower()
-        
-        if ext in (".toml", ".json", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (".gitignore", ".env", "dockerfile", "docker-compose.yml"):
+
+        if ext in (".toml", ".json", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (
+            ".gitignore",
+            ".env",
+            "dockerfile",
+            "docker-compose.yml",
+        ):
             arch_map["configuration"].append(file)
             continue
-            
-        if ext not in (".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".cpp", ".c", ".h"):
+
+        if ext not in (
+            ".py",
+            ".ts",
+            ".tsx",
+            ".js",
+            ".jsx",
+            ".go",
+            ".rs",
+            ".java",
+            ".cpp",
+            ".c",
+            ".h",
+        ):
             continue
-            
+
         purpose = "source"
-        if "test_" in file_lower or "_test" in file_lower or file_lower.endswith((".test.js", ".spec.ts", ".test.ts")):
+        if (
+            "test_" in file_lower
+            or "_test" in file_lower
+            or file_lower.endswith((".test.js", ".spec.ts", ".test.ts"))
+        ):
             purpose = "test"
-            
+
         if purpose == "test":
             continue
-            
+
         exports = []
         if code_intel:
             try:
@@ -174,36 +210,72 @@ def classify_architecture(workspace_root: str, structure: List[str], code_intel:
                     exports = meta.exports
             except Exception:
                 pass
-                
+
         name_stem = file_path.stem.lower()
-        
-        if "service" in name_stem or any("service" in exp.lower() for exp in exports) or "services/" in file:
+
+        if (
+            "service" in name_stem
+            or any("service" in exp.lower() for exp in exports)
+            or "services/" in file
+        ):
             arch_map["services"].append(file)
         elif "controller" in name_stem or any("controller" in exp.lower() for exp in exports):
             arch_map["controllers"].append(file)
-        elif "model" in name_stem or any("model" in exp.lower() for exp in exports) or "models/" in file:
+        elif (
+            "model" in name_stem
+            or any("model" in exp.lower() for exp in exports)
+            or "models/" in file
+        ):
             arch_map["models"].append(file)
-        elif any(db_word in name_stem for db_word in ("db", "database", "repository", "repo", "query", "postgres", "sql", "redis", "qdrant")):
+        elif any(
+            db_word in name_stem
+            for db_word in (
+                "db",
+                "database",
+                "repository",
+                "repo",
+                "query",
+                "postgres",
+                "sql",
+                "redis",
+                "qdrant",
+            )
+        ):
             arch_map["database_layer"].append(file)
         elif "middleware" in name_stem or any("middleware" in exp.lower() for exp in exports):
             arch_map["middleware"].append(file)
-        elif any(util_word in name_stem for util_word in ("util", "helper", "common", "tool", "shared")) or "utils/" in file or "helpers/" in file:
+        elif (
+            any(
+                util_word in name_stem
+                for util_word in ("util", "helper", "common", "tool", "shared")
+            )
+            or "utils/" in file
+            or "helpers/" in file
+        ):
             arch_map["utilities"].append(file)
-            
+
         is_route = False
         if any(route_word in name_stem for route_word in ("route", "api", "endpoint")):
             is_route = True
         else:
             try:
                 content = file_path.read_text(encoding="utf-8", errors="ignore")
-                route_patterns = ("@app.get", "@app.post", "@router.get", "@router.post", "@blueprint.route", "router.get", "app.get")
+                route_patterns = (
+                    "@app.get",
+                    "@app.post",
+                    "@router.get",
+                    "@router.post",
+                    "@blueprint.route",
+                    "router.get",
+                    "app.get",
+                )
                 if any(pat in content for pat in route_patterns):
                     is_route = True
             except Exception:
                 pass
         if is_route and file not in arch_map["services"] and file not in arch_map["controllers"]:
             arch_map["apis_routes"].append(file)
-            
+
     return arch_map
 
 
@@ -215,14 +287,16 @@ def detect_coding_conventions(symbols: List[SymbolReference]) -> Dict[str, Any]:
     }
     [s.name for s in symbols if s.symbol_type == "class"]
     func_names = [s.name for s in symbols if s.symbol_type == "function"]
-    
+
     if func_names:
         snake_count = sum(1 for name in func_names if "_" in name)
-        camel_count = sum(1 for name in func_names if any(c.isupper() for c in name) and "_" not in name)
+        camel_count = sum(
+            1 for name in func_names if any(c.isupper() for c in name) and "_" not in name
+        )
         if camel_count > snake_count:
             conventions["function_naming"] = "camelCase"
             conventions["method_naming"] = "camelCase"
-            
+
     return conventions
 
 
@@ -242,11 +316,15 @@ class LocalRepositoryAnalyzer(RepositoryAnalyzer):
             except Exception:
                 pass
 
-        has_docker = (root_path / "Dockerfile").is_file() or (root_path / "docker-compose.yml").is_file()
+        has_docker = (root_path / "Dockerfile").is_file() or (
+            root_path / "docker-compose.yml"
+        ).is_file()
 
         env_files = []
         try:
-            env_files = [f.name for f in root_path.iterdir() if f.is_file() and f.name.startswith(".env")]
+            env_files = [
+                f.name for f in root_path.iterdir() if f.is_file() and f.name.startswith(".env")
+            ]
         except Exception:
             pass
 
@@ -302,21 +380,35 @@ class LocalArchitectureAnalyzer(ArchitectureAnalyzer):
                 logger.debug(f"LLM architectural analysis failed: {e}. Falling back to rules.")
 
         # Fallback
-        components = ["Kernel", "Orchestrator", "ServiceRegistry", "MemoryService", "ReasoningService", "IntentEngine"]
+        components = [
+            "Kernel",
+            "Orchestrator",
+            "ServiceRegistry",
+            "MemoryService",
+            "ReasoningService",
+            "IntentEngine",
+        ]
         if "package.json" in str(files) or "npm/yarn" in context.package_managers:
             components.append("WebFrontEnd")
 
-        design_patterns = ["Dependency Injection", "Singleton (ServiceRegistry)", "Composition Root", "Lifecycle Hooks"]
+        design_patterns = [
+            "Dependency Injection",
+            "Singleton (ServiceRegistry)",
+            "Composition Root",
+            "Lifecycle Hooks",
+        ]
         observations = [
             "Modular services decouple implementation details from abstraction interfaces.",
-            "Strict clean architecture boundaries are maintained in core directories."
+            "Strict clean architecture boundaries are maintained in core directories.",
         ]
 
         return {
             "high_level_architecture": "Clean Architecture implementation with segregated domains and dynamic service lookup registries.",
             "components": components,
             "entry_points": ["core/src/aios/bootstrap.py", "core/src/aios/kernel.py"],
-            "execution_paths": ["Bootstrapping -> Kernel run -> Intent classification -> Reasoning Plan -> Execution"],
+            "execution_paths": [
+                "Bootstrapping -> Kernel run -> Intent classification -> Reasoning Plan -> Execution"
+            ],
             "design_patterns": design_patterns,
             "architectural_observations": observations,
         }
@@ -369,7 +461,7 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
 
         # Analyze files list for ecosystem indicators
         files_set = set(files)
-        
+
         # Next.js / Express / React
         if "package.json" in files_set:
             if "npm/yarn" not in package_managers:
@@ -377,7 +469,11 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
             build_systems.append("npm scripts")
             runtimes.append("Node.js")
             try:
-                content = (Path(workspace_root) / "package.json").read_text(encoding="utf-8", errors="ignore").lower()
+                content = (
+                    (Path(workspace_root) / "package.json")
+                    .read_text(encoding="utf-8", errors="ignore")
+                    .lower()
+                )
                 if "next" in content and "Next.js" not in frameworks:
                     frameworks.append("Next.js")
                 if "express" in content and "Express" not in frameworks:
@@ -392,12 +488,16 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
                 pass
 
         # FastAPI / Django / Flask / Python
-        if "pyproject.toml" in files_set or "requirements.txt" in files_set or "setup.py" in files_set:
+        if (
+            "pyproject.toml" in files_set
+            or "requirements.txt" in files_set
+            or "setup.py" in files_set
+        ):
             if "poetry/pip" not in package_managers:
                 package_managers.append("poetry/pip")
             build_systems.append("setuptools/poetry")
             runtimes.append("Python Runtime")
-            
+
             try:
                 for f in ("pyproject.toml", "requirements.txt"):
                     f_path = Path(workspace_root) / f
@@ -471,7 +571,12 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
             linters.append("ruff")
         if "eslint" in all_deps:
             linters.append("eslint")
-        if "sqlite3" in all_deps or "postgresql" in all_deps or "psycopg2" in all_deps or "psycopg2-binary" in all_deps:
+        if (
+            "sqlite3" in all_deps
+            or "postgresql" in all_deps
+            or "psycopg2" in all_deps
+            or "psycopg2-binary" in all_deps
+        ):
             databases.append("PostgreSQL / Relational Database")
         if "redis" in all_deps:
             databases.append("Redis Cache")
@@ -492,13 +597,14 @@ class LocalTechnologyAnalyzer(TechnologyAnalyzer):
         }
 
 
-
 class LocalDocumentationAnalyzer(DocumentationAnalyzer):
     def analyze(self, workspace_root: str, project_context: Any) -> Dict[str, Any]:
         context: ProjectContext = project_context["context"]
         files = context.structure
 
-        doc_files = [f for f in files if f.startswith("docs/") or f.endswith(".md") or f.endswith(".txt")]
+        doc_files = [
+            f for f in files if f.startswith("docs/") or f.endswith(".md") or f.endswith(".txt")
+        ]
         readme_files = [f for f in files if "README" in f.upper()]
         adr_count = context.adr_count
 
@@ -549,14 +655,24 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 
         # 1. Project Boundary Detection
         boundary = detect_project_boundary(workspace_root)
-        
+
         # 2. Default Ignores & Monorepos workspaces
-        default_ignores = {".git", "node_modules", ".venv", "venv", ".pytest_cache", ".ruff_cache", "__pycache__", "dist", "build"}
+        default_ignores = {
+            ".git",
+            "node_modules",
+            ".venv",
+            "venv",
+            ".pytest_cache",
+            ".ruff_cache",
+            "__pycache__",
+            "dist",
+            "build",
+        }
         workspaces = find_all_workspaces(boundary, default_ignores)
 
         # 3. Analyze raw repo data
         repo_data = self._analyzer.analyze(workspace_root)
-        
+
         # 4. Custom Ignore patterns (.aiosignore rules)
         aiosignore_rules = load_aiosignore_rules(Path(boundary))
         context: ProjectContext = repo_data["context"]
@@ -589,7 +705,16 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
         total_folders = context.statistics.get("total_folders", 0)
 
         test_count = len([f for f in context.structure if "test_" in f or "_test" in f])
-        config_files_count = len([f for f in context.structure if f.endswith(".json") or f.endswith(".toml") or f.endswith(".yaml") or f.endswith(".yml")])
+        config_files_count = len(
+            [
+                f
+                for f in context.structure
+                if f.endswith(".json")
+                or f.endswith(".toml")
+                or f.endswith(".yaml")
+                or f.endswith(".yml")
+            ]
+        )
         config_completeness = min(1.0, config_files_count / 10.0)
 
         health = RepositoryHealth(
@@ -632,7 +757,7 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 "testing_frameworks": tech_data.get("testing_frameworks", []),
                 "databases": tech_data.get("databases", []),
                 "deployment_configs": tech_data.get("deployment_configs", []),
-            }
+            },
         )
 
         # 5. Dependency & Call graph details with CodeIntelligenceService
@@ -641,13 +766,13 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
         if code_intel:
             try:
                 code_summary = code_intel.analyze_codebase(workspace_root)
-                
+
                 # Circular dependency detection
                 dep_graph = code_summary.dependency_graph
                 visited = {}
                 path = []
                 circular_deps = []
-                
+
                 def detect_cycle(node):
                     visited[node] = 1
                     path.append(node)
@@ -656,7 +781,9 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                             cycle_start = path.index(neighbor)
                             cycle = path[cycle_start:] + [neighbor]
                             try:
-                                rel_cycle = [str(Path(p).relative_to(Path(workspace_root))) for p in cycle]
+                                rel_cycle = [
+                                    str(Path(p).relative_to(Path(workspace_root))) for p in cycle
+                                ]
                                 if rel_cycle not in circular_deps:
                                     circular_deps.append(rel_cycle)
                             except Exception:
@@ -677,20 +804,25 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 for imports in dep_graph.values():
                     for imp in imports:
                         all_imported.add(imp)
-                        
+
                 entry_points_abs = [str(Path(workspace_root) / ep) for ep in summary.entry_points]
                 unused_modules = []
-                
+
                 for file_abs in dep_graph:
                     try:
                         rel_file = str(Path(file_abs).relative_to(Path(workspace_root)))
                         meta = code_intel.get_file_metadata(rel_file)
-                        if meta and meta.purpose == "source" and file_abs not in all_imported and file_abs not in entry_points_abs:
+                        if (
+                            meta
+                            and meta.purpose == "source"
+                            and file_abs not in all_imported
+                            and file_abs not in entry_points_abs
+                        ):
                             unused_modules.append(rel_file)
                     except Exception:
                         pass
                 summary.metadata["unused_modules"] = unused_modules
-                
+
             except Exception as e:
                 logger.debug(f"Codebase analysis integration failed: {e}")
 
@@ -716,11 +848,21 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                     file_lower = file.lower()
                     if "auth" in file_lower or "login" in file_lower or "jwt" in file_lower:
                         auth_locations.append(file)
-                    if "db" in file_lower or "database" in file_lower or "postgres" in file_lower or "sql" in file_lower:
+                    if (
+                        "db" in file_lower
+                        or "database" in file_lower
+                        or "postgres" in file_lower
+                        or "sql" in file_lower
+                    ):
                         db_locations.append(file)
                     if "route" in file_lower or "api" in file_lower or "controller" in file_lower:
                         api_entrypoints.append(file)
-                    if meta.purpose == "config" or "docker" in file_lower or "github/workflows" in file_lower or "deployment" in file_lower:
+                    if (
+                        meta.purpose == "config"
+                        or "docker" in file_lower
+                        or "github/workflows" in file_lower
+                        or "deployment" in file_lower
+                    ):
                         build_deployment_config.append(file)
             except Exception:
                 pass
@@ -742,10 +884,19 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
             metadata=MemoryMetadata(
                 workspace_id="default_workspace",
                 session_id="workspace_intelligence_session",
-                tags=["repository_summary", "architecture_summary", "project_knowledge", "auth_location", "database_location", "api_entrypoint", "build_configuration", "deployment_configuration"],
+                tags=[
+                    "repository_summary",
+                    "architecture_summary",
+                    "project_knowledge",
+                    "auth_location",
+                    "database_location",
+                    "api_entrypoint",
+                    "build_configuration",
+                    "deployment_configuration",
+                ],
                 importance=2,
-                source_subsystem="workspace_intelligence"
-            )
+                source_subsystem="workspace_intelligence",
+            ),
         )
 
         try:
@@ -753,20 +904,21 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 import time
 
                 from aios.services.persistence import SemanticMemoryManager
+
                 sem_mgr = self._registry.get(SemanticMemoryManager)
                 if sem_mgr:
                     ws_id = "default_workspace"
                     metadata = {
                         "workspace_id": ws_id,
                         "timestamp": time.time(),
-                        "type": "repository_summary"
+                        "type": "repository_summary",
                     }
                     sem_mgr.index_memory(
                         repository_name="workspace_memory",
                         entity_id=summary.summary_id,
                         text=summary_content,
                         metadata=metadata,
-                        tags=["repository_summary", "architecture_summary"]
+                        tags=["repository_summary", "architecture_summary"],
                     )
         except Exception:
             pass
@@ -795,21 +947,35 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 unique_id=f"workspace_summary_{int(summary.timestamp)}",
                 timestamp=summary.timestamp,
                 source_subsystem="workspace_intelligence",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")
 
     def get_workspace_context(self, workspace_root: str) -> WorkspaceContext:
         boundary = detect_project_boundary(workspace_root)
         summary = self.analyze_repository(workspace_root)
-        
-        default_ignores = {".git", "node_modules", ".venv", "venv", ".pytest_cache", ".ruff_cache", "__pycache__", "dist", "build"}
+
+        default_ignores = {
+            ".git",
+            "node_modules",
+            ".venv",
+            "venv",
+            ".pytest_cache",
+            ".ruff_cache",
+            "__pycache__",
+            "dist",
+            "build",
+        }
         workspaces = find_all_workspaces(boundary, default_ignores)
-        
+
         # Analyze codebase symbols for conventions
         code_intel = self._registry.get(CodeIntelligenceService) if self._registry else None
-        conventions = {"class_naming": "PascalCase", "function_naming": "snake_case", "method_naming": "snake_case"}
+        conventions = {
+            "class_naming": "PascalCase",
+            "function_naming": "snake_case",
+            "method_naming": "snake_case",
+        }
         symbols = []
         if code_intel:
             try:
@@ -818,8 +984,10 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
             except Exception:
                 pass
 
-        arch_map = classify_architecture(workspace_root, summary.health.statistics.get("structure", []), code_intel)
-        
+        arch_map = classify_architecture(
+            workspace_root, summary.health.statistics.get("structure", []), code_intel
+        )
+
         project_type = "single-package"
         if len(workspaces) > 1:
             project_type = "monorepo"
@@ -834,7 +1002,11 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
         important_dirs = []
         try:
             for item in Path(workspace_root).iterdir():
-                if item.is_dir() and not item.name.startswith(".") and item.name not in default_ignores:
+                if (
+                    item.is_dir()
+                    and not item.name.startswith(".")
+                    and item.name not in default_ignores
+                ):
                     important_dirs.append(item.name)
         except Exception:
             pass
@@ -846,17 +1018,22 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 "high_level_architecture": summary.high_level_architecture,
                 "components": summary.components,
                 "design_patterns": summary.design_patterns,
-                "segmentation": arch_map
+                "segmentation": arch_map,
             },
             dependencies=summary.dependencies,
             project_type=project_type,
             important_directories=important_dirs,
             coding_conventions=conventions,
             workspaces=workspaces,
-            metadata=summary.metadata
+            metadata=summary.metadata,
         )
 
-    def generate_markdown_reports(self, workspace_root: str, summary: RepositorySummary, code_summary: Optional[CodeStructureSummary] = None) -> None:
+    def generate_markdown_reports(
+        self,
+        workspace_root: str,
+        summary: RepositorySummary,
+        code_summary: Optional[CodeStructureSummary] = None,
+    ) -> None:
         docs_dir = Path(workspace_root) / "docs"
         docs_dir.mkdir(exist_ok=True)
 
@@ -877,9 +1054,11 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
                 pass
 
         recent_commits = get_recent_commits(workspace_root)
-        recent_commits_list = "\n".join([f"- {c}" for c in recent_commits]) if recent_commits else "- None"
+        recent_commits_list = (
+            "\n".join([f"- {c}" for c in recent_commits]) if recent_commits else "- None"
+        )
         workspaces_list = "\n".join([f"- {ws}" for ws in summary.metadata.get("workspaces", [])])
-        
+
         # 1. REPOSITORY_SUMMARY.md
         repo_summary_md = f"""# Repository Summary
 
@@ -911,8 +1090,12 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 
         # 2. ARCHITECTURE_SUMMARY.md
         code_intel = self._registry.get(CodeIntelligenceService) if self._registry else None
-        arch_map = classify_architecture(workspace_root, summary.metadata.get("structure", []) or summary.health.statistics.get("structure", []), code_intel)
-        
+        arch_map = classify_architecture(
+            workspace_root,
+            summary.metadata.get("structure", []) or summary.health.statistics.get("structure", []),
+            code_intel,
+        )
+
         def format_list(lst):
             return "\n".join([f"- {item}" for item in lst]) if lst else "- None"
 
@@ -937,28 +1120,28 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 
 ## Codebase Architecture Segmentation
 ### Services
-{format_list(arch_map['services'])}
+{format_list(arch_map["services"])}
 
 ### Controllers
-{format_list(arch_map['controllers'])}
+{format_list(arch_map["controllers"])}
 
 ### APIs / Routes
-{format_list(arch_map['apis_routes'])}
+{format_list(arch_map["apis_routes"])}
 
 ### Models
-{format_list(arch_map['models'])}
+{format_list(arch_map["models"])}
 
 ### Database Layer
-{format_list(arch_map['database_layer'])}
+{format_list(arch_map["database_layer"])}
 
 ### Middleware
-{format_list(arch_map['middleware'])}
+{format_list(arch_map["middleware"])}
 
 ### Utilities
-{format_list(arch_map['utilities'])}
+{format_list(arch_map["utilities"])}
 
 ### Configuration
-{format_list(arch_map['configuration'])}
+{format_list(arch_map["configuration"])}
 
 ## Architectural Observations
 {observations_list}
@@ -967,8 +1150,12 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 
         # 3. DEPENDENCY_SUMMARY.md
         circular_deps = summary.metadata.get("circular_dependencies", [])
-        circular_deps_str = "\n".join([f"- Cycle: {' -> '.join(cycle)}" for cycle in circular_deps]) if circular_deps else "- None detected"
-        
+        circular_deps_str = (
+            "\n".join([f"- Cycle: {' -> '.join(cycle)}" for cycle in circular_deps])
+            if circular_deps
+            else "- None detected"
+        )
+
         unused_mods = summary.metadata.get("unused_modules", [])
         unused_mods_str = format_list(unused_mods)
 
@@ -1007,25 +1194,29 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 {format_list(summary.package_managers)}
 
 ## Build Systems
-{format_list(summary.metadata.get('build_systems', []))}
+{format_list(summary.metadata.get("build_systems", []))}
 
 ## Runtimes
-{format_list(summary.metadata.get('runtimes', []))}
+{format_list(summary.metadata.get("runtimes", []))}
 
 ## Testing Frameworks
-{format_list(summary.metadata.get('testing_frameworks', []))}
+{format_list(summary.metadata.get("testing_frameworks", []))}
 
 ## Databases
-{format_list(summary.metadata.get('databases', []))}
+{format_list(summary.metadata.get("databases", []))}
 
 ## Deployment Configuration
-{format_list(summary.metadata.get('deployment_configs', []))}
+{format_list(summary.metadata.get("deployment_configs", []))}
 """
         (docs_dir / "TECHNOLOGY_STACK.md").write_text(tech_stack_md, encoding="utf-8")
 
         # 5. WORKSPACE_HEALTH.md
         overall_health = "Green"
-        health_score = (summary.health.documentation_coverage + summary.health.readme_coverage + summary.health.config_completeness) / 3.0
+        health_score = (
+            summary.health.documentation_coverage
+            + summary.health.readme_coverage
+            + summary.health.config_completeness
+        ) / 3.0
         if health_score < 0.4:
             overall_health = "Red"
         elif health_score < 0.7:
@@ -1037,7 +1228,12 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
         try:
             proj_context = self._project_intel.analyze_workspace(workspace_root)
             todos_count = len(proj_context.todo_markers)
-            todos_list_str = "\n".join([f"- `{t['file']}:L{t['line']}`: {t['text'][:100]}" for t in proj_context.todo_markers[:15]])
+            todos_list_str = "\n".join(
+                [
+                    f"- `{t['file']}:L{t['line']}`: {t['text'][:100]}"
+                    for t in proj_context.todo_markers[:15]
+                ]
+            )
         except Exception:
             pass
 
@@ -1053,7 +1249,7 @@ class LocalWorkspaceIntelligenceService(WorkspaceIntelligenceService):
 - **Total Files**: {summary.health.file_count}
 - **Total Folders**: {summary.health.folder_count}
 - **Test Files Count**: {summary.health.test_count}
-- **Line Count**: {summary.health.statistics.get('total_lines', 0)}
+- **Line Count**: {summary.health.statistics.get("total_lines", 0)}
 
 ## Git Status Summary
 - **Uncommitted Changes**: {len(staged_files) + len(unstaged_files)}
@@ -1072,14 +1268,11 @@ def get_recent_commits(workspace_root: str) -> List[str]:
             cwd=workspace_root,
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return [line.strip() for line in res.stdout.splitlines() if line.strip()]
     except Exception:
         return []
-
-
-
 
 
 class PythonSymbolVisitor(ast.NodeVisitor):
@@ -1114,15 +1307,15 @@ class PythonSymbolVisitor(ast.NodeVisitor):
         bases = [b for b in bases if b]
 
         symbol_type = "class"
-        
+
         # Identify Dataclasses
         if any("dataclass" in d for d in decorators):
             symbol_type = "dataclass"
-            
+
         # Identify Enums
         elif any(b in ("Enum", "IntEnum", "StrEnum", "Flag") for b in bases):
             symbol_type = "enum"
-            
+
         # Identify Interfaces
         elif any(b in ("ABC", "Protocol") or "Interface" in b or "Protocol" in b for b in bases):
             symbol_type = "interface"
@@ -1136,7 +1329,7 @@ class PythonSymbolVisitor(ast.NodeVisitor):
             end_line=getattr(node, "end_lineno", node.lineno),
             decorators=decorators,
             is_public=not node.name.startswith("_"),
-            meta={"bases": bases}
+            meta={"bases": bases},
         )
         self.symbols.append(symbol)
 
@@ -1166,7 +1359,7 @@ class PythonSymbolVisitor(ast.NodeVisitor):
             start_line=node.lineno,
             end_line=getattr(node, "end_lineno", node.lineno),
             decorators=decorators,
-            is_public=not node.name.startswith("_")
+            is_public=not node.name.startswith("_"),
         )
         self.symbols.append(symbol)
         self.generic_visit(node)
@@ -1181,7 +1374,7 @@ class PythonSymbolVisitor(ast.NodeVisitor):
                 start_line=node.lineno,
                 end_line=node.lineno,
                 is_public=False,
-                meta={"module": alias.name, "asname": alias.asname}
+                meta={"module": alias.name, "asname": alias.asname},
             )
             self.symbols.append(symbol)
         self.generic_visit(node)
@@ -1197,7 +1390,7 @@ class PythonSymbolVisitor(ast.NodeVisitor):
             start_line=node.lineno,
             end_line=node.lineno,
             is_public=False,
-            meta={"module": module, "names": names, "level": node.level}
+            meta={"module": module, "names": names, "level": node.level},
         )
         self.symbols.append(symbol)
         self.generic_visit(node)
@@ -1210,18 +1403,20 @@ class PythonASTParser(LanguageASTParser):
     def parse(self, file_path: str, content: str) -> List[SymbolReference]:
         try:
             tree = ast.parse(content)
-            
+
             lines = content.splitlines()
-            symbols = [SymbolReference(
-                symbol_id=file_path,
-                name=Path(file_path).stem,
-                symbol_type="module",
-                file_path=file_path,
-                start_line=1,
-                end_line=max(1, len(lines)),
-                is_public=True
-            )]
-            
+            symbols = [
+                SymbolReference(
+                    symbol_id=file_path,
+                    name=Path(file_path).stem,
+                    symbol_type="module",
+                    file_path=file_path,
+                    start_line=1,
+                    end_line=max(1, len(lines)),
+                    is_public=True,
+                )
+            ]
+
             visitor = PythonSymbolVisitor(file_path)
             visitor.visit(tree)
             symbols.extend(visitor.symbols)
@@ -1239,31 +1434,50 @@ class TypeScriptASTParser(LanguageASTParser):
         lines_clean = cleaned_content.splitlines()
         lines_raw = content.splitlines()
         symbols = []
-        
-        symbols.append(SymbolReference(
-            symbol_id=file_path,
-            name=Path(file_path).name,
-            symbol_type="module",
-            file_path=file_path,
-            start_line=1,
-            end_line=max(1, len(lines_raw)),
-            is_public=True
-        ))
-        
+
+        symbols.append(
+            SymbolReference(
+                symbol_id=file_path,
+                name=Path(file_path).name,
+                symbol_type="module",
+                file_path=file_path,
+                start_line=1,
+                end_line=max(1, len(lines_raw)),
+                is_public=True,
+            )
+        )
+
         import_pattern = re.compile(r'\bimport\s+(?:([\w\s{},*]+)\s+from\s+)?[\'"]([^\'"]+)[\'"]')
-        decorator_pattern = re.compile(r'^@([\w.]+)')
+        decorator_pattern = re.compile(r"^@([\w.]+)")
         class_pattern = re.compile(
-            r'\b(?:export\s+)?(?:default\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([\w\s,]+))?'
+            r"\b(?:export\s+)?(?:default\s+)?class\s+(\w+)(?:\s+extends\s+(\w+))?(?:\s+implements\s+([\w\s,]+))?"
         )
         interface_pattern = re.compile(
-            r'\b(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+([\w\s,]+))?'
+            r"\b(?:export\s+)?interface\s+(\w+)(?:\s+extends\s+([\w\s,]+))?"
         )
-        enum_pattern = re.compile(r'\b(?:export\s+)?enum\s+(\w+)')
-        func_pattern = re.compile(r'\b(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+(\w+)')
-        arrow_func_pattern = re.compile(r'\b(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(.*?\)\s*=>')
-        method_pattern = re.compile(r'\b(?:public|private|protected|readonly|static|async|get|set)?\s*(\w+)\s*\(')
-        
-        keywords = {"if", "for", "while", "switch", "catch", "super", "with", "return", "throw", "import", "export", "constructor"}
+        enum_pattern = re.compile(r"\b(?:export\s+)?enum\s+(\w+)")
+        func_pattern = re.compile(r"\b(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s+(\w+)")
+        arrow_func_pattern = re.compile(
+            r"\b(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(.*?\)\s*=>"
+        )
+        method_pattern = re.compile(
+            r"\b(?:public|private|protected|readonly|static|async|get|set)?\s*(\w+)\s*\("
+        )
+
+        keywords = {
+            "if",
+            "for",
+            "while",
+            "switch",
+            "catch",
+            "super",
+            "with",
+            "return",
+            "throw",
+            "import",
+            "export",
+            "constructor",
+        }
 
         decorators_accumulator = []
         active_blocks = []
@@ -1275,16 +1489,16 @@ class TypeScriptASTParser(LanguageASTParser):
             line_raw_stripped = line_raw.strip()
             if not line_stripped and not line_raw_stripped:
                 continue
-                
+
             import_match = import_pattern.search(line_raw_stripped)
             if import_match:
                 dep = import_match.group(2)
                 raw_names = import_match.group(1)
                 names = []
                 if raw_names:
-                    raw_names = raw_names.replace('{', '').replace('}', '').replace('* as ', '')
-                    names = [n.strip() for n in raw_names.split(',') if n.strip()]
-                
+                    raw_names = raw_names.replace("{", "").replace("}", "").replace("* as ", "")
+                    names = [n.strip() for n in raw_names.split(",") if n.strip()]
+
                 symbol = SymbolReference(
                     symbol_id=f"{file_path}::import::{dep}",
                     name=dep,
@@ -1293,35 +1507,37 @@ class TypeScriptASTParser(LanguageASTParser):
                     start_line=idx,
                     end_line=idx,
                     is_public=False,
-                    meta={"module": dep, "names": names}
+                    meta={"module": dep, "names": names},
                 )
                 symbols.append(symbol)
                 decorators_accumulator = []
                 continue
-                
+
             dec_match = decorator_pattern.match(line_stripped)
             class_match = class_pattern.search(line_stripped)
             interface_match = interface_pattern.search(line_stripped)
             enum_match = enum_pattern.search(line_stripped)
-            
+
             innermost_class = None
             if active_blocks and active_blocks[-1]["type"] == "class":
                 innermost_class = active_blocks[-1]
-            
+
             method_match = method_pattern.search(line_stripped) if innermost_class else None
             func_match = func_pattern.search(line_stripped)
             arrow_match = arrow_func_pattern.search(line_stripped)
 
             if dec_match:
                 decorators_accumulator.append(dec_match.group(1))
-                
+
             elif class_match:
                 name = class_match.group(1)
                 extends = class_match.group(2)
                 implements_raw = class_match.group(3)
-                implements = [i.strip() for i in implements_raw.split(',')] if implements_raw else []
+                implements = (
+                    [i.strip() for i in implements_raw.split(",")] if implements_raw else []
+                )
                 is_public = "export" in line_stripped
-                
+
                 symbol = SymbolReference(
                     symbol_id=f"{file_path}::{name}",
                     name=name,
@@ -1331,18 +1547,20 @@ class TypeScriptASTParser(LanguageASTParser):
                     end_line=idx,
                     decorators=list(decorators_accumulator),
                     is_public=is_public,
-                    meta={"extends": extends, "implements": implements} if (extends or implements) else {}
+                    meta={"extends": extends, "implements": implements}
+                    if (extends or implements)
+                    else {},
                 )
                 symbols.append(symbol)
                 decorators_accumulator = []
                 pending_block = {"type": "class", "name": name, "symbol": symbol, "start_line": idx}
-                
+
             elif interface_match:
                 name = interface_match.group(1)
                 extends_raw = interface_match.group(2)
-                extends = [e.strip() for e in extends_raw.split(',')] if extends_raw else []
+                extends = [e.strip() for e in extends_raw.split(",")] if extends_raw else []
                 is_public = "export" in line_stripped
-                
+
                 symbol = SymbolReference(
                     symbol_id=f"{file_path}::{name}",
                     name=name,
@@ -1352,16 +1570,21 @@ class TypeScriptASTParser(LanguageASTParser):
                     end_line=idx,
                     decorators=list(decorators_accumulator),
                     is_public=is_public,
-                    meta={"extends": extends} if extends else {}
+                    meta={"extends": extends} if extends else {},
                 )
                 symbols.append(symbol)
                 decorators_accumulator = []
-                pending_block = {"type": "interface", "name": name, "symbol": symbol, "start_line": idx}
-                
+                pending_block = {
+                    "type": "interface",
+                    "name": name,
+                    "symbol": symbol,
+                    "start_line": idx,
+                }
+
             elif enum_match:
                 name = enum_match.group(1)
                 is_public = "export" in line_stripped
-                
+
                 symbol = SymbolReference(
                     symbol_id=f"{file_path}::{name}",
                     name=name,
@@ -1370,16 +1593,20 @@ class TypeScriptASTParser(LanguageASTParser):
                     start_line=idx,
                     end_line=idx,
                     decorators=list(decorators_accumulator),
-                    is_public=is_public
+                    is_public=is_public,
                 )
                 symbols.append(symbol)
                 decorators_accumulator = []
                 pending_block = {"type": "enum", "name": name, "symbol": symbol, "start_line": idx}
-                
+
             elif method_match:
                 name = method_match.group(1)
                 if name not in keywords:
-                    is_public = not (line_stripped.startswith("private") or line_stripped.startswith("protected") or name.startswith("#"))
+                    is_public = not (
+                        line_stripped.startswith("private")
+                        or line_stripped.startswith("protected")
+                        or name.startswith("#")
+                    )
                     full_name = f"{innermost_class['name']}.{name}"
                     symbol = SymbolReference(
                         symbol_id=f"{file_path}::{full_name}",
@@ -1389,12 +1616,17 @@ class TypeScriptASTParser(LanguageASTParser):
                         start_line=idx,
                         end_line=idx,
                         decorators=list(decorators_accumulator),
-                        is_public=is_public
+                        is_public=is_public,
                     )
                     symbols.append(symbol)
                     decorators_accumulator = []
-                    pending_block = {"type": "method", "name": full_name, "symbol": symbol, "start_line": idx}
-                    
+                    pending_block = {
+                        "type": "method",
+                        "name": full_name,
+                        "symbol": symbol,
+                        "start_line": idx,
+                    }
+
             elif func_match:
                 name = func_match.group(1)
                 is_public = "export" in line_stripped
@@ -1406,12 +1638,17 @@ class TypeScriptASTParser(LanguageASTParser):
                     start_line=idx,
                     end_line=idx,
                     decorators=list(decorators_accumulator),
-                    is_public=is_public
+                    is_public=is_public,
                 )
                 symbols.append(symbol)
                 decorators_accumulator = []
-                pending_block = {"type": "function", "name": name, "symbol": symbol, "start_line": idx}
-                
+                pending_block = {
+                    "type": "function",
+                    "name": name,
+                    "symbol": symbol,
+                    "start_line": idx,
+                }
+
             elif arrow_match:
                 name = arrow_match.group(1)
                 is_public = "export" in line_stripped
@@ -1423,20 +1660,25 @@ class TypeScriptASTParser(LanguageASTParser):
                     start_line=idx,
                     end_line=idx,
                     decorators=list(decorators_accumulator),
-                    is_public=is_public
+                    is_public=is_public,
                 )
                 symbols.append(symbol)
                 decorators_accumulator = []
-                pending_block = {"type": "function", "name": name, "symbol": symbol, "start_line": idx}
+                pending_block = {
+                    "type": "function",
+                    "name": name,
+                    "symbol": symbol,
+                    "start_line": idx,
+                }
 
             for char in line_clean:
-                if char == '{':
+                if char == "{":
                     if pending_block:
                         pending_block["start_brace_level"] = brace_level
                         active_blocks.append(pending_block)
                         pending_block = None
                     brace_level += 1
-                elif char == '}':
+                elif char == "}":
                     brace_level -= 1
                     if active_blocks and brace_level <= active_blocks[-1]["start_brace_level"]:
                         ended = active_blocks.pop()
@@ -1445,24 +1687,23 @@ class TypeScriptASTParser(LanguageASTParser):
         return symbols
 
     def _clean_source(self, content: str) -> str:
-        pattern = r'(//.*?$)|(/\*.*?\*/)|("(?:\\.|[^\\"])*")|(\'(?:\\.|[^\\\'])*\')|(`(?:\\.|[^\\`])*`)'
-        
+        pattern = (
+            r'(//.*?$)|(/\*.*?\*/)|("(?:\\.|[^\\"])*")|(\'(?:\\.|[^\\\'])*\')|(`(?:\\.|[^\\`])*`)'
+        )
+
         def repl(match):
             if match.group(1):
                 return ""
             if match.group(2):
                 return "\n" * match.group(2).count("\n")
             return '""'
-            
+
         return re.sub(pattern, repl, content, flags=re.MULTILINE)
 
 
 class LocalASTAnalyzer(ASTAnalyzer):
     def __init__(self) -> None:
-        self._parsers: List[LanguageASTParser] = [
-            PythonASTParser(),
-            TypeScriptASTParser()
-        ]
+        self._parsers: List[LanguageASTParser] = [PythonASTParser(), TypeScriptASTParser()]
 
     def register_parser(self, parser: LanguageASTParser) -> None:
         self._parsers.insert(0, parser)
@@ -1498,7 +1739,9 @@ class LocalSymbolIndexer(SymbolIndexer):
 
 
 class LocalDependencyGraphBuilder(DependencyGraphBuilder):
-    def build_graph(self, file_paths: List[str], symbols: List[SymbolReference]) -> Dict[str, List[str]]:
+    def build_graph(
+        self, file_paths: List[str], symbols: List[SymbolReference]
+    ) -> Dict[str, List[str]]:
         graph: Dict[str, List[str]] = {}
         for path in file_paths:
             graph[path] = []
@@ -1516,10 +1759,10 @@ class LocalDependencyGraphBuilder(DependencyGraphBuilder):
                 parts = p.parts
                 if "src" in parts:
                     idx = parts.index("src")
-                    mod_name = ".".join(parts[idx+1:]).replace(".py", "")
+                    mod_name = ".".join(parts[idx + 1 :]).replace(".py", "")
                     module_path_map[mod_name] = path
                     for k in range(1, len(parts) - idx):
-                        sub_mod = ".".join(parts[idx+k:]).replace(".py", "")
+                        sub_mod = ".".join(parts[idx + k :]).replace(".py", "")
                         module_path_map[sub_mod] = path
             module_path_map[p.stem] = path
 
@@ -1529,7 +1772,7 @@ class LocalDependencyGraphBuilder(DependencyGraphBuilder):
                 imported_module = imp.meta.get("module", "")
                 if not imported_module:
                     continue
-                
+
                 resolved_path = None
                 if imported_module in module_path_map:
                     resolved_path = module_path_map[imported_module]
@@ -1544,7 +1787,7 @@ class LocalDependencyGraphBuilder(DependencyGraphBuilder):
                                     break
                         except Exception:
                             pass
-                
+
                 if not resolved_path:
                     for ext in (".py", ".ts", ".tsx", ".js", ".jsx"):
                         trial_name = imported_module + ext
@@ -1563,7 +1806,7 @@ class LocalCallGraphBuilder(CallGraphBuilder):
     def build_call_graph(self, symbols: List[SymbolReference]) -> Dict[str, List[str]]:
         call_graph: Dict[str, List[str]] = {}
         func_methods = [s for s in symbols if s.symbol_type in ("function", "method")]
-        
+
         for sym in func_methods:
             call_graph[sym.name] = []
 
@@ -1581,7 +1824,7 @@ class LocalCallGraphBuilder(CallGraphBuilder):
             for sym in file_symbols:
                 if sym.symbol_type not in ("function", "method"):
                     continue
-                
+
                 start = max(0, sym.start_line - 1)
                 end = min(len(lines), sym.end_line)
                 body_content = "\n".join(lines[start:end])
@@ -1589,9 +1832,9 @@ class LocalCallGraphBuilder(CallGraphBuilder):
                 for other in func_methods:
                     if other.name == sym.name:
                         continue
-                    
-                    short_name = other.name.split('.')[-1]
-                    pattern = rf'\b{re.escape(short_name)}\s*\('
+
+                    short_name = other.name.split(".")[-1]
+                    pattern = rf"\b{re.escape(short_name)}\s*\("
                     if re.search(pattern, body_content):
                         if other.name not in call_graph[sym.name]:
                             call_graph[sym.name].append(other.name)
@@ -1638,7 +1881,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
     def analyze_codebase(self, workspace_root: str) -> CodeStructureSummary:
         logger.info(f"Analyzing codebase at: '{workspace_root}'")
         context: ProjectContext = self._project_intel.analyze_workspace(workspace_root)
-        
+
         # Incremental AST parsing Cache
         cache_path = Path(workspace_root) / ".aios_code_intelligence.json"
         ast_cache = {}
@@ -1649,27 +1892,33 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 pass
 
         all_symbols = []
-        target_files = [f for f in context.structure if f.endswith((".py", ".ts", ".tsx", ".js", ".jsx"))]
-        
+        target_files = [
+            f for f in context.structure if f.endswith((".py", ".ts", ".tsx", ".js", ".jsx"))
+        ]
+
         new_ast_cache = {}
-        
+
         # Parallel processor helper
         def process_file(file):
             file_path = Path(workspace_root) / file
             if not file_path.is_file():
                 return [], None
-            
+
             try:
                 stat = file_path.stat()
                 mtime = stat.st_mtime
                 size = stat.st_size
-                
+
                 cached_entry = ast_cache.get(file)
-                if cached_entry and cached_entry.get("mtime") == mtime and cached_entry.get("size") == size:
+                if (
+                    cached_entry
+                    and cached_entry.get("mtime") == mtime
+                    and cached_entry.get("size") == size
+                ):
                     symbols_dicts = cached_entry.get("symbols", [])
                     symbols = [dict_to_symbol(d) for d in symbols_dicts]
                     return symbols, {"mtime": mtime, "size": size, "symbols": symbols_dicts}
-                
+
                 content = file_path.read_text(encoding="utf-8", errors="ignore")
                 symbols = self._analyzer.parse_file(str(file_path), content)
                 symbols_dicts = [symbol_to_dict(s) for s in symbols]
@@ -1679,6 +1928,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 return [], None
 
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             futures = {executor.submit(process_file, f): f for f in target_files}
             for future in concurrent.futures.as_completed(futures):
@@ -1708,10 +1958,10 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
             symbols_map[sym.symbol_id] = sym
             if sym.name not in symbols_map:
                 symbols_map[sym.name] = sym
-                
+
             if sym.is_public:
                 public_apis.append(sym.name)
-                
+
             if sym.symbol_type == "class" and "bases" in sym.meta:
                 inheritance_map[sym.name] = sym.meta["bases"]
             elif sym.symbol_type == "class" and "extends" in sym.meta:
@@ -1736,7 +1986,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 size = file_path.stat().st_size
             except Exception:
                 pass
-            
+
             ext = file_path.suffix.lower()
             stem = file_path.stem
             module_name = stem
@@ -1744,17 +1994,24 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 parts = file_path.relative_to(Path(workspace_root)).parts
                 if "src" in parts:
                     idx = parts.index("src")
-                    module_name = ".".join(parts[idx+1:]).replace(".py", "")
+                    module_name = ".".join(parts[idx + 1 :]).replace(".py", "")
                 else:
                     module_name = ".".join(parts).replace(".py", "")
-            
+
             purpose = "source"
             file_lower = file.lower()
-            if "test_" in file_lower or "_test" in file_lower or file_lower.endswith((".test.js", ".spec.ts", ".test.ts")):
+            if (
+                "test_" in file_lower
+                or "_test" in file_lower
+                or file_lower.endswith((".test.js", ".spec.ts", ".test.ts"))
+            ):
                 purpose = "test"
             elif ext in (".md", ".txt", ".pdf"):
                 purpose = "documentation"
-            elif ext in (".json", ".toml", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (".gitignore", ".env"):
+            elif ext in (".json", ".toml", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (
+                ".gitignore",
+                ".env",
+            ):
                 purpose = "config"
             elif ext in (".sh", ".bat", ".cmd", ".ps1"):
                 purpose = "build"
@@ -1770,8 +2027,16 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                     elif sym.symbol_type not in ("module", "import"):
                         file_exports.append(sym.name)
 
-            rel_imports = [file_relative_map[p] for p in dep_graph.get(abs_path_str, []) if p in file_relative_map]
-            rel_imported_by = [file_relative_map[p] for p in imported_by_map.get(abs_path_str, []) if p in file_relative_map]
+            rel_imports = [
+                file_relative_map[p]
+                for p in dep_graph.get(abs_path_str, [])
+                if p in file_relative_map
+            ]
+            rel_imported_by = [
+                file_relative_map[p]
+                for p in imported_by_map.get(abs_path_str, [])
+                if p in file_relative_map
+            ]
 
             self._files_metadata[file] = FileMetadata(
                 file_path=file,
@@ -1782,10 +2047,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 purpose=purpose,
                 imports=file_imports,
                 exports=file_exports,
-                relationships={
-                    "imports": rel_imports,
-                    "imported_by": rel_imported_by
-                }
+                relationships={"imports": rel_imports, "imported_by": rel_imported_by},
             )
 
         # Index non-codebase files too
@@ -1802,7 +2064,10 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 file_lower = file.lower()
                 if ext in (".md", ".txt", ".pdf"):
                     purpose = "documentation"
-                elif ext in (".json", ".toml", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (".gitignore", ".env"):
+                elif ext in (".json", ".toml", ".yaml", ".yml", ".ini", ".cfg") or file_lower in (
+                    ".gitignore",
+                    ".env",
+                ):
                     purpose = "config"
                 elif ext in (".sh", ".bat", ".cmd", ".ps1"):
                     purpose = "build"
@@ -1818,7 +2083,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                     purpose=purpose,
                     imports=[],
                     exports=[],
-                    relationships={"imports": [], "imported_by": []}
+                    relationships={"imports": [], "imported_by": []},
                 )
 
         return CodeStructureSummary(
@@ -1836,20 +2101,20 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
         for sym in summary.symbols.values():
             if sym.symbol_type not in ("import", "module"):
                 symbol_counts[sym.symbol_type] = symbol_counts.get(sym.symbol_type, 0) + 1
-            
+
         symbol_summary = ", ".join([f"{t}: {c}" for t, c in symbol_counts.items()])
-        
+
         dep_summary_lines = []
         for mod, deps in list(summary.dependency_graph.items())[:15]:
             dep_summary_lines.append(f"- {Path(mod).name} -> {[Path(d).name for d in deps]}")
         dep_summary = "\n".join(dep_summary_lines)
-        
+
         call_summary_lines = []
         for caller, callees in list(summary.call_graph.items())[:15]:
             if callees:
                 call_summary_lines.append(f"- {caller} calls {callees}")
         call_summary = "\n".join(call_summary_lines)
-        
+
         summary_content = (
             f"Codebase Structure Summary:\n"
             f"Symbol Stats: {symbol_summary}\n\n"
@@ -1857,7 +2122,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
             f"Call Graph (sample):\n{call_summary}\n\n"
             f"Public APIs (sample): {', '.join(summary.public_apis[:15])}"
         )
-        
+
         self._memory.add_memory(
             content=summary_content,
             memory_type=MemoryType.PROJECT,
@@ -1866,8 +2131,8 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 session_id="code_intelligence_session",
                 tags=["code_summary", "ast_symbols"],
                 importance=2,
-                source_subsystem="code_intelligence"
-            )
+                source_subsystem="code_intelligence",
+            ),
         )
 
     def publish_code_report(self, summary: CodeStructureSummary) -> None:
@@ -1877,8 +2142,14 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
 
         report_md = (
             "# Codebase Symbol & Graph Summary\n\n"
-            "## Public APIs\n" + "\n".join([f"- {api}" for api in summary.public_apis[:20]]) + "\n\n"
-            "## Inheritance Structure\n" + "\n".join([f"- {cls} extends {parent}" for cls, parent in summary.inheritance_map.items()]) + "\n\n"
+            "## Public APIs\n"
+            + "\n".join([f"- {api}" for api in summary.public_apis[:20]])
+            + "\n\n"
+            "## Inheritance Structure\n"
+            + "\n".join(
+                [f"- {cls} extends {parent}" for cls, parent in summary.inheritance_map.items()]
+            )
+            + "\n\n"
             f"## Symbol Counts\n"
             f"- Total extracted symbols: {len(summary.symbols)}\n"
         )
@@ -1891,10 +2162,7 @@ class LocalCodeIntelligenceService(CodeIntelligenceService):
                 unique_id=f"code_summary_{int(summary.timestamp)}",
                 timestamp=summary.timestamp,
                 source_subsystem="code_intelligence",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")
-
-
-

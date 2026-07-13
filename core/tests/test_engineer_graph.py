@@ -8,7 +8,7 @@ def test_graph_builder_loads_entities():
             "packages": ["aios.services"],
             "modules": ["aios.services.context"],
             "services": [{"name": "ContextService", "path": "core/src/aios/services/context.py"}],
-            "tests": []
+            "tests": [],
         },
         "index_data": {
             "core/src/aios/services/context.py": {
@@ -20,13 +20,13 @@ def test_graph_builder_loads_entities():
                         "decorators": [],
                         "is_dataclass": False,
                         "is_enum": False,
-                        "methods": []
+                        "methods": [],
                     }
                 ],
                 "functions": [],
-                "imports": []
+                "imports": [],
             }
-        }
+        },
     }
     graph = EngineeringGraph(mock_data)
     graph.build()
@@ -46,7 +46,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "service",
             True,
@@ -60,7 +60,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "provider",
             True,
@@ -74,7 +74,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "registry",
             True,
@@ -88,7 +88,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "event",
             True,
@@ -102,7 +102,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": True,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "dataclass",
             True,
@@ -116,7 +116,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": True,
-                "methods": []
+                "methods": [],
             },
             "enum",
             True,
@@ -130,7 +130,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "interface",
             True,
@@ -144,7 +144,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "interface",
             True,
@@ -158,7 +158,7 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             "class",
             True,
@@ -171,24 +171,18 @@ def test_graph_builder_loads_entities():
                 "decorators": [],
                 "is_dataclass": False,
                 "is_enum": False,
-                "methods": []
+                "methods": [],
             },
             None,
             False,
         ),
-    ]
+    ],
 )
 def test_graph_builder_type_classification(class_data, expected_type, should_be_present):
-    mock_data = {
-        "index_data": {
-            "core/src/aios/services/context.py": {
-                "classes": [class_data]
-            }
-        }
-    }
+    mock_data = {"index_data": {"core/src/aios/services/context.py": {"classes": [class_data]}}}
     graph = EngineeringGraph(mock_data)
     graph.build()
-    
+
     if should_be_present:
         class_name = class_data["name"]
         assert class_name in graph.entities

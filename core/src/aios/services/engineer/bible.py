@@ -55,15 +55,13 @@ class EngineeringBibleService(ServiceLifecycle):
                 {
                     "date": "2026-07-07",
                     "decision": (
-                        "Freeze AI Core API architectures (Kernel, "
-                        "OmniRoute, registries)."
+                        "Freeze AI Core API architectures (Kernel, OmniRoute, registries)."
                     ),
                 },
                 {
                     "date": "2026-07-08",
                     "decision": (
-                        "Add incremental repository documentation "
-                        "scanner and docintel agent."
+                        "Add incremental repository documentation scanner and docintel agent."
                     ),
                 },
             ]

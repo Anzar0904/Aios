@@ -95,9 +95,7 @@ class N8NLiveConnectionManager:
                 new_state = {
                     "host": url.split("//")[-1].split(":")[0],
                     "port": (
-                        int(url.split(":")[-1].split("/")[0])
-                        if ":" in url.split("//")[-1]
-                        else 80
+                        int(url.split(":")[-1].split("/")[0]) if ":" in url.split("//")[-1] else 80
                     ),
                     "url": url,
                     "auth_type": auth_type,
@@ -117,14 +115,16 @@ class N8NLiveConnectionManager:
         return {"success": False, "message": "Failed to verify connection to n8n."}
 
     def disconnect(self) -> None:
-        self.save_state({
-            "host": "",
-            "port": 0,
-            "url": "",
-            "auth_type": "none",
-            "last_connected": 0.0,
-            "connected": False,
-        })
+        self.save_state(
+            {
+                "host": "",
+                "port": 0,
+                "url": "",
+                "auth_type": "none",
+                "last_connected": 0.0,
+                "connected": False,
+            }
+        )
         self.generate_integration_reports()
 
     def generate_integration_reports(self, output_dir: str = "docs/n8n") -> None:
@@ -134,9 +134,7 @@ class N8NLiveConnectionManager:
         # Connection Report
         with open(f"{output_dir}/connection_report.md", "w") as f:
             status_str = (
-                "[green]CONNECTED[/green]"
-                if state["connected"]
-                else "[red]DISCONNECTED[/red]"
+                "[green]CONNECTED[/green]" if state["connected"] else "[red]DISCONNECTED[/red]"
             )
             last_conn_str = (
                 time.ctime(state["last_connected"]) if state["last_connected"] > 0 else "Never"

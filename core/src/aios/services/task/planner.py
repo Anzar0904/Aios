@@ -33,9 +33,7 @@ class TaskPlanner:
             prompt = (
                 "You are the Task Planner for Personal AI OS.\n"
                 "Decompose user's objective into sequence of existing commands.\n\n"
-                "Available Commands:\n"
-                + "\n".join([f"- {c}" for c in all_cmds])
-                + "\n\n"
+                "Available Commands:\n" + "\n".join([f"- {c}" for c in all_cmds]) + "\n\n"
                 f'Objective: "{objective}"\n\n'
                 "Return strictly a JSON list of command strings. Do not invent commands. "
                 "Choose only from the list of available commands. E.g.:\n"
@@ -47,8 +45,7 @@ class TaskPlanner:
                     LLMRequest(
                         prompt=prompt,
                         system_instruction=(
-                            "You are a strict code execution planner. "
-                            "Return JSON lists only."
+                            "You are a strict code execution planner. Return JSON lists only."
                         ),
                         model_name="claude-3-5-sonnet",
                     )

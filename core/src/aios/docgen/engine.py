@@ -132,9 +132,7 @@ class DocGeneratorEngine:
             providers = []
 
         try:
-            runtime = RuntimeComponentDiscoverer(
-                self._services_root, self._core_src
-            ).discover()
+            runtime = RuntimeComponentDiscoverer(self._services_root, self._core_src).discover()
             result.runtime_count = len(runtime)
             logger.info("  Discovered %d runtime components", len(runtime))
         except Exception as exc:
@@ -158,7 +156,7 @@ class DocGeneratorEngine:
                     di_bindings.extend(DIBindingDiscoverer(f).discover())
             if self._bootstrap_file.exists():
                 di_bindings.extend(DIBindingDiscoverer(self._bootstrap_file).discover())
-            
+
             result.di_bindings_count = len(di_bindings)
             logger.info("  Discovered %d DI bindings", len(di_bindings))
         except Exception as exc:
@@ -242,9 +240,7 @@ class DocGeneratorEngine:
 
         # Determine final status
         if result.errors:
-            result.status = (
-                GenerationStatus.PARTIAL if result.files else GenerationStatus.FAILED
-            )
+            result.status = GenerationStatus.PARTIAL if result.files else GenerationStatus.FAILED
         else:
             result.status = GenerationStatus.SUCCESS
 

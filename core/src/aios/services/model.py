@@ -1,4 +1,3 @@
-
 import abc
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, Optional
@@ -16,6 +15,7 @@ class LLMRequest:
     task_category: Optional[str] = None
     preferences: Dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class LLMResponse:
     content: str
@@ -24,6 +24,7 @@ class LLMResponse:
     usage: Dict[str, int] = field(default_factory=dict)
     finish_reason: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
+
 
 class ModelService(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod

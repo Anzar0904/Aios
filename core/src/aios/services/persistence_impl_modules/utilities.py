@@ -12,8 +12,13 @@ def format_query(query: str, provider_name: str) -> str:
     """Helper to convert SQL query positional markers to Postgres formats dynamically."""
     if provider_name == "postgresql":
         import re
+
         # Convert INSERT OR REPLACE INTO table (cols) VALUES (vals) to ON CONFLICT (id) DO UPDATE SET
-        match = re.match(r"INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)", query, re.IGNORECASE)
+        match = re.match(
+            r"INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)",
+            query,
+            re.IGNORECASE,
+        )
         if match:
             table_name = match.group(1)
             cols_str = match.group(2)

@@ -68,7 +68,9 @@ def test_career_agent_analyze_job():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(CareerAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        CareerAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     # Track runtime events
     started = []
@@ -119,7 +121,9 @@ def test_career_agent_tailor_resume():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(CareerAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        CareerAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     intent = Intent(
         intent_type=IntentType.CAREER,
@@ -154,7 +158,9 @@ def test_career_agent_ats_score():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(CareerAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        CareerAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     intent = Intent(
         intent_type=IntentType.CAREER,
@@ -190,7 +196,9 @@ def test_career_agent_interview_prep():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(CareerAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        CareerAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     intent = Intent(
         intent_type=IntentType.CAREER,
@@ -224,7 +232,9 @@ def test_career_agent_cover_letter():
         event_bus, memory_service, context_service, tool_service, model_service
     )
     runtime.initialize()
-    runtime.register_agent(CareerAgent(memory_service, context_service, tool_service, model_service))
+    runtime.register_agent(
+        CareerAgent(memory_service, context_service, tool_service, model_service)
+    )
 
     intent = Intent(
         intent_type=IntentType.CAREER,

@@ -59,7 +59,7 @@ def execute_profile_create(args: str, kernel, conv_manager) -> None:
         profile = PersonalProfile(
             id=pid,
             name=f"New {pid.capitalize()} Profile",
-            contact=Contact(email="new_profile@example.com")
+            contact=Contact(email="new_profile@example.com"),
         )
         personal_svc.create_profile(profile)
         print(f"Profile '{pid}' successfully created.")
@@ -137,7 +137,11 @@ def execute_resume_create(args: str, kernel, conv_manager) -> None:
         new_res = Resume(
             id=f"res_{int(time.time())}",
             title=title,
-            versions=[ResumeVersion(version=1, summary="Dynamic professional summary.", created_at=time.time())]
+            versions=[
+                ResumeVersion(
+                    version=1, summary="Dynamic professional summary.", created_at=time.time()
+                )
+            ],
         )
         profile.resumes.append(new_res)
         personal_svc.update_profile(profile.id, profile)
@@ -186,9 +190,7 @@ def execute_portfolio_add(args: str, kernel, conv_manager) -> None:
             return
 
         project = PortfolioProject(
-            id=f"proj_{int(time.time())}",
-            name=name,
-            description="Add project description here."
+            id=f"proj_{int(time.time())}", name=name, description="Add project description here."
         )
         profile.portfolio.append(project)
         personal_svc.update_profile(profile.id, profile)
@@ -209,11 +211,7 @@ def execute_goal_add(args: str, kernel, conv_manager) -> None:
         if not profile:
             return
 
-        new_goal = Goal(
-            id=f"goal_{int(time.time())}",
-            title=title,
-            target_date="2026-12-31"
-        )
+        new_goal = Goal(id=f"goal_{int(time.time())}", title=title, target_date="2026-12-31")
         profile.goals.append(new_goal)
         personal_svc.update_profile(profile.id, profile)
         print(f"Goal '{title}' added successfully.")
@@ -272,11 +270,7 @@ def execute_learning_add(args: str, kernel, conv_manager) -> None:
         if not profile:
             return
 
-        new_learn = LearningItem(
-            id=f"learn_{int(time.time())}",
-            title=title,
-            source="Self Study"
-        )
+        new_learn = LearningItem(id=f"learn_{int(time.time())}", title=title, source="Self Study")
         profile.learning.append(new_learn)
         personal_svc.update_profile(profile.id, profile)
         print(f"Learning item '{title}' added successfully.")
@@ -328,7 +322,7 @@ def execute_knowledge_add(args: str, kernel, conv_manager) -> None:
             id=f"k_{int(time.time())}",
             title=title,
             content="Add body content here.",
-            updated_at=time.time()
+            updated_at=time.time(),
         )
         profile.knowledge.append(new_k)
         personal_svc.update_profile(profile.id, profile)
@@ -416,9 +410,7 @@ def execute_template_create(args: str, kernel, conv_manager) -> None:
             return
 
         new_t = Template(
-            id=f"temp_{int(time.time())}",
-            name=name,
-            content="Add template body content."
+            id=f"temp_{int(time.time())}", name=name, content="Add template body content."
         )
         profile.templates.append(new_t)
         personal_svc.update_profile(profile.id, profile)

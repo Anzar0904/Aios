@@ -6,6 +6,7 @@ from aios.services.command.metadata import CommandCategory, CommandMetadata
 
 logger = logging.getLogger(__name__)
 
+
 class CommandRegistry(ServiceLifecycle):
     def __init__(self) -> None:
         self._commands: Dict[str, CommandMetadata] = {}
@@ -43,8 +44,10 @@ class CommandRegistry(ServiceLifecycle):
         keyword = keyword.lower()
         results = []
         for cmd in self._commands.values():
-            if (keyword in cmd.name.lower() or 
-                keyword in cmd.description.lower() or 
-                keyword in cmd.category.value.lower()):
+            if (
+                keyword in cmd.name.lower()
+                or keyword in cmd.description.lower()
+                or keyword in cmd.category.value.lower()
+            ):
                 results.append(cmd)
         return sorted(results, key=lambda x: x.name)

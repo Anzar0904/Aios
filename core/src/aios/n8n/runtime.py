@@ -39,7 +39,7 @@ class N8NWorkflowRuntimeManager:
 
         cfg = N8NConfigurationService()
         cfg.server_url = state["url"]
-        
+
         session = N8NSessionManager(cfg)
         auth = N8NAuthenticationManager(cfg, session)
         conn = N8NConnectionManager(cfg, auth)
@@ -100,17 +100,19 @@ class N8NWorkflowRuntimeManager:
             else:
                 # Create fresh
                 res = self.workflow_mgr.upload_workflow(name, nodes, connections, settings)
-            
+
             wf_id = res.get("id")
             if wf_id:
                 # Record in deployment history
                 if wf_id not in self.history:
                     self.history[wf_id] = []
-                self.history[wf_id].append({
-                    "version": len(self.history[wf_id]) + 1,
-                    "timestamp": time.time(),
-                    "workflow": res,
-                })
+                self.history[wf_id].append(
+                    {
+                        "version": len(self.history[wf_id]) + 1,
+                        "timestamp": time.time(),
+                        "workflow": res,
+                    }
+                )
                 self._save_history()
                 self.generate_runtime_reports()
                 return {
@@ -187,11 +189,13 @@ class N8NWorkflowRuntimeManager:
             }
             res = self.workflow_mgr.update_workflow(workflow_id, payload)
             # Record as new rollback deploy
-            self.history[workflow_id].append({
-                "version": len(self.history[workflow_id]) + 1,
-                "timestamp": time.time(),
-                "workflow": res,
-            })
+            self.history[workflow_id].append(
+                {
+                    "version": len(self.history[workflow_id]) + 1,
+                    "timestamp": time.time(),
+                    "workflow": res,
+                }
+            )
             self._save_history()
             self.generate_runtime_reports()
             return {"success": True, "message": f"Successfully rolled back to version {version}."}
@@ -245,9 +249,9 @@ class N8NWorkflowRuntimeManager:
         total = len(executions)
         successes = sum(1 for e in executions if e.get("status") == "success")
         failures = sum(1 for e in executions if e.get("status") == "failed")
-        
+
         rate = (successes / total) if total > 0 else 1.0
-        
+
         return {
             "total_executions": total,
             "success_rate": rate,
@@ -302,8 +306,7 @@ class N8NWorkflowRuntimeManager:
                 f.write(f"### Workflow ID: {wf_id}\n")
                 for r in records:
                     f.write(
-                        f"- Version {r['version']} "
-                        f"(Deployed at: {time.ctime(r['timestamp'])})\n"
+                        f"- Version {r['version']} (Deployed at: {time.ctime(r['timestamp'])})\n"
                     )
 
         # Synchronization Report

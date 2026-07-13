@@ -12,10 +12,10 @@ def test_git_status_parsing():
     service = LocalDeveloperWorkspace()
     with tempfile.TemporaryDirectory() as tmpdir:
         workspace_root = Path(tmpdir)
-        
+
         # Mock subprocess run to simulate git status --porcelain
         mock_stdout = "M  core/src/aios/cli.py\n M core/tests/test_cli.py\n?? untracked.txt\n"
-        
+
         def mock_run(cmd, **kwargs):
             mock_res = MagicMock()
             if "status" in cmd:
@@ -50,8 +50,12 @@ def test_test_discovery_and_build_detection():
 
         # Create tests
         (workspace_root / "tests").mkdir()
-        (workspace_root / "tests" / "test_dummy.py").write_text("def test(): pass", encoding="utf-8")
-        (workspace_root / "tests" / "dummy_test.py").write_text("def test(): pass", encoding="utf-8")
+        (workspace_root / "tests" / "test_dummy.py").write_text(
+            "def test(): pass", encoding="utf-8"
+        )
+        (workspace_root / "tests" / "dummy_test.py").write_text(
+            "def test(): pass", encoding="utf-8"
+        )
 
         # Create pyproject.toml with ruff configuration
         pyproject = workspace_root / "pyproject.toml"
@@ -103,7 +107,7 @@ def test_context_manager_developer_workspace_integration():
         git_repo_path="/tmp/test_workspace/.git",
         git_branch="main",
         project_root="/tmp/test_workspace",
-        project_name="test_proj"
+        project_name="test_proj",
     )
     context_service.get_current_context.return_value = workspace_ctx
     memory_service.search_memory.return_value = []
@@ -113,7 +117,7 @@ def test_context_manager_developer_workspace_integration():
         git_status="M file.py",
         git_diff_summary="1 file changed",
         staged_files=[],
-        unstaged_files=["file.py"]
+        unstaged_files=["file.py"],
     )
     dev_workspace.get_workspace_info.return_value = mock_workspace_info
 

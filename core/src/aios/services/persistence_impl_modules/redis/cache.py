@@ -12,6 +12,7 @@ from ..utilities import deserialize_val, serialize_val
 
 logger = logging.getLogger(__name__)
 
+
 class CachePolicyManagerImpl(CachePolicyManager):
     def __init__(self) -> None:
         self._policies: Dict[str, CachePolicy] = {
@@ -728,5 +729,3 @@ class RedisCacheServiceImpl(RedisCacheService):
                 remediation="Verify Redis connection",
             )
             return False
-
-

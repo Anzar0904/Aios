@@ -8,7 +8,9 @@ class SkillSelector:
     def __init__(self, skill_registry: SkillRegistry) -> None:
         self.skill_registry = skill_registry
 
-    def select_skills(self, objective: str, capability: Optional[str] = None) -> List[SkillSelection]:
+    def select_skills(
+        self, objective: str, capability: Optional[str] = None
+    ) -> List[SkillSelection]:
         query = objective.lower().strip()
         selections = []
 
@@ -16,10 +18,20 @@ class SkillSelector:
 
         # Automatic GitHub Intelligence trigger based on query intent keywords
         github_keywords = [
-            "github", "repository", "repo", "pull request", "pr",
-            "issue", "commit", "branch", "release", "workflow", "actions"
+            "github",
+            "repository",
+            "repo",
+            "pull request",
+            "pr",
+            "issue",
+            "commit",
+            "branch",
+            "release",
+            "workflow",
+            "actions",
         ]
         import re
+
         if any(re.search(r"\b" + re.escape(kw) + r"\b", query) for kw in github_keywords):
             for skill in skills:
                 if skill.metadata.id == "github" and skill.enabled:

@@ -44,11 +44,13 @@ def test_filesystem_tool_traversal_attempts(tmp_path):
     subdir = tmp_path / "subdir"
     subdir.mkdir()
     nested_file = subdir / "nested.txt"
-    
+
     # Valid write and read inside nested directory
-    res_write = tool.execute({"action": "write", "path": str(nested_file), "content": "nested content"})
+    res_write = tool.execute(
+        {"action": "write", "path": str(nested_file), "content": "nested content"}
+    )
     assert res_write.success is True
-    
+
     res_read = tool.execute({"action": "read", "path": str(nested_file)})
     assert res_read.success is True
     assert res_read.output == "nested content"
@@ -60,7 +62,9 @@ def test_filesystem_tool_traversal_attempts(tmp_path):
     assert "escapes workspace" in res_esc.error
 
     escaped_relative = tmp_path / "subdir" / ".." / ".." / "escaped.txt"
-    res_esc_rel = tool.execute({"action": "write", "path": str(escaped_relative), "content": "malicious"})
+    res_esc_rel = tool.execute(
+        {"action": "write", "path": str(escaped_relative), "content": "malicious"}
+    )
     assert res_esc_rel.success is False
     assert "escapes workspace" in res_esc_rel.error
 
@@ -72,7 +76,7 @@ def test_filesystem_tool_traversal_attempts(tmp_path):
     # Symlink traversal test
     external_secret = tmp_path.parent / "external_secret.txt"
     external_secret.write_text("top secret")
-    
+
     link_path = tmp_path / "symlink_test.txt"
     try:
         link_path.symlink_to(external_secret)
@@ -82,8 +86,6 @@ def test_filesystem_tool_traversal_attempts(tmp_path):
         assert "escapes workspace" in res_sym.error
     except OSError:
         pass
-
-
 
 
 def test_git_tool():
@@ -170,7 +172,6 @@ def test_terminal_tool_security_safeguards():
     # Reject arguments for pwd / whoami
     assert tool.execute({"command": "pwd extra_arg"}).success is False
     assert tool.execute({"command": "whoami extra_arg"}).success is False
-
 
 
 def test_tool_manager_and_events():

@@ -9,7 +9,7 @@ class ToolSelector:
 
     def select_tools(self, intent: Intent) -> List[str]:
         action = intent.action.lower()
-        
+
         if "repository" in action or "dependencies" in action or "todo" in action:
             return ["filesystem", "git", "memory"]
         elif "git" in action or "commit" in action or "release" in action:
@@ -18,5 +18,5 @@ class ToolSelector:
             return ["filesystem", "memory"]
         elif "status" in action:
             return ["memory"]
-        
+
         return ["filesystem", "memory"]

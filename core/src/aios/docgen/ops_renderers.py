@@ -54,13 +54,17 @@ def render_readme_index(guide_count: int) -> str:
     lines.append("| File | Description |\n")
     lines.append("|------|-------------|\n")
     lines.append("| [local_setup.md](local_setup.md) | Local development environment setup |\n")
-    lines.append("| [configuration.md](configuration.md) | Environment and service configuration |\n")
+    lines.append(
+        "| [configuration.md](configuration.md) | Environment and service configuration |\n"
+    )
     lines.append("| [deployment.md](deployment.md) | Production deployment procedures |\n")
     lines.append("| [startup.md](startup.md) | Service startup order and dependencies |\n")
     lines.append("| [monitoring.md](monitoring.md) | Monitoring metrics and alerts |\n")
     lines.append("| [backup_restore.md](backup_restore.md) | Backup and restore procedures |\n")
     lines.append("| [troubleshooting.md](troubleshooting.md) | Common issues and solutions |\n")
-    lines.append("| [production_checklist.md](production_checklist.md) | Pre-deployment checklist |\n\n")
+    lines.append(
+        "| [production_checklist.md](production_checklist.md) | Pre-deployment checklist |\n\n"
+    )
 
     lines.append("## Regeneration\n\n")
     lines.append("To regenerate these guides:\n\n")
@@ -70,8 +74,12 @@ def render_readme_index(guide_count: int) -> str:
 
     lines.append("## Cross-References\n\n")
     lines.append("- [Generated Documentation](../generated/README.md) - Component catalogs\n")
-    lines.append("- [API & Service Reference](../reference/README.md) - Detailed API documentation\n")
-    lines.append("- [Architecture Diagrams](../diagrams/README.md) - System architecture visualizations\n")
+    lines.append(
+        "- [API & Service Reference](../reference/README.md) - Detailed API documentation\n"
+    )
+    lines.append(
+        "- [Architecture Diagrams](../diagrams/README.md) - System architecture visualizations\n"
+    )
 
     return "".join(lines)
 
@@ -130,7 +138,9 @@ def render_local_setup(deployments: List[ServiceDeployment]) -> str:
     optional = [d for d in deployments if not d.required and d.type == "external"]
     for svc in optional:
         port_str = f" (port {svc.port})" if svc.port else ""
-        lines.append(f"- **{svc.name}**{port_str} — workflow automation (`docker-compose up -d n8n`)\n")
+        lines.append(
+            f"- **{svc.name}**{port_str} — workflow automation (`docker-compose up -d n8n`)\n"
+        )
     lines.append("\n")
 
     lines.append("### 4. Configure Environment\n\n")
@@ -215,7 +225,9 @@ def render_configuration(
     """Render the configuration guide."""
     lines = [_banner()]
     lines.append("# Configuration Guide\n\n")
-    lines.append("> Complete configuration reference for all environment variables and settings.\n\n")
+    lines.append(
+        "> Complete configuration reference for all environment variables and settings.\n\n"
+    )
 
     lines.append("## Configuration Overview\n\n")
     lines.append("AIOS can be configured via:\n\n")
@@ -223,10 +235,14 @@ def render_configuration(
     lines.append("2. Configuration file (`config/config.toml`)\n")
     lines.append("3. Command-line arguments\n\n")
 
-    lines.append("**Priority order** (highest wins): CLI args > Environment variables > Config file > Defaults\n\n")
+    lines.append(
+        "**Priority order** (highest wins): CLI args > Environment variables > Config file > Defaults\n\n"
+    )
 
     lines.append("> **Security Note**: Never commit secrets to version control. ")
-    lines.append("Use a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.) in production.\n\n")
+    lines.append(
+        "Use a secrets manager (AWS Secrets Manager, HashiCorp Vault, etc.) in production.\n\n"
+    )
 
     # ── Core ──────────────────────────────────────────────────────────────────
     core_configs = [c for c in configs if c.section == "core"]
@@ -345,9 +361,7 @@ def render_configuration(
     # ── n8n ───────────────────────────────────────────────────────────────────
     n8n_configs = [c for c in configs if c.section == "n8n"]
     lines.append("## n8n (Optional) Configuration\n\n")
-    lines.append(
-        "> Sourced from: `core/src/aios/n8n/service.py` — `N8NConfigurationService`\n\n"
-    )
+    lines.append("> Sourced from: `core/src/aios/n8n/service.py` — `N8NConfigurationService`\n\n")
     lines.append(
         "n8n is an optional workflow automation platform. "
         "If `N8N_SERVER_URL` is not set, the n8n platform registers in a disconnected state "
@@ -400,8 +414,7 @@ def render_configuration(
     for provider in omniroute_providers:
         req_str = "Required" if provider.required else "Optional"
         lines.append(
-            f"| {provider.name} | `{provider.env_key}` | `{provider.default_model}` "
-            f"| {req_str} |\n"
+            f"| {provider.name} | `{provider.env_key}` | `{provider.default_model}` | {req_str} |\n"
         )
     lines.append("\n")
 
@@ -461,7 +474,9 @@ def render_deployment(deployments: List[ServiceDeployment]) -> str:
         lines.append("\n")
 
     lines.append("## Pre-Deployment Checklist\n\n")
-    lines.append("See [production_checklist.md](production_checklist.md) for a complete pre-deployment checklist.\n\n")
+    lines.append(
+        "See [production_checklist.md](production_checklist.md) for a complete pre-deployment checklist.\n\n"
+    )
 
     lines.append("## Deployment Steps\n\n")
 
@@ -476,7 +491,9 @@ def render_deployment(deployments: List[ServiceDeployment]) -> str:
     lines.append("### 2. Configure Networking\n\n")
     lines.append("Set up security groups and firewall rules:\n\n")
     lines.append("- Allow inbound on application port (typically 8000)\n")
-    lines.append("- Allow outbound to PostgreSQL (port 5432), Redis (port 6379), Qdrant (port 6333)\n")
+    lines.append(
+        "- Allow outbound to PostgreSQL (port 5432), Redis (port 6379), Qdrant (port 6333)\n"
+    )
     lines.append("- Restrict admin/management ports (SSH to VPN/bastion only)\n")
     lines.append("- Enable TLS/SSL for all external connections\n\n")
 
@@ -488,7 +505,9 @@ def render_deployment(deployments: List[ServiceDeployment]) -> str:
     lines.append("```\n\n")
 
     lines.append("### 4. Configure Environment\n\n")
-    lines.append("Set all production environment variables. See [configuration.md](configuration.md).\n\n")
+    lines.append(
+        "Set all production environment variables. See [configuration.md](configuration.md).\n\n"
+    )
     lines.append("```bash\n")
     lines.append("# Required for production\n")
     lines.append("POSTGRES_HOST=<production-host>\n")
@@ -536,7 +555,9 @@ def render_deployment(deployments: List[ServiceDeployment]) -> str:
     lines.append("If deployment fails:\n\n")
     lines.append("1. Stop the new deployment immediately\n")
     lines.append("2. Restore the previous application version\n")
-    lines.append("3. Rollback database migrations if schema changed: `python -m aios.migrations --rollback`\n")
+    lines.append(
+        "3. Rollback database migrations if schema changed: `python -m aios.migrations --rollback`\n"
+    )
     lines.append("4. Verify system health on all service health endpoints\n")
     lines.append("5. Update incident log and perform post-mortem\n")
 
@@ -611,12 +632,24 @@ def render_startup(steps: List[StartupStep]) -> str:
 
     lines.append("## Startup Failures\n\n")
     lines.append("Common startup issues:\n\n")
-    lines.append("- **PostgreSQL not ready**: Wait for PostgreSQL to accept connections before starting AIOS\n")
-    lines.append("- **Redis connection refused**: Verify REDIS_HOST and REDIS_PORT; check if Redis requires authentication\n")
-    lines.append("- **Qdrant health check fails**: Wait for Qdrant to initialize; check QDRANT_HOST\n")
-    lines.append("- **Migration failure**: Run `python -m aios.migrations` manually to inspect errors\n")
-    lines.append("- **Port already in use**: Check for conflicting services with `lsof -i :<port>`\n")
-    lines.append("- **API key not configured**: Ensure at least one OmniRoute provider key is set\n\n")
+    lines.append(
+        "- **PostgreSQL not ready**: Wait for PostgreSQL to accept connections before starting AIOS\n"
+    )
+    lines.append(
+        "- **Redis connection refused**: Verify REDIS_HOST and REDIS_PORT; check if Redis requires authentication\n"
+    )
+    lines.append(
+        "- **Qdrant health check fails**: Wait for Qdrant to initialize; check QDRANT_HOST\n"
+    )
+    lines.append(
+        "- **Migration failure**: Run `python -m aios.migrations` manually to inspect errors\n"
+    )
+    lines.append(
+        "- **Port already in use**: Check for conflicting services with `lsof -i :<port>`\n"
+    )
+    lines.append(
+        "- **API key not configured**: Ensure at least one OmniRoute provider key is set\n\n"
+    )
 
     lines.append("See [troubleshooting.md](troubleshooting.md) for detailed solutions.\n")
 
@@ -697,7 +730,9 @@ def render_monitoring(metrics: List[MonitoringMetric]) -> str:
     lines.append("Import pre-built dashboards from `monitoring/grafana/dashboards/`.\n\n")
 
     lines.append("### 4. Configure Alerts\n\n")
-    lines.append("Configure alerting rules in Prometheus and notification channels in Alertmanager.\n\n")
+    lines.append(
+        "Configure alerting rules in Prometheus and notification channels in Alertmanager.\n\n"
+    )
 
     lines.append("## Health Checks\n\n")
     lines.append("AIOS provides health check endpoints:\n\n")
@@ -727,7 +762,9 @@ def render_monitoring(metrics: List[MonitoringMetric]) -> str:
     lines.append("- **Error logs**: `$AIOS_HOME/logs/error.log`\n")
     lines.append("- **Access logs**: `$AIOS_HOME/logs/access.log`\n\n")
 
-    lines.append("Configure log retention and rotation using logrotate or your logging platform.\n\n")
+    lines.append(
+        "Configure log retention and rotation using logrotate or your logging platform.\n\n"
+    )
 
     lines.append("## Cross-References\n\n")
     lines.append("- [Reference — Services](../reference/services.md) — Service health APIs\n")
@@ -784,7 +821,9 @@ def render_backup_restore(targets: List[BackupTarget]) -> str:
 
     lines.append("**Verify backup integrity:**\n\n")
     lines.append("```bash\n")
-    lines.append("pg_restore --list /var/backups/aios/postgres/aios_20260706_020000.dump | head -20\n")
+    lines.append(
+        "pg_restore --list /var/backups/aios/postgres/aios_20260706_020000.dump | head -20\n"
+    )
     lines.append("```\n\n")
 
     lines.append("### Qdrant Backup\n\n")
@@ -849,8 +888,8 @@ def render_backup_restore(targets: List[BackupTarget]) -> str:
     )
     lines.append("# Recover the collection from the uploaded snapshot\n")
     lines.append(
-        'curl -X PUT http://$QDRANT_HOST:$QDRANT_PORT/collections/conversation_memory/snapshots/recover \\\n'
-        '  -H \'Content-Type: application/json\' \\\n'
+        "curl -X PUT http://$QDRANT_HOST:$QDRANT_PORT/collections/conversation_memory/snapshots/recover \\\n"
+        "  -H 'Content-Type: application/json' \\\n"
         '  -d \'{"location": "http://$QDRANT_HOST:$QDRANT_PORT/collections/conversation_memory/snapshots/{snapshot_name}"}\'\n'
     )
     lines.append("```\n\n")
@@ -877,7 +916,9 @@ def render_backup_restore(targets: List[BackupTarget]) -> str:
 
     lines.append("## Cross-References\n\n")
     lines.append("- [startup.md](startup.md) — Service startup order for restore\n")
-    lines.append("- [production_checklist.md](production_checklist.md) — Post-restore verification\n")
+    lines.append(
+        "- [production_checklist.md](production_checklist.md) — Post-restore verification\n"
+    )
     lines.append("- [monitoring.md](monitoring.md) — Monitor system health after restore\n")
 
     return "".join(lines)
@@ -930,11 +971,17 @@ def render_troubleshooting(entries: List[TroubleshootingEntry]) -> str:
 
     lines.append("## General Troubleshooting Steps\n\n")
     lines.append("1. **Check logs**: Review `$AIOS_HOME/logs/aios.log` and service-specific logs\n")
-    lines.append("2. **Verify configuration**: Confirm all required environment variables are set\n")
+    lines.append(
+        "2. **Verify configuration**: Confirm all required environment variables are set\n"
+    )
     lines.append("3. **Test connectivity**: Verify each service responds to its health check\n")
-    lines.append("4. **Check resources**: Monitor CPU, memory, and disk with `top`, `free`, `df -h`\n")
+    lines.append(
+        "4. **Check resources**: Monitor CPU, memory, and disk with `top`, `free`, `df -h`\n"
+    )
     lines.append("5. **Review recent changes**: `git log --oneline -20` for recent deployments\n")
-    lines.append("6. **Restart in order**: Stop AIOS Core, then restart services per [startup.md](startup.md)\n\n")
+    lines.append(
+        "6. **Restart in order**: Stop AIOS Core, then restart services per [startup.md](startup.md)\n\n"
+    )
 
     lines.append("## Diagnostic Commands\n\n")
     lines.append("```bash\n")
@@ -962,7 +1009,9 @@ def render_troubleshooting(entries: List[TroubleshootingEntry]) -> str:
 
     lines.append("## Getting Help\n\n")
     lines.append("If you cannot resolve an issue:\n\n")
-    lines.append("1. Gather diagnostic information (logs, configuration, error messages, system metrics)\n")
+    lines.append(
+        "1. Gather diagnostic information (logs, configuration, error messages, system metrics)\n"
+    )
     lines.append("2. Search existing GitHub issues for similar symptoms\n")
     lines.append("3. Open a new issue with:\n")
     lines.append("   - AIOS version (`aios --version`)\n")
@@ -974,7 +1023,9 @@ def render_troubleshooting(entries: List[TroubleshootingEntry]) -> str:
     lines.append("- [configuration.md](configuration.md) — Verify all environment variables\n")
     lines.append("- [startup.md](startup.md) — Correct startup order\n")
     lines.append("- [monitoring.md](monitoring.md) — Health check endpoints\n")
-    lines.append("- [Generated — Services](../generated/services.md) — Service implementation catalog\n")
+    lines.append(
+        "- [Generated — Services](../generated/services.md) — Service implementation catalog\n"
+    )
     lines.append("- [Reference — Services](../reference/services.md) — Service API reference\n")
 
     return "".join(lines)
@@ -997,7 +1048,9 @@ def render_production_checklist() -> str:
     lines.append("- [ ] Network firewall rules configured\n\n")
 
     lines.append("## Security\n\n")
-    lines.append("- [ ] All secrets stored in a secrets manager (not in code or unencrypted files)\n")
+    lines.append(
+        "- [ ] All secrets stored in a secrets manager (not in code or unencrypted files)\n"
+    )
     lines.append("- [ ] POSTGRES_PASSWORD is strong and unique (rotated regularly)\n")
     lines.append("- [ ] REDIS_PASSWORD configured (and REDIS_TLS=true)\n")
     lines.append("- [ ] QDRANT_API_KEY configured for cloud/secured deployments\n")
@@ -1009,7 +1062,9 @@ def render_production_checklist() -> str:
     lines.append("- [ ] Production .env reviewed for accidental test values\n\n")
 
     lines.append("## Configuration\n\n")
-    lines.append("- [ ] All required environment variables set (see [configuration.md](configuration.md))\n")
+    lines.append(
+        "- [ ] All required environment variables set (see [configuration.md](configuration.md))\n"
+    )
     lines.append("- [ ] config/config.toml reviewed and validated\n")
     lines.append("- [ ] AIOS_LOG_LEVEL=INFO or WARNING (not DEBUG)\n")
     lines.append("- [ ] POSTGRES_CONNECT_TIMEOUT set appropriately\n")
@@ -1040,7 +1095,9 @@ def render_production_checklist() -> str:
     lines.append("- [ ] Prometheus deployed and scraping AIOS, postgres-exporter, redis-exporter\n")
     lines.append("- [ ] Grafana dashboards imported and displaying data\n")
     lines.append("- [ ] Alertmanager configured with on-call notification channels\n")
-    lines.append("- [ ] Alert rules configured for all thresholds in [monitoring.md](monitoring.md)\n")
+    lines.append(
+        "- [ ] Alert rules configured for all thresholds in [monitoring.md](monitoring.md)\n"
+    )
     lines.append("- [ ] Loki log aggregation configured\n")
     lines.append("- [ ] Log retention policy configured (minimum 30 days)\n\n")
 
@@ -1064,7 +1121,9 @@ def render_production_checklist() -> str:
     lines.append("- [ ] [startup.md](startup.md) used to verify startup sequence\n")
     lines.append("- [ ] [troubleshooting.md](troubleshooting.md) available on-call runbook\n")
     lines.append("- [ ] [backup_restore.md](backup_restore.md) referenced in DR plan\n")
-    lines.append("- [ ] Architecture diagrams up to date: [docs/diagrams/](../diagrams/README.md)\n")
+    lines.append(
+        "- [ ] Architecture diagrams up to date: [docs/diagrams/](../diagrams/README.md)\n"
+    )
     lines.append("- [ ] On-call procedures documented and team notified\n\n")
 
     lines.append("## Post-Deployment Verification\n\n")

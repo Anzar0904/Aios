@@ -19,7 +19,7 @@ class CustomTestSearchProvider(SearchProvider):
                 title="Custom Target File",
                 snippet="Matches keyword testing",
                 content="Full test page content",
-                score=0.95
+                score=0.95,
             )
         ]
 
@@ -31,7 +31,7 @@ def test_research_models_serialization():
         snippet="Short desc",
         content="Full page",
         score=0.75,
-        metadata={"tags": ["wiki"]}
+        metadata={"tags": ["wiki"]},
     )
     assert source.url == "https://example.com"
     assert source.score == 0.75
@@ -41,15 +41,17 @@ def test_research_models_serialization():
 def test_query_planner_and_ranking():
     model_service = MagicMock()
     service = LocalResearchService(model_service)
-    
+
     queries = service._plan_queries("LocalEventBus compared to Apache Kafka")
     assert "LocalEventBus compared to Apache Kafka" in queries
     assert len(queries) >= 2
 
     # Ranking
     s1 = Source(url="u1", title="Event Bus", snippet="LocalEventBus signaling model", content="")
-    s2 = Source(url="u2", title="Apache Kafka", snippet="Distributed streaming queue manager", content="")
-    
+    s2 = Source(
+        url="u2", title="Apache Kafka", snippet="Distributed streaming queue manager", content=""
+    )
+
     ranked = service._rank_sources([s1, s2], "LocalEventBus")
     assert ranked[0].url == "u1"
     assert ranked[0].score > ranked[1].score
@@ -60,17 +62,19 @@ def test_research_execution_and_cache():
     mock_llm_response = LLMResponse(
         content="Research report details: LocalEventBus runs in-process [1]. NATS is distributed [2].",
         model_name="claude-3-5-sonnet",
-        provider_name="claude"
+        provider_name="claude",
     )
     model_service.execute_request.return_value = mock_llm_response
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        service = LocalResearchService(model_service, cache_filename="test_research_cache.json", workspace_root=tmpdir)
-        service.initialize() # registers MockSearchProvider
+        service = LocalResearchService(
+            model_service, cache_filename="test_research_cache.json", workspace_root=tmpdir
+        )
+        service.initialize()  # registers MockSearchProvider
 
         # Run research
         result = service.research("Compare LocalEventBus and NATS", limit=2)
-        
+
         assert isinstance(result, ResearchResult)
         assert "LocalEventBus runs in-process" in result.report
         assert len(result.sources) == 2
@@ -81,7 +85,7 @@ def test_research_execution_and_cache():
         # Verify second call hits cache
         cached_result = service.research("Compare LocalEventBus and NATS", limit=2)
         assert cached_result.created_at == result.created_at
-        model_service.execute_request.assert_called_once() # Should not be called a second time
+        model_service.execute_request.assert_called_once()  # Should not be called a second time
 
 
 def test_custom_search_provider_registration():
@@ -89,13 +93,15 @@ def test_custom_search_provider_registration():
     model_service.execute_request.return_value = LLMResponse(
         content="Custom query returns target [1].",
         model_name="claude-3-5-sonnet",
-        provider_name="claude"
+        provider_name="claude",
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        service = LocalResearchService(model_service, cache_filename="test_custom_research_cache.json", workspace_root=tmpdir)
+        service = LocalResearchService(
+            model_service, cache_filename="test_custom_research_cache.json", workspace_root=tmpdir
+        )
         service.initialize()
-        
+
         custom_prov = CustomTestSearchProvider()
         service.register_provider(custom_prov)
 

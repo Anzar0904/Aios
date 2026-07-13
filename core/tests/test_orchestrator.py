@@ -1,4 +1,3 @@
-
 from aios.services.command import CommandRegistry
 from aios.services.command.metadata import CommandCategory, CommandMetadata
 from aios.services.orchestrator import (
@@ -19,8 +18,8 @@ def test_dependency_level_grouping_and_cycles():
         invocations=[
             SkillInvocation("step1", "research", "command1", []),
             SkillInvocation("step2", "personal", "command2", ["step1"]),
-            SkillInvocation("step3", "n8n", "command3", ["step1"])
-        ]
+            SkillInvocation("step3", "n8n", "command3", ["step1"]),
+        ],
     )
 
     levels = service._group_invocations_into_levels(plan_valid.invocations)
@@ -36,8 +35,8 @@ def test_dependency_level_grouping_and_cycles():
         plan_id="plan-2",
         invocations=[
             SkillInvocation("step1", "research", "command1", ["step2"]),
-            SkillInvocation("step2", "personal", "command2", ["step1"])
-        ]
+            SkillInvocation("step2", "personal", "command2", ["step1"]),
+        ],
     )
     try:
         service._group_invocations_into_levels(plan_cycle.invocations)
@@ -50,19 +49,18 @@ def test_parameter_substitution():
     registry = CommandRegistry()
     service = LocalOrchestratorService(registry)
 
-    variables = {
-        "step1": "Research details on event bus",
-        "step2.result": "Done"
-    }
+    variables = {"step1": "Research details on event bus", "step2.result": "Done"}
 
     cmd = "workflow create check event bus: {step1} status: {step2.result}"
     substituted = service._substitute_parameters(cmd, variables)
-    assert substituted == "workflow create check event bus: Research details on event bus status: Done"
+    assert (
+        substituted == "workflow create check event bus: Research details on event bus status: Done"
+    )
 
 
 def test_multi_skill_flows_orchestration():
     registry = CommandRegistry()
-    
+
     # Register mock command handlers
     def mock_research(args):
         return f"Research results for: {args}"
@@ -75,15 +73,15 @@ def test_multi_skill_flows_orchestration():
 
     registry.register_command(
         CommandMetadata("research topic", "...", CommandCategory.CLI, "None", [], "usage"),
-        mock_research
+        mock_research,
     )
     registry.register_command(
         CommandMetadata("profile show", "...", CommandCategory.CLI, "None", [], "usage"),
-        mock_personal
+        mock_personal,
     )
     registry.register_command(
         CommandMetadata("workflow create", "...", CommandCategory.CLI, "None", [], "usage"),
-        mock_n8n
+        mock_n8n,
     )
 
     service = LocalOrchestratorService(registry)
@@ -94,8 +92,8 @@ def test_multi_skill_flows_orchestration():
         invocations=[
             SkillInvocation("step1", "research", "research topic weather API"),
             SkillInvocation("step2", "personal", "profile show using weather API result: {step1}"),
-            SkillInvocation("step3", "n8n", "workflow create deploy weather: {step2}")
-        ]
+            SkillInvocation("step3", "n8n", "workflow create deploy weather: {step2}"),
+        ],
     )
 
     ctx = ExecutionContext()
@@ -105,7 +103,10 @@ def test_multi_skill_flows_orchestration():
     assert "Step ID: step1" in res["report"]
     assert "Step ID: step3" in res["report"]
     assert res["results"]["step1"] == "Research results for: weather API"
-    assert res["results"]["step2"] == "Personal summary of: using weather API result: Research results for: weather API"
+    assert (
+        res["results"]["step2"]
+        == "Personal summary of: using weather API result: Research results for: weather API"
+    )
     assert "Workflow created with input" in res["results"]["step3"]
 
 
@@ -117,7 +118,7 @@ def test_failure_handling_and_abort():
 
     registry.register_command(
         CommandMetadata("failing cmd", "...", CommandCategory.CLI, "None", [], "usage"),
-        mock_failing
+        mock_failing,
     )
 
     service = LocalOrchestratorService(registry)
@@ -125,8 +126,8 @@ def test_failure_handling_and_abort():
         plan_id="failure-plan",
         invocations=[
             SkillInvocation("step1", "fail", "failing cmd"),
-            SkillInvocation("step2", "n8n", "workflow create deploy")
-        ]
+            SkillInvocation("step2", "n8n", "workflow create deploy"),
+        ],
     )
 
     ctx = ExecutionContext()

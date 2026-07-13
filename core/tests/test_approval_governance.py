@@ -33,7 +33,7 @@ def test_approval_middleware_routing(temp_dir):
         project="proj_1",
         client="c1",
         provider="github",
-        details={"files": ["f1.log"], "changes": "read", "rollback": True}
+        details={"files": ["f1.log"], "changes": "read", "rollback": True},
     )
     assert res_low["status"] == "executed"
     assert res_low["token"].startswith("tok_")
@@ -44,7 +44,7 @@ def test_approval_middleware_routing(temp_dir):
         project="proj_1",
         client="c1",
         provider="supabase",
-        details={"files": [], "changes": "delete storage bucket", "rollback": False}
+        details={"files": [], "changes": "delete storage bucket", "rollback": False},
     )
     assert res_crit["status"] == "rejected"
 
@@ -54,7 +54,7 @@ def test_approval_middleware_routing(temp_dir):
         project="proj_1",
         client="c1",
         provider="n8n",
-        details={"files": ["wf.json"], "changes": "deploy new wf", "rollback": True}
+        details={"files": ["wf.json"], "changes": "deploy new wf", "rollback": True},
     )
     assert res_med["status"] == "queued"
     assert res_med["request_id"].startswith("req_")
@@ -74,7 +74,7 @@ def test_approval_service_extended_apis(temp_dir):
         project="proj_2",
         client="c2",
         provider="vercel",
-        details={"changes": "deploy to prod", "rollback": True}
+        details={"changes": "deploy to prod", "rollback": True},
     )
     req_id = res["request_id"]
 
@@ -145,16 +145,14 @@ def test_approval_cli_commands(temp_dir):
         project="proj_2",
         client="c2",
         provider="vercel",
-        details={"changes": "deploy to prod", "rollback": True}
+        details={"changes": "deploy to prod", "rollback": True},
     )
     req_id = res["request_id"]
 
     registry = ServiceRegistry()
     registry.register(ApprovalEngineService, service)
 
-    with patch(
-        "aios.registry.ServiceRegistry._global_registry", registry
-    ):
+    with patch("aios.registry.ServiceRegistry._global_registry", registry):
         assert execute_builtin_cli_command(["approval"], exit_on_complete=False)
         assert execute_builtin_cli_command(["approval", "queue"], exit_on_complete=False)
         assert execute_builtin_cli_command(["approval", "pending"], exit_on_complete=False)

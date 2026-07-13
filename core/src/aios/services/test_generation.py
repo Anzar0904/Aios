@@ -9,6 +9,7 @@ from aios.services.workspace_intelligence import CodeStructureSummary
 @dataclass
 class GeneratedTestArtifact:
     """Represents a generated test file artifact target."""
+
     __test__ = False
     artifact_id: str
     file_path: str
@@ -20,6 +21,7 @@ class GeneratedTestArtifact:
 @dataclass
 class TestGenerationReport:
     """Final outcome report detailing generated test telemetry."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -33,6 +35,7 @@ class TestGenerationReport:
 
 class TestPatternAnalyzer(abc.ABC):
     """Analyzes existing tests to identify naming, fixture, and assertion styles."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -43,6 +46,7 @@ class TestPatternAnalyzer(abc.ABC):
 
 class TestTemplateEngine(abc.ABC):
     """Renders test mock skeletons using style guides."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -53,6 +57,7 @@ class TestTemplateEngine(abc.ABC):
 
 class TestCaseBuilder(abc.ABC):
     """Structures test parameters, steps, and targets."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -63,6 +68,7 @@ class TestCaseBuilder(abc.ABC):
 
 class AssertionGenerator(abc.ABC):
     """Generates standard target assertions."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -73,6 +79,7 @@ class AssertionGenerator(abc.ABC):
 
 class FixtureGenerator(abc.ABC):
     """Generates testing fixtures mapping setups."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -83,6 +90,7 @@ class FixtureGenerator(abc.ABC):
 
 class MockGenerator(abc.ABC):
     """Generates service mock parameters."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -93,6 +101,7 @@ class MockGenerator(abc.ABC):
 
 class EdgeCaseGenerator(abc.ABC):
     """Generates exception boundaries and edge cases parameters."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -103,6 +112,7 @@ class EdgeCaseGenerator(abc.ABC):
 
 class RegressionTestGenerator(abc.ABC):
     """Generates regression-specific test targets."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -113,6 +123,7 @@ class RegressionTestGenerator(abc.ABC):
 
 class TestGenerator(abc.ABC):
     """Primary engine executing generation of single test files."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -121,7 +132,7 @@ class TestGenerator(abc.ABC):
         workspace_root: str,
         target_file: str,
         patterns: str,
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> GeneratedTestArtifact:
         """Writes and returns test target artifacts."""
         pass
@@ -129,6 +140,7 @@ class TestGenerator(abc.ABC):
 
 class TestGenerationService(ServiceLifecycle, abc.ABC):
     """Coordinating service executing test planning, context generation, and reviews packaging."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -138,7 +150,7 @@ class TestGenerationService(ServiceLifecycle, abc.ABC):
         objective: str,
         workspace_root: str,
         target_files: List[str],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> TestGenerationReport:
         """Executes test generation pipeline using the ModelService."""
         pass

@@ -32,10 +32,10 @@ class LocalIntentClassifier(IntentClassifier):
                 prompt = (
                     "You are the Lead Intent Classifier for Personal AI OS.\n"
                     f"Classify the following objective into one or more categories:\n"
-                    f"Objective: \"{cleaned}\"\n\n"
+                    f'Objective: "{cleaned}"\n\n'
                     "Categories available:\n"
                     "- Career\n- Project\n- Research\n- Learning\n- Automation\n- Planning\n- Coding\n- GitHub\n- Knowledge\n- Mission\n- Daily\n- Conversation\n- Hybrid\n\n"
-                    "Return a JSON list of matched categories (pure JSON, no markdown formatting, e.g. [\"Career\", \"Research\"])"
+                    'Return a JSON list of matched categories (pure JSON, no markdown formatting, e.g. ["Career", "Research"])'
                 )
                 res = self._model.execute_request(
                     LLMRequest(
@@ -63,15 +63,38 @@ class LocalIntentClassifier(IntentClassifier):
         keyword_map = {
             "Career": ["career", "resume", "job", "internship", "interview", "portfolio", "apply"],
             "Project": ["project", "repository", "repo", "adr", "milestone", "workspace"],
-            "Research": ["research", "paper", "topic", "explain", "summarize", "literature", "find"],
+            "Research": [
+                "research",
+                "paper",
+                "topic",
+                "explain",
+                "summarize",
+                "literature",
+                "find",
+            ],
             "Learning": ["learn", "study", "kubernetes", "course", "syllabus", "tutorial"],
             "Automation": ["automate", "n8n", "workflow", "trigger", "deploy", "cron"],
             "Planning": ["plan", "schedule", "roadmap", "backlog", "milestones"],
             "Coding": ["code", "refactor", "build", "compile", "bug", "fix", "function", "class"],
             "GitHub": ["github", "pull request", "pr", "commit", "branch", "git"],
             "Knowledge": ["knowledge", "notion", "obsidian", "sync", "hub", "confluence"],
-            "Mission": ["mission", "objective", "executor", "milestone report", "roadmap completion"],
-            "Daily": ["daily", "task", "schedule", "session", "review", "productivity", "today", "yesterday"],
+            "Mission": [
+                "mission",
+                "objective",
+                "executor",
+                "milestone report",
+                "roadmap completion",
+            ],
+            "Daily": [
+                "daily",
+                "task",
+                "schedule",
+                "session",
+                "review",
+                "productivity",
+                "today",
+                "yesterday",
+            ],
             "Conversation": ["chat", "say", "hello", "conversation", "dialogue", "respond"],
         }
 

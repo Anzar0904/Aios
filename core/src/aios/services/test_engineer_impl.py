@@ -34,18 +34,21 @@ class LocalTestPlanner(TestPlanner):
     """Rule-based test planning logic to evaluate impact and strategies."""
 
     def plan_tests(
-        self,
-        objective: str,
-        affected_files: List[str],
-        code_summary: CodeStructureSummary
+        self, objective: str, affected_files: List[str], code_summary: CodeStructureSummary
     ) -> TestPlanningResult:
         # Determine strategy based on risk
-        has_critical_files = any("kernel" in f or "bootstrap" in f or "security" in f for f in affected_files)
+        has_critical_files = any(
+            "kernel" in f or "bootstrap" in f or "security" in f for f in affected_files
+        )
         strategy = TestStrategy.STRICT if has_critical_files else TestStrategy.STANDARD
         risk = "High" if has_critical_files else "Medium"
-        
+
         # Select categories
-        categories = [TestCategory.UNIT, TestCategory.STYLE_VALIDATION, TestCategory.STATIC_ANALYSIS]
+        categories = [
+            TestCategory.UNIT,
+            TestCategory.STYLE_VALIDATION,
+            TestCategory.STATIC_ANALYSIS,
+        ]
         obj_lower = objective.lower()
         if "api" in obj_lower or "route" in obj_lower:
             categories.append(TestCategory.API)
@@ -67,7 +70,7 @@ class LocalTestPlanner(TestPlanner):
                     target_id=f"tgt_{idx}_{hash(f) % 1000}",
                     file_path=f,
                     symbols=imports[:5],
-                    is_critical=is_crit
+                    is_critical=is_crit,
                 )
             )
 
@@ -75,15 +78,17 @@ class LocalTestPlanner(TestPlanner):
             targets=targets,
             excluded_targets=[".venv", "node_modules"],
             coverage_goal=90.0 if has_critical_files else 85.0,
-            risk_level=risk
+            risk_level=risk,
         )
 
         # Prioritize files: critical files first, then files with heavy dependencies
         prioritized_files = []
         dep_graph = code_summary.dependency_graph
-        
+
         # Sort targets by dependency count (descending)
-        sorted_targets = sorted(targets, key=lambda t: len(dep_graph.get(t.file_path, [])), reverse=True)
+        sorted_targets = sorted(
+            targets, key=lambda t: len(dep_graph.get(t.file_path, [])), reverse=True
+        )
         prioritized_files = [t.file_path for t in sorted_targets]
 
         # Generate TestSuites
@@ -95,7 +100,7 @@ class LocalTestPlanner(TestPlanner):
                     name=f"Automated {cat.value.capitalize()} Suite",
                     category=cat,
                     target_files=prioritized_files,
-                    estimated_execution_time=1.5 if cat == TestCategory.UNIT else 5.0
+                    estimated_execution_time=1.5 if cat == TestCategory.UNIT else 5.0,
                 )
             )
 
@@ -105,14 +110,14 @@ class LocalTestPlanner(TestPlanner):
                 requirement_id="req_cov",
                 description=f"Achieve >={scope.coverage_goal}% branch statement coverage.",
                 category=TestCategory.UNIT,
-                priority=TestPriority.HIGH
+                priority=TestPriority.HIGH,
             ),
             TestRequirement(
                 requirement_id="req_reg",
                 description="Ensure zero regressions across core kernel state test cases.",
                 category=TestCategory.REGRESSION,
-                priority=TestPriority.CRITICAL
-            )
+                priority=TestPriority.CRITICAL,
+            ),
         ]
 
         plan = TestPlan(
@@ -121,13 +126,13 @@ class LocalTestPlanner(TestPlanner):
             strategy=strategy,
             scope=scope,
             suites=suites,
-            requirements=requirements
+            requirements=requirements,
         )
 
         checkpoints = [
             "Verify all files syntax check passes.",
             "Run unit suites locally to verify mock completions.",
-            "Ensure code coverage meets designated target before patch approval."
+            "Ensure code coverage meets designated target before patch approval.",
         ]
 
         sequence = [s.suite_id for s in suites]
@@ -137,7 +142,7 @@ class LocalTestPlanner(TestPlanner):
             plan=plan,
             ordered_execution_sequence=sequence,
             validation_checkpoints=checkpoints,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -149,13 +154,13 @@ class LocalAITestEngineerService(AITestEngineerService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
         self._model = model_service
         self._registry = registry
-        
+
         self._planner = LocalTestPlanner()
 
     def initialize(self) -> None:
@@ -172,19 +177,19 @@ class LocalAITestEngineerService(AITestEngineerService):
         workspace_id: str,
         objective: str,
         affected_files: List[str],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> TestPlanningResult:
         logger.info(f"Generating test plan for objective: '{objective}'")
-        
+
         # Rule-based generation
         result = self._planner.plan_tests(objective, affected_files, code_summary)
-        
+
         # If Model Service is present, refine using LLM
         if self._model:
             try:
                 target_names = [t.file_path for t in result.plan.scope.targets]
                 [c.category.value for c in result.plan.suites]
-                
+
                 prompt = (
                     "You are the Lead Quality Assurance Architect for the Personal AI OS.\n"
                     f"Objective: {objective}\n"
@@ -192,9 +197,9 @@ class LocalAITestEngineerService(AITestEngineerService):
                     f"Selected testing strategies: {result.plan.strategy.value}\n\n"
                     "Refine the testing checkpoints and requirements. Return a single, pure JSON object:\n"
                     "{\n"
-                    "  \"validation_checkpoints\": [ \"string\" ],\n"
-                    "  \"coverage_goal\": 90.0,\n"
-                    "  \"estimated_execution_time_total\": 15.5\n"
+                    '  "validation_checkpoints": [ "string" ],\n'
+                    '  "coverage_goal": 90.0,\n'
+                    '  "estimated_execution_time_total": 15.5\n'
                     "}"
                 )
 
@@ -203,7 +208,7 @@ class LocalAITestEngineerService(AITestEngineerService):
                         prompt=prompt,
                         system_instruction="Output pure JSON only.",
                         task_category="testing",
-                        preferences={"JSON_output": True}
+                        preferences={"JSON_output": True},
                     )
                 )
 
@@ -214,8 +219,12 @@ class LocalAITestEngineerService(AITestEngineerService):
                         content = content[4:]
 
                 data = json.loads(content)
-                result.validation_checkpoints = data.get("validation_checkpoints", result.validation_checkpoints)
-                result.plan.scope.coverage_goal = data.get("coverage_goal", result.plan.scope.coverage_goal)
+                result.validation_checkpoints = data.get(
+                    "validation_checkpoints", result.validation_checkpoints
+                )
+                result.plan.scope.coverage_goal = data.get(
+                    "coverage_goal", result.plan.scope.coverage_goal
+                )
             except Exception as e:
                 logger.debug(f"LLM test refinement failed: {e}. Relying on rule defaults.")
 
@@ -231,7 +240,7 @@ class LocalAITestEngineerService(AITestEngineerService):
             f"Sequence Queue: {result.ordered_execution_sequence}\n"
             f"Checkpoints: {result.validation_checkpoints}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -240,8 +249,8 @@ class LocalAITestEngineerService(AITestEngineerService):
                 session_id=result.result_id,
                 tags=["test_planning", "validation_strategy"],
                 importance=2,
-                source_subsystem="test_engineer"
-            )
+                source_subsystem="test_engineer",
+            ),
         )
 
     def publish_test_plan(self, result: TestPlanningResult) -> None:
@@ -256,7 +265,9 @@ class LocalAITestEngineerService(AITestEngineerService):
 
         suites_md = []
         for s in result.plan.suites:
-            suites_md.append(f"- **{s.name}** ({s.category.value.upper()}) [Est. Time: {s.estimated_execution_time}s]")
+            suites_md.append(
+                f"- **{s.name}** ({s.category.value.upper()}) [Est. Time: {s.estimated_execution_time}s]"
+            )
 
         report_md = (
             f"# Engineering Test Plan Report\n\n"
@@ -265,10 +276,8 @@ class LocalAITestEngineerService(AITestEngineerService):
             f"**Strategy**: `{result.plan.strategy.value.upper()}`\n"
             f"**Risk Classification**: `{result.plan.scope.risk_level.upper()}`\n"
             f"**Coverage Target**: {result.plan.scope.coverage_goal}%\n\n"
-            f"## Targets In Scope\n"
-            + "\n".join(targets_md) + "\n\n"
-            "## Prioritized Test Suites\n"
-            + "\n".join(suites_md) + "\n\n"
+            f"## Targets In Scope\n" + "\n".join(targets_md) + "\n\n"
+            "## Prioritized Test Suites\n" + "\n".join(suites_md) + "\n\n"
             "## Validation Checkpoints\n"
             + "\n".join([f"- {cp}" for cp in result.validation_checkpoints])
         )
@@ -281,7 +290,7 @@ class LocalAITestEngineerService(AITestEngineerService):
                 unique_id=f"test_plan_{result.plan.plan_id}",
                 timestamp=result.timestamp,
                 source_subsystem="test_engineer",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

@@ -33,27 +33,62 @@ class LocalMemoryClassifier(MemoryClassifier):
     def __init__(self, memory_service: "LocalMemoryService") -> None:
         self._service = memory_service
 
-    def classify_memory(self, content: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def classify_memory(
+        self, content: str, context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         content_lower = content.lower()
 
         category = MemoryCategory.PERSONAL
         if "daily review" in content_lower or "productivity rating" in content_lower:
             category = MemoryCategory.DAILY_REVIEW
-        elif "git" in content_lower or "github" in content_lower or "commit" in content_lower or "pull request" in content_lower:
+        elif (
+            "git" in content_lower
+            or "github" in content_lower
+            or "commit" in content_lower
+            or "pull request" in content_lower
+        ):
             category = MemoryCategory.GITHUB
-        elif "interview" in content_lower or "job application" in content_lower or "resume" in content_lower or "career" in content_lower:
+        elif (
+            "interview" in content_lower
+            or "job application" in content_lower
+            or "resume" in content_lower
+            or "career" in content_lower
+        ):
             category = MemoryCategory.CAREER
-        elif "mission" in content_lower or "milestone" in content_lower or "objective" in content_lower:
+        elif (
+            "mission" in content_lower
+            or "milestone" in content_lower
+            or "objective" in content_lower
+        ):
             category = MemoryCategory.MISSION
-        elif "research" in content_lower or "paper" in content_lower or "literature" in content_lower:
+        elif (
+            "research" in content_lower or "paper" in content_lower or "literature" in content_lower
+        ):
             category = MemoryCategory.RESEARCH
-        elif "learning" in content_lower or "course" in content_lower or "tutorial" in content_lower or "study" in content_lower:
+        elif (
+            "learning" in content_lower
+            or "course" in content_lower
+            or "tutorial" in content_lower
+            or "study" in content_lower
+        ):
             category = MemoryCategory.LEARNING
-        elif "workflow" in content_lower or "pipeline" in content_lower or "automation" in content_lower:
+        elif (
+            "workflow" in content_lower
+            or "pipeline" in content_lower
+            or "automation" in content_lower
+        ):
             category = MemoryCategory.WORKFLOW
-        elif "project" in content_lower or "workspace" in content_lower or "repository" in content_lower:
+        elif (
+            "project" in content_lower
+            or "workspace" in content_lower
+            or "repository" in content_lower
+        ):
             category = MemoryCategory.PROJECT
-        elif "conversation" in content_lower or "chat" in content_lower or "dialogue" in content_lower:
+        elif (
+            "conversation" in content_lower
+            or "chat" in content_lower
+            or "dialogue" in content_lower
+        ):
             category = MemoryCategory.CONVERSATION
 
         importance = MemoryImportance.MEDIUM
@@ -191,7 +226,9 @@ class LocalMemoryIndexer(MemoryIndexer):
                 continue
 
             if technology is not None:
-                if not any(technology.lower() in tech.lower() for tech in meta.related_technologies):
+                if not any(
+                    technology.lower() in tech.lower() for tech in meta.related_technologies
+                ):
                     continue
 
             if start_date is not None and meta.timestamp < start_date:
@@ -279,11 +316,14 @@ class LocalMemoryRetriever(MemoryRetriever):
 
             if "google" in objective_lower:
                 company_filter = "Google"
-            if "resume" in objective_lower or "interview" in objective_lower or "applying" in objective_lower:
+            if (
+                "resume" in objective_lower
+                or "interview" in objective_lower
+                or "applying" in objective_lower
+            ):
                 category_filter = MemoryCategory.CAREER
             if "daily planning" in objective_lower or "yesterday" in objective_lower:
                 category_filter = MemoryCategory.DAILY_REVIEW
-
 
         # Index lookup
         candidates = self._service.indexer.lookup(
@@ -385,7 +425,7 @@ class LocalMemoryService(MemoryService):
 
         seen = set()
         combined_tags = []
-        for t in (tags + classification["tags"]):
+        for t in tags + classification["tags"]:
             if t not in seen:
                 seen.add(t)
                 combined_tags.append(t)
@@ -448,7 +488,7 @@ class LocalMemoryService(MemoryService):
 
             seen_u = set()
             combined_tags_u = []
-            for t in ((tags or memory.metadata.tags) + classification["tags"]):
+            for t in (tags or memory.metadata.tags) + classification["tags"]:
                 if t not in seen_u:
                     seen_u.add(t)
                     combined_tags_u.append(t)

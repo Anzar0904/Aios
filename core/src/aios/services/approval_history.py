@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 
 class ApprovalState(Enum):
     """Enumerate states of the approval gating workflow state machine."""
+
     DRAFT = "Draft"
     SUBMITTED = "Submitted"
     UNDER_REVIEW = "Under Review"
@@ -30,7 +31,7 @@ VALID_TRANSITIONS = {
         ApprovalState.APPROVED_WITH_CONDITIONS,
         ApprovalState.PARTIALLY_APPROVED,
         ApprovalState.REJECTED,
-        ApprovalState.ARCHIVED
+        ApprovalState.ARCHIVED,
     ],
     ApprovalState.CHANGES_REQUESTED: [ApprovalState.UPDATED, ApprovalState.ARCHIVED],
     ApprovalState.UPDATED: [ApprovalState.UNDER_REVIEW, ApprovalState.ARCHIVED],
@@ -39,13 +40,14 @@ VALID_TRANSITIONS = {
     ApprovalState.PARTIALLY_APPROVED: [ApprovalState.EXPIRED, ApprovalState.ARCHIVED],
     ApprovalState.REJECTED: [ApprovalState.ARCHIVED],
     ApprovalState.EXPIRED: [ApprovalState.ARCHIVED],
-    ApprovalState.ARCHIVED: []
+    ApprovalState.ARCHIVED: [],
 }
 
 
 @dataclass
 class ApprovalStateTransition:
     """Immutable transition details tracking state progression."""
+
     transition_id: str
     from_state: ApprovalState
     to_state: ApprovalState
@@ -57,6 +59,7 @@ class ApprovalStateTransition:
 @dataclass
 class ApprovalHistoryEntry:
     """Immutable entry containing a session's workflow state transitions list."""
+
     entry_id: str
     session_id: str
     workspace_id: str
@@ -67,6 +70,7 @@ class ApprovalHistoryEntry:
 @dataclass
 class ApprovalDecisionRecord:
     """Consolidated telemetry record for a completed approval session."""
+
     record_id: str
     session_id: str
     workspace_id: str
@@ -82,6 +86,7 @@ class ApprovalDecisionRecord:
 @dataclass
 class ApprovalStatistics:
     """Statistical summary metrics derived from historical records."""
+
     total_sessions: int
     approved_count: int
     rejected_count: int
@@ -95,6 +100,7 @@ class ApprovalStatistics:
 @dataclass
 class ApprovalTrend:
     """Temporal progression trend metrics details."""
+
     trend_id: str
     metric_name: str  # e.g., "validation_score", "coverage"
     direction: str  # "improving", "declining", "stable"
@@ -104,6 +110,7 @@ class ApprovalTrend:
 @dataclass
 class ApprovalPattern:
     """Identified recurring pattern or blocker discovered from histories."""
+
     pattern_id: str
     pattern_type: str  # e.g., "repeated_blocker", "documentation_gap"
     description: str
@@ -113,6 +120,7 @@ class ApprovalPattern:
 @dataclass
 class ApprovalRecommendationHistory:
     """Historical recommendation compiled from quality patterns audits."""
+
     recommendation_id: str
     description: str
     source_pattern_id: str
@@ -122,6 +130,7 @@ class ApprovalRecommendationHistory:
 @dataclass
 class ApprovalHistoryReport:
     """Consolidated report encapsulating statistics, trends, and pattern recommendations."""
+
     report_id: str
     workspace_id: str
     statistics: ApprovalStatistics
@@ -159,7 +168,9 @@ class ApprovalHistoryAnalyzer(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def discover_patterns(self, entries: List[ApprovalHistoryEntry], records: List[ApprovalDecisionRecord]) -> List[ApprovalPattern]:
+    def discover_patterns(
+        self, entries: List[ApprovalHistoryEntry], records: List[ApprovalDecisionRecord]
+    ) -> List[ApprovalPattern]:
         """Identifies recurring blocker patterns and gaps."""
         pass
 
@@ -168,12 +179,21 @@ class ApprovalHistoryService(ServiceLifecycle, abc.ABC):
     """Primary service coordinating state transitions, history logs, analytics, and reporting."""
 
     @abc.abstractmethod
-    def create_history_entry(self, workspace_id: str, session_id: str, initial_state: ApprovalState, actor: str) -> ApprovalHistoryEntry:
+    def create_history_entry(
+        self, workspace_id: str, session_id: str, initial_state: ApprovalState, actor: str
+    ) -> ApprovalHistoryEntry:
         """Instantiates a new state-machine history log tracker for a session."""
         pass
 
     @abc.abstractmethod
-    def transition_state(self, workspace_id: str, session_id: str, target_state: ApprovalState, actor: str, reason: str) -> ApprovalHistoryEntry:
+    def transition_state(
+        self,
+        workspace_id: str,
+        session_id: str,
+        target_state: ApprovalState,
+        actor: str,
+        reason: str,
+    ) -> ApprovalHistoryEntry:
         """Transitions state, validating transition guidelines and appending transitions log."""
         pass
 

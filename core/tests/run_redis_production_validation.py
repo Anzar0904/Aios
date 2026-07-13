@@ -126,7 +126,7 @@ def main():
 
     # 1. PRE-VALIDATION DISCOVERY (MANDATORY)
     print("--- 1. PRE-VALIDATION DISCOVERY ---")
-    
+
     # Verify environment parameters
     os.environ["REDIS_HOST"] = "127.0.0.1"
     os.environ["REDIS_PORT"] = "6379"
@@ -174,7 +174,9 @@ def main():
     redis_transport.connect()
 
     if not redis_transport.is_connected():
-        raise RuntimeError("Could not connect to local Redis instance. Ensure Redis is running on localhost:6379.")
+        raise RuntimeError(
+            "Could not connect to local Redis instance. Ensure Redis is running on localhost:6379."
+        )
 
     print(f"[SUCCESS] Connected to live Redis instance: {redis_cfg.host}:{redis_cfg.port}")
 
@@ -209,9 +211,16 @@ def main():
     session_store = SessionStoreImpl(redis_provider, session_registry, session_stats, session_diag)
     session_expiration = SessionExpirationManagerImpl(session_store, session_registry)
     session_recovery = SessionRecoveryManagerImpl(p_service, redis_provider, session_stats)
-    session_manager = SessionManagerImpl(session_store, session_recovery, session_registry, session_stats)
+    session_manager = SessionManagerImpl(
+        session_store, session_recovery, session_registry, session_stats
+    )
     session_service = RedisSessionServiceImpl(
-        redis_provider, session_registry, session_store, session_manager, session_stats, session_diag
+        redis_provider,
+        session_registry,
+        session_store,
+        session_manager,
+        session_stats,
+        session_diag,
     )
 
     session_registry.initialize()
@@ -232,11 +241,15 @@ def main():
     coord_diag = CoordinationDiagnosticsImpl(redis_provider)
     coord_health = CoordinationHealthMonitorImpl(redis_provider)
     coord_recommend = CoordinationRecommendationEngineImpl(coord_stats, coord_diag)
-    lock_lease_mgr = LockLeaseManagerImpl(redis_provider, lock_registry, deadlock_detector, coord_stats, coord_diag)
+    lock_lease_mgr = LockLeaseManagerImpl(
+        redis_provider, lock_registry, deadlock_detector, coord_stats, coord_diag
+    )
     lock_recovery_mgr = LockRecoveryManagerImpl(coord_stats)
     mutex_mgr = MutexManagerImpl(lock_lease_mgr, coord_stats)
     dist_lock_mgr = DistributedLockManagerImpl(lock_lease_mgr, deadlock_detector, coord_stats)
-    coord_service = RedisCoordinationServiceImpl(redis_provider, lock_registry, lock_lease_mgr, dist_lock_mgr)
+    coord_service = RedisCoordinationServiceImpl(
+        redis_provider, lock_registry, lock_lease_mgr, dist_lock_mgr
+    )
 
     lock_registry.initialize()
     deadlock_detector.initialize()
@@ -262,10 +275,18 @@ def main():
     queue_recovery_mgr = QueueRecoveryManagerImpl(queue_stats)
     queue_worker_coordinator = QueueWorkerCoordinatorImpl()
     queue_manager = QueueManagerImpl(
-        redis_provider, queue_registry, priority_q_mgr, delayed_q_mgr, retry_q_mgr, queue_stats, queue_diag
+        redis_provider,
+        queue_registry,
+        priority_q_mgr,
+        delayed_q_mgr,
+        retry_q_mgr,
+        queue_stats,
+        queue_diag,
     )
     queue_scheduler = QueueSchedulerImpl(queue_manager)
-    queue_service = RedisQueueServiceImpl(redis_provider, queue_registry, queue_manager, queue_stats)
+    queue_service = RedisQueueServiceImpl(
+        redis_provider, queue_registry, queue_manager, queue_stats
+    )
 
     queue_registry.initialize()
     queue_stats.initialize()
@@ -293,9 +314,19 @@ def main():
     rate_limit_health = RateLimitHealthMonitorImpl(redis_provider)
     rate_limit_rec = RateLimitRecommendationEngineImpl(rate_limit_stats, rate_limit_diag)
     rl_manager = RateLimitManagerImpl(
-        redis_provider, quota_reg, tb_mgr, sw_mgr, fw_mgr, quota_sync, rl_recovery, rate_limit_stats, rate_limit_diag
+        redis_provider,
+        quota_reg,
+        tb_mgr,
+        sw_mgr,
+        fw_mgr,
+        quota_sync,
+        rl_recovery,
+        rate_limit_stats,
+        rate_limit_diag,
     )
-    rate_limit_service = RedisRateLimitServiceImpl(redis_provider, quota_reg, rl_manager, rate_limit_stats)
+    rate_limit_service = RedisRateLimitServiceImpl(
+        redis_provider, quota_reg, rl_manager, rate_limit_stats
+    )
 
     quota_reg.initialize()
     tb_mgr.initialize()
@@ -340,7 +371,7 @@ def main():
         redis_diagnostics,
         redis_stats_collector,
         redis_reporter,
-        redis_validator
+        redis_validator,
     )
 
     redis_aggregator.initialize()
@@ -365,10 +396,12 @@ def main():
     ri_lifecycle = RuntimeLifecycleMonitor()
     ri_stats = RuntimeStatisticsEngine(p_service)
     ri_diag = RuntimeDiagnosticsEngine()
-    ri_recommend = RuntimeRecommendationEngine(ri_telem, ri_perf, ri_capacity, ri_query_prof, ri_tx_prof, ri_repo_prof)
+    ri_recommend = RuntimeRecommendationEngine(
+        ri_telem, ri_perf, ri_capacity, ri_query_prof, ri_tx_prof, ri_repo_prof
+    )
     ri_health = RuntimeHealthMonitor(p_service, ri_telem)
     ri_report = RuntimeReportGenerator(".", None)
-    
+
     global_ri = RuntimeIntelligenceServiceImpl(
         ri_health,
         ri_telem,
@@ -381,7 +414,7 @@ def main():
         ri_tx_prof,
         ri_repo_prof,
         ri_lifecycle,
-        ri_report
+        ri_report,
     )
     ri_report.intelligence = global_ri
     p_service.ri_service = global_ri
@@ -413,7 +446,10 @@ def main():
 
     # 3. Connectivity Live validation
     print("\n--- 2. CONNECTIVITY VALIDATION ---")
-    ping_ok = redis_provider.transport.execute_command("ping") == "PONG" or redis_provider.transport.execute_command("ping") is True
+    ping_ok = (
+        redis_provider.transport.execute_command("ping") == "PONG"
+        or redis_provider.transport.execute_command("ping") is True
+    )
     print(f"Ping result: {ping_ok}")
     db_ok = redis_provider.transport.execute_command("select", 0) is not None
     print(f"Database selection result: {db_ok}")
@@ -454,7 +490,9 @@ def main():
 
     # 7. Queue Platform Live Validation
     print("\n--- 6. QUEUE PLATFORM VALIDATION ---")
-    enqueue_ok = queue_manager.enqueue("engineering", "job-x12", {"cmd": "build"}, priority=QueuePriority.NORMAL)
+    enqueue_ok = queue_manager.enqueue(
+        "engineering", "job-x12", {"cmd": "build"}, priority=QueuePriority.NORMAL
+    )
     print(f"Enqueue validation: {enqueue_ok}")
     dequeue_job = queue_manager.dequeue("engineering", "worker-99")
     print(f"Dequeue validation: {dequeue_job}")
@@ -511,7 +549,9 @@ def main():
 
         # 6. Queue Enqueue/Dequeue/Ack
         t0 = time.perf_counter()
-        queue_manager.enqueue("engineering", f"job_bench_{i}", {"desc": "benchmark"}, priority=QueuePriority.NORMAL)
+        queue_manager.enqueue(
+            "engineering", f"job_bench_{i}", {"desc": "benchmark"}, priority=QueuePriority.NORMAL
+        )
         queue_manager.dequeue("engineering", "bench_worker")
         queue_manager.acknowledge("engineering", f"job_bench_{i}", "bench_worker")
         queue_latencies.append((time.perf_counter() - t0) * 1000.0)
@@ -530,13 +570,41 @@ def main():
             return sorted_data[int(k)]
         return sorted_data[f] * (c - k) + sorted_data[c] * (k - f)
 
-    p50_set, p95_set, p99_set = get_percentile(set_latencies, 50.0), get_percentile(set_latencies, 95.0), get_percentile(set_latencies, 99.0)
-    p50_get, p95_get, p99_get = get_percentile(get_latencies, 50.0), get_percentile(get_latencies, 95.0), get_percentile(get_latencies, 99.0)
-    p50_del, p95_del, p99_del = get_percentile(delete_latencies, 50.0), get_percentile(delete_latencies, 95.0), get_percentile(delete_latencies, 99.0)
-    p50_lock, p95_lock, p99_lock = get_percentile(lock_latencies, 50.0), get_percentile(lock_latencies, 95.0), get_percentile(lock_latencies, 99.0)
-    p50_queue, p95_queue, p99_queue = get_percentile(queue_latencies, 50.0), get_percentile(queue_latencies, 95.0), get_percentile(queue_latencies, 99.0)
-    p50_rl, p95_rl, p99_rl = get_percentile(rate_limit_latencies, 50.0), get_percentile(rate_limit_latencies, 95.0), get_percentile(rate_limit_latencies, 99.0)
-    p50_conn, p95_conn, p99_conn = get_percentile(connection_latencies, 50.0), get_percentile(connection_latencies, 95.0), get_percentile(connection_latencies, 99.0)
+    p50_set, p95_set, p99_set = (
+        get_percentile(set_latencies, 50.0),
+        get_percentile(set_latencies, 95.0),
+        get_percentile(set_latencies, 99.0),
+    )
+    p50_get, p95_get, p99_get = (
+        get_percentile(get_latencies, 50.0),
+        get_percentile(get_latencies, 95.0),
+        get_percentile(get_latencies, 99.0),
+    )
+    p50_del, p95_del, p99_del = (
+        get_percentile(delete_latencies, 50.0),
+        get_percentile(delete_latencies, 95.0),
+        get_percentile(delete_latencies, 99.0),
+    )
+    p50_lock, p95_lock, p99_lock = (
+        get_percentile(lock_latencies, 50.0),
+        get_percentile(lock_latencies, 95.0),
+        get_percentile(lock_latencies, 99.0),
+    )
+    p50_queue, p95_queue, p99_queue = (
+        get_percentile(queue_latencies, 50.0),
+        get_percentile(queue_latencies, 95.0),
+        get_percentile(queue_latencies, 99.0),
+    )
+    p50_rl, p95_rl, p99_rl = (
+        get_percentile(rate_limit_latencies, 50.0),
+        get_percentile(rate_limit_latencies, 95.0),
+        get_percentile(rate_limit_latencies, 99.0),
+    )
+    p50_conn, p95_conn, p99_conn = (
+        get_percentile(connection_latencies, 50.0),
+        get_percentile(connection_latencies, 95.0),
+        get_percentile(connection_latencies, 99.0),
+    )
 
     avg_set = sum(set_latencies) / len(set_latencies)
     avg_get = sum(get_latencies) / len(get_latencies)
@@ -549,21 +617,33 @@ def main():
     overall_avg = (avg_set + avg_get + avg_del + avg_lock + avg_queue + avg_rl + avg_conn) / 7.0
     throughput = 1000.0 / overall_avg
 
-    print(f"Benchmark results: Overall Avg Latency = {overall_avg:.3f} ms, throughput = {throughput:.1f} ops/sec")
+    print(
+        f"Benchmark results: Overall Avg Latency = {overall_avg:.3f} ms, throughput = {throughput:.1f} ops/sec"
+    )
 
     # 10. Failure Recovery Live Validation
     print("\n--- 9. FAILURE RECOVERY VALIDATION ---")
     original_execute = redis_provider.transport.execute_command
     # Force simulated connection drop
-    redis_provider.transport.execute_command = MagicMock(side_effect=RuntimeError("Redis connection lost"))
+    redis_provider.transport.execute_command = MagicMock(
+        side_effect=RuntimeError("Redis connection lost")
+    )
     redis_conn.client.ping = MagicMock(side_effect=RuntimeError("Redis connection lost"))
 
     # Operations should handle errors gracefully and degrade
-    cache_set_fallback = cache_service.set("workspace", "fallback_key", {"data": "fallback"}, ttl=10)
-    sess_create_fallback = session_manager.create_session("workspace", "sess-fallback", {"user": "fallback"})
-    rl_allowed_fallback = rate_limit_service.get_manager().allow_request("ai_provider", "local_user")
+    cache_set_fallback = cache_service.set(
+        "workspace", "fallback_key", {"data": "fallback"}, ttl=10
+    )
+    sess_create_fallback = session_manager.create_session(
+        "workspace", "sess-fallback", {"user": "fallback"}
+    )
+    rl_allowed_fallback = rate_limit_service.get_manager().allow_request(
+        "ai_provider", "local_user"
+    )
 
-    print(f"Outage State: Cache SET fallback={cache_set_fallback}, Session create fallback={sess_create_fallback}, Rate Limit fallback allowed={rl_allowed_fallback}")
+    print(
+        f"Outage State: Cache SET fallback={cache_set_fallback}, Session create fallback={sess_create_fallback}, Rate Limit fallback allowed={rl_allowed_fallback}"
+    )
 
     # Reconnect
     redis_provider.transport.execute_command = original_execute
@@ -645,11 +725,11 @@ The complete Redis Platform, including connection managers, cache systems, sessi
 - **Degradation State**: NONE (Operating normally)
 - **Heartbeat Status**: OK
 - **Subsystem Health Scores (out of 100)**:
-  - Cache: {health.get('cache', {}).get('health_score', 100.0)}
-  - Sessions: {health.get('session', {}).get('health_score', 100.0)}
-  - Coordination: {health.get('coordination', {}).get('health_score', 100.0)}
-  - Queues: {health.get('queue', {}).get('health_score', 100.0)}
-  - Rate Limits: {health.get('rate_limit', {}).get('health_score', 100.0)}
+  - Cache: {health.get("cache", {}).get("health_score", 100.0)}
+  - Sessions: {health.get("session", {}).get("health_score", 100.0)}
+  - Coordination: {health.get("coordination", {}).get("health_score", 100.0)}
+  - Queues: {health.get("queue", {}).get("health_score", 100.0)}
+  - Rate Limits: {health.get("rate_limit", {}).get("health_score", 100.0)}
 - **Total Recovery Events**: 1
 """)
 
@@ -688,7 +768,7 @@ This baseline records operation durations gathered over 100 benchmark iterations
 - **Active Alerts**: NONE
 - **Log Levels**: 0 WARNING, 0 ERROR, 0 CRITICAL
 - **Jitter Index**: {p99_conn - p50_conn:.3f}ms (low latency drift)
-- **Error Logs Analyzed**: {len(diagnostics.get('custom_errors', []))} error instances
+- **Error Logs Analyzed**: {len(diagnostics.get("custom_errors", []))} error instances
 - **Remediations**: None required. System running under optimal performance limits.
 """)
 
@@ -696,13 +776,13 @@ This baseline records operation durations gathered over 100 benchmark iterations
     with open(f"{docs_dir}/REDIS_CAPACITY_REPORT.md", "w") as f:
         f.write(f"""# Redis Capacity Report
 
-- **Capacity Score**: {capacity.get('capacity_score', 95.0)}
-- **Memory Utilization**: {capacity.get('memory_utilization', 'optimal')}
+- **Capacity Score**: {capacity.get("capacity_score", 95.0)}
+- **Memory Utilization**: {capacity.get("memory_utilization", "optimal")}
 - **Active Connections**: 1
 - **Max Connections Limit**: 10 (configured)
 - **Queue Depths**: 0 default, 0 low-priority, 0 high-priority
 - **Lock Contention Index**: LOW
-- **Active Sessions**: {capacity.get('active_sessions', 0)} active dialog states
+- **Active Sessions**: {capacity.get("active_sessions", 0)} active dialog states
 """)
 
     # 12.6 REDIS_CACHE_VALIDATION.md
@@ -778,7 +858,9 @@ This baseline records operation durations gathered over 100 benchmark iterations
 """)
 
     # Copy files to artifacts directory
-    artifacts_dir = "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    artifacts_dir = (
+        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    )
     os.makedirs(artifacts_dir, exist_ok=True)
     for report_file in os.listdir(docs_dir):
         if report_file.startswith("REDIS_"):
@@ -805,7 +887,9 @@ def update_project_status(overall_avg, throughput):
         content = f.read()
 
     # Update Architecture Status section with Milestones 8
-    target_pattern = "and Redis Runtime Intelligence Platform (Sprint 5 Milestone 7) are fully completed."
+    target_pattern = (
+        "and Redis Runtime Intelligence Platform (Sprint 5 Milestone 7) are fully completed."
+    )
     new_pattern = "Redis Runtime Intelligence Platform (Sprint 5 Milestone 7), and Redis Production Live Validation (Sprint 5 Milestone 8) are fully completed."
     content = content.replace(target_pattern, new_pattern)
 
@@ -817,7 +901,9 @@ def update_project_status(overall_avg, throughput):
         f.write(content)
 
     # Copy to artifacts
-    artifacts_dir = "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    artifacts_dir = (
+        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    )
     shutil.copy(status_file, f"{artifacts_dir}/PROJECT_STATUS.md")
     print("Updated PROJECT_STATUS.md")
 
@@ -858,7 +944,9 @@ def update_knowledge_base():
         f.write(content)
 
     # Copy to artifacts
-    artifacts_dir = "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    artifacts_dir = (
+        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    )
     shutil.copy(kb_file, f"{artifacts_dir}/17_KNOWLEDGE_BASE.md")
     print("Updated 17_KNOWLEDGE_BASE.md")
 

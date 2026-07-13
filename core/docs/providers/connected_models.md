@@ -1,5 +1,5 @@
 # Connected Models
-Generated at: 2026-07-13 22:53:06
+Generated at: 2026-07-13 23:13:28
 
 | Model ID | Provider | Chat | Coding | Vision | Reasoning | Embeddings |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -9,6 +9,7 @@ Generated at: 2026-07-13 22:53:06
 | gpt-4o | openai | ✓ |  |  |  |  |
 | claude-3-5-sonnet | claude | ✓ |  |  |  |  |
 | llama3 | ollama | ✓ |  |  |  |  |
+| qwen/qwen3-coder | nvidia | ✓ | ✓ |  | ✓ |  |
 | qwen-coder-32b | ninerouter | ✓ | ✓ |  |  |  |
 | deepseek-r1-reasoning | ninerouter | ✓ |  |  | ✓ |  |
 | gpt-4o-vision | ninerouter | ✓ |  | ✓ |  |  |

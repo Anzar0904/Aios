@@ -28,9 +28,7 @@ class DocumentationGenerator:
                 lines.append(f"- **Description**: {cmd.description}")
                 lines.append(f"- **Category**: {cmd.category.value}")
                 lines.append(f"- **Required Agent**: {cmd.required_agent}")
-                tools_str = (
-                    ", ".join(cmd.required_tools) if cmd.required_tools else "None"
-                )
+                tools_str = ", ".join(cmd.required_tools) if cmd.required_tools else "None"
                 lines.append(f"- **Required Tools**: {tools_str}")
                 lines.append(f"- **Example**: `{cmd.example_usage}`")
                 lines.append("")

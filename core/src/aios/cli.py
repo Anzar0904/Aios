@@ -3687,15 +3687,14 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         service = None
         if ServiceRegistry._global_registry:
             try:
-                service = ServiceRegistry._global_registry.get(
-                    ApprovalEngineService
-                )
+                service = ServiceRegistry._global_registry.get(ApprovalEngineService)
             except Exception:
                 pass
 
         if not service:
             from aios.services.approval_impl import LocalApprovalEngineService
             from aios.services.memory import MemoryService
+
             mock_mem = MagicMock(spec=MemoryService)
             service = LocalApprovalEngineService(memory_service=mock_mem)
             service.initialize()
@@ -3720,7 +3719,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                         q.get("project"),
                         q.get("client"),
                         q.get("risk"),
-                        q.get("status")
+                        q.get("status"),
                     )
                 console.print(table)
             if exit_on_complete:
@@ -3739,10 +3738,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                 table.add_column("Risk", style="red")
                 for p in pending:
                     table.add_row(
-                        p.get("request_id"),
-                        p.get("action"),
-                        p.get("project"),
-                        p.get("risk")
+                        p.get("request_id"), p.get("action"), p.get("project"), p.get("risk")
                     )
                 console.print(table)
             if exit_on_complete:
@@ -3812,7 +3808,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
                         entry.get("log_id"),
                         entry.get("action"),
                         entry.get("outcome"),
-                        entry.get("reason")
+                        entry.get("reason"),
                     )
                 console.print(table)
             if exit_on_complete:
@@ -3843,13 +3839,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             table.add_column("Property", style="bold yellow")
             table.add_column("Value", style="white")
             table.add_row("Summary", preview.get("action_summary", "N/A"))
+            table.add_row("Files Affected", ", ".join(preview.get("files_affected", [])) or "None")
             table.add_row(
-                "Files Affected",
-                ", ".join(preview.get("files_affected", [])) or "None"
-            )
-            table.add_row(
-                "Services Affected",
-                ", ".join(preview.get("services_affected", [])) or "None"
+                "Services Affected", ", ".join(preview.get("services_affected", [])) or "None"
             )
             table.add_row("Expected Changes", preview.get("expected_changes", ""))
             table.add_row("Rollback Supported", str(preview.get("rollback_supported", False)))
@@ -3911,10 +3903,7 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         table.add_column("Property", style="bold cyan")
         table.add_column("Value", style="white")
         table.add_row("Current Project", data.get("current_project"))
-        table.add_row(
-            "Recent Projects",
-            ", ".join(data.get("recent_projects", []))
-        )
+        table.add_row("Recent Projects", ", ".join(data.get("recent_projects", [])))
         table.add_row("Last Active", time.ctime(data.get("last_active", 0)))
         console.print(table)
         if exit_on_complete:
@@ -3957,20 +3946,15 @@ def main() -> None:
 
             ErrorReporter.report(
                 e,
-                cause=(
-                    "Subcommand parameter validation failed or "
-                    "platform connection issue."
-                ),
-                fix=(
-                    "Verify command arguments and run 'aios diagnostics' "
-                    "to check health status."
-                )
+                cause=("Subcommand parameter validation failed or platform connection issue."),
+                fix=("Verify command arguments and run 'aios diagnostics' to check health status."),
             )
             sys.exit(1)
         finally:
             kernel.shutdown()
 
     from aios.ux import BootExperience
+
     BootExperience.boot()
 
     config_path = Path("config/config.toml")
@@ -4023,6 +4007,7 @@ def main() -> None:
         banner_text.append("╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝\n", style="bold purple")
 
         from aios.ux import StartupHealthChecks
+
         health_results = StartupHealthChecks.run_checks()
 
         status_table = Table.grid(padding=1)
@@ -4032,17 +4017,13 @@ def main() -> None:
         status_table.add_row("Build:", "production-2026.07.11")
         status_table.add_row("Environment:", sys.platform)
         status_table.add_row(
-            "Active Provider:",
-            getattr(model_service, "_default_provider", "openrouter")
+            "Active Provider:", getattr(model_service, "_default_provider", "openrouter")
         )
         status_table.add_row("Connected Services:", "GitHub, Supabase, Vercel, n8n")
         status_table.add_row("Memory Status:", "Qdrant Vector DB Online")
         status_table.add_row("Workspace Status:", "Clean (0 modifications)")
         status_table.add_row("Current Project:", "Aios")
-        status_table.add_row(
-            "Health Status:",
-            health_results.get("Internet Connection", "Healthy")
-        )
+        status_table.add_row("Health Status:", health_results.get("Internet Connection", "Healthy"))
         status_table.add_row("Startup Time:", "0.38s")
 
         panel = Panel(
@@ -4153,48 +4134,30 @@ def main() -> None:
                         t.add_column("Property", style="bold cyan")
                         t.add_column("Value", style="white")
                         t.add_row(
-                            "Provider",
-                            getattr(model_service, "_default_provider", "openrouter")
+                            "Provider", getattr(model_service, "_default_provider", "openrouter")
                         )
                         t.add_row(
-                            "Model",
-                            getattr(model_service, "_default_model", "qwen/qwen3-coder")
+                            "Model", getattr(model_service, "_default_model", "qwen/qwen3-coder")
                         )
                         console.print(t)
                     elif slash_cmd == "/project":
-                        execute_builtin_cli_command(
-                            ["project", "list"],
-                            exit_on_complete=False
-                        )
+                        execute_builtin_cli_command(["project", "list"], exit_on_complete=False)
                     elif slash_cmd == "/workspace":
-                        execute_builtin_cli_command(
-                            ["workspace", "status"],
-                            exit_on_complete=False
-                        )
+                        execute_builtin_cli_command(["workspace", "status"], exit_on_complete=False)
                     elif slash_cmd == "/research":
                         console.print("[cyan]No research queries cached currently.[/cyan]")
                     elif slash_cmd == "/github":
                         console.print("[cyan]GitHub status: Connected.[/cyan]")
                     elif slash_cmd == "/supabase":
-                        execute_builtin_cli_command(
-                            ["supabase", "summary"],
-                            exit_on_complete=False
-                        )
+                        execute_builtin_cli_command(["supabase", "summary"], exit_on_complete=False)
                     elif slash_cmd == "/vercel":
-                        execute_builtin_cli_command(
-                            ["vercel", "summary"],
-                            exit_on_complete=False
-                        )
+                        execute_builtin_cli_command(["vercel", "summary"], exit_on_complete=False)
                     elif slash_cmd == "/business":
                         execute_builtin_cli_command(
-                            ["business", "analytics"],
-                            exit_on_complete=False
+                            ["business", "analytics"], exit_on_complete=False
                         )
                     elif slash_cmd == "/approval":
-                        execute_builtin_cli_command(
-                            ["approval", "pending"],
-                            exit_on_complete=False
-                        )
+                        execute_builtin_cli_command(["approval", "pending"], exit_on_complete=False)
                     elif slash_cmd == "/workflow":
                         console.print("[cyan]n8n Engine active. 1 workflow online.[/cyan]")
                     elif slash_cmd == "/memory":
@@ -4217,10 +4180,7 @@ def main() -> None:
                         from aios.ux import SessionManager
 
                         mgr = SessionManager()
-                        mgr.save_session({
-                            "last_active": time.time(),
-                            "current_project": "Aios"
-                        })
+                        mgr.save_session({"last_active": time.time(), "current_project": "Aios"})
                         console.print("[cyan]Saving session state... OK[/cyan]")
                         console.print("[cyan]Flushing memory buffers... OK[/cyan]")
                         msg = "Thank you for using AI OS. Goodbye!"
@@ -4277,14 +4237,11 @@ def main() -> None:
 
                 ErrorReporter.report(
                     e,
-                    cause=(
-                        "Command parameter syntax error or runtime "
-                        "subsystem exception."
-                    ),
+                    cause=("Command parameter syntax error or runtime subsystem exception."),
                     fix=(
                         "Verify command arguments and run 'aios diagnostics' "
                         "to check health status."
-                    )
+                    ),
                 )
 
     finally:

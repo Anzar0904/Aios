@@ -20,9 +20,7 @@ class DocumentationIntelligenceEngine:
             for cls in data.get("classes", []):
                 # Check undocumented class
                 if not cls.get("docstring"):
-                    report["undocumented_classes"].append(
-                        {"file": file_path, "class": cls["name"]}
-                    )
+                    report["undocumented_classes"].append({"file": file_path, "class": cls["name"]})
                     report["score"] = max(0, report["score"] - 2)
 
             for func in data.get("functions", []):

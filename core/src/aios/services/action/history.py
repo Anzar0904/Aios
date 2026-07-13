@@ -12,6 +12,7 @@ class ActionHistory:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
             import tempfile
+
             self.storage_dir = Path(tempfile.gettempdir()) / "aios_actions_fallback"
             self.storage_dir.mkdir(parents=True, exist_ok=True)
 

@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class N8NServerInformation:
     """Carries version numbers, instance ID mappings and capability lists."""
+
     version: str
     instance_id: str
     capabilities: List[str] = field(default_factory=list)
@@ -16,6 +17,7 @@ class N8NServerInformation:
 @dataclass
 class N8NConnectionProfile:
     """Connection profile containing target URL, auth types and timeouts."""
+
     url: str
     auth_type: str  # "api_key", "bearer_token"
     timeout_seconds: int = 30
@@ -24,6 +26,7 @@ class N8NConnectionProfile:
 @dataclass
 class N8NIntegrationReport:
     """Report compiled for external Knowledge Hub Notion syncing."""
+
     report_id: str
     workspace_id: str
     server_version: str
@@ -65,7 +68,9 @@ class BearerTokenAuthenticationProvider(N8NAuthenticationProvider):
 class N8NConnectionManager:
     """Manages active connection headers."""
 
-    def __init__(self, profile: N8NConnectionProfile, auth_provider: N8NAuthenticationProvider) -> None:
+    def __init__(
+        self, profile: N8NConnectionProfile, auth_provider: N8NAuthenticationProvider
+    ) -> None:
         self.profile = profile
         self.auth_provider = auth_provider
 

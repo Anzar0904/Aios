@@ -9,6 +9,7 @@ from aios.services.engineering_intelligence import EngineeringReport
 @dataclass
 class ImplementationTask:
     """Represents a discrete unit of development work."""
+
     task_id: str
     title: str
     description: str
@@ -23,6 +24,7 @@ class ImplementationTask:
 @dataclass
 class ValidationStep:
     """Represents a test or verification check."""
+
     step_id: str
     name: str
     command: str
@@ -32,6 +34,7 @@ class ValidationStep:
 @dataclass
 class DevelopmentPhase:
     """Represents a high-level stage in the feature implementation lifecycle."""
+
     phase_id: str
     name: str
     description: str
@@ -42,6 +45,7 @@ class DevelopmentPhase:
 @dataclass
 class SoftwareEngineeringPlan:
     """Detailed development plan translating architectural goals to implementation steps."""
+
     plan_id: str
     objective: str
     timestamp: float
@@ -62,7 +66,9 @@ class FeaturePlanner(abc.ABC):
     """Generates high-level development phases and validation tasks for a feature."""
 
     @abc.abstractmethod
-    def plan_features(self, objective: str, engineering_report: EngineeringReport) -> List[DevelopmentPhase]:
+    def plan_features(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> List[DevelopmentPhase]:
         """Maps an engineering report into a set of development phases with validation tasks."""
         pass
 
@@ -71,7 +77,9 @@ class TaskDecomposer(abc.ABC):
     """Decomposes a major feature objective into structured implementation tasks."""
 
     @abc.abstractmethod
-    def decompose_tasks(self, objective: str, engineering_report: EngineeringReport) -> List[ImplementationTask]:
+    def decompose_tasks(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> List[ImplementationTask]:
         """Breaks down a feature into discrete, validated, dependency-tracked tasks."""
         pass
 
@@ -81,8 +89,7 @@ class ExecutionPlanner(abc.ABC):
 
     @abc.abstractmethod
     def plan_execution(
-        self,
-        tasks: List[ImplementationTask]
+        self, tasks: List[ImplementationTask]
     ) -> tuple[List[str], Dict[str, List[str]], str]:
         """Returns safest execution order, task dependencies, and rollback strategy."""
         pass
@@ -92,7 +99,9 @@ class FilePlanner(abc.ABC):
     """Identifies required files, creation targets, and migration requirements."""
 
     @abc.abstractmethod
-    def plan_files(self, objective: str, engineering_report: EngineeringReport) -> tuple[List[str], List[str]]:
+    def plan_files(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> tuple[List[str], List[str]]:
         """Identifies target files to change and any migration/setup requirements."""
         pass
 
@@ -101,7 +110,9 @@ class TestingPlanner(abc.ABC):
     """Plans testing strategies, validation steps, and required tests."""
 
     @abc.abstractmethod
-    def plan_testing(self, objective: str, engineering_report: EngineeringReport) -> tuple[List[str], str, str]:
+    def plan_testing(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> tuple[List[str], str, str]:
         """Determines required tests, validation strategy, and general testing strategy."""
         pass
 
@@ -110,7 +121,9 @@ class DocumentationPlanner(abc.ABC):
     """Identifies documentation and architecture guide updates."""
 
     @abc.abstractmethod
-    def plan_documentation(self, objective: str, engineering_report: EngineeringReport) -> List[str]:
+    def plan_documentation(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> List[str]:
         """Identifies which READMEs, guides, or KB files require updating."""
         pass
 
@@ -119,7 +132,9 @@ class ImplementationPlanner(abc.ABC):
     """Orchestrator producing complete, structured SoftwareEngineeringPlans."""
 
     @abc.abstractmethod
-    def plan_implementation(self, objective: str, engineering_report: EngineeringReport) -> SoftwareEngineeringPlan:
+    def plan_implementation(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> SoftwareEngineeringPlan:
         """Constructs a comprehensive, validated SoftwareEngineeringPlan."""
         pass
 
@@ -128,7 +143,9 @@ class SoftwareEngineerService(ServiceLifecycle, abc.ABC):
     """Unified service for creating, storing, and publishing development plans."""
 
     @abc.abstractmethod
-    def create_development_plan(self, objective: str, engineering_report: EngineeringReport) -> SoftwareEngineeringPlan:
+    def create_development_plan(
+        self, objective: str, engineering_report: EngineeringReport
+    ) -> SoftwareEngineeringPlan:
         """Generates a complete SoftwareEngineeringPlan based on an EngineeringReport."""
         pass
 

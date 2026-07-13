@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class DecisionRecord:
     """An individual ADR specification."""
+
     __test__ = False
     adr_id: str
     title: str
@@ -21,6 +22,7 @@ class DecisionRecord:
 @dataclass
 class ImplementationSummary:
     """Summary of features and timelines."""
+
     __test__ = False
     summary_id: str
     features_added: List[str] = field(default_factory=list)
@@ -31,6 +33,7 @@ class ImplementationSummary:
 @dataclass
 class EngineeringTimeline:
     """Timeline details mapping milestone timings."""
+
     __test__ = False
     timeline_id: str
     milestones: List[str] = field(default_factory=list)
@@ -40,6 +43,7 @@ class EngineeringTimeline:
 @dataclass
 class ChangeSummary:
     """Summary metrics of modified codebase lines."""
+
     __test__ = False
     change_id: str
     additions_count: int
@@ -49,6 +53,7 @@ class ChangeSummary:
 @dataclass
 class ValidationSummary:
     """Summary mapping test executions results."""
+
     __test__ = False
     validation_id: str
     tests_run_count: int
@@ -59,6 +64,7 @@ class ValidationSummary:
 @dataclass
 class RiskSummary:
     """Risk tiers assessments tags."""
+
     __test__ = False
     risk_id: str
     risk_level: str
@@ -68,6 +74,7 @@ class RiskSummary:
 @dataclass
 class EngineeringDocumentArtifact:
     """Output artifact documentation container."""
+
     __test__ = False
     artifact_id: str
     workspace_id: str
@@ -79,6 +86,7 @@ class EngineeringDocumentArtifact:
 @dataclass
 class EngineeringDocumentationReport:
     """Executive engineering metrics report."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -90,6 +98,7 @@ class EngineeringDocumentationReport:
 
 class ADRGenerator(abc.ABC):
     """Formats DecisionRecord specs into single Markdown outputs."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -100,14 +109,12 @@ class ADRGenerator(abc.ABC):
 
 class EngineeringReportGenerator(abc.ABC):
     """Combines metrics datasets into comprehensive reports."""
+
     __test__ = False
 
     @abc.abstractmethod
     def generate_engineering_report(
-        self,
-        summary: ImplementationSummary,
-        validation: ValidationSummary,
-        risk: RiskSummary
+        self, summary: ImplementationSummary, validation: ValidationSummary, risk: RiskSummary
     ) -> str:
         """Assembles Markdown content."""
         pass
@@ -115,6 +122,7 @@ class EngineeringReportGenerator(abc.ABC):
 
 class EngineeringDocumentPlanner(abc.ABC):
     """Plans layout structure matching target style rules."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -125,6 +133,7 @@ class EngineeringDocumentPlanner(abc.ABC):
 
 class EngineeringDocumentValidator(abc.ABC):
     """Validates markdown structure completeness or duplicate ADR indexes."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -135,10 +144,13 @@ class EngineeringDocumentValidator(abc.ABC):
 
 class EngineeringDocumentationService(ServiceLifecycle, abc.ABC):
     """Coordinating service planning timelines summaries and publishing metrics."""
+
     __test__ = False
 
     @abc.abstractmethod
-    def create_adr_document(self, workspace_id: str, record: DecisionRecord) -> EngineeringDocumentArtifact:
+    def create_adr_document(
+        self, workspace_id: str, record: DecisionRecord
+    ) -> EngineeringDocumentArtifact:
         """Builds an ADR document artifact."""
         pass
 
@@ -148,7 +160,7 @@ class EngineeringDocumentationService(ServiceLifecycle, abc.ABC):
         workspace_id: str,
         summary: ImplementationSummary,
         validation: ValidationSummary,
-        risk: RiskSummary
+        risk: RiskSummary,
     ) -> EngineeringDocumentArtifact:
         """Builds an engineering report artifact."""
         pass

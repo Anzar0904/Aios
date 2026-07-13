@@ -82,10 +82,14 @@ def render_services_reference(services: List[ServiceInterface]) -> str:
             lines.append(f"{service.docstring}\n\n")
 
         if service.base_classes:
-            lines.append(f"**Base Classes**: {', '.join(f'`{b}`' for b in service.base_classes)}\n\n")
+            lines.append(
+                f"**Base Classes**: {', '.join(f'`{b}`' for b in service.base_classes)}\n\n"
+            )
 
         if service.implementation:
-            lines.append(f"**Implementation**: `{service.implementation}` (`{service.impl_module}`)\n\n")
+            lines.append(
+                f"**Implementation**: `{service.implementation}` (`{service.impl_module}`)\n\n"
+            )
 
         # Constructor
         if service.constructor_params:
@@ -118,7 +122,9 @@ def render_services_reference(services: List[ServiceInterface]) -> str:
                     lines.append("**Parameters**:\n\n")
                     for param in method.parameters:
                         type_str = f": {param.type_annotation}" if param.type_annotation else ""
-                        default_str = f" (default: {param.default_value})" if param.default_value else ""
+                        default_str = (
+                            f" (default: {param.default_value})" if param.default_value else ""
+                        )
                         lines.append(f"- `{param.name}`{type_str}{default_str}\n")
                     lines.append("\n")
 
@@ -126,7 +132,9 @@ def render_services_reference(services: List[ServiceInterface]) -> str:
                     lines.append(f"**Returns**: `{method.return_type}`\n\n")
 
                 if method.exceptions:
-                    lines.append(f"**Raises**: {', '.join(f'`{e}`' for e in method.exceptions)}\n\n")
+                    lines.append(
+                        f"**Raises**: {', '.join(f'`{e}`' for e in method.exceptions)}\n\n"
+                    )
 
         # Lifecycle Methods
         if service.lifecycle_methods:
@@ -224,7 +232,9 @@ def render_lifecycle_reference(services: List[ServiceInterface]) -> str:
     lines.append(f"> Documents {total} lifecycle methods across {len(services)} services.\n\n")
 
     lines.append("## Lifecycle Phases\n\n")
-    lines.append("1. **Initialization**: Service setup, dependency injection, resource allocation\n")
+    lines.append(
+        "1. **Initialization**: Service setup, dependency injection, resource allocation\n"
+    )
     lines.append("2. **Runtime**: Active service execution, request handling\n")
     lines.append("3. **Cleanup**: Resource release, connection closing, graceful shutdown\n\n")
 
@@ -293,7 +303,9 @@ def render_dependency_injection_reference(services: List[ServiceInterface]) -> s
     lines.append(f"> Documents constructor dependencies for {len(services)} services.\n\n")
 
     lines.append("## Dependency Graph Summary\n\n")
-    lines.append(f"- **Services with dependencies**: {sum(1 for s in services if s.constructor_params)}\n")
+    lines.append(
+        f"- **Services with dependencies**: {sum(1 for s in services if s.constructor_params)}\n"
+    )
     lines.append(f"- **Total injected dependencies**: {len(all_dependencies)}\n\n")
 
     lines.append("## Service Dependencies\n\n")
@@ -348,7 +360,9 @@ def render_api_reference(services: List[ServiceInterface]) -> str:
             lines.append(f"**Extends**: {', '.join(f'`{b}`' for b in service.base_classes)}\n\n")
 
         if service.implementation:
-            lines.append(f"**Implementation**: [`{service.implementation}`](#{service.implementation.lower()})\n\n")
+            lines.append(
+                f"**Implementation**: [`{service.implementation}`](#{service.implementation.lower()})\n\n"
+            )
 
         # Constructor
         if service.constructor_params:
@@ -382,7 +396,9 @@ def render_api_reference(services: List[ServiceInterface]) -> str:
                     lines.append(f"**Returns**: `{method.return_type}`\n\n")
 
                 if method.exceptions:
-                    lines.append(f"**Raises**: {', '.join(f'`{e}`' for e in method.exceptions)}\n\n")
+                    lines.append(
+                        f"**Raises**: {', '.join(f'`{e}`' for e in method.exceptions)}\n\n"
+                    )
 
         # Lifecycle
         if service.lifecycle_methods:
@@ -408,17 +424,25 @@ def render_reference_index(services: List[ServiceInterface]) -> str:
     lines.append(f"**Generated**: {now}\n\n")
 
     lines.append("## Overview\n\n")
-    lines.append(f"This directory contains detailed API reference documentation for {len(services)} services ")
+    lines.append(
+        f"This directory contains detailed API reference documentation for {len(services)} services "
+    )
     lines.append("extracted from source code.\n\n")
 
     lines.append("## Documentation Files\n\n")
     lines.append("| File | Description |\n")
     lines.append("|------|-------------|\n")
-    lines.append("| [services.md](services.md) | Complete service API documentation with method signatures |\n")
+    lines.append(
+        "| [services.md](services.md) | Complete service API documentation with method signatures |\n"
+    )
     lines.append("| [interfaces.md](interfaces.md) | Interface to implementation mappings |\n")
     lines.append("| [lifecycle.md](lifecycle.md) | Service lifecycle methods (init, cleanup) |\n")
-    lines.append("| [dependency_injection.md](dependency_injection.md) | Constructor dependencies and DI bindings |\n")
-    lines.append("| [api_reference.md](api_reference.md) | Comprehensive API reference (all services) |\n\n")
+    lines.append(
+        "| [dependency_injection.md](dependency_injection.md) | Constructor dependencies and DI bindings |\n"
+    )
+    lines.append(
+        "| [api_reference.md](api_reference.md) | Comprehensive API reference (all services) |\n\n"
+    )
 
     lines.append("## Statistics\n\n")
     total_methods = sum(len(s.methods) for s in services)

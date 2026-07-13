@@ -24,24 +24,16 @@ def sample_code_structure():
     return {
         "workspace_id": "ws_1",
         "routes": [
-            {
-                "path": "/api/v1/agent",
-                "method": "POST",
-                "parameters": [{"name": "agent_id"}]
-            },
-            {
-                "path": "/api/v1/memory",
-                "method": "GET",
-                "parameters": []
-            }
-        ]
+            {"path": "/api/v1/agent", "method": "POST", "parameters": [{"name": "agent_id"}]},
+            {"path": "/api/v1/memory", "method": "GET", "parameters": []},
+        ],
     }
 
 
 def test_api_analyzer(sample_code_structure):
     analyzer = LocalAPIAnalyzer()
-    existing = "/api/v1/memory" # memory route is documented, agent is missing
-    
+    existing = "/api/v1/memory"  # memory route is documented, agent is missing
+
     report = analyzer.analyze_api(sample_code_structure, existing)
     assert len(report.undocumented_endpoints) == 1
     assert "POST /api/v1/agent" in report.undocumented_endpoints
@@ -57,9 +49,9 @@ def test_api_planner():
         outdated_schemas=[],
         missing_examples=[],
         recommendations=[],
-        timestamp=0.0
+        timestamp=0.0,
     )
-    
+
     endpoints = planner.plan_api_documentation(report)
     assert len(endpoints) == 1
     assert endpoints[0].path == "/api/v1/profile"
@@ -68,7 +60,7 @@ def test_api_planner():
 
 def test_api_validator():
     validator = LocalAPIDocumentValidator()
-    
+
     # 1. Valid endpoint
     ep1 = APIEndpoint("/path", "GET", "summary", [], None, [APIResponse(200, None, "ok")])
     artifact = APIDocumentArtifact("a1", "ws_1", "content", [ep1], 0.0)
@@ -85,7 +77,7 @@ def test_api_validator():
 def test_api_registry():
     registry = APIRegistry()
     ep = APIEndpoint("/path", "GET", "summary")
-    
+
     registry.register_endpoint(ep)
     assert registry.get_endpoint("GET", "/path") == ep
     assert len(registry.list_endpoints()) == 1
@@ -95,26 +87,24 @@ def test_service_evaluation_flow(sample_code_structure):
     mock_memory = MagicMock(spec=MemoryService)
     mock_kh = MagicMock(spec=KnowledgeHubService)
     mock_model = MagicMock(spec=ModelService)
-    
+
     # Mock LLM Response
     mock_response = MagicMock(spec=LLMResponse)
     mock_response.content = "## POST /api/v1/agent\nLLM Refined specs."
     mock_model.execute_request.return_value = mock_response
 
     service = LocalAPIDocumentationService(
-        memory_service=mock_memory,
-        knowledge_hub=mock_kh,
-        model_service=mock_model
+        memory_service=mock_memory, knowledge_hub=mock_kh, model_service=mock_model
     )
     service.initialize()
-    
+
     artifact = service.generate_api_documentation("ws_1", sample_code_structure, "")
     assert artifact.content == "## POST /api/v1/agent\nLLM Refined specs."
-    
+
     # Store
     service.store_api_summary(artifact)
     mock_memory.add_memory.assert_called_once()
-    
+
     # Publish
     report = MagicMock()
     service.publish_api_report(report)
@@ -127,7 +117,7 @@ def test_backward_compatibility():
             errors = super().validate_api_document(artifact)
             errors.append("custom_error")
             return errors
-            
+
     validator = CustomValidator()
     errors = validator.validate_api_document(APIDocumentArtifact("a1", "ws_1", "", [], 0.0))
     assert "custom_error" in errors

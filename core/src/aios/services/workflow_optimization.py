@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 
 class WorkflowOptimizationCategory(str, Enum):
     """Optimization category tags."""
+
     PERFORMANCE = "performance"
     RELIABILITY = "reliability"
     COST = "cost"
@@ -26,6 +27,7 @@ class WorkflowOptimizationCategory(str, Enum):
 
 class WorkflowOptimizationPriority(str, Enum):
     """Priority levels."""
+
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -33,6 +35,7 @@ class WorkflowOptimizationPriority(str, Enum):
 
 class WorkflowOptimizationImpact(str, Enum):
     """Impact levels."""
+
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -41,6 +44,7 @@ class WorkflowOptimizationImpact(str, Enum):
 @dataclass
 class WorkflowOptimizationPattern:
     """Pre-defined knowledge pattern definition."""
+
     pattern_id: str
     name: str
     description: str
@@ -49,6 +53,7 @@ class WorkflowOptimizationPattern:
 @dataclass
 class WorkflowOptimizationRecommendation:
     """Detailed recommendation details."""
+
     recommendation_id: str
     category: WorkflowOptimizationCategory
     priority: WorkflowOptimizationPriority
@@ -69,6 +74,7 @@ class WorkflowOptimizationRecommendation:
 @dataclass
 class WorkflowOptimizationPlan:
     """Immutable optimization plan container."""
+
     plan_id: str
     workflow_id: str
     recommendations: List[WorkflowOptimizationRecommendation] = field(default_factory=list)
@@ -88,6 +94,7 @@ class WorkflowOptimizationPlan:
 @dataclass
 class WorkflowOptimizationReport:
     """Immutable optimization report output containing all generated plans."""
+
     report_id: str
     workspace_id: str
     plans: Dict[str, WorkflowOptimizationPlan] = field(default_factory=dict)
@@ -106,24 +113,92 @@ class WorkflowOptimizationKnowledgeBase:
 
     def _bootstrap_patterns(self) -> None:
         patterns_list = [
-            WorkflowOptimizationPattern("duplicate_http_requests", "Duplicate HTTP Requests", "Repeated REST calls fetching identical endpoints."),
-            WorkflowOptimizationPattern("duplicate_nodes", "Duplicate Nodes", "Identical node types with matching arguments mapped inside the graph."),
-            WorkflowOptimizationPattern("unused_branches", "Unused Branches", "Conditional branches never navigated during execution runs."),
-            WorkflowOptimizationPattern("dead_nodes", "Dead Nodes", "Unreachable nodes that do not connect to triggers or targets."),
-            WorkflowOptimizationPattern("sequential_independent_tasks", "Sequential Independent Tasks", "Independent tasks executing sequentially instead of concurrently."),
-            WorkflowOptimizationPattern("long_critical_path", "Long Critical Path", "Long sequencing chains raising duration bottlenecks."),
-            WorkflowOptimizationPattern("high_retry_count", "High Retry Count", "Excessive retry loops causing long timeouts."),
-            WorkflowOptimizationPattern("excessive_timeout", "Excessive Timeout", "Timeouts thresholds configured too high for simple REST queries."),
-            WorkflowOptimizationPattern("missing_cache", "Missing Cache", "Missing caching for static/slow external data."),
-            WorkflowOptimizationPattern("expensive_trigger", "Expensive Trigger", "High polling frequencies raising compute overheads."),
-            WorkflowOptimizationPattern("oversized_workflow", "Oversized Workflow", "Workflow mapping too many task operations under a single definition."),
-            WorkflowOptimizationPattern("duplicate_conditions", "Duplicate Conditions", "Repeated conditional evaluations along branches."),
-            WorkflowOptimizationPattern("resource_bottleneck", "Resource Bottleneck", "Excessive peak memory or CPU usage spikes."),
-            WorkflowOptimizationPattern("repeated_failures", "Repeated Failures", "High recurring failures rates with identical error logs."),
-            WorkflowOptimizationPattern("ineefficient_scheduling", "Ineefficient Scheduling", "Suboptimal cron timings raising collision risks."),
-            WorkflowOptimizationPattern("large_fan_out", "Large Fan-Out", "Single nodes triggering excessive parallel runs."),
-            WorkflowOptimizationPattern("large_fan_in", "Large Fan-In", "Excessive branches joining back to a single barrier node."),
-            WorkflowOptimizationPattern("repeated_external_calls", "Repeated External Calls", "Duplicate outbound requests to external APIs.")
+            WorkflowOptimizationPattern(
+                "duplicate_http_requests",
+                "Duplicate HTTP Requests",
+                "Repeated REST calls fetching identical endpoints.",
+            ),
+            WorkflowOptimizationPattern(
+                "duplicate_nodes",
+                "Duplicate Nodes",
+                "Identical node types with matching arguments mapped inside the graph.",
+            ),
+            WorkflowOptimizationPattern(
+                "unused_branches",
+                "Unused Branches",
+                "Conditional branches never navigated during execution runs.",
+            ),
+            WorkflowOptimizationPattern(
+                "dead_nodes",
+                "Dead Nodes",
+                "Unreachable nodes that do not connect to triggers or targets.",
+            ),
+            WorkflowOptimizationPattern(
+                "sequential_independent_tasks",
+                "Sequential Independent Tasks",
+                "Independent tasks executing sequentially instead of concurrently.",
+            ),
+            WorkflowOptimizationPattern(
+                "long_critical_path",
+                "Long Critical Path",
+                "Long sequencing chains raising duration bottlenecks.",
+            ),
+            WorkflowOptimizationPattern(
+                "high_retry_count",
+                "High Retry Count",
+                "Excessive retry loops causing long timeouts.",
+            ),
+            WorkflowOptimizationPattern(
+                "excessive_timeout",
+                "Excessive Timeout",
+                "Timeouts thresholds configured too high for simple REST queries.",
+            ),
+            WorkflowOptimizationPattern(
+                "missing_cache", "Missing Cache", "Missing caching for static/slow external data."
+            ),
+            WorkflowOptimizationPattern(
+                "expensive_trigger",
+                "Expensive Trigger",
+                "High polling frequencies raising compute overheads.",
+            ),
+            WorkflowOptimizationPattern(
+                "oversized_workflow",
+                "Oversized Workflow",
+                "Workflow mapping too many task operations under a single definition.",
+            ),
+            WorkflowOptimizationPattern(
+                "duplicate_conditions",
+                "Duplicate Conditions",
+                "Repeated conditional evaluations along branches.",
+            ),
+            WorkflowOptimizationPattern(
+                "resource_bottleneck",
+                "Resource Bottleneck",
+                "Excessive peak memory or CPU usage spikes.",
+            ),
+            WorkflowOptimizationPattern(
+                "repeated_failures",
+                "Repeated Failures",
+                "High recurring failures rates with identical error logs.",
+            ),
+            WorkflowOptimizationPattern(
+                "ineefficient_scheduling",
+                "Ineefficient Scheduling",
+                "Suboptimal cron timings raising collision risks.",
+            ),
+            WorkflowOptimizationPattern(
+                "large_fan_out", "Large Fan-Out", "Single nodes triggering excessive parallel runs."
+            ),
+            WorkflowOptimizationPattern(
+                "large_fan_in",
+                "Large Fan-In",
+                "Excessive branches joining back to a single barrier node.",
+            ),
+            WorkflowOptimizationPattern(
+                "repeated_external_calls",
+                "Repeated External Calls",
+                "Duplicate outbound requests to external APIs.",
+            ),
         ]
         for p in patterns_list:
             self._patterns[p.pattern_id] = p
@@ -141,7 +216,9 @@ class WorkflowCostAnalyzer(abc.ABC):
     """Trims token/API billing bounds."""
 
     @abc.abstractmethod
-    def analyze_cost(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_cost(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -149,7 +226,9 @@ class WorkflowLatencyAnalyzer(abc.ABC):
     """Trims runtime latency path bottlenecks."""
 
     @abc.abstractmethod
-    def analyze_latency(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_latency(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -157,7 +236,9 @@ class WorkflowParallelizationAnalyzer(abc.ABC):
     """Suggests concurrent executions on independent branches."""
 
     @abc.abstractmethod
-    def analyze_parallelization(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_parallelization(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -165,7 +246,9 @@ class WorkflowRedundancyAnalyzer(abc.ABC):
     """Finds duplicate nodes/conditions."""
 
     @abc.abstractmethod
-    def analyze_redundancy(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_redundancy(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -173,7 +256,9 @@ class WorkflowSchedulingAnalyzer(abc.ABC):
     """Optimizes cron schedulers intervals."""
 
     @abc.abstractmethod
-    def analyze_scheduling(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_scheduling(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -181,7 +266,9 @@ class WorkflowResourceAnalyzer(abc.ABC):
     """Trims memory/CPU usage spikes."""
 
     @abc.abstractmethod
-    def analyze_resources(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_resources(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -205,7 +292,9 @@ class WorkflowOptimizationAnalyzer(abc.ABC):
     """Analyzes telemetry and graphs using sub-analyzers."""
 
     @abc.abstractmethod
-    def run_analysis(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def run_analysis(
+        self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         pass
 
 
@@ -213,7 +302,9 @@ class WorkflowOptimizationPlanner(abc.ABC):
     """Central planner coordinating sub-analyzers to construct plans."""
 
     @abc.abstractmethod
-    def construct_optimization_plan(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> WorkflowOptimizationPlan:
+    def construct_optimization_plan(
+        self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]
+    ) -> WorkflowOptimizationPlan:
         pass
 
 

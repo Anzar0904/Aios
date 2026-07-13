@@ -16,7 +16,7 @@ class ContextManager:
         memory_service: MemoryService,
         project_intel: Optional[ProjectIntelligenceService] = None,
         dev_workspace: Optional[DeveloperWorkspaceService] = None,
-        personal_service: Optional[PersonalService] = None
+        personal_service: Optional[PersonalService] = None,
     ) -> None:
         self.context_service = context_service
         self.memory_service = memory_service
@@ -72,8 +72,5 @@ class ContextManager:
             git_branch=git_branch,
             memories=memories,
             system_status="READY",
-            extra=extra
+            extra=extra,
         )
-
-
-

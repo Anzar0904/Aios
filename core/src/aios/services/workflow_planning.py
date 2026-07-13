@@ -9,6 +9,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class WorkflowTemplate:
     """Parameterized workflow template ready for composition instantiation."""
+
     template_id: str
     name: str
     description: str
@@ -20,6 +21,7 @@ class WorkflowTemplate:
 @dataclass
 class WorkflowConstraint:
     """Pre-conditions or post-conditions validation gating rule."""
+
     constraint_id: str
     name: str
     expression: str
@@ -29,6 +31,7 @@ class WorkflowConstraint:
 @dataclass
 class WorkflowPlanningSession:
     """Lifecycle tracking for an active workflow planning session."""
+
     session_id: str
     workspace_id: str
     intent: str
@@ -40,6 +43,7 @@ class WorkflowPlanningSession:
 @dataclass
 class WorkflowPlanningReport:
     """Report compiled for external Knowledge Hub Notion syncing."""
+
     report_id: str
     session_id: str
     workspace_id: str
@@ -83,7 +87,9 @@ class WorkflowDependencyResolver(abc.ABC):
     """Orders nodes to satisfy execution dependency bounds."""
 
     @abc.abstractmethod
-    def resolve_dependencies(self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]) -> List[str]:
+    def resolve_dependencies(
+        self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]
+    ) -> List[str]:
         """Returns ordered node IDs conforming to DAG execution routes."""
         pass
 
@@ -92,7 +98,9 @@ class WorkflowOptimizer(abc.ABC):
     """Performs planning-time graph structural optimizations."""
 
     @abc.abstractmethod
-    def optimize_graph(self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]) -> tuple[List[WorkflowNode], List[WorkflowEdge], List[str]]:
+    def optimize_graph(
+        self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]
+    ) -> tuple[List[WorkflowNode], List[WorkflowEdge], List[str]]:
         """Returns (optimized_nodes, optimized_edges, optimizations_done)."""
         pass
 
@@ -110,7 +118,9 @@ class WorkflowComposer(abc.ABC):
     """Hydrates templates parameters to compose concrete WorkflowDefinitions."""
 
     @abc.abstractmethod
-    def compose_workflow(self, template: WorkflowTemplate, params: Dict[str, Any]) -> WorkflowDefinition:
+    def compose_workflow(
+        self, template: WorkflowTemplate, params: Dict[str, Any]
+    ) -> WorkflowDefinition:
         """Returns parameterized workflow definition."""
         pass
 

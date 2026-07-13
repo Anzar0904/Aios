@@ -453,9 +453,7 @@ def execute_workflow_status(kernel, args: str) -> None:
     for r in runs[:5]:
         conclusion = r.get("conclusion") or r.get("status")
         is_success = conclusion == "success"
-        conclusion_marker = (
-            "✓" if is_success else "✗" if conclusion == "failure" else "..."
-        )
+        conclusion_marker = "✓" if is_success else "✗" if conclusion == "failure" else "..."
         print(f"[{conclusion_marker}] {r.get('name')} - {conclusion} - Run ID: {r.get('id')}")
 
     latest_run = runs[0]

@@ -167,8 +167,8 @@ DUPLICATE_EXCLUDE_FILES: Set[str] = {
     "repositories.md",
     "runtime.md",
     # Structured docs with intentional repeated headings
-    "CHANGELOG.md",   # Keep-a-Changelog: each version has '### Added', '### Fixed', etc.
-    "SECURITY.md",    # Security advisory: each vulnerability has same sub-sections
+    "CHANGELOG.md",  # Keep-a-Changelog: each version has '### Added', '### Fixed', etc.
+    "SECURITY.md",  # Security advisory: each vulnerability has same sub-sections
 }
 
 
@@ -417,9 +417,7 @@ class MermaidAnalyzer:
                 block_lines = []
             elif stripped == "```" and in_block:
                 in_block = False
-                findings.extend(
-                    self._validate_block(rel, block_start, block_lines)
-                )
+                findings.extend(self._validate_block(rel, block_start, block_lines))
             elif in_block:
                 block_lines.append(line)
 
@@ -436,9 +434,7 @@ class MermaidAnalyzer:
 
         return findings
 
-    def _validate_block(
-        self, rel: str, start_line: int, block: List[str]
-    ) -> List[Finding]:
+    def _validate_block(self, rel: str, start_line: int, block: List[str]) -> List[Finding]:
         findings: List[Finding] = []
         non_empty = [ln.strip() for ln in block if ln.strip()]
 
@@ -504,9 +500,7 @@ class MermaidAnalyzer:
 _LEGACY_NUMBERED_DOC_PATTERN = re.compile(r"^(\d{2}_[A-Z_]+\.md)$")
 
 # Source-code paths embedded in docs as examples (not real links)
-_EXAMPLE_PATH_PATTERN = re.compile(
-    r"(core/src/|aios/services/|tests/|path/to/)"
-)
+_EXAMPLE_PATH_PATTERN = re.compile(r"(core/src/|aios/services/|tests/|path/to/)")
 
 
 class CrossLinkAnalyzer:
@@ -523,9 +517,7 @@ class CrossLinkAnalyzer:
     - Source-code path examples embedded in documentation prose
     """
 
-    def analyze(
-        self, docs_root: Path
-    ) -> Tuple[List[BrokenLink], List[Finding]]:
+    def analyze(self, docs_root: Path) -> Tuple[List[BrokenLink], List[Finding]]:
         broken: List[BrokenLink] = []
         findings: List[Finding] = []
 
@@ -767,9 +759,7 @@ class CompletenessAnalyzer:
             if not guide_path.exists():
                 continue
             content = _read_text(guide_path)
-            headings_text = " ".join(
-                text for _lvl, text, _ln in _extract_headings(content)
-            )
+            headings_text = " ".join(text for _lvl, text, _ln in _extract_headings(content))
             for section in sections:
                 if section.lower() in headings_text.lower():
                     findings.append(
@@ -786,9 +776,7 @@ class CompletenessAnalyzer:
                             check="completeness.ops_section_missing",
                             severity=Severity.WARNING,
                             file=f"docs/operations/{filename}",
-                            message=(
-                                f"Expected section not found in ops guide: '{section}'"
-                            ),
+                            message=(f"Expected section not found in ops guide: '{section}'"),
                         )
                     )
 
@@ -884,9 +872,7 @@ class CoverageAnalyzer:
         for py_file in py_files:
             module_name = py_file.stem
             # Consider a module documented if its name or dotted path appears in generated docs
-            rel_module = str(py_file.relative_to(aios_src)).replace("/", ".").replace(
-                ".py", ""
-            )
+            rel_module = str(py_file.relative_to(aios_src)).replace("/", ".").replace(".py", "")
             if module_name in generated_content or rel_module in generated_content:
                 documented.add(py_file)
 

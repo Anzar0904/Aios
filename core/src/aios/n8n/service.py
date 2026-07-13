@@ -32,7 +32,7 @@ class N8NConfigurationService(DIInitializeMixin):
         self.password = os.environ.get("N8N_PASSWORD") or self.password
         self.api_key = os.environ.get("N8N_API_KEY") or self.api_key
         self.bearer_token = os.environ.get("N8N_BEARER_TOKEN") or self.bearer_token
-        
+
         if self.email and self.password:
             self.auth_method = "session"
         elif self.api_key:
@@ -66,14 +66,14 @@ class N8NSessionManager(DIInitializeMixin):
                     logger.warning("Session login failed: 401 Unauthorized")
                     return False
                 res.raise_for_status()
-                
+
                 # Parse cookie from Set-Cookie headers
                 cookies = res.cookies
                 if "n8n-auth" in cookies:
                     self.session_cookie = cookies["n8n-auth"]
                     self.last_login_time = time.time()
                     return True
-                
+
                 # Try finding n8n-auth cookie in raw Set-Cookie headers
                 for header_name, header_val in res.headers.items():
                     if header_name.lower() == "set-cookie" and "n8n-auth" in header_val:
@@ -83,7 +83,7 @@ class N8NSessionManager(DIInitializeMixin):
                                 self.session_cookie = part.split("=")[-1].strip()
                                 self.last_login_time = time.time()
                                 return True
-                
+
                 # Try JSON body token fallback
                 data = res.json()
                 if isinstance(data, dict) and "token" in data:
@@ -114,7 +114,11 @@ class N8NSessionManager(DIInitializeMixin):
 class N8NAuthenticationManager(DIInitializeMixin):
     """Generates credentials headers and runs diagnostic auth checks."""
 
-    def __init__(self, config_service: N8NConfigurationService, session_manager: Optional[N8NSessionManager] = None) -> None:
+    def __init__(
+        self,
+        config_service: N8NConfigurationService,
+        session_manager: Optional[N8NSessionManager] = None,
+    ) -> None:
         self.config_service = config_service
         self.session_manager = session_manager or N8NSessionManager(config_service)
 
@@ -141,14 +145,19 @@ class N8NAuthenticationManager(DIInitializeMixin):
         env_token = self.config_service.bearer_token
 
         if not email and not password and not env_key and not env_token:
-            return {"valid": False, "reason": "Awaiting Runtime Configuration - No credentials configured"}
+            return {
+                "valid": False,
+                "reason": "Awaiting Runtime Configuration - No credentials configured",
+            }
         return {"valid": True, "reason": "Authentication credentials present"}
 
 
 class N8NConnectionManager(DIInitializeMixin):
     """Constructs configured HTTP clients."""
 
-    def __init__(self, config_service: N8NConfigurationService, auth_manager: N8NAuthenticationManager) -> None:
+    def __init__(
+        self, config_service: N8NConfigurationService, auth_manager: N8NAuthenticationManager
+    ) -> None:
         self.config_service = config_service
         self.auth_manager = auth_manager
 
@@ -158,16 +167,22 @@ class N8NConnectionManager(DIInitializeMixin):
             base_url=self.config_service.server_url.rstrip("/"),
             headers=headers,
             timeout=float(self.config_service.default_timeout),
-            verify=self.config_service.tls_verify
+            verify=self.config_service.tls_verify,
         )
 
 
 class N8NClient(DIInitializeMixin):
     """Executes HTTP REST calls with linear retries and connection error mappings."""
 
-    def __init__(self, connection_manager: N8NConnectionManager, session_manager: Optional[N8NSessionManager] = None) -> None:
+    def __init__(
+        self,
+        connection_manager: N8NConnectionManager,
+        session_manager: Optional[N8NSessionManager] = None,
+    ) -> None:
         self.connection_manager = connection_manager
-        self.session_manager = session_manager or N8NSessionManager(connection_manager.config_service)
+        self.session_manager = session_manager or N8NSessionManager(
+            connection_manager.config_service
+        )
         self.latencies: List[float] = []
         self.success_count: int = 0
         self.failure_count: int = 0
@@ -182,7 +197,11 @@ class N8NClient(DIInitializeMixin):
         if "/rest/" in url:
             sess_headers = self.session_manager.get_auth_headers()
             if sess_headers:
-                custom_headers = {k: v for k, v in custom_headers.items() if k.lower() not in ["x-n8n-api-key", "authorization"]}
+                custom_headers = {
+                    k: v
+                    for k, v in custom_headers.items()
+                    if k.lower() not in ["x-n8n-api-key", "authorization"]
+                }
                 custom_headers.update(sess_headers)
         elif "/api/v1/" in url:
             custom_headers = {k: v for k, v in custom_headers.items() if k.lower() != "cookie"}
@@ -207,8 +226,10 @@ class N8NClient(DIInitializeMixin):
                 with self.connection_manager.get_client() as client:
                     full_url = url
                     if url.startswith("/"):
-                        full_url = f"{self.connection_manager.config_service.server_url.rstrip('/')}{url}"
-                    
+                        full_url = (
+                            f"{self.connection_manager.config_service.server_url.rstrip('/')}{url}"
+                        )
+
                     response = client.request(method, full_url, headers=custom_headers, **kwargs)
                     latency = time.time() - start_time
                     self.latencies.append(latency)
@@ -224,17 +245,23 @@ class N8NClient(DIInitializeMixin):
                                     custom_headers.update(sess_headers)
                             with self.connection_manager.get_client() as new_client:
                                 start_retry = time.time()
-                                response = new_client.request(method, full_url, headers=custom_headers, **kwargs)
+                                response = new_client.request(
+                                    method, full_url, headers=custom_headers, **kwargs
+                                )
                                 latency_retry = time.time() - start_retry
                                 self.latencies.append(latency_retry)
                                 if len(self.latencies) > 100:
                                     self.latencies.pop(0)
                                 if response.status_code == 401:
                                     self.failure_count += 1
-                                    raise ValueError("Authentication Failure: Awaiting Runtime Configuration / Invalid Session Cookie")
+                                    raise ValueError(
+                                        "Authentication Failure: Awaiting Runtime Configuration / Invalid Session Cookie"
+                                    )
                         else:
                             self.failure_count += 1
-                            raise ValueError("Authentication Failure: Awaiting Runtime Configuration / Invalid Session Cookie")
+                            raise ValueError(
+                                "Authentication Failure: Awaiting Runtime Configuration / Invalid Session Cookie"
+                            )
                     response.raise_for_status()
                     self.success_count += 1
                     return response
@@ -242,7 +269,9 @@ class N8NClient(DIInitializeMixin):
                 last_exc = e
                 if isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 401:
                     self.failure_count += 1
-                    raise ValueError("Authentication Failure: Awaiting Runtime Configuration / Invalid Session Cookie")
+                    raise ValueError(
+                        "Authentication Failure: Awaiting Runtime Configuration / Invalid Session Cookie"
+                    )
                 time.sleep(2**attempt * 0.1)
         self.failure_count += 1
         raise ValueError(f"HTTP request failed: {last_exc}")
@@ -262,8 +291,19 @@ class N8NWorkflowManager(DIInitializeMixin):
         res = self.client.request("GET", f"/api/v1/workflows/{workflow_id}")
         return res.json()
 
-    def upload_workflow(self, name: str, nodes: List[Dict[str, Any]], connections: Dict[str, Any], settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        payload = {"name": name, "nodes": nodes, "connections": connections, "settings": settings or {}}
+    def upload_workflow(
+        self,
+        name: str,
+        nodes: List[Dict[str, Any]],
+        connections: Dict[str, Any],
+        settings: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        payload = {
+            "name": name,
+            "nodes": nodes,
+            "connections": connections,
+            "settings": settings or {},
+        }
         res = self.client.request("POST", "/api/v1/workflows", json=payload)
         return res.json()
 
@@ -321,7 +361,10 @@ class N8NExecutionManager(DIInitializeMixin):
                 nodes = wf_data.get("nodes", [])
                 trigger_name = None
                 for n in nodes:
-                    if "trigger" in n.get("type", "").lower() or "webhook" in n.get("type", "").lower():
+                    if (
+                        "trigger" in n.get("type", "").lower()
+                        or "webhook" in n.get("type", "").lower()
+                    ):
                         trigger_name = n.get("name")
                         break
                 if not trigger_name and nodes:
@@ -333,13 +376,13 @@ class N8NExecutionManager(DIInitializeMixin):
                             "id": workflow_id,
                             "name": wf_data.get("name", "Workflow"),
                             "nodes": nodes,
-                            "connections": wf_data.get("connections", {})
+                            "connections": wf_data.get("connections", {}),
                         },
-                        "destinationNode": {
-                            "nodeName": trigger_name
-                        }
+                        "destinationNode": {"nodeName": trigger_name},
                     }
-                    res = self.client.request("POST", f"/rest/workflows/{workflow_id}/run", json=payload)
+                    res = self.client.request(
+                        "POST", f"/rest/workflows/{workflow_id}/run", json=payload
+                    )
                     return res.json().get("data", {})
 
         res = self.client.request("POST", f"/api/v1/workflows/{workflow_id}/run", json=input_data)
@@ -542,7 +585,7 @@ class N8NHealthMonitor(DIInitializeMixin):
                 try:
                     supported_capabilities = self.capability_detector.discover_capabilities()
                     auth_successful = True
-                    
+
                     workflows = self.workflow_manager.list_workflows()
                     workflows_count = len(workflows)
 
@@ -554,7 +597,7 @@ class N8NHealthMonitor(DIInitializeMixin):
             version = self.version_detector.detect_version()
 
         latency_ms = (time.time() - start) * 1000.0 if server_reachable else 0.0
-        
+
         client_lats = self.client.latencies
         avg_resp_time = (sum(client_lats) / len(client_lats) * 1000.0) if client_lats else 0.0
         total_calls = self.client.success_count + self.client.failure_count
@@ -573,9 +616,9 @@ class N8NHealthMonitor(DIInitializeMixin):
             "failure_rate": failure_rate,
             "retry_statistics": {
                 "total_retries": self.client.retry_count,
-                "total_calls": total_calls
+                "total_calls": total_calls,
             },
-            "issues": issues
+            "issues": issues,
         }
 
 
@@ -606,11 +649,7 @@ class N8NEventMonitor(DIInitializeMixin):
         self.events: List[Dict[str, Any]] = []
 
     def record_event(self, event_type: str, details: Dict[str, Any]) -> None:
-        self.events.append({
-            "type": event_type,
-            "details": details,
-            "timestamp": time.time()
-        })
+        self.events.append({"type": event_type, "details": details, "timestamp": time.time()})
 
 
 class N8NValidator(DIInitializeMixin):
@@ -619,7 +658,9 @@ class N8NValidator(DIInitializeMixin):
     def validate_profile(self, url: str, timeout: int) -> List[str]:
         errors = []
         if not url.startswith(("http://", "https://")):
-            errors.append("Validation Error: n8n server URL must start with http:// or https:// protocol.")
+            errors.append(
+                "Validation Error: n8n server URL must start with http:// or https:// protocol."
+            )
         if timeout <= 0:
             errors.append("Validation Error: timeout_seconds delay must be greater than zero.")
         return errors
@@ -640,8 +681,12 @@ class N8NDiagnostics(DIInitializeMixin):
             self.session_manager = session_manager or N8NSessionManager(config_service_or_auth)
         else:
             self.auth_manager = config_service_or_auth
-            self.config_service = getattr(self.auth_manager, "config_service", None) or N8NConfigurationService()
-            self.session_manager = getattr(self.auth_manager, "session_manager", None) or N8NSessionManager(self.config_service)
+            self.config_service = (
+                getattr(self.auth_manager, "config_service", None) or N8NConfigurationService()
+            )
+            self.session_manager = getattr(
+                self.auth_manager, "session_manager", None
+            ) or N8NSessionManager(self.config_service)
 
     def run_diagnostics(self) -> Dict[str, Any]:
         issues = []
@@ -654,11 +699,13 @@ class N8NDiagnostics(DIInitializeMixin):
 
         if not email and not password and not env_key and not env_token:
             status = "Awaiting Runtime Configuration"
-            issues.append({
-                "type": "Missing configuration",
-                "message": "Neither Email + Password nor API Key/Bearer Token is configured.",
-                "remediation": "Set the N8N_EMAIL and N8N_PASSWORD, or N8N_API_KEY environment variables in the runtime environment."
-            })
+            issues.append(
+                {
+                    "type": "Missing configuration",
+                    "message": "Neither Email + Password nor API Key/Bearer Token is configured.",
+                    "remediation": "Set the N8N_EMAIL and N8N_PASSWORD, or N8N_API_KEY environment variables in the runtime environment.",
+                }
+            )
 
         reachable = False
         version = "unknown"
@@ -674,25 +721,31 @@ class N8NDiagnostics(DIInitializeMixin):
                         pass
         except httpx.ConnectTimeout:
             status = "Awaiting Runtime Configuration"
-            issues.append({
-                "type": "Timeout",
-                "message": "Connection attempt to n8n server timed out.",
-                "remediation": "Verify that the n8n server at http://localhost:5678 is running and not blocked by local firewalls."
-            })
+            issues.append(
+                {
+                    "type": "Timeout",
+                    "message": "Connection attempt to n8n server timed out.",
+                    "remediation": "Verify that the n8n server at http://localhost:5678 is running and not blocked by local firewalls.",
+                }
+            )
         except httpx.ConnectError:
             status = "Awaiting Runtime Configuration"
-            issues.append({
-                "type": "Server unavailable",
-                "message": f"Could not connect to n8n server at {self.config_service.server_url}.",
-                "remediation": "Ensure the self-hosted n8n server is started and listening on the configured port (e.g. run 'n8n start' or check Docker container status)."
-            })
+            issues.append(
+                {
+                    "type": "Server unavailable",
+                    "message": f"Could not connect to n8n server at {self.config_service.server_url}.",
+                    "remediation": "Ensure the self-hosted n8n server is started and listening on the configured port (e.g. run 'n8n start' or check Docker container status).",
+                }
+            )
         except Exception as e:
             status = "Awaiting Runtime Configuration"
-            issues.append({
-                "type": "Connection error",
-                "message": f"Unexpected error while reaching n8n server: {e}",
-                "remediation": "Verify server URL and network settings."
-            })
+            issues.append(
+                {
+                    "type": "Connection error",
+                    "message": f"Unexpected error while reaching n8n server: {e}",
+                    "remediation": "Verify server URL and network settings.",
+                }
+            )
 
         auth_success = False
         if reachable:
@@ -700,26 +753,32 @@ class N8NDiagnostics(DIInitializeMixin):
                 auth_success = self.session_manager.login()
                 if not auth_success:
                     status = "Awaiting Runtime Configuration"
-                    issues.append({
-                        "type": "Authentication failure",
-                        "message": "Failed to authenticate using Email + Password.",
-                        "remediation": "Double-check that the configured N8N_EMAIL and N8N_PASSWORD are correct and authorized on the local n8n instance."
-                    })
+                    issues.append(
+                        {
+                            "type": "Authentication failure",
+                            "message": "Failed to authenticate using Email + Password.",
+                            "remediation": "Double-check that the configured N8N_EMAIL and N8N_PASSWORD are correct and authorized on the local n8n instance.",
+                        }
+                    )
             else:
                 headers = self.auth_manager.get_auth_headers()
                 try:
                     url = f"{self.config_service.server_url.rstrip('/')}/api/v1/workflows"
-                    with httpx.Client(timeout=5.0, headers=headers, verify=self.config_service.tls_verify) as client:
+                    with httpx.Client(
+                        timeout=5.0, headers=headers, verify=self.config_service.tls_verify
+                    ) as client:
                         res = client.get(url)
                         if res.status_code == 200:
                             auth_success = True
                         elif res.status_code == 401:
                             status = "Awaiting Runtime Configuration"
-                            issues.append({
-                                "type": "Permission denied",
-                                "message": "API key or token authentication failed (401 Unauthorized).",
-                                "remediation": "Provide a valid N8N_API_KEY or N8N_BEARER_TOKEN authorized for public API access."
-                            })
+                            issues.append(
+                                {
+                                    "type": "Permission denied",
+                                    "message": "API key or token authentication failed (401 Unauthorized).",
+                                    "remediation": "Provide a valid N8N_API_KEY or N8N_BEARER_TOKEN authorized for public API access.",
+                                }
+                            )
                 except Exception as e:
                     logger.warning(f"Auth diagnostics check failed: {e}")
 
@@ -729,7 +788,9 @@ class N8NDiagnostics(DIInitializeMixin):
             "authentication_successful": auth_success,
             "server_version": version,
             "issues": issues,
-            "credentials_configured": (email is not None and password is not None) or (env_key is not None) or (env_token is not None)
+            "credentials_configured": (email is not None and password is not None)
+            or (env_key is not None)
+            or (env_token is not None),
         }
 
 
@@ -788,7 +849,7 @@ class N8NReportGenerator(DIInitializeMixin):
                 f"- **Server Version**: {health_data['server_version']}\n"
                 f"- **Supported Capabilities**:\n"
             )
-            for cap in health_data['supported_capabilities']:
+            for cap in health_data["supported_capabilities"]:
                 f.write(f"  - {cap}\n")
 
         # 4. N8N_EXECUTION_REPORT.md
@@ -815,4 +876,6 @@ class N8NReportGenerator(DIInitializeMixin):
                         f"**Remediation**: {issue['remediation']}\n\n"
                     )
             else:
-                f.write("All diagnostics checks passed successfully. n8n integration is operating normally.\n")
+                f.write(
+                    "All diagnostics checks passed successfully. n8n integration is operating normally.\n"
+                )

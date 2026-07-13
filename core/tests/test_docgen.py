@@ -25,7 +25,6 @@ _CORE_SRC = _REPO_ROOT / "core" / "src"
 _AIOS_SRC = _CORE_SRC / "aios"
 
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -42,17 +41,36 @@ def generated_dir(tmp_path_factory):
 
     def mock_discover(self):
         return [
-            ProviderEntry(name="claude", version="1", status="stable", context_window=8192, cost_per_million_input=3.0, cost_per_million_output=15.0, auth_type="api_key", is_local=False, capabilities={"chat": True}),
-            ProviderEntry(name="gemini", version="1", status="stable", context_window=8192, cost_per_million_input=0.0, cost_per_million_output=0.0, auth_type="api_key", is_local=False, capabilities={"chat": True})
+            ProviderEntry(
+                name="claude",
+                version="1",
+                status="stable",
+                context_window=8192,
+                cost_per_million_input=3.0,
+                cost_per_million_output=15.0,
+                auth_type="api_key",
+                is_local=False,
+                capabilities={"chat": True},
+            ),
+            ProviderEntry(
+                name="gemini",
+                version="1",
+                status="stable",
+                context_window=8192,
+                cost_per_million_input=0.0,
+                cost_per_million_output=0.0,
+                auth_type="api_key",
+                is_local=False,
+                capabilities={"chat": True},
+            ),
         ]
-    
+
     with patch("aios.docgen.discoverers.ProviderDiscoverer.discover", mock_discover):
         tmp = tmp_path_factory.mktemp("generated_docs")
         engine = DocGeneratorEngine(project_root=_REPO_ROOT)
         engine._output_dir = tmp
         result = engine.run()
         return tmp, result
-
 
 
 @pytest.fixture(scope="module")
@@ -76,6 +94,7 @@ class TestGenerationStatus:
     def test_generation_succeeds(self, generation_result):
         """Generator must complete with SUCCESS status."""
         from aios.docgen.models import GenerationStatus
+
         assert generation_result.status == GenerationStatus.SUCCESS
 
     def test_no_errors(self, generation_result):
@@ -391,15 +410,14 @@ class TestIdempotency:
 
         assert set(files1.keys()) == set(files2.keys())
         for fname in files1:
-            assert files1[fname] == files2[fname], (
-                f"{fname} content differs between runs"
-            )
+            assert files1[fname] == files2[fname], f"{fname} content differs between runs"
 
 
 def _strip_timestamps(content: str) -> str:
     """Remove lines containing ISO 8601 timestamps for idempotency comparison."""
     return "\n".join(
-        line for line in content.splitlines()
+        line
+        for line in content.splitlines()
         if not re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", line)
     )
 
@@ -431,15 +449,14 @@ class TestHandwrittenDocsUntouched:
         import tempfile
 
         from aios.docgen.engine import DocGeneratorEngine
+
         with tempfile.TemporaryDirectory() as tmp:
             engine = DocGeneratorEngine(project_root=_REPO_ROOT)
             engine._output_dir = Path(tmp)  # type: ignore[attr-defined]
             engine.run()
 
         mtime_after = full_path.stat().st_mtime
-        assert mtime_before == mtime_after, (
-            f"{rel_path} was modified by the generator!"
-        )
+        assert mtime_before == mtime_after, f"{rel_path} was modified by the generator!"
 
 
 # ---------------------------------------------------------------------------
@@ -450,6 +467,7 @@ class TestHandwrittenDocsUntouched:
 class TestServiceDiscoverer:
     def test_discovers_memory_service(self):
         from aios.docgen.discoverers import ServiceDiscoverer
+
         d = ServiceDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         services = d.discover()
         names = [s.name for s in services]
@@ -457,18 +475,21 @@ class TestServiceDiscoverer:
 
     def test_all_entries_have_name(self):
         from aios.docgen.discoverers import ServiceDiscoverer
+
         d = ServiceDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         for svc in d.discover():
             assert svc.name, "Service entry has empty name"
 
     def test_all_entries_have_module(self):
         from aios.docgen.discoverers import ServiceDiscoverer
+
         d = ServiceDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         for svc in d.discover():
             assert svc.module, f"{svc.name} has empty module"
 
     def test_sorted_alphabetically(self):
         from aios.docgen.discoverers import ServiceDiscoverer
+
         d = ServiceDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         names = [s.name for s in d.discover()]
         assert names == sorted(names)
@@ -477,6 +498,7 @@ class TestServiceDiscoverer:
 class TestRepositoryDiscoverer:
     def test_discovers_workspace_repository(self):
         from aios.docgen.discoverers import RepositoryDiscoverer
+
         d = RepositoryDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         repos = d.discover()
         names = [r.name for r in repos]
@@ -484,12 +506,14 @@ class TestRepositoryDiscoverer:
 
     def test_all_entries_have_entity(self):
         from aios.docgen.discoverers import RepositoryDiscoverer
+
         d = RepositoryDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         for repo in d.discover():
             assert repo.entity is not None, f"{repo.name} has no entity"
 
     def test_sorted_alphabetically(self):
         from aios.docgen.discoverers import RepositoryDiscoverer
+
         d = RepositoryDiscoverer(_AIOS_SRC / "services", _CORE_SRC)
         names = [r.name for r in d.discover()]
         assert names == sorted(names)
@@ -498,6 +522,7 @@ class TestRepositoryDiscoverer:
 class TestSkillDiscoverer:
     def test_discovers_research_skill(self):
         from aios.docgen.discoverers import SkillDiscoverer
+
         d = SkillDiscoverer(_REPO_ROOT / "skills")
         skills = d.discover()
         ids = [s.skill_id for s in skills]
@@ -505,16 +530,19 @@ class TestSkillDiscoverer:
 
     def test_all_skills_have_name(self):
         from aios.docgen.discoverers import SkillDiscoverer
+
         for skill in SkillDiscoverer(_REPO_ROOT / "skills").discover():
             assert skill.name, f"{skill.skill_id} has empty name"
 
     def test_all_skills_have_description(self):
         from aios.docgen.discoverers import SkillDiscoverer
+
         for skill in SkillDiscoverer(_REPO_ROOT / "skills").discover():
             assert skill.description, f"{skill.skill_id} has empty description"
 
     def test_missing_skills_dir_returns_empty(self, tmp_path):
         from aios.docgen.discoverers import SkillDiscoverer
+
         empty_dir = tmp_path / "no_skills"
         empty_dir.mkdir()
         assert SkillDiscoverer(empty_dir).discover() == []
@@ -523,20 +551,42 @@ class TestSkillDiscoverer:
 class TestProviderDiscoverer:
     def test_discovers_providers(self):
         from aios.docgen.models import ProviderEntry
+
         providers = [
-            ProviderEntry(name="claude", version="1", status="stable", context_window=8192, cost_per_million_input=3.0, cost_per_million_output=15.0, auth_type="api_key", is_local=False, capabilities={"chat": True}),
-            ProviderEntry(name="gemini", version="1", status="stable", context_window=8192, cost_per_million_input=0.0, cost_per_million_output=0.0, auth_type="api_key", is_local=False, capabilities={"chat": True})
+            ProviderEntry(
+                name="claude",
+                version="1",
+                status="stable",
+                context_window=8192,
+                cost_per_million_input=3.0,
+                cost_per_million_output=15.0,
+                auth_type="api_key",
+                is_local=False,
+                capabilities={"chat": True},
+            ),
+            ProviderEntry(
+                name="gemini",
+                version="1",
+                status="stable",
+                context_window=8192,
+                cost_per_million_input=0.0,
+                cost_per_million_output=0.0,
+                auth_type="api_key",
+                is_local=False,
+                capabilities={"chat": True},
+            ),
         ]
         assert len(providers) > 0
 
-
     def test_all_providers_have_name(self):
         from aios.docgen.discoverers import ProviderDiscoverer
+
         for p in ProviderDiscoverer(_AIOS_SRC / "providers", _CORE_SRC).discover():
             assert p.name, "Provider has empty name"
 
     def test_context_window_positive(self):
         from aios.docgen.discoverers import ProviderDiscoverer
+
         for p in ProviderDiscoverer(_AIOS_SRC / "providers", _CORE_SRC).discover():
             assert p.context_window > 0, f"{p.name} has non-positive context window"
 
@@ -544,18 +594,21 @@ class TestProviderDiscoverer:
 class TestDbModelDiscoverer:
     def test_discovers_enums(self):
         from aios.docgen.discoverers import DbModelDiscoverer
+
         models = DbModelDiscoverer(_AIOS_SRC / "services", _CORE_SRC).discover()
         kinds = {m.kind for m in models}
         assert "enum" in kinds
 
     def test_discovers_dataclasses(self):
         from aios.docgen.discoverers import DbModelDiscoverer
+
         models = DbModelDiscoverer(_AIOS_SRC / "services", _CORE_SRC).discover()
         kinds = {m.kind for m in models}
         assert "dataclass" in kinds
 
     def test_all_models_have_module(self):
         from aios.docgen.discoverers import DbModelDiscoverer
+
         for m in DbModelDiscoverer(_AIOS_SRC / "services", _CORE_SRC).discover():
             assert m.module, f"{m.name} has empty module"
 
@@ -563,16 +616,21 @@ class TestDbModelDiscoverer:
 class TestDIBindingDiscoverer:
     def test_discovers_bindings(self):
         from aios.docgen.discoverers import DIBindingDiscoverer
-        bindings = DIBindingDiscoverer(_AIOS_SRC / "bootstrap_modules" / "infrastructure.py").discover()
+
+        bindings = DIBindingDiscoverer(
+            _AIOS_SRC / "bootstrap_modules" / "infrastructure.py"
+        ).discover()
         assert len(bindings) > 0
 
     def test_all_bindings_have_interface(self):
         from aios.docgen.discoverers import DIBindingDiscoverer
+
         for b in DIBindingDiscoverer(_AIOS_SRC / "bootstrap.py").discover():
             assert b.interface, "DI binding has empty interface"
 
     def test_all_bindings_have_concrete(self):
         from aios.docgen.discoverers import DIBindingDiscoverer
+
         for b in DIBindingDiscoverer(_AIOS_SRC / "bootstrap.py").discover():
             assert b.concrete, "DI binding has empty concrete"
 
@@ -586,6 +644,7 @@ class TestRenderers:
     def test_service_catalog_renderer_produces_markdown(self):
         from aios.docgen.models import ServiceEntry
         from aios.docgen.renderers import render_service_catalog
+
         entries = [
             ServiceEntry(
                 name="FooService",
@@ -603,6 +662,7 @@ class TestRenderers:
     def test_skill_catalog_renderer_produces_markdown(self):
         from aios.docgen.models import SkillEntry
         from aios.docgen.renderers import render_skill_catalog
+
         entries = [
             SkillEntry(
                 skill_id="test",
@@ -622,6 +682,7 @@ class TestRenderers:
     def test_dependency_graph_renderer_has_mermaid(self):
         from aios.docgen.models import DIBinding
         from aios.docgen.renderers import render_dependency_graph
+
         bindings = [
             DIBinding(interface="IFooService", concrete="LocalFooService", module="bootstrap")
         ]
@@ -632,6 +693,7 @@ class TestRenderers:
     def test_provider_catalog_renderer_has_cost_table(self):
         from aios.docgen.models import ProviderEntry
         from aios.docgen.renderers import render_provider_catalog
+
         providers = [
             ProviderEntry(
                 name="test_provider",
@@ -652,6 +714,7 @@ class TestRenderers:
     def test_repository_catalog_renderer(self):
         from aios.docgen.models import RepositoryEntry
         from aios.docgen.renderers import render_repository_catalog
+
         repos = [
             RepositoryEntry(
                 name="FooRepository",
@@ -668,6 +731,7 @@ class TestRenderers:
 
     def test_index_renderer(self):
         from aios.docgen.renderers import render_index
+
         output = render_index(
             services_count=10,
             repositories_count=20,
@@ -690,6 +754,7 @@ class TestRenderers:
 class TestGenerationResultModel:
     def test_default_status_no_errors(self):
         from aios.docgen.models import GenerationResult, GenerationStatus
+
         r = GenerationResult(status=GenerationStatus.SUCCESS)
         assert r.success is True
         assert r.total_files == 0
@@ -697,10 +762,12 @@ class TestGenerationResultModel:
 
     def test_failed_status(self):
         from aios.docgen.models import GenerationResult, GenerationStatus
+
         r = GenerationResult(status=GenerationStatus.FAILED)
         assert r.success is False
 
     def test_partial_status(self):
         from aios.docgen.models import GenerationResult, GenerationStatus
+
         r = GenerationResult(status=GenerationStatus.PARTIAL)
         assert r.success is False

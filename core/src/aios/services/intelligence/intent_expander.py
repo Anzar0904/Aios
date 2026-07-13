@@ -8,7 +8,7 @@ class IntentExpander:
     def expand(self, intent: Intent) -> str:
         action = intent.action
         raw_query = intent.parameters.get("raw_query", "")
-        
+
         if action == "ReviewRepository":
             return (
                 "Perform a senior software engineering review focusing on architecture, "
@@ -45,5 +45,5 @@ class IntentExpander:
                 "Summarize git commits and active uncommitted developments to draft a "
                 "structured release notes changelog detailing features, fixes, and migrations."
             )
-        
+
         return raw_query if raw_query else f"Execute {action} developer command."

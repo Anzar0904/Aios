@@ -22,10 +22,10 @@ def test_n8n_production_auth_with_session():
     cfg = N8NConfigurationService()
     cfg.email = "admin@example.com"
     cfg.password = "secret"
-    
+
     session = N8NSessionManager(cfg)
     auth = N8NAuthenticationManager(cfg, session)
-    
+
     assert session.is_session_expired() is True
     diag = auth.validate_credentials()
     assert diag["valid"] is True
@@ -66,7 +66,9 @@ def test_n8n_production_client_request(mock_request):
 def test_n8n_production_client_retry(mock_request):
     mock_fail = MagicMock(spec=httpx.Response)
     mock_fail.status_code = 500
-    mock_fail.raise_for_status.side_effect = httpx.HTTPStatusError("Server Error", request=MagicMock(), response=mock_fail)
+    mock_fail.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Server Error", request=MagicMock(), response=mock_fail
+    )
 
     mock_ok = MagicMock(spec=httpx.Response)
     mock_ok.status_code = 200
@@ -168,7 +170,7 @@ def test_n8n_production_version_capability():
     auth = N8NAuthenticationManager(cfg, session)
     conn = N8NConnectionManager(cfg, auth)
     client = N8NClient(conn, session)
-    
+
     cap_mgr = N8NCapabilityManager(client)
     caps = cap_mgr.get_capabilities()
     assert "webhooks" in caps
@@ -199,16 +201,16 @@ def test_n8n_production_report_generation(tmp_path):
         "latency_ms": 10.0,
         "average_response_time_ms": 12.0,
         "failure_rate": 0.0,
-        "retry_statistics": {"total_retries": 0, "total_calls": 10}
+        "retry_statistics": {"total_retries": 0, "total_calls": 10},
     }
-    
+
     mock_diag = MagicMock()
     mock_diag.run_diagnostics.return_value = {
         "status": "ok",
         "credentials_configured": True,
-        "issues": []
+        "issues": [],
     }
-    
+
     reporter = N8NReportGenerator(ws_root, mock_health, mock_diag)
     reporter.generate_reports()
 

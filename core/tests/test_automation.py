@@ -56,10 +56,12 @@ def dummy_workflow():
     n_trigger = WorkflowNode("n_trig", "Webhook Trigger", "trigger")
     n_action = WorkflowNode("n_act", "HTTP Post", "action")
     edge = WorkflowEdge("e1", "n_trig", "n_act")
-    
+
     graph = WorkflowGraph([n_trigger, n_action], [edge])
     cred = WorkflowCredentialReference("cred_n8n_key", "n8n", "n8n_api_key")
-    policy = WorkflowExecutionPolicy(max_retries=3, retry_delay_seconds=5, timeout_seconds=120, concurrency_limit=1)
+    policy = WorkflowExecutionPolicy(
+        max_retries=3, retry_delay_seconds=5, timeout_seconds=120, concurrency_limit=1
+    )
 
     return WorkflowDefinition(
         workflow_id="wf_deploy",
@@ -69,7 +71,7 @@ def dummy_workflow():
         actions=[WorkflowAction("a1", "http_request")],
         credentials=[cred],
         policy=policy,
-        metadata=WFMetadata(["deploy", "backend"])
+        metadata=WFMetadata(["deploy", "backend"]),
     )
 
 
@@ -128,7 +130,9 @@ def test_registry_and_providers_operations(mock_memory_service, dummy_workflow):
     assert "temporal" in providers
 
 
-def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_service, dummy_workflow):
+def test_workspace_integration(
+    tmp_path, mock_memory_service, mock_workspace_service, dummy_workflow
+):
     ws_id = "ws_test_auto"
     ws_root = str(tmp_path / ws_id)
     os.makedirs(ws_root, exist_ok=True)
@@ -139,17 +143,16 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalAutomationService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalAutomationService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
     # Register workflow
     service._workflow_registry.register_workflow(dummy_workflow)
-    
+
     session = service.run_automation("wf_deploy", ws_id, "n8n")
-    expected_file = os.path.join(ws_root, "docs", "automations", f"AUTOMATION_REPORT_{session.session_id}.md")
+    expected_file = os.path.join(
+        ws_root, "docs", "automations", f"AUTOMATION_REPORT_{session.session_id}.md"
+    )
 
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
@@ -159,9 +162,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service, dummy_workflow):
-    service = LocalAutomationService(
-        memory_service=mock_memory_service
-    )
+    service = LocalAutomationService(memory_service=mock_memory_service)
     service.initialize()
     service._workflow_registry.register_workflow(dummy_workflow)
 
@@ -182,10 +183,7 @@ def test_memory_integration(mock_memory_service, dummy_workflow):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    service = LocalAutomationService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
+    service = LocalAutomationService(memory_service=mock_memory_service, knowledge_hub=mock_kh)
     service.initialize()
 
     report = AutomationReport(
@@ -194,7 +192,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         session_id="sess_1",
         workflow_name="Deploy Module",
         status="success",
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.publish_automation_report(report)
 
@@ -219,5 +217,7 @@ def test_backward_compatibility():
 
     provider = CustomProvider()
     assert provider.provider_id == "custom_runner"
-    res = provider.execute_workflow(None, AutomationSession("sess_1", "wf_1", "ws_1", "pending", 0.0))
+    res = provider.execute_workflow(
+        None, AutomationSession("sess_1", "wf_1", "ws_1", "pending", 0.0)
+    )
     assert res.success is True

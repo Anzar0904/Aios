@@ -311,9 +311,7 @@ def render_completeness_report(result: "CertificationResult") -> str:
     ]
 
     # Required file results
-    file_findings = [
-        f for f in result.findings if f.check.startswith("completeness.required_file")
-    ]
+    file_findings = [f for f in result.findings if f.check.startswith("completeness.required_file")]
     missing_files = [f for f in file_findings if f.severity == Severity.ERROR]
     present_files = [f for f in file_findings if f.severity == Severity.PASS]
 
@@ -359,9 +357,11 @@ def render_completeness_report(result: "CertificationResult") -> str:
     ]
     for f in sorted(section_findings, key=lambda x: x.message):
         icon = "✅" if f.severity == Severity.PASS else "⚠️"
-        section_name = f.message.replace("Required section present: ", "").replace(
-            "Expected section not found in README: ", ""
-        ).strip("'")
+        section_name = (
+            f.message.replace("Required section present: ", "")
+            .replace("Expected section not found in README: ", "")
+            .strip("'")
+        )
         lines.append(f"| {section_name} | {icon} |")
 
     lines += [
@@ -373,9 +373,7 @@ def render_completeness_report(result: "CertificationResult") -> str:
     ]
 
     # Ops guide section results
-    ops_findings = [
-        f for f in result.findings if f.check.startswith("completeness.ops_section")
-    ]
+    ops_findings = [f for f in result.findings if f.check.startswith("completeness.ops_section")]
     ops_by_file: dict = {}
     for f in ops_findings:
         ops_by_file.setdefault(f.file, []).append(f)
@@ -387,9 +385,11 @@ def render_completeness_report(result: "CertificationResult") -> str:
         lines += ["| Section | Status |", "|---------|--------|"]
         for f in sorted(findings, key=lambda x: x.message):
             icon = "✅" if f.severity == Severity.PASS else "⚠️"
-            section = f.message.replace("Required section present: ", "").replace(
-                "Expected section not found in ops guide: ", ""
-            ).strip("'")
+            section = (
+                f.message.replace("Required section present: ", "")
+                .replace("Expected section not found in ops guide: ", "")
+                .strip("'")
+            )
             lines.append(f"| {section} | {icon} |")
         lines.append("")
 
@@ -462,9 +462,7 @@ def render_consistency_report(result: "CertificationResult") -> str:
             "|------|------|-------|---------|",
         ]
         for f in sorted(md_errors, key=lambda x: (x.file, x.line or 0)):
-            lines.append(
-                f"| `{f.file}` | {f.line or '—'} | `{f.check}` | {f.message} |"
-            )
+            lines.append(f"| `{f.file}` | {f.line or '—'} | `{f.check}` | {f.message} |")
         lines.append("")
 
     if md_warns:
@@ -475,9 +473,7 @@ def render_consistency_report(result: "CertificationResult") -> str:
             "|------|------|-------|---------|",
         ]
         for f in sorted(md_warns, key=lambda x: (x.file, x.line or 0)):
-            lines.append(
-                f"| `{f.file}` | {f.line or '—'} | `{f.check}` | {f.message} |"
-            )
+            lines.append(f"| `{f.file}` | {f.line or '—'} | `{f.check}` | {f.message} |")
         lines.append("")
 
     lines += [
@@ -491,9 +487,7 @@ def render_consistency_report(result: "CertificationResult") -> str:
     mermaid_errors = [f for f in mermaid_findings if f.severity == Severity.ERROR]
     mermaid_warns = [f for f in mermaid_findings if f.severity == Severity.WARNING]
 
-    lines.append(
-        f"**{len(mermaid_errors)} errors · {len(mermaid_warns)} warnings**"
-    )
+    lines.append(f"**{len(mermaid_errors)} errors · {len(mermaid_warns)} warnings**")
     lines.append("")
 
     if mermaid_errors or mermaid_warns:
@@ -503,9 +497,7 @@ def render_consistency_report(result: "CertificationResult") -> str:
         ]
         for f in sorted(mermaid_findings, key=lambda x: (x.file, x.line or 0)):
             if f.severity in (Severity.ERROR, Severity.WARNING):
-                lines.append(
-                    f"| `{f.file}` | {f.line or '—'} | `{f.check}` | {f.message} |"
-                )
+                lines.append(f"| `{f.file}` | {f.line or '—'} | `{f.check}` | {f.message} |")
         lines.append("")
     else:
         lines += ["*All Mermaid blocks are syntactically valid.* ✅", ""]
@@ -524,9 +516,7 @@ def render_consistency_report(result: "CertificationResult") -> str:
         ]
         for dup in sorted(result.duplicate_sections, key=lambda d: (d.file, d.heading)):
             lines_str = ", ".join(str(ln) for ln in dup.lines)
-            lines.append(
-                f"| `{dup.file}` | `{dup.heading}` | {dup.occurrences} | {lines_str} |"
-            )
+            lines.append(f"| `{dup.file}` | `{dup.heading}` | {dup.occurrences} | {lines_str} |")
         lines.append("")
     else:
         lines += ["*No duplicate sections detected.* ✅", ""]
@@ -647,9 +637,7 @@ def render_orphan_documents(result: "CertificationResult") -> str:
         ]
         for orphan in sorted(orphans, key=lambda o: o.file):
             size_kb = orphan.size_bytes / 1024
-            lines.append(
-                f"| `{orphan.file}` | {orphan.category} | {size_kb:.1f} KB |"
-            )
+            lines.append(f"| `{orphan.file}` | {orphan.category} | {size_kb:.1f} KB |")
         lines.append("")
 
         # Group by category

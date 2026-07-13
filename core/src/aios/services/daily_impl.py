@@ -50,6 +50,7 @@ class LocalPriorityCalculator(PriorityCalculator):
         missions = []
         try:
             from aios.services.mission import MissionEngine
+
             mission_engine = self._registry.get(MissionEngine) if self._registry else None
             if mission_engine and hasattr(mission_engine, "_repository"):
                 missions = [m.title for m in mission_engine._repository.list_missions()]
@@ -145,7 +146,12 @@ class LocalScheduleOptimizer(ScheduleOptimizer):
 
     def optimize_schedule(self, tasks: List[DailyTask]) -> DailySchedule:
         tasks_desc = [
-            {"id": t.task_id, "title": t.title, "priority": t.priority, "effort_hours": t.effort_hours}
+            {
+                "id": t.task_id,
+                "title": t.title,
+                "priority": t.priority,
+                "effort_hours": t.effort_hours,
+            }
             for t in tasks
         ]
 
@@ -195,7 +201,10 @@ class LocalScheduleOptimizer(ScheduleOptimizer):
         except Exception:
             items = []
             current_time = 9.0  # 09:00
-            for t in sorted(tasks, key=lambda x: {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}.get(x.priority, 2)):
+            for t in sorted(
+                tasks,
+                key=lambda x: {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}.get(x.priority, 2),
+            ):
                 if t.completed:
                     continue
                 start_h = int(current_time)
@@ -204,10 +213,24 @@ class LocalScheduleOptimizer(ScheduleOptimizer):
                 end_h = int(end_time)
                 end_m = int((end_time - end_h) * 60)
                 time_slot = f"{start_h:02d}:{start_m:02d} - {end_h:02d}:{end_m:02d}"
-                items.append(ScheduleItem(time_slot=time_slot, task_id=t.task_id, task_title=t.title, item_type="focus"))
+                items.append(
+                    ScheduleItem(
+                        time_slot=time_slot,
+                        task_id=t.task_id,
+                        task_title=t.title,
+                        item_type="focus",
+                    )
+                )
                 current_time = end_time
                 # Add a break after each task
-                items.append(ScheduleItem(time_slot=f"{end_h:02d}:{end_m:02d} - {end_h:02d}:{end_m+15:02d}", task_id="break", task_title="Break", item_type="break"))
+                items.append(
+                    ScheduleItem(
+                        time_slot=f"{end_h:02d}:{end_m:02d} - {end_h:02d}:{end_m + 15:02d}",
+                        task_id="break",
+                        task_title="Break",
+                        item_type="break",
+                    )
+                )
                 current_time += 0.25
             return DailySchedule(items=items)
 
@@ -285,6 +308,7 @@ class LocalProgressTracker(ProgressTracker):
             for t in tasks
         ]
         from aios.services.personal import KnowledgeEntry
+
         new_entry = KnowledgeEntry(
             id="daily_tasks_list",
             title="Daily Task Progress Cache",
@@ -303,7 +327,9 @@ class LocalProgressTracker(ProgressTracker):
         profile.version += 1
         self._personal.update_profile(profile.id, profile)
 
-    def update_task_status(self, task_id: str, status: str, completion_percentage: float = 0.0) -> DailyTask:
+    def update_task_status(
+        self, task_id: str, status: str, completion_percentage: float = 0.0
+    ) -> DailyTask:
         tasks = self._get_tasks()
         target = None
         for t in tasks:
@@ -313,7 +339,7 @@ class LocalProgressTracker(ProgressTracker):
                     t.start_time = time.time()
                 elif status in ["Completed", "Cancelled"]:
                     t.finish_time = time.time()
-                    t.completed = (status == "Completed")
+                    t.completed = status == "Completed"
                     t.completion_percentage = 100.0
                     if t.start_time:
                         t.actual_duration_mins = (t.finish_time - t.start_time) / 60.0
@@ -384,6 +410,7 @@ class LocalSessionRecorder(SessionRecorder):
             for s in sessions
         ]
         from aios.services.personal import KnowledgeEntry
+
         new_entry = KnowledgeEntry(
             id="daily_work_sessions",
             title="Work Session Records",
@@ -402,7 +429,9 @@ class LocalSessionRecorder(SessionRecorder):
         profile.version += 1
         self._personal.update_profile(profile.id, profile)
 
-    def start_session(self, task_id: str, mission_id: str, category: str, notes: str) -> WorkSession:
+    def start_session(
+        self, task_id: str, mission_id: str, category: str, notes: str
+    ) -> WorkSession:
         sessions = self._get_sessions()
         session = WorkSession(
             session_id=f"work_session_{int(time.time())}",
@@ -467,6 +496,7 @@ class LocalDailyReview(DailyReview):
         missions = []
         try:
             from aios.services.mission import MissionEngine
+
             mission_engine = self._registry.get(MissionEngine) if self._registry else None
             if mission_engine and hasattr(mission_engine, "_repository"):
                 missions = [m.title for m in mission_engine._repository.list_missions()]
@@ -562,7 +592,7 @@ class LocalDailyReview(DailyReview):
             summary = DailyReviewSummary(
                 completed_tasks=completed,
                 incomplete_tasks=incomplete,
-                productivity_summary="Execution logged successfully."
+                productivity_summary="Execution logged successfully.",
             )
             self._persist_review(summary)
             return summary
@@ -587,6 +617,7 @@ class LocalDailyReview(DailyReview):
 
         # Keep a list of reviews in the history profile database
         from aios.services.personal import KnowledgeEntry
+
         reviews_history = []
         for entry in profile.knowledge:
             if entry.id == "daily_reviews_history":
@@ -623,6 +654,7 @@ class LocalDailyReview(DailyReview):
                 KnowledgeHubService,
                 KnowledgeMetadata,
             )
+
             knowledge_hub = self._registry.get(KnowledgeHubService) if self._registry else None
             if knowledge_hub:
                 md_content = f"# Daily Review Summary\n\n## Productivity Summary\n{summary.productivity_summary}\n\n## Completed Tasks\n"
@@ -640,13 +672,12 @@ class LocalDailyReview(DailyReview):
                         unique_id=f"daily_review_{int(time.time())}",
                         timestamp=time.time(),
                         source_subsystem="daily_os",
-                        category="Daily Review"
-                    )
+                        category="Daily Review",
+                    ),
                 )
                 knowledge_hub.sync_document(doc, "notion")
         except Exception as e:
             logger.error(f"Failed to sync daily review to Knowledge Hub: {e}")
-
 
 
 class LocalProductivityAnalyzer(ProductivityAnalyzer):
@@ -667,7 +698,9 @@ class LocalProductivityAnalyzer(ProductivityAnalyzer):
         focus_time = sum(s.duration_mins for s in sessions if s.category == "focus")
         interrupted_time = sum(s.duration_mins for s in sessions if s.category == "break")
 
-        actual_durations = [t.actual_duration_mins for t in tasks if t.completed and t.actual_duration_mins > 0]
+        actual_durations = [
+            t.actual_duration_mins for t in tasks if t.completed and t.actual_duration_mins > 0
+        ]
         avg_duration = (sum(actual_durations) / len(actual_durations)) if actual_durations else 0.0
 
         # Estimated vs actual planning accuracy
@@ -684,14 +717,15 @@ class LocalProductivityAnalyzer(ProductivityAnalyzer):
             "total_tasks_completed": completed_tasks,
             "recommendations": [
                 "Good task completion rate.",
-                "Ensure focus block sessions remain uninterrupted."
-            ]
+                "Ensure focus block sessions remain uninterrupted.",
+            ],
         }
 
         # Persist metrics
         profile = self._personal.get_active_profile()
         if profile:
             from aios.services.personal import KnowledgeEntry
+
             metrics_history = []
             for entry in profile.knowledge:
                 if entry.id == "daily_productivity_metrics":
@@ -743,12 +777,13 @@ class LocalDailyPlanner(DailyPlanner):
         # Retrieve memories dynamically based on objective
         try:
             from aios.services.memory import MemoryService, RetrievalContext, RetrievalStrategy
+
             memory_service = self._registry.get(MemoryService) if self._registry else None
             if memory_service:
                 ctx = RetrievalContext(
                     objective="Determine tasks and milestones matching active missions and daily planning review",
                     strategy=RetrievalStrategy.MIXED,
-                    max_results=3
+                    max_results=3,
                 )
                 memory_service.retriever.retrieve(ctx)
         except Exception:
@@ -757,7 +792,6 @@ class LocalDailyPlanner(DailyPlanner):
         # Gather active tasks and context
         profile = self._personal.get_active_profile()
         [g.title for g in profile.goals] if profile else []
-
 
         tasks = [
             DailyTask(
@@ -786,7 +820,7 @@ class LocalDailyPlanner(DailyPlanner):
                 deadline_impact="Low",
                 career_impact="Low",
                 mission_impact="Medium",
-            )
+            ),
         ]
 
         # Prioritize tasks

@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 
 class ReviewCategory(Enum):
     """Enumerate review domains evaluated by the Review Engine."""
+
     ARCHITECTURE = "Architecture"
     MAINTAINABILITY = "Maintainability"
     PERFORMANCE = "Performance"
@@ -24,6 +25,7 @@ class ReviewCategory(Enum):
 
 class ReviewSeverity(Enum):
     """Enumerate finding impact levels."""
+
     INFO = "INFO"
     LOW = "LOW"
     MEDIUM = "MEDIUM"
@@ -34,6 +36,7 @@ class ReviewSeverity(Enum):
 @dataclass
 class ReviewEvidence:
     """Aggregated evidence details backing a review finding."""
+
     source: str
     evidence_type: str
     data: Dict[str, Any]
@@ -43,6 +46,7 @@ class ReviewEvidence:
 @dataclass
 class ReviewRecommendation:
     """Actionable remediation steps addressing review finding diagnostics."""
+
     recommendation_id: str
     description: str
     actionable_steps: List[str] = field(default_factory=list)
@@ -51,13 +55,16 @@ class ReviewRecommendation:
 @dataclass
 class ReviewFinding:
     """Diagnostic discover details compiled during code review."""
+
     finding_id: str
     category: ReviewCategory
     severity: ReviewSeverity
     confidence: float
     description: str
     evidence: List[ReviewEvidence] = field(default_factory=list)
-    recommendation: ReviewRecommendation = field(default_factory=lambda: ReviewRecommendation("", ""))
+    recommendation: ReviewRecommendation = field(
+        default_factory=lambda: ReviewRecommendation("", "")
+    )
     related_components: List[str] = field(default_factory=list)
     related_files: List[str] = field(default_factory=list)
     blocking: bool = False
@@ -66,6 +73,7 @@ class ReviewFinding:
 @dataclass
 class ReviewSummary:
     """Executive metrics summary detailing overall review outcomes."""
+
     summary_id: str
     executive_summary: str
     overall_health: str  # "healthy", "degraded", "critical"
@@ -81,6 +89,7 @@ class ReviewSummary:
 @dataclass
 class ReviewReport:
     """Aggregated code review outcome report payload."""
+
     report_id: str
     session_id: str
     workspace_id: str
@@ -92,6 +101,7 @@ class ReviewReport:
 @dataclass
 class ReviewSession:
     """Lifecycle tracking for an active code review evaluation run."""
+
     session_id: str
     workspace_id: str
     package_id: str
@@ -105,7 +115,9 @@ class ReviewAnalyzer(abc.ABC):
     """Core review analyzer engine auditing packages to discover findings."""
 
     @abc.abstractmethod
-    def analyze_package(self, workspace_id: str, package: Any) -> tuple[ReviewSummary, List[ReviewFinding]]:
+    def analyze_package(
+        self, workspace_id: str, package: Any
+    ) -> tuple[ReviewSummary, List[ReviewFinding]]:
         """Scans the package components and returns compiled summary and findings list."""
         pass
 

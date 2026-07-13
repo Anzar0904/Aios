@@ -12,36 +12,40 @@ class ActionPlanner:
     def plan(self, objective: str) -> ActionPlan:
         obj_lower = objective.lower()
         steps = []
-        
+
         # Rule-based heuristics for testing/simple flows
         if "write file" in obj_lower:
             parts = objective.split("write file ")
             if len(parts) > 1:
                 filename = parts[1].split()[0]
-                content = parts[1][len(filename):].strip()
-                steps.append(ActionStep(
-                    description=f"Create file {filename}",
-                    action_type=ActionType.WRITE,
-                    risk_level=RiskLevel.LOW,
-                    tool_name="filesystem",
-                    tool_args={"action": "write", "path": filename, "content": content},
-                    is_reversible=True,
-                    undo_args={"action": "delete", "path": filename}
-                ))
+                content = parts[1][len(filename) :].strip()
+                steps.append(
+                    ActionStep(
+                        description=f"Create file {filename}",
+                        action_type=ActionType.WRITE,
+                        risk_level=RiskLevel.LOW,
+                        tool_name="filesystem",
+                        tool_args={"action": "write", "path": filename, "content": content},
+                        is_reversible=True,
+                        undo_args={"action": "delete", "path": filename},
+                    )
+                )
         elif "delete file" in obj_lower:
             parts = objective.split("delete file ")
             if len(parts) > 1:
                 filename = parts[1].split()[0]
-                steps.append(ActionStep(
-                    description=f"Delete file {filename}",
-                    action_type=ActionType.DELETE,
-                    risk_level=RiskLevel.HIGH,
-                    tool_name="filesystem",
-                    tool_args={"action": "delete", "path": filename},
-                    is_reversible=True,  # will attempt backup
-                    undo_args=None
-                ))
-                
+                steps.append(
+                    ActionStep(
+                        description=f"Delete file {filename}",
+                        action_type=ActionType.DELETE,
+                        risk_level=RiskLevel.HIGH,
+                        tool_name="filesystem",
+                        tool_args={"action": "delete", "path": filename},
+                        is_reversible=True,  # will attempt backup
+                        undo_args=None,
+                    )
+                )
+
         # LLM fallback
         if not steps and self.model_service:
             prompt = (
@@ -80,8 +84,7 @@ class ActionPlanner:
                     LLMRequest(
                         prompt=prompt,
                         system_instruction=(
-                            "You are a strict action planning agent. "
-                            "Return JSON lists only."
+                            "You are a strict action planning agent. Return JSON lists only."
                         ),
                         model_name="claude-3-5-sonnet",
                     )
@@ -91,30 +94,34 @@ class ActionPlanner:
                     text = text.split("```json")[1].split("```")[0].strip()
                 elif "```" in text:
                     text = text.split("```")[1].split("```")[0].strip()
-                
+
                 raw_steps = json.loads(text)
                 for rs in raw_steps:
-                    steps.append(ActionStep(
-                        description=rs["description"],
-                        action_type=ActionType(rs["action_type"]),
-                        risk_level=RiskLevel(rs["risk_level"]),
-                        tool_name=rs["tool_name"],
-                        tool_args=rs["tool_args"],
-                        is_reversible=rs.get("is_reversible", True),
-                        undo_args=rs.get("undo_args")
-                    ))
+                    steps.append(
+                        ActionStep(
+                            description=rs["description"],
+                            action_type=ActionType(rs["action_type"]),
+                            risk_level=RiskLevel(rs["risk_level"]),
+                            tool_name=rs["tool_name"],
+                            tool_args=rs["tool_args"],
+                            is_reversible=rs.get("is_reversible", True),
+                            undo_args=rs.get("undo_args"),
+                        )
+                    )
             except Exception:
                 pass
-                
+
         if not steps:
-            steps.append(ActionStep(
-                description="List files in workspace",
-                action_type=ActionType.READ,
-                risk_level=RiskLevel.LOW,
-                tool_name="filesystem",
-                tool_args={"action": "list", "path": "."},
-                is_reversible=True,
-                undo_args=None
-            ))
-            
+            steps.append(
+                ActionStep(
+                    description="List files in workspace",
+                    action_type=ActionType.READ,
+                    risk_level=RiskLevel.LOW,
+                    tool_name="filesystem",
+                    tool_args={"action": "list", "path": "."},
+                    is_reversible=True,
+                    undo_args=None,
+                )
+            )
+
         return ActionPlan(objective=objective, steps=steps)

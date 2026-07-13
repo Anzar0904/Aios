@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class ArchitectureComponent:
     """A distinct structural part of the system (e.g. Service, Controller)."""
+
     __test__ = False
     name: str
     component_type: str
@@ -17,6 +18,7 @@ class ArchitectureComponent:
 @dataclass
 class ArchitectureLayer:
     """An architectural division containing components (e.g., Kernel Layer)."""
+
     __test__ = False
     name: str
     level: int
@@ -26,6 +28,7 @@ class ArchitectureLayer:
 @dataclass
 class ArchitectureRelationship:
     """System dependency coupling between two components."""
+
     __test__ = False
     source_component: str
     target_component: str
@@ -35,6 +38,7 @@ class ArchitectureRelationship:
 @dataclass
 class ArchitectureDiagram:
     """Mermaid diagram output code string."""
+
     __test__ = False
     diagram_id: str
     diagram_type: str
@@ -44,6 +48,7 @@ class ArchitectureDiagram:
 @dataclass
 class ArchitectureDecision:
     """An Architecture Decision Record (ADR) reference."""
+
     __test__ = False
     decision_id: str
     title: str
@@ -54,6 +59,7 @@ class ArchitectureDecision:
 @dataclass
 class ArchitectureSummary:
     """Summary metrics of components and active layers counts."""
+
     __test__ = False
     summary_id: str
     layers_count: int
@@ -65,6 +71,7 @@ class ArchitectureSummary:
 @dataclass
 class ArchitectureReport:
     """Architecture health audit detailing layers violations or unused parts."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -76,33 +83,38 @@ class ArchitectureReport:
 
 class ArchitectureAnalyzer(abc.ABC):
     """Compares codebase layouts to find circular dependencies or structural violations."""
+
     __test__ = False
 
     @abc.abstractmethod
-    def analyze_architecture(self, code_structure: Dict[str, Any], existing_docs: str) -> ArchitectureReport:
+    def analyze_architecture(
+        self, code_structure: Dict[str, Any], existing_docs: str
+    ) -> ArchitectureReport:
         """Finds violations and logs metrics."""
         pass
 
 
 class ArchitectureDocumentPlanner(abc.ABC):
     """Plans structure layout matching formatting rules."""
+
     __test__ = False
 
     @abc.abstractmethod
-    def plan_architecture_documentation(self, report: ArchitectureReport) -> List[ArchitectureComponent]:
+    def plan_architecture_documentation(
+        self, report: ArchitectureReport
+    ) -> List[ArchitectureComponent]:
         """Assembles list of components requiring documentation."""
         pass
 
 
 class ArchitectureValidator(abc.ABC):
     """Checks Mermaid diagram consistency or broken references."""
+
     __test__ = False
 
     @abc.abstractmethod
     def validate_architecture_document(
-        self,
-        diagram: ArchitectureDiagram,
-        registry: "ArchitectureRegistry"
+        self, diagram: ArchitectureDiagram, registry: "ArchitectureRegistry"
     ) -> List[str]:
         """Returns validation errors list."""
         pass
@@ -110,6 +122,7 @@ class ArchitectureValidator(abc.ABC):
 
 class ArchitectureRegistry:
     """Thread-safe index cataloging components and decisions."""
+
     __test__ = False
 
     def __init__(self) -> None:
@@ -145,14 +158,12 @@ class ArchitectureRegistry:
 
 class ArchitectureDocumentationService(ServiceLifecycle, abc.ABC):
     """Coordinating service generating architecture structures, diagram layouts, and memory logs."""
+
     __test__ = False
 
     @abc.abstractmethod
     def generate_architecture_documentation(
-        self,
-        workspace_id: str,
-        code_structure: Dict[str, Any],
-        existing_docs: str
+        self, workspace_id: str, code_structure: Dict[str, Any], existing_docs: str
     ) -> ArchitectureDiagram:
         """Assembles Mermaid diagram layouts."""
         pass

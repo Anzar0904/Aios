@@ -93,10 +93,7 @@ def test_env():
     cache_recommend = CacheRecommendationEngineImpl(cache_stats, cache_diag)
     cache_inval = CacheInvalidationManagerImpl(redis_provider, cache_stats)
     redis_cache_service = RedisCacheServiceImpl(
-        redis_provider,
-        cache_policy_mgr,
-        cache_stats,
-        cache_diag
+        redis_provider, cache_policy_mgr, cache_stats, cache_diag
     )
     cache_warmup = CacheWarmupServiceImpl(p_service, redis_cache_service, cache_stats)
     cache_rebuild = CacheRebuildServiceImpl(p_service, redis_provider, cache_stats, cache_warmup)
@@ -149,7 +146,6 @@ def test_env():
     ServiceRegistry._global_registry = None
 
 
-
 def test_cache_policy_and_read_through(test_env):
     workspace_repo = test_env["workspace_repo"]
     cache_stats = test_env["cache_stats"]
@@ -167,7 +163,7 @@ def test_cache_policy_and_read_through(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
 
     # Save to PostgreSQL
@@ -210,7 +206,7 @@ def test_cache_policy_write_through(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
 
     cache_stats.hits = 0
@@ -244,7 +240,7 @@ def test_cache_policy_cache_aside(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
 
     workspace_repo.save(ws)
@@ -282,7 +278,7 @@ def test_ttl_expiration(test_env):
     redis_cache_service = test_env["redis_cache_service"]
 
     redis_cache_service.set("workspace", "temp-ws", {"val": "hello"}, ttl=1)
-    
+
     # Check exists
     assert redis_provider.exists(redis_cache_service.make_key("workspace", "temp-ws")) is True
 
@@ -310,7 +306,7 @@ def test_cache_invalidation_manager(test_env):
     redis_cache_service.set("workspace", "ws-1", {"name": "ws1"})
     key1 = redis_cache_service.make_key("workspace", "ws-1")
     key2 = redis_cache_service.make_key("workspace", "ws-2")
-    
+
     deleted_count = cache_inval.invalidate_bulk([key1, key2])
     assert deleted_count == 2
     assert redis_cache_service.get("workspace", "ws-1", lambda: None) is None
@@ -331,7 +327,7 @@ def test_cache_warmup_service(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
     workspace_repo.save(ws)
 
@@ -361,13 +357,13 @@ def test_cache_rebuild_service(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
     workspace_repo.save(ws)
 
     # Simulate connection drop
     redis_cache_service._disabled = True
-    workspace_repo.save(ws) # Save with cache disabled
+    workspace_repo.save(ws)  # Save with cache disabled
 
     # Reconnect and rebuild
     redis_cache_service._disabled = False
@@ -396,7 +392,7 @@ def test_redis_unavailable_fallback(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
     workspace_repo.save(ws)
 
@@ -439,7 +435,10 @@ def test_statistics_diagnostics_and_recommendations(test_env):
     # Recommendations check
     recs = cache_recommend.get_recommendations()
     assert len(recs) > 0
-    assert any(r["category"] in ("Connectivity", "Efficiency", "TTL Configuration", "Maintenance") for r in recs)
+    assert any(
+        r["category"] in ("Connectivity", "Efficiency", "TTL Configuration", "Maintenance")
+        for r in recs
+    )
 
 
 def test_backward_compatibility(test_env):
@@ -459,7 +458,7 @@ def test_backward_compatibility(test_env):
         "last_accessed": time.time(),
         "version": 1,
         "status": "active",
-        "health": "good"
+        "health": "good",
     }
     workspace_repo.save(ws)
 

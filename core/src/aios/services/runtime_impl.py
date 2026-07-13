@@ -46,11 +46,7 @@ class LocalHealthMonitor(HealthMonitor):
             name = service_type.__name__
             services_status[name] = "READY"
 
-        return {
-            "status": "HEALTHY",
-            "uptime": kernel.uptime,
-            "services": services_status
-        }
+        return {"status": "HEALTHY", "uptime": kernel.uptime, "services": services_status}
 
 
 class BackgroundTaskManager:
@@ -100,7 +96,9 @@ class NotificationManager:
         self._dispatcher = dispatcher
 
     def notify(self, message: str) -> None:
-        self._dispatcher.dispatch("NotificationCreated", {"message": message, "timestamp": time.time()})
+        self._dispatcher.dispatch(
+            "NotificationCreated", {"message": message, "timestamp": time.time()}
+        )
 
 
 # Concrete System Watchers
@@ -156,7 +154,7 @@ class LocalRuntime(RuntimeService):
         self._state = RuntimeState.HALTED
         self._config = RuntimeConfiguration()
         self._session: Optional[RuntimeSession] = None
-        
+
         self.dispatcher = LocalEventDispatcher()
         self.health_monitor = LocalHealthMonitor(self)
         self.task_manager = BackgroundTaskManager()
@@ -176,9 +174,7 @@ class LocalRuntime(RuntimeService):
 
         # Build Session
         self._session = RuntimeSession(
-            session_id=f"session_{int(time.time())}",
-            workspace_root=".",
-            created_at=time.time()
+            session_id=f"session_{int(time.time())}", workspace_root=".", created_at=time.time()
         )
 
         # Register default watchers
@@ -195,10 +191,10 @@ class LocalRuntime(RuntimeService):
     def stop(self) -> None:
         self._state = RuntimeState.SHUTTING_DOWN
         logger.info("Shutting down AI OS Runtime...")
-        
+
         # Stop watchers
         self.watcher_manager.stop_all()
-        
+
         self._state = RuntimeState.HALTED
         logger.info("AI OS Runtime HALTED.")
 

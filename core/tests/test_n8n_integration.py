@@ -65,7 +65,7 @@ def test_health_monitor():
 
 def test_validator():
     validator = LocalN8NValidator()
-    
+
     # Valid profile
     profile_valid = N8NConnectionProfile("https://n8n.myorg.com", "bearer_token", 30)
     assert len(validator.validate_server_config(profile_valid)) == 0
@@ -111,28 +111,23 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalN8NIntegrationService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalN8NIntegrationService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
     wf_json = {"name": "Integrate Webhook", "nodes": []}
     wf_id = service.upload_workflow_json(ws_id, wf_json)
-    
+
     expected_file = os.path.join(ws_root, "docs", "automations", f"N8N_METADATA_{wf_id}.json")
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
         meta_data = json.load(f)
-    
+
     assert meta_data["workflow_id"] == wf_id
     assert meta_data["workspace_id"] == ws_id
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalN8NIntegrationService(
-        memory_service=mock_memory_service
-    )
+    service = LocalN8NIntegrationService(memory_service=mock_memory_service)
     service.initialize()
 
     report = service.get_health_status()
@@ -152,10 +147,7 @@ def test_memory_integration(mock_memory_service):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    service = LocalN8NIntegrationService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
+    service = LocalN8NIntegrationService(memory_service=mock_memory_service, knowledge_hub=mock_kh)
     service.initialize()
 
     report = N8NIntegrationReport(
@@ -165,7 +157,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         connectivity_status="online",
         latency_ms=10.0,
         uploaded_workflows_count=5,
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.publish_integration_report(report)
 

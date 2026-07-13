@@ -245,8 +245,7 @@ class GitHubAgent(Agent):
                 LLMRequest(
                     prompt=prompt,
                     system_instruction=(
-                        "You are a DevOps expert. Review and critique "
-                        "GitHub workflow YAML files."
+                        "You are a DevOps expert. Review and critique GitHub workflow YAML files."
                     ),
                     model_name="claude-3-5-sonnet",
                 )

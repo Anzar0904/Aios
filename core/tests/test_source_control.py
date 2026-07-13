@@ -72,7 +72,7 @@ def test_github_provider_adapter(mock_request):
         "html_url": "https://github.com/test-owner/test-repo",
         "private": True,
         "open_issues_count": 0,
-        "permissions": {"admin": True}
+        "permissions": {"admin": True},
     }
     mock_request.return_value = mock_resp
 

@@ -53,14 +53,14 @@ class ActionExecutor:
 
         plan.status = "running"
         start_time = time.time()
-        
+
         for step in plan.steps:
             if step.risk_level == RiskLevel.HIGH and step.status != "approved":
                 step.status = "failed"
                 step.error = "Explicit approval required for high-risk actions."
                 plan.status = "failed"
                 break
-                
+
             success = self.execute_step(step)
             if not success:
                 plan.status = "failed"
@@ -68,5 +68,5 @@ class ActionExecutor:
                 break
         else:
             plan.status = "completed"
-            
+
         return self.report_generator.generate(plan, start_time)

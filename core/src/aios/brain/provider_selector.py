@@ -12,7 +12,7 @@ class ProviderSelector:
         self, objective: str, context: Optional[BrainContext] = None
     ) -> ProviderSelection:
         obj_lower = objective.lower()
-        
+
         # Rule-based heuristics to select model/provider
         if "mock" in obj_lower:
             model_name = "mock-model"
@@ -53,5 +53,5 @@ class ProviderSelector:
         return ProviderSelection(
             provider_name=provider_name,
             model_name=model_name,
-            reason=f"Selected {model_name} (provider: {provider_name}) based on objective keywords."
+            reason=f"Selected {model_name} (provider: {provider_name}) based on objective keywords.",
         )

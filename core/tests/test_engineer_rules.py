@@ -49,9 +49,7 @@ def test_invalid_import_concrete():
     # Brain (Layer 4) importing a concrete implementation from Service Layer (Layer 3)
     mock_data = {
         "index_data": {
-            "core/src/aios/brain/orchestrator.py": {
-                "imports": ["aios.services.LocalMemoryService"]
-            }
+            "core/src/aios/brain/orchestrator.py": {"imports": ["aios.services.LocalMemoryService"]}
         }
     }
     graph = EngineeringGraph(mock_data)
@@ -100,14 +98,8 @@ def test_kernel_isolation_violations():
     engine = ArchitectureRuleEngine(graph)
     violations = engine.validate()
     layering = [v for v in violations if v["type"] == "layering_violation"]
-    assert any(
-        "kernel.py" in v["description"] and "brain" in v["description"]
-        for v in layering
-    )
-    assert any(
-        "kernel.py" in v["description"] and "skill" in v["description"]
-        for v in layering
-    )
+    assert any("kernel.py" in v["description"] and "brain" in v["description"] for v in layering)
+    assert any("kernel.py" in v["description"] and "skill" in v["description"] for v in layering)
 
 
 def test_module_level_vs_contract_imports():
@@ -128,8 +120,7 @@ def test_module_level_vs_contract_imports():
     violations = engine.validate()
     layering = [v for v in violations if v["type"] == "layering_violation"]
     assert any(
-        "orchestrator.py" in v["description"] and "memory" in v["description"]
-        for v in layering
+        "orchestrator.py" in v["description"] and "memory" in v["description"] for v in layering
     )
     assert not any("MemoryService" in v["description"] for v in layering)
 
@@ -152,8 +143,7 @@ def test_core_to_skill_scope_constraints():
         for v in layering
     )
     assert any(
-        "orchestrator.py" in v["description"] and "my_skill" in v["description"]
-        for v in layering
+        "orchestrator.py" in v["description"] and "my_skill" in v["description"] for v in layering
     )
 
 
@@ -170,8 +160,7 @@ def test_service_to_engine_layering_violation():
     violations = engine.validate()
     layering = [v for v in violations if v["type"] == "layering_violation"]
     assert any(
-        "my_service.py" in v["description"] and "brain" in v["description"]
-        for v in layering
+        "my_service.py" in v["description"] and "brain" in v["description"] for v in layering
     )
 
 
@@ -208,4 +197,3 @@ def test_deduplicate_cross_layer_violations():
     violations = engine.validate()
     layering = [v for v in violations if v["type"] == "layering_violation"]
     assert len(layering) == 1
-

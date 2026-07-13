@@ -79,19 +79,11 @@ def session_env():
     session_diag = SessionDiagnosticsImpl(redis_provider)
     session_health = SessionHealthMonitorImpl(redis_provider)
     session_recommend = SessionRecommendationEngineImpl(session_stats, session_diag)
-    session_store = SessionStoreImpl(
-        redis_provider,
-        session_registry,
-        session_stats,
-        session_diag
-    )
+    session_store = SessionStoreImpl(redis_provider, session_registry, session_stats, session_diag)
     session_expiration = SessionExpirationManagerImpl(session_store, session_registry)
     session_recovery = SessionRecoveryManagerImpl(p_service, redis_provider, session_stats)
     session_manager = SessionManagerImpl(
-        session_store,
-        session_recovery,
-        session_registry,
-        session_stats
+        session_store, session_recovery, session_registry, session_stats
     )
     redis_session_service = RedisSessionServiceImpl(
         redis_provider,
@@ -99,7 +91,7 @@ def session_env():
         session_store,
         session_manager,
         session_stats,
-        session_diag
+        session_diag,
     )
 
     session_registry.initialize()
@@ -147,7 +139,7 @@ def session_env():
 
 def test_session_ownership_registry(session_env):
     reg = session_env["session_registry"]
-    
+
     # Check default pre-registered session types
     all_types = reg.get_all_types()
     assert "ai" in all_types
@@ -173,7 +165,9 @@ def test_session_creation_read_update_delete(session_env):
     session_data = {"user": "alice", "active": True}
 
     # Create Session
-    created = mgr.create_session("ai", "session-123", session_data, workspace_id="ws-abc", project_id="proj-xyz")
+    created = mgr.create_session(
+        "ai", "session-123", session_data, workspace_id="ws-abc", project_id="proj-xyz"
+    )
     assert created is True
     assert stats.creates.get("ai", 0) == 1
 
@@ -209,7 +203,7 @@ def test_sliding_expiration_and_heartbeat(session_env):
     session_env["redis_provider"]
 
     mgr.create_session("ai", "session-exp", {"status": "ok"})
-    
+
     # Explicitly check stats are clean
     stats.renewals["ai"] = 0
     stats.heartbeats["ai"] = 0
@@ -223,7 +217,7 @@ def test_sliding_expiration_and_heartbeat(session_env):
     hb = mgr.heartbeat("ai", "session-exp")
     assert hb is True
     assert stats.heartbeats.get("ai", 0) == 1
-    assert stats.renewals.get("ai", 0) == 2 # heartbeat calls renew internally
+    assert stats.renewals.get("ai", 0) == 2  # heartbeat calls renew internally
 
 
 def test_session_recovery_and_reconstruct(session_env):
@@ -239,7 +233,7 @@ def test_session_recovery_and_reconstruct(session_env):
     recovered_data = mgr.get_session("workflow", "wf-session-999")
     assert recovered_data is not None
     assert recovered_data["step"] == 3
-    
+
     mock_handler.assert_called_once_with("wf-session-999")
     assert stats.recoveries.get("workflow", 0) == 1
     assert stats.recovery_success.get("workflow", 0) == 1
@@ -256,7 +250,9 @@ def test_session_outage_fallback(session_env):
     provider = session_env["redis_provider"]
 
     # Simulate connection outage on low-level client
-    provider.transport.execute_command = MagicMock(side_effect=RuntimeError("Redis connection lost"))
+    provider.transport.execute_command = MagicMock(
+        side_effect=RuntimeError("Redis connection lost")
+    )
 
     # Session Platform should automatically degrade to fallback local memory store
     created = mgr.create_session("provider", "prov-session-1", {"provider": "openai"})

@@ -38,18 +38,24 @@ class LocalDocumentationPlanner(DocumentationPlanner):
     """Concrete planner assembling document templates structured according to adapter formatting rules."""
 
     def plan_documentation(
-        self,
-        session: DocumentationSession,
-        profile_adapter: DocumentationProfileAdapter
+        self, session: DocumentationSession, profile_adapter: DocumentationProfileAdapter
     ) -> List[DocumentTemplate]:
         templates = []
-        
+
         # README layout
         templates.append(
             DocumentTemplate(
                 template_id=f"tmpl_readme_{int(time.time())}",
                 name="README Template",
-                structure=["Title", "Overview", "Requirements", "Installation", "Usage", "Contributing", "License"]
+                structure=[
+                    "Title",
+                    "Overview",
+                    "Requirements",
+                    "Installation",
+                    "Usage",
+                    "Contributing",
+                    "License",
+                ],
             )
         )
 
@@ -59,7 +65,12 @@ class LocalDocumentationPlanner(DocumentationPlanner):
                 DocumentTemplate(
                     template_id=f"tmpl_api_{int(time.time())}",
                     name="API Reference Template",
-                    structure=["Overview", "Package Layout", "Classes Summary", "Functions Summary"]
+                    structure=[
+                        "Overview",
+                        "Package Layout",
+                        "Classes Summary",
+                        "Functions Summary",
+                    ],
                 )
             )
 
@@ -75,7 +86,7 @@ class LocalDocumentationService(DocumentationService):
         engineering_profile_service: EngineeringProfileService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[Any] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._profile_service = engineering_profile_service
@@ -109,28 +120,30 @@ class LocalDocumentationService(DocumentationService):
         pass
 
     def create_session(self, workspace: DocumentationWorkspace) -> DocumentationSession:
-        logger.info(f"Creating documentation generation session for workspace: '{workspace.workspace_id}'")
+        logger.info(
+            f"Creating documentation generation session for workspace: '{workspace.workspace_id}'"
+        )
         return DocumentationSession(
             session_id=f"doc_session_{int(time.time())}",
             workspace=workspace,
             status="initialized",
-            start_time=time.time()
+            start_time=time.time(),
         )
 
     def plan_session(self, session: DocumentationSession) -> List[DocumentTemplate]:
         logger.info(f"Planning templates structure for session: '{session.session_id}'")
-        
+
         # Load default profile
         profile = self._profile_service.get_profile("default")
         if not profile:
             raise RuntimeError("Default engineering profile not found.")
-            
+
         adapter = DocumentationProfileAdapter(profile.documentation)
         templates = self._planner.plan_documentation(session, adapter)
-        
+
         for t in templates:
             self._in_memory_registry.register_template(t)
-            
+
         session.status = "planning"
         return templates
 
@@ -152,7 +165,9 @@ class LocalDocumentationService(DocumentationService):
                     "publication_status": "published",
                     "knowledge_references": [artifact.metadata.source.value],
                     "checksums": {"md5": hash(artifact.content)},
-                    "version": int(artifact.metadata.version) if artifact.metadata.version.isdigit() else 1
+                    "version": int(artifact.metadata.version)
+                    if artifact.metadata.version.isdigit()
+                    else 1,
                 }
                 res = self._doc_repo.save(mapped)
                 if res.status != PersistenceStatus.SUCCESS:
@@ -164,6 +179,7 @@ class LocalDocumentationService(DocumentationService):
                     try:
                         if self._registry:
                             from aios.services.persistence import SemanticMemoryManager
+
                             sem_mgr = self._registry.get(SemanticMemoryManager)
                             if sem_mgr:
                                 text_summary = (
@@ -178,27 +194,33 @@ class LocalDocumentationService(DocumentationService):
                                     "category": artifact.metadata.category.value,
                                     "author": artifact.metadata.author,
                                     "timestamp": time.time(),
-                                    "type": "documentation_artifact"
+                                    "type": "documentation_artifact",
                                 }
                                 sem_mgr.index_memory(
                                     repository_name="documentation_memory",
                                     entity_id=artifact.artifact_id,
                                     text=text_summary,
                                     metadata=metadata,
-                                    tags=["documentation", artifact.metadata.category.value, artifact.metadata.title]
+                                    tags=[
+                                        "documentation",
+                                        artifact.metadata.category.value,
+                                        artifact.metadata.title,
+                                    ],
                                 )
                     except Exception as e:
                         logger.warning(f"LocalDocumentationService: Failed to index artifact: {e}")
             except Exception as e:
                 if policy == PersistencePolicy.STRICT:
                     raise RuntimeError(f"Strict persistence save failure: {e}") from e
-                logger.warning(f"Database error saving documentation artifact {artifact.artifact_id}: {e}.")
+                logger.warning(
+                    f"Database error saving documentation artifact {artifact.artifact_id}: {e}."
+                )
 
     def get_artifact(self, artifact_id: str) -> Optional[DocumentArtifact]:
         cached = self._in_memory_registry.get_artifact(artifact_id)
         if cached:
             return cached
-            
+
         if self._doc_repo:
             try:
                 res = self._doc_repo.get(artifact_id)
@@ -207,16 +229,18 @@ class LocalDocumentationService(DocumentationService):
                     meta = DocumentMetadata(
                         doc_id=row.get("workspace_id", ""),
                         category=DocumentCategory(row.get("category", "Architecture")),
-                        source=DocumentSource(row.get("knowledge_references", ["notion"])[0] if row.get("knowledge_references") else "notion"),
+                        source=DocumentSource(
+                            row.get("knowledge_references", ["notion"])[0]
+                            if row.get("knowledge_references")
+                            else "notion"
+                        ),
                         title=artifact_id,
                         version=str(row.get("version", "1")),
                         author=row.get("author", "AI OS"),
-                        timestamp=row.get("generation_time", time.time())
+                        timestamp=row.get("generation_time", time.time()),
                     )
                     artifact = DocumentArtifact(
-                        artifact_id=row.get("id"),
-                        metadata=meta,
-                        content=""
+                        artifact_id=row.get("id"), metadata=meta, content=""
                     )
                     self._in_memory_registry.register_artifact(artifact)
                     return artifact
@@ -225,7 +249,7 @@ class LocalDocumentationService(DocumentationService):
                 if policy == PersistencePolicy.STRICT:
                     raise RuntimeError(f"Strict persistence load failure: {e}") from e
                 logger.warning(f"Database error getting documentation artifact {artifact_id}: {e}.")
-                
+
         return None
 
     def store_documentation_summary(self, result: DocumentationResult) -> None:
@@ -236,7 +260,7 @@ class LocalDocumentationService(DocumentationService):
             f"Artifacts Generated: {len(result.artifacts)}\n"
             + (f"Error Message: {result.error_message}" if result.error_message else "")
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -245,8 +269,8 @@ class LocalDocumentationService(DocumentationService):
                 session_id=result.session_id,
                 tags=["documentation_intelligence", "generation_summary"],
                 importance=2,
-                source_subsystem="documentation_service"
-            )
+                source_subsystem="documentation_service",
+            ),
         )
 
     def publish_documentation_summary(self, result: DocumentationResult) -> None:
@@ -256,7 +280,9 @@ class LocalDocumentationService(DocumentationService):
 
         docs_md = []
         for a in result.artifacts:
-            docs_md.append(f"- **{a.metadata.title}** (Category: `{a.metadata.category.value}`, Source: `{a.metadata.source.value}`)")
+            docs_md.append(
+                f"- **{a.metadata.title}** (Category: `{a.metadata.category.value}`, Source: `{a.metadata.source.value}`)"
+            )
 
         report_md = (
             f"# Centralized Documentation Sync Report\n\n"
@@ -275,7 +301,7 @@ class LocalDocumentationService(DocumentationService):
                 unique_id=f"doc_sync_{result.result_id}",
                 timestamp=time.time(),
                 source_subsystem="documentation_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

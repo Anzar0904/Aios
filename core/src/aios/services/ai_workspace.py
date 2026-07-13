@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class WorkspaceMetadata:
     """Tracks isolated directory configuration and metadata."""
+
     workspace_id: str
     created_at: float
     original_repo_root: str
@@ -19,6 +20,7 @@ class WorkspaceMetadata:
 @dataclass
 class WorkspaceFile:
     """Represents a file cloned or tracked inside the workspace."""
+
     relative_path: str
     file_type: str  # "source", "test", "doc", "config", "temp"
     file_size_bytes: int
@@ -28,6 +30,7 @@ class WorkspaceFile:
 @dataclass
 class WorkspaceChange:
     """Tracks a metadata file operation without generating patches/diffs."""
+
     change_id: str
     relative_path: str
     change_type: str  # "create", "modify", "delete", "rename", "move"
@@ -38,6 +41,7 @@ class WorkspaceChange:
 @dataclass
 class WorkspaceSnapshot:
     """Tracks workspace file states at a given moment for rollback/recovery."""
+
     snapshot_id: str
     workspace_id: str
     timestamp: float
@@ -50,6 +54,7 @@ class WorkspaceSnapshot:
 @dataclass
 class WorkspaceRecovery:
     """Details a snapshot or workspace recovery event outcome."""
+
     recovery_id: str
     workspace_id: str
     timestamp: float
@@ -61,6 +66,7 @@ class WorkspaceRecovery:
 @dataclass
 class WorkspaceSession:
     """Lifecycle tracking for an active workspace engineering context."""
+
     session_id: str
     workspace_id: str
     status: str  # "open", "closed"
@@ -71,6 +77,7 @@ class WorkspaceSession:
 @dataclass
 class WorkspaceSandbox:
     """Manages disk allocations and directory targets for the workspace."""
+
     sandbox_id: str
     workspace_root: str
     storage_limit_bytes: int

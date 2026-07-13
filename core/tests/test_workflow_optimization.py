@@ -56,8 +56,12 @@ def test_knowledge_base():
 def test_cost_analyzer():
     analyzer = LocalWorkflowCostAnalyzer()
     r1 = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(10.0, 1.0, 0, 70.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(10.0, 1.0, 0, 70.0, 50.0),
+        time.time(),
     )
     recs = analyzer.analyze_cost(None, [r1])
     assert len(recs) == 1
@@ -69,8 +73,12 @@ def test_cost_analyzer():
 def test_latency_analyzer():
     analyzer = LocalWorkflowLatencyAnalyzer()
     r1 = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(25.0, 1.0, 0, 5.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(25.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
     )
     recs = analyzer.analyze_latency(None, [r1])
     assert len(recs) == 1
@@ -111,7 +119,7 @@ def test_optimization_validator():
         estimated_risk=0.1,
         implementation_difficulty="easy",
         rollback_considerations="None",
-        pattern_ids=["missing_cache"]
+        pattern_ids=["missing_cache"],
     )
     plan_valid = WorkflowOptimizationPlan("plan_1", "wf_test", [rec])
     assert len(validator.validate_plan(plan_valid)) == 0
@@ -132,7 +140,7 @@ def test_optimization_validator():
         estimated_risk=0.1,
         implementation_difficulty="easy",
         rollback_considerations="None",
-        pattern_ids=["missing_cache"]
+        pattern_ids=["missing_cache"],
     )
     plan_invalid = WorkflowOptimizationPlan("plan_1", "wf_test", [rec_invalid])
     errors = validator.validate_plan(plan_invalid)
@@ -150,22 +158,28 @@ def test_optimization_service_report(tmp_path, mock_memory_service, mock_workspa
 
     mon_service = LocalWorkflowMonitoringService(memory_service=mock_memory_service)
     mon_service.initialize()
-    
+
     r1 = WorkflowExecutionRecord(
-        "ex_1", "wf_test", ws_id, WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(30.0, 1.0, 0, 80.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        ws_id,
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(30.0, 1.0, 0, 80.0, 50.0),
+        time.time(),
     )
     mon_service.record_execution(r1)
 
     registry = MagicMock()
     registry.get.side_effect = lambda t: (
-        mock_workspace_service if t == AIWorkspaceService else
-        mon_service if t == WorkflowMonitoringService else None
+        mock_workspace_service
+        if t == AIWorkspaceService
+        else mon_service
+        if t == WorkflowMonitoringService
+        else None
     )
 
     service = LocalWorkflowOptimizationService(
-        memory_service=mock_memory_service,
-        registry=registry
+        memory_service=mock_memory_service, registry=registry
     )
     service.initialize()
 
@@ -181,9 +195,7 @@ def test_optimization_service_report(tmp_path, mock_memory_service, mock_workspa
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalWorkflowOptimizationService(
-        memory_service=mock_memory_service
-    )
+    service = LocalWorkflowOptimizationService(memory_service=mock_memory_service)
     service.initialize()
 
     p = WorkflowOptimizationPlan("plan_1", "wf_test")
@@ -194,7 +206,7 @@ def test_memory_integration(mock_memory_service):
         optimization_score=95.0,
         total_time_savings_seconds=10.0,
         total_cost_savings_dollars=0.1,
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service._reports["ws_1"] = [report]
     service.store_optimization_summary("ws_1")
@@ -212,8 +224,7 @@ def test_memory_integration(mock_memory_service):
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
     service = LocalWorkflowOptimizationService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
+        memory_service=mock_memory_service, knowledge_hub=mock_kh
     )
     service.initialize()
 
@@ -224,7 +235,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         optimization_score=90.0,
         total_time_savings_seconds=10.0,
         total_cost_savings_dollars=0.1,
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.publish_optimization_report(report)
 
@@ -255,15 +266,19 @@ def test_backward_compatibility():
                     estimated_risk=0.0,
                     implementation_difficulty="easy",
                     rollback_considerations="None",
-                    pattern_ids=["missing_cache"]
+                    pattern_ids=["missing_cache"],
                 )
             )
             return recs
 
     analyzer = CustomCostAnalyzer()
     r = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(10.0, 1.0, 0, 70.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(10.0, 1.0, 0, 70.0, 50.0),
+        time.time(),
     )
     recs = analyzer.analyze_cost(None, [r])
     assert len(recs) == 2

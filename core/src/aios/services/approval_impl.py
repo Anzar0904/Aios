@@ -46,15 +46,21 @@ class MinValidationScoreRule(ApprovalRule):
     def __init__(self, min_score: float) -> None:
         super().__init__(
             rule_name="MinValidationScore",
-            description=f"Validation score must meet or exceed {min_score} threshold."
+            description=f"Validation score must meet or exceed {min_score} threshold.",
         )
         self.min_score = min_score
 
     def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
         score = package.validation_summary.get("score", 0.0)
         if score >= self.min_score:
-            return True, f"Validation score of {score:.1f} meets min requirement {self.min_score:.1f}."
-        return False, f"Validation score of {score:.1f} is below minimum requirement {self.min_score:.1f}."
+            return (
+                True,
+                f"Validation score of {score:.1f} meets min requirement {self.min_score:.1f}.",
+            )
+        return (
+            False,
+            f"Validation score of {score:.1f} is below minimum requirement {self.min_score:.1f}.",
+        )
 
 
 class RequiredCoverageRule(ApprovalRule):
@@ -63,7 +69,7 @@ class RequiredCoverageRule(ApprovalRule):
     def __init__(self, min_coverage: float) -> None:
         super().__init__(
             rule_name="RequiredCoverage",
-            description=f"Statement coverage must stand above {min_coverage}%."
+            description=f"Statement coverage must stand above {min_coverage}%.",
         )
         self.min_coverage = min_coverage
 
@@ -71,7 +77,10 @@ class RequiredCoverageRule(ApprovalRule):
         cov = package.coverage_summary.get("achieved_pct", 0.0)
         if cov >= self.min_coverage:
             return True, f"Coverage of {cov:.1f}% meets minimum criteria {self.min_coverage:.1f}%."
-        return False, f"Coverage of {cov:.1f}% is below target requirement {self.min_coverage:.1f}%."
+        return (
+            False,
+            f"Coverage of {cov:.1f}% is below target requirement {self.min_coverage:.1f}%.",
+        )
 
 
 class MaxRiskLevelRule(ApprovalRule):
@@ -80,7 +89,7 @@ class MaxRiskLevelRule(ApprovalRule):
     def __init__(self, max_allowed_level: str) -> None:
         super().__init__(
             rule_name="MaxRiskLevel",
-            description=f"Gating risk level must not exceed '{max_allowed_level}'."
+            description=f"Gating risk level must not exceed '{max_allowed_level}'.",
         )
         self.max_allowed_level = max_allowed_level
         self._ranks = {"low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -90,8 +99,14 @@ class MaxRiskLevelRule(ApprovalRule):
         curr_val = self._ranks.get(curr, 1)
         max_val = self._ranks.get(self.max_allowed_level.lower(), 2)
         if curr_val <= max_val:
-            return True, f"Current risk level '{curr}' complies with policy (<= '{self.max_allowed_level}')."
-        return False, f"Current risk level '{curr}' exceeds acceptable limit of '{self.max_allowed_level}'."
+            return (
+                True,
+                f"Current risk level '{curr}' complies with policy (<= '{self.max_allowed_level}').",
+            )
+        return (
+            False,
+            f"Current risk level '{curr}' exceeds acceptable limit of '{self.max_allowed_level}'.",
+        )
 
 
 class DocumentationCompletenessRule(ApprovalRule):
@@ -100,7 +115,7 @@ class DocumentationCompletenessRule(ApprovalRule):
     def __init__(self) -> None:
         super().__init__(
             rule_name="DocumentationCompleteness",
-            description="Checks that all required documentation sections are resolved."
+            description="Checks that all required documentation sections are resolved.",
         )
 
     def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
@@ -108,7 +123,10 @@ class DocumentationCompletenessRule(ApprovalRule):
         missing = package.documentation_summary.get("missing_docs", [])
         if completed and not missing:
             return True, "Documentation is complete and compliant."
-        return False, f"Incomplete documentation. Missing: {', '.join(missing) if missing else 'Mandatory files missing'}"
+        return (
+            False,
+            f"Incomplete documentation. Missing: {', '.join(missing) if missing else 'Mandatory files missing'}",
+        )
 
 
 class CriticalFailureThresholdRule(ApprovalRule):
@@ -117,15 +135,21 @@ class CriticalFailureThresholdRule(ApprovalRule):
     def __init__(self, max_failures: int = 0) -> None:
         super().__init__(
             rule_name="CriticalFailureThreshold",
-            description=f"Critical failure count must stand below or equal to {max_failures}."
+            description=f"Critical failure count must stand below or equal to {max_failures}.",
         )
         self.max_failures = max_failures
 
     def evaluate(self, package: ApprovalPackage) -> tuple[bool, str]:
         count = package.failure_summary.get("critical_count", 0)
         if count <= self.max_failures:
-            return True, f"Critical failures count ({count}) is within limit (<= {self.max_failures})."
-        return False, f"Critical failures count ({count}) exceeds maximum threshold of {self.max_failures}."
+            return (
+                True,
+                f"Critical failures count ({count}) is within limit (<= {self.max_failures}).",
+            )
+        return (
+            False,
+            f"Critical failures count ({count}) exceeds maximum threshold of {self.max_failures}.",
+        )
 
 
 class EngineeringProfileRequirementsRule(ApprovalRule):
@@ -134,7 +158,7 @@ class EngineeringProfileRequirementsRule(ApprovalRule):
     def __init__(self, target_language: str = "python") -> None:
         super().__init__(
             rule_name="EngineeringProfileRequirements",
-            description=f"Language and style targets must conform to '{target_language}' standards."
+            description=f"Language and style targets must conform to '{target_language}' standards.",
         )
         self.target_language = target_language
 
@@ -142,7 +166,10 @@ class EngineeringProfileRequirementsRule(ApprovalRule):
         lang = package.metadata.get("profile_language", "python")
         if lang == self.target_language:
             return True, f"Language check passed: '{lang}' conforms with active target profiles."
-        return False, f"Target language '{lang}' does not match required profile configuration '{self.target_language}'."
+        return (
+            False,
+            f"Target language '{lang}' does not match required profile configuration '{self.target_language}'.",
+        )
 
 
 class LocalApprovalValidator(ApprovalValidator):
@@ -161,12 +188,18 @@ class LocalApprovalValidator(ApprovalValidator):
         if not package.affected_files:
             errors.append("Validation Error: Affected files list is empty.")
         if not (0.0 <= package.confidence_score <= 1.0):
-            errors.append(f"Validation Error: Confidence score '{package.confidence_score}' stands outside range [0.0, 1.0].")
+            errors.append(
+                f"Validation Error: Confidence score '{package.confidence_score}' stands outside range [0.0, 1.0]."
+            )
         if not package.overall_health:
-            errors.append("Validation Error: Overall engineering health status parameter is missing.")
+            errors.append(
+                "Validation Error: Overall engineering health status parameter is missing."
+            )
         return errors
 
-    def check_duplicate_request(self, request: ApprovalRequest, history: List[ApprovalSummary]) -> bool:
+    def check_duplicate_request(
+        self, request: ApprovalRequest, history: List[ApprovalSummary]
+    ) -> bool:
         for record in history:
             if (
                 record.workspace_id == request.workspace_id
@@ -186,12 +219,12 @@ class LocalApprovalManager(ApprovalManager):
             package=None,
             decision=None,
             status="open",
-            created_at=time.time()
+            created_at=time.time(),
         )
 
     def compile_package(self, session: ApprovalSession) -> ApprovalPackage:
         request = session.request
-        
+
         # Populate defaults
         eng_summary = "Autogenerated technical summary details."
         validation_summary = {"score": 85.0, "status": "pass", "tests_run_count": 100}
@@ -243,8 +276,8 @@ class LocalApprovalManager(ApprovalManager):
                 MaxRiskLevelRule(max_allowed_level="medium"),
                 DocumentationCompletenessRule(),
                 CriticalFailureThresholdRule(max_failures=0),
-                EngineeringProfileRequirementsRule(target_language=profile_lang)
-            ]
+                EngineeringProfileRequirementsRule(target_language=profile_lang),
+            ],
         )
 
         return ApprovalPackage(
@@ -265,13 +298,13 @@ class LocalApprovalManager(ApprovalManager):
             confidence_score=confidence_score,
             overall_health=overall_health,
             evidence=request.evidence,
-            metadata={"profile_language": profile_lang}
+            metadata={"profile_language": profile_lang},
         )
 
     def evaluate_policy(self, package: ApprovalPackage) -> ApprovalDecision:
         passed_reasons = []
         failed_reasons = []
-        
+
         for rule in package.policy.rules:
             ok, reason = rule.evaluate(package)
             if ok:
@@ -285,16 +318,15 @@ class LocalApprovalManager(ApprovalManager):
             # Check if failures warrant manual review or rejection
             if len(failed_reasons) == 1 and "Documentation" in failed_reasons[0]:
                 status = ApprovalStatus.CHANGES_REQUESTED
-            reasoning = "Policy evaluation failed. Discrepancies discovered:\n" + "\n".join(failed_reasons)
+            reasoning = "Policy evaluation failed. Discrepancies discovered:\n" + "\n".join(
+                failed_reasons
+            )
         else:
             status = ApprovalStatus.APPROVED
             reasoning = "All safety checks and validation gates passed successfully."
 
         return ApprovalDecision(
-            status=status,
-            reasoning=reasoning,
-            reviewer_notes=reviewer_notes,
-            timestamp=time.time()
+            status=status, reasoning=reasoning, reviewer_notes=reviewer_notes, timestamp=time.time()
         )
 
 
@@ -306,7 +338,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -315,7 +347,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
 
         self._validator = LocalApprovalValidator()
         self._manager = LocalApprovalManager()
-        
+
         self._sessions: Dict[str, ApprovalSession] = {}
         self._histories: Dict[str, ApprovalHistory] = {}
         self._approval_repo = None
@@ -335,7 +367,11 @@ class LocalApprovalEngineService(ApprovalEngineService):
             self._review_repo = None
 
     def _get_policy(self) -> PersistencePolicy:
-        if self._approval_repo and hasattr(self._approval_repo, "service") and self._approval_repo.service.config:
+        if (
+            self._approval_repo
+            and hasattr(self._approval_repo, "service")
+            and self._approval_repo.service.config
+        ):
             return self._approval_repo.service.config.policy
         return PersistencePolicy.STRICT
 
@@ -364,7 +400,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
 
         approvals_dir = os.path.join(workspace_root, "docs", "approvals")
         os.makedirs(approvals_dir, exist_ok=True)
-        
+
         file_path = os.path.join(approvals_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -372,7 +408,9 @@ class LocalApprovalEngineService(ApprovalEngineService):
         return file_path
 
     def request_approval(self, request: ApprovalRequest) -> ApprovalSession:
-        logger.info(f"Received approval request '{request.request_id}' for workspace '{request.workspace_id}'")
+        logger.info(
+            f"Received approval request '{request.request_id}' for workspace '{request.workspace_id}'"
+        )
 
         # 1. Duplicate review check
         history = self.get_history(request.workspace_id)
@@ -410,7 +448,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown content directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -430,7 +468,9 @@ class LocalApprovalEngineService(ApprovalEngineService):
             f"## Outcome Reasoning\n{decision.reasoning}\n\n"
             f"## Affected Files\n" + "\n".join(f"- `{f}`" for f in package.affected_files)
         )
-        self._write_to_workspace(request.workspace_id, f"APPROVAL_REPORT_{session.session_id}.md", report_md)
+        self._write_to_workspace(
+            request.workspace_id, f"APPROVAL_REPORT_{session.session_id}.md", report_md
+        )
 
         # 7. Record History
         summary = ApprovalSummary(
@@ -440,7 +480,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
             status=decision.status,
             confidence_score=package.confidence_score,
             overall_health=package.overall_health,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
         history.records.append(summary)
 
@@ -460,26 +500,23 @@ class LocalApprovalEngineService(ApprovalEngineService):
                             "workspace_id": request.workspace_id,
                             "target_version": request.target_version,
                             "policy_id": request.policy_id,
-                            "timestamp": request.timestamp
+                            "timestamp": request.timestamp,
                         },
                         "overall_health": package.overall_health,
                         "confidence_score": package.confidence_score,
                     },
                     "decision_outcome": decision.status.value,
                     "confidence": package.confidence_score,
-                    "policy_used": {
-                        "name": "default",
-                        "rules": decision.reasoning
-                    },
+                    "policy_used": {"name": "default", "rules": decision.reasoning},
                     "review_status": session.status,
                     "approver": request.policy_id,
                     "timeline_metadata": {
                         "created_at": session.created_at,
-                        "closed_at": session.closed_at
+                        "closed_at": session.closed_at,
                     },
                     "operation_results": {},
                     "created_at": session.created_at,
-                    "closed_at": session.closed_at
+                    "closed_at": session.closed_at,
                 }
                 res = self._approval_repo.save(mapped)
                 if res.status != PersistenceStatus.SUCCESS:
@@ -510,17 +547,19 @@ class LocalApprovalEngineService(ApprovalEngineService):
                         target_version=req_meta.get("target_version", ""),
                         policy_id=req_meta.get("policy_id", ""),
                         evidence=[],
-                        timestamp=req_meta.get("timestamp", 0.0)
+                        timestamp=req_meta.get("timestamp", 0.0),
                     )
-                    
+
                     dec_outcome = row.get("decision_outcome")
                     policy_used = row.get("policy_used", {})
                     dec = ApprovalDecision(
-                        status=ApprovalStatus(dec_outcome) if dec_outcome else ApprovalStatus.PENDING,
+                        status=ApprovalStatus(dec_outcome)
+                        if dec_outcome
+                        else ApprovalStatus.PENDING,
                         reasoning=policy_used.get("rules", ""),
-                        timestamp=row.get("closed_at", 0.0)
+                        timestamp=row.get("closed_at", 0.0),
                     )
-                    
+
                     pack_meta = row.get("metadata", {})
                     pack = ApprovalPackage(
                         package_id=f"pkg_{session_id}",
@@ -538,9 +577,9 @@ class LocalApprovalEngineService(ApprovalEngineService):
                         reviewer_notes=[],
                         approval_history=[],
                         confidence_score=row.get("confidence", 1.0),
-                        overall_health=pack_meta.get("overall_health", "healthy")
+                        overall_health=pack_meta.get("overall_health", "healthy"),
                     )
-                    
+
                     session = ApprovalSession(
                         session_id=row.get("id"),
                         request=req,
@@ -548,7 +587,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
                         decision=dec,
                         status=row.get("review_status", "closed"),
                         created_at=row.get("created_at", 0.0),
-                        closed_at=row.get("closed_at")
+                        closed_at=row.get("closed_at"),
                     )
                     self._sessions[session_id] = session
                     return session
@@ -571,28 +610,28 @@ class LocalApprovalEngineService(ApprovalEngineService):
                         records.append(
                             ApprovalSummary(
                                 summary_id=f"sum_{row['id']}",
-                                session_id=row['id'],
-                                workspace_id=row['workspace_id'],
-                                status=ApprovalStatus(row['decision_outcome']),
-                                confidence_score=row['confidence'],
-                                overall_health=row['overall_health'],
-                                timestamp=row['closed_at'] or time.time()
+                                session_id=row["id"],
+                                workspace_id=row["workspace_id"],
+                                status=ApprovalStatus(row["decision_outcome"]),
+                                confidence_score=row["confidence"],
+                                overall_health=row["overall_health"],
+                                timestamp=row["closed_at"] or time.time(),
                             )
                         )
                 except Exception as e:
-                    logger.warning(f"Failed to load approval history for {workspace_id} from DB: {e}")
-            
+                    logger.warning(
+                        f"Failed to load approval history for {workspace_id} from DB: {e}"
+                    )
+
             self._histories[workspace_id] = ApprovalHistory(
-                history_id=f"hist_{workspace_id}",
-                workspace_id=workspace_id,
-                records=records
+                history_id=f"hist_{workspace_id}", workspace_id=workspace_id, records=records
             )
         return self._histories[workspace_id]
 
     def store_approval_summary(self, session: ApprovalSession) -> None:
         if not session.decision or not session.package:
             return
-        
+
         # Save ONLY metadata summaries. Never save codebase contents or source files.
         content = (
             f"Approval Decision Logged\n"
@@ -613,8 +652,8 @@ class LocalApprovalEngineService(ApprovalEngineService):
                 "workspace_id": session.request.workspace_id,
                 "status": session.decision.status.value,
                 "confidence_score": session.package.confidence_score,
-                "overall_health": session.package.overall_health
-            }
+                "overall_health": session.package.overall_health,
+            },
         )
 
     def publish_approval_report(self, report: ApprovalReport) -> None:
@@ -641,8 +680,8 @@ class LocalApprovalEngineService(ApprovalEngineService):
                 unique_id=f"app_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="approval_engine_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")
 
@@ -685,16 +724,18 @@ class LocalApprovalEngineService(ApprovalEngineService):
             if item.get("request_id") == request_id:
                 item["status"] = "approved"
                 self._save_json("queue.json", queue)
-                self.log_audit_trail({
-                    "action": item.get("action"),
-                    "project": item.get("project"),
-                    "client": item.get("client"),
-                    "outcome": "approved",
-                    "risk": item.get("risk"),
-                    "user": item.get("user"),
-                    "timestamp": time.time(),
-                    "reason": f"Manual approval for request {request_id}"
-                })
+                self.log_audit_trail(
+                    {
+                        "action": item.get("action"),
+                        "project": item.get("project"),
+                        "client": item.get("client"),
+                        "outcome": "approved",
+                        "risk": item.get("risk"),
+                        "user": item.get("user"),
+                        "timestamp": time.time(),
+                        "reason": f"Manual approval for request {request_id}",
+                    }
+                )
                 return True
         return False
 
@@ -705,16 +746,18 @@ class LocalApprovalEngineService(ApprovalEngineService):
             if item.get("request_id") == request_id:
                 item["status"] = "rejected"
                 self._save_json("queue.json", queue)
-                self.log_audit_trail({
-                    "action": item.get("action"),
-                    "project": item.get("project"),
-                    "client": item.get("client"),
-                    "outcome": "rejected",
-                    "risk": item.get("risk"),
-                    "user": item.get("user"),
-                    "timestamp": time.time(),
-                    "reason": f"Manual rejection for request {request_id}"
-                })
+                self.log_audit_trail(
+                    {
+                        "action": item.get("action"),
+                        "project": item.get("project"),
+                        "client": item.get("client"),
+                        "outcome": "rejected",
+                        "risk": item.get("risk"),
+                        "user": item.get("user"),
+                        "timestamp": time.time(),
+                        "reason": f"Manual rejection for request {request_id}",
+                    }
+                )
                 return True
         return False
 
@@ -725,16 +768,18 @@ class LocalApprovalEngineService(ApprovalEngineService):
             if item.get("request_id") == request_id:
                 item["status"] = "cancelled"
                 self._save_json("queue.json", queue)
-                self.log_audit_trail({
-                    "action": item.get("action"),
-                    "project": item.get("project"),
-                    "client": item.get("client"),
-                    "outcome": "cancelled",
-                    "risk": item.get("risk"),
-                    "user": item.get("user"),
-                    "timestamp": time.time(),
-                    "reason": f"Manual cancellation for request {request_id}"
-                })
+                self.log_audit_trail(
+                    {
+                        "action": item.get("action"),
+                        "project": item.get("project"),
+                        "client": item.get("client"),
+                        "outcome": "cancelled",
+                        "risk": item.get("risk"),
+                        "user": item.get("user"),
+                        "timestamp": time.time(),
+                        "reason": f"Manual cancellation for request {request_id}",
+                    }
+                )
                 return True
         return False
 
@@ -747,16 +792,18 @@ class LocalApprovalEngineService(ApprovalEngineService):
                 item["timestamp"] = time.time()
                 item["status"] = "pending"
                 self._save_json("queue.json", queue)
-                self.log_audit_trail({
-                    "action": item.get("action"),
-                    "project": item.get("project"),
-                    "client": item.get("client"),
-                    "outcome": "retry",
-                    "risk": item.get("risk"),
-                    "user": item.get("user"),
-                    "timestamp": time.time(),
-                    "reason": f"Retry execution for request {request_id}"
-                })
+                self.log_audit_trail(
+                    {
+                        "action": item.get("action"),
+                        "project": item.get("project"),
+                        "client": item.get("client"),
+                        "outcome": "retry",
+                        "risk": item.get("risk"),
+                        "user": item.get("user"),
+                        "timestamp": time.time(),
+                        "reason": f"Retry execution for request {request_id}",
+                    }
+                )
                 return True
         return False
 
@@ -766,34 +813,27 @@ class LocalApprovalEngineService(ApprovalEngineService):
         for item in queue:
             if item.get("request_id") == request_id:
                 if item.get("status") != "approved":
-                    return {
-                        "status": "failed",
-                        "message": f"Request {request_id} is not approved."
-                    }
+                    return {"status": "failed", "message": f"Request {request_id} is not approved."}
                 item["status"] = "executed"
                 self._save_json("queue.json", queue)
-                self.log_audit_trail({
-                    "action": item.get("action"),
-                    "project": item.get("project"),
-                    "client": item.get("client"),
-                    "outcome": "execution",
-                    "risk": item.get("risk"),
-                    "user": item.get("user"),
-                    "timestamp": time.time(),
-                    "reason": f"Executed approved request {request_id}"
-                })
+                self.log_audit_trail(
+                    {
+                        "action": item.get("action"),
+                        "project": item.get("project"),
+                        "client": item.get("client"),
+                        "outcome": "execution",
+                        "risk": item.get("risk"),
+                        "user": item.get("user"),
+                        "timestamp": time.time(),
+                        "reason": f"Executed approved request {request_id}",
+                    }
+                )
                 # Add to history
                 history = self._load_json("history.json", [])
                 history.append(item)
                 self._save_json("history.json", history)
-                return {
-                    "status": "executed",
-                    "message": "Action executed successfully."
-                }
-        return {
-            "status": "failed",
-            "message": f"Request {request_id} not found."
-        }
+                return {"status": "executed", "message": "Action executed successfully."}
+        return {"status": "failed", "message": f"Request {request_id} not found."}
 
     def expire_requests(self) -> None:
         """Expire time-limited pending requests."""
@@ -804,24 +844,24 @@ class LocalApprovalEngineService(ApprovalEngineService):
             if item.get("status") == "pending" and now > item.get("expiration", 0):
                 item["status"] = "expired"
                 modified = True
-                self.log_audit_trail({
-                    "action": item.get("action"),
-                    "project": item.get("project"),
-                    "client": item.get("client"),
-                    "outcome": "expired",
-                    "risk": item.get("risk"),
-                    "user": item.get("user"),
-                    "timestamp": time.time(),
-                    "reason": f"Request {item.get('request_id')} expired automatically"
-                })
+                self.log_audit_trail(
+                    {
+                        "action": item.get("action"),
+                        "project": item.get("project"),
+                        "client": item.get("client"),
+                        "outcome": "expired",
+                        "risk": item.get("risk"),
+                        "user": item.get("user"),
+                        "timestamp": time.time(),
+                        "reason": f"Request {item.get('request_id')} expired automatically",
+                    }
+                )
         if modified:
             self._save_json("queue.json", queue)
 
     def get_policies(self) -> Dict[str, Any]:
         """Get all configured policies."""
-        return self._load_json("policies.json", {
-            "global": "default"
-        })
+        return self._load_json("policies.json", {"global": "default"})
 
     def update_policy(self, policy_id: str, config: Dict[str, Any]) -> None:
         """Update a policy configuration."""
@@ -841,7 +881,7 @@ class LocalApprovalEngineService(ApprovalEngineService):
             "services_affected": [],
             "expected_changes": "",
             "rollback_supported": False,
-            "estimated_impact": "low"
+            "estimated_impact": "low",
         }
 
     def list_audit_trail(self) -> List[Dict[str, Any]]:
@@ -909,8 +949,8 @@ class LocalApprovalEngineService(ApprovalEngineService):
         # 2. Audit Report
         audit_lines = []
         for entry in audit:
-            ts = time.localtime(entry.get('timestamp', 0))
-            ts_str = time.strftime('%Y-%m-%d %H:%M:%S', ts)
+            ts = time.localtime(entry.get("timestamp", 0))
+            ts_str = time.strftime("%Y-%m-%d %H:%M:%S", ts)
             audit_lines.append(
                 f"- [{ts_str}] **{entry.get('outcome').upper()}**: "
                 f"{entry.get('action')} - {entry.get('reason')}"
@@ -964,12 +1004,7 @@ class ApprovalMiddleware:
         self._service = approval_service
 
     def process_action(
-        self,
-        action: str,
-        project: str,
-        client: str,
-        provider: str,
-        details: Dict[str, Any]
+        self, action: str, project: str, client: str, provider: str, details: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Processes a protected action request."""
         risk_level = self._service.classify_risk(action, details)
@@ -979,41 +1014,45 @@ class ApprovalMiddleware:
         token = f"tok_{request_id}"
 
         if policy == "never_allow" or (policy == "default" and risk_level == "critical"):
-            self._service.log_audit_trail({
-                "action": action,
-                "project": project,
-                "client": client,
-                "outcome": "rejected",
-                "risk": risk_level,
-                "user": "developer",
-                "timestamp": time.time(),
-                "reason": "Policy explicitly forbids or critical risk level rejected"
-            })
+            self._service.log_audit_trail(
+                {
+                    "action": action,
+                    "project": project,
+                    "client": client,
+                    "outcome": "rejected",
+                    "risk": risk_level,
+                    "user": "developer",
+                    "timestamp": time.time(),
+                    "reason": "Policy explicitly forbids or critical risk level rejected",
+                }
+            )
             return {
                 "status": "rejected",
                 "request_id": request_id,
                 "token": "",
                 "message": "Action rejected by governance policy",
-                "rollback_supported": False
+                "rollback_supported": False,
             }
 
         if policy == "always_approve" or (policy == "default" and risk_level == "low"):
-            self._service.log_audit_trail({
-                "action": action,
-                "project": project,
-                "client": client,
-                "outcome": "executed",
-                "risk": risk_level,
-                "user": "developer",
-                "timestamp": time.time(),
-                "reason": "Always approve policy or low risk auto-execution"
-            })
+            self._service.log_audit_trail(
+                {
+                    "action": action,
+                    "project": project,
+                    "client": client,
+                    "outcome": "executed",
+                    "risk": risk_level,
+                    "user": "developer",
+                    "timestamp": time.time(),
+                    "reason": "Always approve policy or low risk auto-execution",
+                }
+            )
             return {
                 "status": "executed",
                 "request_id": request_id,
                 "token": token,
                 "message": "Action auto-approved and executed",
-                "rollback_supported": True
+                "rollback_supported": True,
             }
 
         # Queue request for manual confirmation
@@ -1023,7 +1062,7 @@ class ApprovalMiddleware:
             "services_affected": [provider],
             "expected_changes": details.get("changes", "Metadata update"),
             "rollback_supported": details.get("rollback", True),
-            "estimated_impact": risk_level
+            "estimated_impact": risk_level,
         }
 
         request_item = {
@@ -1040,26 +1079,27 @@ class ApprovalMiddleware:
             "status": "pending",
             "preview": preview,
             "rollback_capability": preview["rollback_supported"],
-            "details": details
+            "details": details,
         }
 
         self._service.queue_request_item(request_item)
-        self._service.log_audit_trail({
-            "action": action,
-            "project": project,
-            "client": client,
-            "outcome": "queued",
-            "risk": risk_level,
-            "user": "developer",
-            "timestamp": time.time(),
-            "reason": "Action queued for confirmation"
-        })
+        self._service.log_audit_trail(
+            {
+                "action": action,
+                "project": project,
+                "client": client,
+                "outcome": "queued",
+                "risk": risk_level,
+                "user": "developer",
+                "timestamp": time.time(),
+                "reason": "Action queued for confirmation",
+            }
+        )
 
         return {
             "status": "queued",
             "request_id": request_id,
             "token": token,
             "message": "Action queued for approval",
-            "rollback_supported": preview["rollback_supported"]
+            "rollback_supported": preview["rollback_supported"],
         }
-

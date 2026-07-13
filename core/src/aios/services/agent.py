@@ -106,6 +106,7 @@ class AgentFactory:
     @staticmethod
     def create_agent(agent_type: str, *args, **kwargs) -> Agent:
         from aios.services.agent_impl import CareerAgent, DeveloperAgent, MockAgent
+
         if agent_type == "career":
             return CareerAgent(*args, **kwargs)
         elif agent_type == "developer":
@@ -173,5 +174,3 @@ class AgentRuntimeService(ServiceLifecycle, abc.ABC):
     def cancel(self) -> None:
         """Cancels the active agent execution."""
         pass
-
-

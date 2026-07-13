@@ -254,12 +254,12 @@ class ProviderHealthRegistry:
         health.latency_ms = latency_ms
         health.last_checked = time.time()
         health.last_successful_request = time.time()
-        
+
         # update success/failure rate
         success = health.success_rate * 0.9 + 0.1
         health.success_rate = success
         health.failure_rate = 1.0 - success
-        
+
         # calculate dynamic health score
         score = success * 100.0
         if latency_ms > 1000:
@@ -273,23 +273,23 @@ class ProviderHealthRegistry:
             health.timeout_history.append(time.time())
             if len(health.timeout_history) > 10:
                 health.timeout_history.pop(0)
-                
+
         health.last_checked = time.time()
         health.last_failure_request = time.time()
         health.last_error = error_message
-        
+
         success = health.success_rate * 0.9
         health.success_rate = success
         health.failure_rate = 1.0 - success
-        
+
         score = success * 100.0
         now = time.time()
         recent_timeouts = sum(1 for t in health.timeout_history if now - t < 300)
         score -= min(40.0, recent_timeouts * 10)
-        
+
         if success < 0.2:
             health.available = False
-            
+
         health.health_score = max(0.0, min(100.0, score))
 
 
@@ -459,6 +459,7 @@ class RoutingEngine:
                 from pathlib import Path
 
                 from aios.config import load_config
+
                 config = load_config(Path("config/config.toml"))
                 if config and hasattr(config, "llm") and getattr(config.llm, "ninerouter", None):
                     preferred_model = preferred_model or config.llm.ninerouter.preferred_model
@@ -504,11 +505,7 @@ class RoutingEngine:
                 elif task == "embeddings":
                     matches = [m.model_id for m in nr_models if m.supports_embeddings]
                     if not matches:
-                        matches = [
-                            m.model_id
-                            for m in nr_models
-                            if "embed" in m.model_id.lower()
-                        ]
+                        matches = [m.model_id for m in nr_models if "embed" in m.model_id.lower()]
                     if matches:
                         selected_model = matches[0]
 
@@ -558,6 +555,7 @@ class RoutingEngine:
                 from pathlib import Path
 
                 from aios.config import load_config
+
                 config = load_config(Path("config/config.toml"))
                 if (
                     config
@@ -667,7 +665,7 @@ class RoutingEngine:
                 cost_contrib = cost_score * cost_w
 
                 final_score = health_contrib + latency_contrib + cost_contrib
-                
+
                 is_local = False
                 if hasattr(model_info, "is_local"):
                     is_local = getattr(model_info, "is_local", False)
@@ -678,10 +676,10 @@ class RoutingEngine:
                         "lmstudio",
                         "mock",
                     )
-                
+
                 if policy == "local-first" and is_local:
                     final_score += 100.0
-                    
+
                 if policy == "quality-first":
                     if model_info.supports_reasoning:
                         final_score += 30.0
@@ -773,7 +771,7 @@ class RoutingEngine:
                     cost_contrib = cost_score * cost_w
 
                     final_score = health_contrib + latency_contrib + cost_contrib
-                    
+
                     is_local = p_name in ("ollama", "lmstudio", "mock")
                     if policy == "local-first" and is_local:
                         final_score += 100.0
@@ -892,6 +890,7 @@ class OmniRouteEngine:
     def execute(self, request: OmniRouteRequest) -> OmniRouteResponse:
         """Routes, executes, and updates telemetry/metadata for the request."""
         import logging
+
         logger = logging.getLogger(__name__)
 
         excluded_providers = []
@@ -903,6 +902,7 @@ class OmniRouteEngine:
             from pathlib import Path
 
             from aios.config import load_config
+
             config = load_config(Path("config/config.toml"))
             if (
                 config
@@ -974,9 +974,9 @@ class OmniRouteEngine:
                 except Exception as e:
                     latency_ms = (time.time() - start_time) * 1000.0
                     last_error = str(e)
-                    
+
                     self.health_registry.update_health_failure(decision.provider, last_error)
-                    
+
                     logger.warning(
                         f"Provider '{decision.provider}' failed on attempt {retry + 1} "
                         f"with error: {last_error}. Retrying..."
@@ -1005,6 +1005,7 @@ class OmniRouteEngine:
 
                 try:
                     from aios.providers.benchmark import record_metric
+
                     record_metric(
                         decision.provider,
                         decision.model,
@@ -1033,9 +1034,10 @@ class OmniRouteEngine:
                 )
                 excluded_providers.append(decision.provider)
                 fallback_count += 1
-                
+
                 try:
                     from aios.providers.benchmark import record_metric
+
                     record_metric(decision.provider, decision.model, 0, 0, 0.0, latency_ms, False)
                 except Exception:
                     pass
@@ -1045,7 +1047,7 @@ class OmniRouteEngine:
                 provider="unknown",
                 model="unknown",
                 routing_score=0.0,
-                reasoning="All fallback options failed."
+                reasoning="All fallback options failed.",
             )
         raise RuntimeError(
             f"OmniRoute execution failed. All fallback providers exhausted. "

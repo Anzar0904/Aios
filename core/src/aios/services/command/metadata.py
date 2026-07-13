@@ -13,6 +13,7 @@ class CommandCategory(Enum):
     CONVERSATION = "Conversation"
     CLI = "CLI"
 
+
 class CommandMetadata:
     def __init__(
         self,
@@ -21,7 +22,7 @@ class CommandMetadata:
         category: CommandCategory,
         required_agent: str,
         required_tools: List[str],
-        example_usage: str
+        example_usage: str,
     ) -> None:
         self.name = name
         self.description = description

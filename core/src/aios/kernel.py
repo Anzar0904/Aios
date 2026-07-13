@@ -84,6 +84,7 @@ class Kernel:
             if not self.registry.get_all():
                 print("Registering services via fallback Composition Root...")
                 from aios.bootstrap import bootstrap_kernel
+
                 bootstrapped = bootstrap_kernel(self.config_path)
                 self.registry = bootstrapped.registry
 

@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 class LocalReviewAnalyzer(ReviewAnalyzer):
     """Concrete review analyzer generating findings from Approval Package details."""
 
-    def analyze_package(self, workspace_id: str, package: ApprovalPackage) -> tuple[ReviewSummary, List[ReviewFinding]]:
+    def analyze_package(
+        self, workspace_id: str, package: ApprovalPackage
+    ) -> tuple[ReviewSummary, List[ReviewFinding]]:
         findings = []
         strengths = []
         weaknesses = []
@@ -43,9 +45,13 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
 
         # 1. Strengths Check
         if package.validation_summary.get("score", 0.0) >= 90.0:
-            strengths.append(f"High validation pass rate ({package.validation_summary['score']:.1f}).")
+            strengths.append(
+                f"High validation pass rate ({package.validation_summary['score']:.1f})."
+            )
         if package.coverage_summary.get("achieved_pct", 0.0) >= 80.0:
-            strengths.append(f"Strong testing statement coverage ({package.coverage_summary['achieved_pct']:.1f}%).")
+            strengths.append(
+                f"Strong testing statement coverage ({package.coverage_summary['achieved_pct']:.1f}%)."
+            )
         if package.risk_summary.get("risk_level", "low").lower() == "low":
             strengths.append("Low overall implementation boundary coupling risk.")
 
@@ -53,11 +59,16 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
         if package.overall_health.lower() == "degraded":
             weaknesses.append("Degraded health status logged in package summary.")
             finding_id = f"find_health_{int(time.time())}_1"
-            f_ev = ReviewEvidence("approval_package", "health", {"overall_health": "degraded"}, time.time())
+            f_ev = ReviewEvidence(
+                "approval_package", "health", {"overall_health": "degraded"}, time.time()
+            )
             f_rec = ReviewRecommendation(
                 recommendation_id=f"rec_health_{finding_id}",
                 description="Restore repository sanity state by resolving diagnostic failures.",
-                actionable_steps=["Check execution logs for compilation warnings.", "Resolve mock issues in tests."]
+                actionable_steps=[
+                    "Check execution logs for compilation warnings.",
+                    "Resolve mock issues in tests.",
+                ],
             )
             findings.append(
                 ReviewFinding(
@@ -70,7 +81,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
                     recommendation=f_rec,
                     related_components=package.affected_components,
                     related_files=package.affected_files,
-                    blocking=True
+                    blocking=True,
                 )
             )
             blocking_issues.append("Repository health is degraded.")
@@ -85,7 +96,10 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
             f_rec = ReviewRecommendation(
                 recommendation_id=f"rec_score_{finding_id}",
                 description="Increase validation compliance to clear gate rules.",
-                actionable_steps=["Run failing test executions manually.", "Identify boundary edge cases."]
+                actionable_steps=[
+                    "Run failing test executions manually.",
+                    "Identify boundary edge cases.",
+                ],
             )
             findings.append(
                 ReviewFinding(
@@ -98,7 +112,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
                     recommendation=f_rec,
                     related_components=package.affected_components,
                     related_files=package.affected_files,
-                    blocking=True
+                    blocking=True,
                 )
             )
             blocking_issues.append(f"Validation score is below target: {score:.1f}.")
@@ -109,11 +123,16 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
         if cov < 75.0:
             weaknesses.append(f"Low testing coverage: {cov:.1f}%.")
             finding_id = f"find_cov_{int(time.time())}_3"
-            f_ev = ReviewEvidence("approval_package", "coverage", {"coverage_pct": cov}, time.time())
+            f_ev = ReviewEvidence(
+                "approval_package", "coverage", {"coverage_pct": cov}, time.time()
+            )
             f_rec = ReviewRecommendation(
                 recommendation_id=f"rec_cov_{finding_id}",
                 description="Author additional unit or integration tests targeting the modifications.",
-                actionable_steps=["Write test coverage for modified lines.", "Inspect code structure gaps."]
+                actionable_steps=[
+                    "Write test coverage for modified lines.",
+                    "Inspect code structure gaps.",
+                ],
             )
             findings.append(
                 ReviewFinding(
@@ -126,7 +145,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
                     recommendation=f_rec,
                     related_components=package.affected_components,
                     related_files=package.affected_files,
-                    blocking=False
+                    blocking=False,
                 )
             )
             recommendations.append(f_rec)
@@ -140,7 +159,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
             f_rec = ReviewRecommendation(
                 recommendation_id=f"rec_risk_{finding_id}",
                 description="Refactor modules coupling and introduce strict boundary controls.",
-                actionable_steps=["Isolate dependency routes.", "Add execution timeout sandboxes."]
+                actionable_steps=["Isolate dependency routes.", "Add execution timeout sandboxes."],
             )
             findings.append(
                 ReviewFinding(
@@ -153,7 +172,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
                     recommendation=f_rec,
                     related_components=package.affected_components,
                     related_files=package.affected_files,
-                    blocking=True
+                    blocking=True,
                 )
             )
             blocking_issues.append(f"High risk score evaluation: '{risk}'.")
@@ -165,11 +184,13 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
             missing = package.documentation_summary.get("missing_docs", [])
             weaknesses.append("Incomplete documentation.")
             finding_id = f"find_doc_{int(time.time())}_5"
-            f_ev = ReviewEvidence("approval_package", "documentation", {"missing_docs": missing}, time.time())
+            f_ev = ReviewEvidence(
+                "approval_package", "documentation", {"missing_docs": missing}, time.time()
+            )
             f_rec = ReviewRecommendation(
                 recommendation_id=f"rec_doc_{finding_id}",
                 description="Complete all required module reference specifications.",
-                actionable_steps=[f"Generate {m} reference specifications." for m in missing]
+                actionable_steps=[f"Generate {m} reference specifications." for m in missing],
             )
             findings.append(
                 ReviewFinding(
@@ -182,7 +203,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
                     recommendation=f_rec,
                     related_components=package.affected_components,
                     related_files=package.affected_files,
-                    blocking=False
+                    blocking=False,
                 )
             )
             recommendations.append(f_rec)
@@ -192,11 +213,16 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
         if fails > 0:
             weaknesses.append(f"Discovered {fails} critical test failures.")
             finding_id = f"find_fails_{int(time.time())}_6"
-            f_ev = ReviewEvidence("approval_package", "failures", {"critical_count": fails}, time.time())
+            f_ev = ReviewEvidence(
+                "approval_package", "failures", {"critical_count": fails}, time.time()
+            )
             f_rec = ReviewRecommendation(
                 recommendation_id=f"rec_fails_{finding_id}",
                 description="Fix all failing assertions and traceback faults to clear gating.",
-                actionable_steps=["Trace failing tests traceback stack.", "Fix core bugs in components."]
+                actionable_steps=[
+                    "Trace failing tests traceback stack.",
+                    "Fix core bugs in components.",
+                ],
             )
             findings.append(
                 ReviewFinding(
@@ -209,7 +235,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
                     recommendation=f_rec,
                     related_components=package.affected_components,
                     related_files=package.affected_files,
-                    blocking=True
+                    blocking=True,
                 )
             )
             blocking_issues.append(f"Discovered {fails} critical test failures.")
@@ -231,7 +257,7 @@ class LocalReviewAnalyzer(ReviewAnalyzer):
             blocking_issues=blocking_issues,
             recommendations=recommendations,
             reviewer_confidence=0.9,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         return summary, findings
@@ -246,28 +272,40 @@ class LocalReviewValidator(ReviewValidator):
 
         # 1. Integrity check: Summary Confidence
         if not (0.0 <= report.summary.reviewer_confidence <= 1.0):
-            errors.append(f"Review Integrity Error: Confidence rating '{report.summary.reviewer_confidence}' stands outside [0.0, 1.0].")
+            errors.append(
+                f"Review Integrity Error: Confidence rating '{report.summary.reviewer_confidence}' stands outside [0.0, 1.0]."
+            )
 
         for f in report.findings:
             # 2. Duplicate findings
             fingerprint = (f.category, f.severity, f.description.strip().lower())
             if fingerprint in seen_findings:
-                errors.append(f"Duplicate Finding: Category '{f.category.value}' contains duplicate description.")
+                errors.append(
+                    f"Duplicate Finding: Category '{f.category.value}' contains duplicate description."
+                )
             seen_findings.add(fingerprint)
 
             # 3. Evidence completeness
             if not f.evidence:
-                errors.append(f"Evidence Warning: Finding '{f.finding_id}' lacks supporting telemetry evidence.")
+                errors.append(
+                    f"Evidence Warning: Finding '{f.finding_id}' lacks supporting telemetry evidence."
+                )
 
             # 4. Severity consistency
             if f.blocking and f.severity in [ReviewSeverity.INFO, ReviewSeverity.LOW]:
-                errors.append(f"Severity Consistency Error: Finding '{f.finding_id}' is marked blocking but has low severity '{f.severity.value}'.")
+                errors.append(
+                    f"Severity Consistency Error: Finding '{f.finding_id}' is marked blocking but has low severity '{f.severity.value}'."
+                )
 
             # 5. Recommendation completeness
             if not f.recommendation or not f.recommendation.recommendation_id:
-                errors.append(f"Recommendation completeness error: Finding '{f.finding_id}' lacks actionable remediation recommendation.")
+                errors.append(
+                    f"Recommendation completeness error: Finding '{f.finding_id}' lacks actionable remediation recommendation."
+                )
             elif not f.recommendation.actionable_steps:
-                errors.append(f"Recommendation Warning: Actionable steps checklist is empty for finding '{f.finding_id}'.")
+                errors.append(
+                    f"Recommendation Warning: Actionable steps checklist is empty for finding '{f.finding_id}'."
+                )
 
         return errors
 
@@ -280,7 +318,7 @@ class LocalReviewEngine(ReviewEngine):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -321,7 +359,7 @@ class LocalReviewEngine(ReviewEngine):
 
         reviews_dir = os.path.join(workspace_root, "docs", "reviews")
         os.makedirs(reviews_dir, exist_ok=True)
-        
+
         file_path = os.path.join(reviews_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -338,7 +376,7 @@ class LocalReviewEngine(ReviewEngine):
             package_id=package.package_id,
             report=None,
             status="open",
-            created_at=time.time()
+            created_at=time.time(),
         )
         self._sessions[session.session_id] = session
 
@@ -357,7 +395,7 @@ class LocalReviewEngine(ReviewEngine):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined text directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -373,7 +411,7 @@ class LocalReviewEngine(ReviewEngine):
             workspace_id=workspace_id,
             summary=summary,
             findings=findings,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
         session.report = report
 
@@ -422,7 +460,7 @@ class LocalReviewEngine(ReviewEngine):
     def store_review_summary(self, session: ReviewSession) -> None:
         if not session.report:
             return
-        
+
         # Count findings severities statistics
         stats = {"INFO": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
         for f in session.report.findings:
@@ -448,8 +486,8 @@ class LocalReviewEngine(ReviewEngine):
                 "workspace_id": session.workspace_id,
                 "health_status": session.report.summary.overall_health,
                 "findings_statistics": stats,
-                "reviewer_confidence": session.report.summary.reviewer_confidence
-            }
+                "reviewer_confidence": session.report.summary.reviewer_confidence,
+            },
         )
 
     def publish_review_report(self, report: ReviewReport) -> None:
@@ -459,7 +497,9 @@ class LocalReviewEngine(ReviewEngine):
 
         recs_list = []
         for rec in report.summary.recommendations:
-            recs_list.append(f"- **{rec.description}** (Action items count: {len(rec.actionable_steps)})")
+            recs_list.append(
+                f"- **{rec.description}** (Action items count: {len(rec.actionable_steps)})"
+            )
 
         report_md = (
             f"# Notion Sync - Automated Quality Review\n\n"
@@ -478,7 +518,7 @@ class LocalReviewEngine(ReviewEngine):
                 unique_id=f"rev_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="review_engine_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

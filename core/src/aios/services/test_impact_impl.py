@@ -38,7 +38,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -59,10 +59,10 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
         workspace_id: str,
         objective: str,
         affected_files: List[str],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> ImpactAnalysisResult:
         logger.info(f"Analyzing change impact for workspace: '{workspace_id}'")
-        
+
         # 1. Build Impact Graph
         nodes = {}
         edges = []
@@ -71,13 +71,17 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
         for f in affected_files:
             node_id = f"node_{hash(f) % 1000}"
             nodes[f] = ImpactNode(node_id=node_id, file_path=f, node_type="file", is_modified=True)
-            
+
             # Map outbound dependencies
             for dep in dep_graph.get(f, []):
                 if dep not in nodes:
                     dep_node_id = f"node_{hash(dep) % 1000}"
-                    nodes[dep] = ImpactNode(node_id=dep_node_id, file_path=dep, node_type="file", is_modified=False)
-                edges.append(ImpactEdge(source=node_id, target=nodes[dep].node_id, relation="imports"))
+                    nodes[dep] = ImpactNode(
+                        node_id=dep_node_id, file_path=dep, node_type="file", is_modified=False
+                    )
+                edges.append(
+                    ImpactEdge(source=node_id, target=nodes[dep].node_id, relation="imports")
+                )
 
         graph = ImpactGraph(nodes=nodes, edges=edges)
 
@@ -90,7 +94,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                     name=name,
                     file_path=f,
                     direct_impact=True,
-                    reason="Direct file modification requested in planning."
+                    reason="Direct file modification requested in planning.",
                 )
             )
 
@@ -100,17 +104,17 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
             # Check if matching test file exists
             base = os.path.basename(f)
             test_name = f"test_{base}"
-            
+
             # Estimate coupling and priority
             importers_count = sum(1 for target, deps in dep_graph.items() if f in deps)
             priority = "High" if importers_count > 1 else "Medium"
-            
+
             affected_suites.append(
                 AffectedTestSuite(
                     suite_name=test_name,
                     run_required=True,
                     priority=priority,
-                    reason=f"Validates direct logic edits for {base}."
+                    reason=f"Validates direct logic edits for {base}.",
                 )
             )
 
@@ -124,7 +128,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                         RegressionCandidate(
                             file_path=target_file,
                             reason="Indirectly impacted module that imports modified file.",
-                            coupling_density=importers_count or 1
+                            coupling_density=importers_count or 1,
                         )
                     )
 
@@ -132,12 +136,12 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
         overall = "Medium"
         api_risk = "Low"
         shared_risk = "Low"
-        
+
         has_critical = any("kernel" in f or "bootstrap" in f for f in affected_files)
         if has_critical:
             overall = "High"
             shared_risk = "High"
-            
+
         has_api = any(api in "".join(affected_files) for api in code_summary.public_apis)
         if has_api:
             api_risk = "High"
@@ -148,7 +152,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
             shared_lib_risk=shared_risk,
             dep_chain_risk="Medium",
             config_risk="Low",
-            data_model_risk="Low"
+            data_model_risk="Low",
         )
 
         # 6. Coverage Targets
@@ -158,7 +162,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                 CoverageTarget(
                     file_path=f,
                     statement_coverage=90.0 if overall == "High" else 85.0,
-                    branch_coverage=85.0 if overall == "High" else 80.0
+                    branch_coverage=85.0 if overall == "High" else 80.0,
                 )
             )
 
@@ -171,7 +175,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
             regression_candidates=regression_candidates,
             risk_assessment=risk,
             coverage_targets=coverage_targets,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # 7. LLM refinement if model is active
@@ -184,9 +188,9 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                     f"Overall risk assessment estimation: {overall}\n\n"
                     "Refine risk assessment metrics. Return a single, pure JSON object:\n"
                     "{\n"
-                    "  \"overall_risk\": \"High\",\n"
-                    "  \"dep_chain_risk\": \"High\",\n"
-                    "  \"statement_coverage_target\": 90.0\n"
+                    '  "overall_risk": "High",\n'
+                    '  "dep_chain_risk": "High",\n'
+                    '  "statement_coverage_target": 90.0\n'
                     "}"
                 )
 
@@ -195,7 +199,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                         prompt=prompt,
                         system_instruction="Output pure JSON only.",
                         task_category="testing",
-                        preferences={"JSON_output": True}
+                        preferences={"JSON_output": True},
                     )
                 )
 
@@ -206,9 +210,13 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                         content = content[4:]
 
                 data = json.loads(content)
-                result.risk_assessment.overall_risk = data.get("overall_risk", result.risk_assessment.overall_risk)
-                result.risk_assessment.dep_chain_risk = data.get("dep_chain_risk", result.risk_assessment.dep_chain_risk)
-                
+                result.risk_assessment.overall_risk = data.get(
+                    "overall_risk", result.risk_assessment.overall_risk
+                )
+                result.risk_assessment.dep_chain_risk = data.get(
+                    "dep_chain_risk", result.risk_assessment.dep_chain_risk
+                )
+
                 stmt_cov = data.get("statement_coverage_target", 85.0)
                 for cov in result.coverage_targets:
                     cov.statement_coverage = stmt_cov
@@ -227,7 +235,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
             f"API Break Risk: {result.risk_assessment.api_break_risk}\n"
             f"Dep Chain Risk: {result.risk_assessment.dep_chain_risk}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -236,8 +244,8 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                 session_id=result.analysis_id,
                 tags=["impact_analysis", "risk_assessment"],
                 importance=2,
-                source_subsystem="test_impact_analyzer"
-            )
+                source_subsystem="test_impact_analyzer",
+            ),
         )
 
     def publish_impact_report(self, result: ImpactAnalysisResult) -> None:
@@ -255,7 +263,9 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
 
         regression_md = []
         for r in result.regression_candidates:
-            regression_md.append(f"- `{r.file_path}` [Coupling count: {r.coupling_density}]: {r.reason}")
+            regression_md.append(
+                f"- `{r.file_path}` [Coupling count: {r.coupling_density}]: {r.reason}"
+            )
 
         report_md = (
             f"# Change Impact Analysis Report\n\n"
@@ -266,12 +276,14 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
             f"- **API Break Risk**: {result.risk_assessment.api_break_risk}\n"
             f"- **Shared Library Risk**: {result.risk_assessment.shared_lib_risk}\n"
             f"- **Dependency Chain Risk**: {result.risk_assessment.dep_chain_risk}\n\n"
-            f"## Affected Components\n"
-            + "\n".join(components_md) + "\n\n"
-            "## Prioritized Test Suites\n"
-            + "\n".join(suites_md) + "\n\n"
+            f"## Affected Components\n" + "\n".join(components_md) + "\n\n"
+            "## Prioritized Test Suites\n" + "\n".join(suites_md) + "\n\n"
             "## Regression Candidates\n"
-            + ("\n".join(regression_md) if regression_md else "- *No indirect regression candidates identified.*")
+            + (
+                "\n".join(regression_md)
+                if regression_md
+                else "- *No indirect regression candidates identified.*"
+            )
         )
 
         doc = KnowledgeDocument(
@@ -282,7 +294,7 @@ class LocalChangeImpactAnalyzer(ChangeImpactAnalyzer):
                 unique_id=f"impact_plan_{result.analysis_id}",
                 timestamp=result.timestamp,
                 source_subsystem="test_impact_analyzer",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

@@ -52,10 +52,10 @@ def test_agent_task_and_capabilities():
 def test_local_agent_manager_coordination():
     registry = AgentRegistry()
     orchestrator = MagicMock()
-    
+
     manager = LocalAgentManager(registry, orchestrator)
     manager.initialize()
-    
+
     assert manager.registry == registry
     assert manager.orchestrator == orchestrator
 
@@ -74,9 +74,9 @@ def test_career_agent_context_propagation():
         action="AnalyzeJob",
         parameters={"job_description_path": "job.pdf"},
         target_service="career_agent",
-        confidence=1.0
+        confidence=1.0,
     )
-    
+
     # Mock tool reading output
     mock_tool_res = MagicMock()
     mock_tool_res.success = True
@@ -88,14 +88,11 @@ def test_career_agent_context_propagation():
     mock_llm_res.content = "Analysis: High alignment."
     model_svc.execute_request.return_value = mock_llm_res
 
-    ctx = AgentContext(
-        intent=intent,
-        context=None,
-        memories=[],
-        tools=[]
-    )
+    ctx = AgentContext(intent=intent, context=None, memories=[], tools=[])
 
     result = agent.execute(ctx)
     assert result.success is True
     assert "Analysis: High alignment." in result.response
-    tool_svc.execute_tool.assert_called_once_with("filesystem", {"action": "read", "path": "job.pdf"})
+    tool_svc.execute_tool.assert_called_once_with(
+        "filesystem", {"action": "read", "path": "job.pdf"}
+    )

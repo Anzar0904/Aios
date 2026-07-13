@@ -47,7 +47,9 @@ logger = logging.getLogger(__name__)
 class LocalWorkflowCostAnalyzer(WorkflowCostAnalyzer):
     """Analyzes cloud billing and token usage metrics."""
 
-    def analyze_cost(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_cost(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         has_expensive_runs = any(getattr(r.metrics, "cpu_usage_pct", 0) > 50 for r in telemetry)
         if has_expensive_runs:
@@ -67,7 +69,7 @@ class LocalWorkflowCostAnalyzer(WorkflowCostAnalyzer):
                     estimated_risk=0.1,
                     implementation_difficulty="easy",
                     rollback_considerations="Clear local cache memory files if output values change.",
-                    pattern_ids=["missing_cache"]
+                    pattern_ids=["missing_cache"],
                 )
             )
         return recs
@@ -76,7 +78,9 @@ class LocalWorkflowCostAnalyzer(WorkflowCostAnalyzer):
 class LocalWorkflowLatencyAnalyzer(WorkflowLatencyAnalyzer):
     """Analyzes execution durations to clear delay bottlenecks."""
 
-    def analyze_latency(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_latency(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         has_slow_runs = any(getattr(r.metrics, "duration_seconds", 0) > 20 for r in telemetry)
         if has_slow_runs:
@@ -96,7 +100,7 @@ class LocalWorkflowLatencyAnalyzer(WorkflowLatencyAnalyzer):
                     estimated_risk=0.2,
                     implementation_difficulty="medium",
                     rollback_considerations="Increase timeout delays if downstream server speeds fluctuate.",
-                    pattern_ids=["excessive_timeout"]
+                    pattern_ids=["excessive_timeout"],
                 )
             )
         return recs
@@ -105,9 +109,13 @@ class LocalWorkflowLatencyAnalyzer(WorkflowLatencyAnalyzer):
 class LocalWorkflowParallelizationAnalyzer(WorkflowParallelizationAnalyzer):
     """Detects sequential nodes eligible for concurrent execution."""
 
-    def analyze_parallelization(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_parallelization(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
-        node_count = len(getattr(workflow_graph, "nodes", [])) if hasattr(workflow_graph, "nodes") else 4
+        node_count = (
+            len(getattr(workflow_graph, "nodes", [])) if hasattr(workflow_graph, "nodes") else 4
+        )
         if node_count >= 3:
             recs.append(
                 WorkflowOptimizationRecommendation(
@@ -125,7 +133,7 @@ class LocalWorkflowParallelizationAnalyzer(WorkflowParallelizationAnalyzer):
                     estimated_risk=0.3,
                     implementation_difficulty="hard",
                     rollback_considerations="Re-wire tasks to execute sequentially if dependency checks fail.",
-                    pattern_ids=["sequential_independent_tasks"]
+                    pattern_ids=["sequential_independent_tasks"],
                 )
             )
         return recs
@@ -134,7 +142,9 @@ class LocalWorkflowParallelizationAnalyzer(WorkflowParallelizationAnalyzer):
 class LocalWorkflowRedundancyAnalyzer(WorkflowRedundancyAnalyzer):
     """Flags duplicated tasks or duplicate API requests."""
 
-    def analyze_redundancy(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_redundancy(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         has_duplicates = False
         nodes = getattr(workflow_graph, "nodes", []) if hasattr(workflow_graph, "nodes") else []
@@ -159,7 +169,7 @@ class LocalWorkflowRedundancyAnalyzer(WorkflowRedundancyAnalyzer):
                     estimated_risk=0.05,
                     implementation_difficulty="easy",
                     rollback_considerations="Restore duplicate node if tasks require isolated sessions.",
-                    pattern_ids=["duplicate_nodes"]
+                    pattern_ids=["duplicate_nodes"],
                 )
             )
         return recs
@@ -168,7 +178,9 @@ class LocalWorkflowRedundancyAnalyzer(WorkflowRedundancyAnalyzer):
 class LocalWorkflowSchedulingAnalyzer(WorkflowSchedulingAnalyzer):
     """Analyzes cron intervals to trim scheduler collisions."""
 
-    def analyze_scheduling(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_scheduling(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         # If workflow has high polling or collision warnings
         recs.append(
@@ -187,7 +199,7 @@ class LocalWorkflowSchedulingAnalyzer(WorkflowSchedulingAnalyzer):
                 estimated_risk=0.0,
                 implementation_difficulty="easy",
                 rollback_considerations="Revert cron schedule details inside provider parameters.",
-                pattern_ids=["ineefficient_scheduling"]
+                pattern_ids=["ineefficient_scheduling"],
             )
         )
         return recs
@@ -196,7 +208,9 @@ class LocalWorkflowSchedulingAnalyzer(WorkflowSchedulingAnalyzer):
 class LocalWorkflowResourceAnalyzer(WorkflowResourceAnalyzer):
     """Trims high resource bounds."""
 
-    def analyze_resources(self, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def analyze_resources(
+        self, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         has_heavy_memory = any(getattr(r.metrics, "memory_usage_mb", 0) > 80 for r in telemetry)
         if has_heavy_memory:
@@ -216,7 +230,7 @@ class LocalWorkflowResourceAnalyzer(WorkflowResourceAnalyzer):
                     estimated_risk=0.15,
                     implementation_difficulty="medium",
                     rollback_considerations="Increase container memory limits if scripts overflow heap memory.",
-                    pattern_ids=["resource_bottleneck"]
+                    pattern_ids=["resource_bottleneck"],
                 )
             )
         return recs
@@ -227,17 +241,16 @@ class LocalWorkflowComplexityAnalyzer(WorkflowComplexityAnalyzer):
 
     def analyze_complexity(self, workflow_graph: Any) -> Dict[str, float]:
         # McCabe complexity approximation
-        vertices = len(getattr(workflow_graph, "nodes", [])) if hasattr(workflow_graph, "nodes") else 4
+        vertices = (
+            len(getattr(workflow_graph, "nodes", [])) if hasattr(workflow_graph, "nodes") else 4
+        )
         edges = len(getattr(workflow_graph, "edges", [])) if hasattr(workflow_graph, "edges") else 3
         # C = E - V + 2
         complexity = edges - vertices + 2
-        
+
         # rating scale: 100 is simple, 0 is highly complex
         score = max(0.0, 100.0 - (complexity * 10.0))
-        return {
-            "complexity_level": float(complexity),
-            "complexity_score": score
-        }
+        return {"complexity_level": float(complexity), "complexity_score": score}
 
 
 class LocalWorkflowOptimizationValidator(WorkflowOptimizationValidator):
@@ -250,22 +263,34 @@ class LocalWorkflowOptimizationValidator(WorkflowOptimizationValidator):
         errors = []
         ids = [r.recommendation_id for r in plan.recommendations]
         if len(ids) != len(set(ids)):
-            errors.append("Validation Error: Duplicate recommendation IDs found in optimization plan.")
-        
+            errors.append(
+                "Validation Error: Duplicate recommendation IDs found in optimization plan."
+            )
+
         for r in plan.recommendations:
             if r.confidence < 0.0 or r.confidence > 1.0:
-                errors.append(f"Validation Error: Confidence value for recommendation '{r.recommendation_id}' must be between 0.0 and 1.0.")
+                errors.append(
+                    f"Validation Error: Confidence value for recommendation '{r.recommendation_id}' must be between 0.0 and 1.0."
+                )
             if not r.supporting_evidence:
-                errors.append(f"Validation Error: Supporting evidence for recommendation '{r.recommendation_id}' is empty.")
+                errors.append(
+                    f"Validation Error: Supporting evidence for recommendation '{r.recommendation_id}' is empty."
+                )
             if not r.affected_nodes:
-                errors.append(f"Validation Error: Affected nodes list for recommendation '{r.recommendation_id}' is empty.")
+                errors.append(
+                    f"Validation Error: Affected nodes list for recommendation '{r.recommendation_id}' is empty."
+                )
             if not r.affected_branches:
-                errors.append(f"Validation Error: Affected branches list for recommendation '{r.recommendation_id}' is empty.")
-            
+                errors.append(
+                    f"Validation Error: Affected branches list for recommendation '{r.recommendation_id}' is empty."
+                )
+
             # Knowledge base check
             for pid in r.pattern_ids:
                 if not self._kb.get_pattern(pid):
-                    errors.append(f"Validation Error: Pattern ID '{pid}' in recommendation '{r.recommendation_id}' is not registered in Knowledge Base.")
+                    errors.append(
+                        f"Validation Error: Pattern ID '{pid}' in recommendation '{r.recommendation_id}' is not registered in Knowledge Base."
+                    )
         return errors
 
 
@@ -280,7 +305,9 @@ class LocalWorkflowOptimizationAnalyzer(WorkflowOptimizationAnalyzer):
         self._sched = LocalWorkflowSchedulingAnalyzer()
         self._resource = LocalWorkflowResourceAnalyzer()
 
-    def run_analysis(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> List[WorkflowOptimizationRecommendation]:
+    def run_analysis(
+        self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]
+    ) -> List[WorkflowOptimizationRecommendation]:
         recs = []
         recs.extend(self._cost.analyze_cost(workflow_graph, telemetry))
         recs.extend(self._latency.analyze_latency(workflow_graph, telemetry))
@@ -300,12 +327,14 @@ class LocalWorkflowOptimizationPlanner(WorkflowOptimizationPlanner):
         self._complexity = LocalWorkflowComplexityAnalyzer()
         self._validator = LocalWorkflowOptimizationValidator(self._kb)
 
-    def construct_optimization_plan(self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]) -> WorkflowOptimizationPlan:
+    def construct_optimization_plan(
+        self, workflow_id: str, workflow_graph: Any, telemetry: List[Any]
+    ) -> WorkflowOptimizationPlan:
         recs = self._analyzer.run_analysis(workflow_id, workflow_graph, telemetry)
-        
+
         comp_metrics = self._complexity.analyze_complexity(workflow_graph)
         comp_before = comp_metrics["complexity_score"]
-        
+
         # Estimate savings
         time_savings = sum(r.expected_time_savings_seconds for r in recs)
         cost_savings = sum(r.expected_cost_savings_dollars for r in recs)
@@ -326,7 +355,7 @@ class LocalWorkflowOptimizationPlanner(WorkflowOptimizationPlanner):
             reliability_score=min(100.0, 85.0 + len(recs) * 2.0),
             performance_score=min(100.0, 75.0 + len(recs) * 5.0),
             resource_efficiency_score=min(100.0, 80.0 + len(recs) * 3.0),
-            overall_automation_quality_score=min(100.0, 82.0 + len(recs) * 3.0)
+            overall_automation_quality_score=min(100.0, 82.0 + len(recs) * 3.0),
         )
 
         errs = self._validator.validate_plan(plan)
@@ -344,7 +373,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -389,7 +418,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
 
         monitors_dir = os.path.join(workspace_root, "docs", "monitors")
         os.makedirs(monitors_dir, exist_ok=True)
-        
+
         file_path = os.path.join(monitors_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -453,7 +482,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
             optimization_score=avg_score_after,
             total_time_savings_seconds=total_time_saved,
             total_cost_savings_dollars=total_cost_saved,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if self._opt_repo:
@@ -469,9 +498,15 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                         "recommendations": [
                             {
                                 "recommendation_id": r.recommendation_id,
-                                "category": r.category.value if hasattr(r.category, "value") else str(r.category),
-                                "priority": r.priority.value if hasattr(r.priority, "value") else str(r.priority),
-                                "expected_impact": r.expected_impact.value if hasattr(r.expected_impact, "value") else str(r.expected_impact),
+                                "category": r.category.value
+                                if hasattr(r.category, "value")
+                                else str(r.category),
+                                "priority": r.priority.value
+                                if hasattr(r.priority, "value")
+                                else str(r.priority),
+                                "expected_impact": r.expected_impact.value
+                                if hasattr(r.expected_impact, "value")
+                                else str(r.expected_impact),
                                 "confidence": r.confidence,
                                 "reasoning": r.reasoning,
                                 "supporting_evidence": r.supporting_evidence,
@@ -482,30 +517,41 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                                 "estimated_risk": r.estimated_risk,
                                 "implementation_difficulty": r.implementation_difficulty,
                                 "rollback_considerations": r.rollback_considerations,
-                                "pattern_ids": r.pattern_ids
+                                "pattern_ids": r.pattern_ids,
                             }
                             for r in p.recommendations
-                        ]
+                        ],
                     }
-                self._opt_repo.save({
-                    "id": report.report_id,
-                    "workflow_id": list(plans.keys())[0] if plans else "system",
-                    "optimization_plans": plans_serialized,
-                    "detected_patterns": list(set(pat for p in plans.values() for r in p.recommendations for pat in r.pattern_ids)),
-                    "complexity_scores": {w_id: p.overall_automation_quality_score for w_id, p in plans.items()},
-                    "recommendation_metadata": {
-                        "workspace_id": workspace_id,
-                        "optimization_score": report.optimization_score,
-                        "total_time_savings_seconds": report.total_time_savings_seconds,
-                        "total_cost_savings_dollars": report.total_cost_savings_dollars
-                    },
-                    "optimization_statistics": {
-                        "plans_count": len(plans),
-                        "avg_score_before": avg_score_before,
-                        "avg_score_after": avg_score_after
-                    },
-                    "timestamp": report.timestamp
-                })
+                self._opt_repo.save(
+                    {
+                        "id": report.report_id,
+                        "workflow_id": list(plans.keys())[0] if plans else "system",
+                        "optimization_plans": plans_serialized,
+                        "detected_patterns": list(
+                            set(
+                                pat
+                                for p in plans.values()
+                                for r in p.recommendations
+                                for pat in r.pattern_ids
+                            )
+                        ),
+                        "complexity_scores": {
+                            w_id: p.overall_automation_quality_score for w_id, p in plans.items()
+                        },
+                        "recommendation_metadata": {
+                            "workspace_id": workspace_id,
+                            "optimization_score": report.optimization_score,
+                            "total_time_savings_seconds": report.total_time_savings_seconds,
+                            "total_cost_savings_dollars": report.total_cost_savings_dollars,
+                        },
+                        "optimization_statistics": {
+                            "plans_count": len(plans),
+                            "avg_score_before": avg_score_before,
+                            "avg_score_after": avg_score_after,
+                        },
+                        "timestamp": report.timestamp,
+                    }
+                )
             except Exception:
                 pass
 
@@ -527,7 +573,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output optimization summaries details.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -540,7 +586,9 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
         for w_id, p in plans.items():
             plans_md += f"### Workflow: `{w_id}`\n"
             plans_md += f"- **Overall Quality Score**: {p.overall_automation_quality_score:.1f}\n"
-            plans_md += f"- **Estimated Time Savings**: {p.estimated_time_savings_seconds:.1f} seconds\n"
+            plans_md += (
+                f"- **Estimated Time Savings**: {p.estimated_time_savings_seconds:.1f} seconds\n"
+            )
             plans_md += f"- **Estimated Cost Savings**: ${p.estimated_cost_savings_dollars:.2f}\n"
             plans_md += "- **Detailed Recommendations**:\n"
             for r in p.recommendations:
@@ -579,7 +627,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                     if rec_meta.get("workspace_id") == workspace_id:
                         r_id = row["id"]
                         plans_data = json.loads(row["optimization_plans"] or "{}")
-                        
+
                         plans = {}
                         for w_id, p_data in plans_data.items():
                             recs = []
@@ -587,20 +635,36 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                                 recs.append(
                                     WorkflowOptimizationRecommendation(
                                         recommendation_id=r.get("recommendation_id", ""),
-                                        category=WorkflowOptimizationCategory(r["category"]) if "category" in r else WorkflowOptimizationCategory.CACHING,
-                                        priority=WorkflowOptimizationPriority(r["priority"]) if "priority" in r else WorkflowOptimizationPriority.MEDIUM,
-                                        expected_impact=WorkflowOptimizationImpact(r["expected_impact"]) if "expected_impact" in r else WorkflowOptimizationImpact.MEDIUM,
+                                        category=WorkflowOptimizationCategory(r["category"])
+                                        if "category" in r
+                                        else WorkflowOptimizationCategory.CACHING,
+                                        priority=WorkflowOptimizationPriority(r["priority"])
+                                        if "priority" in r
+                                        else WorkflowOptimizationPriority.MEDIUM,
+                                        expected_impact=WorkflowOptimizationImpact(
+                                            r["expected_impact"]
+                                        )
+                                        if "expected_impact" in r
+                                        else WorkflowOptimizationImpact.MEDIUM,
                                         confidence=r.get("confidence", 1.0),
                                         reasoning=r.get("reasoning", ""),
                                         supporting_evidence=r.get("supporting_evidence", ""),
                                         affected_nodes=r.get("affected_nodes", []),
                                         affected_branches=r.get("affected_branches", []),
-                                        expected_time_savings_seconds=r.get("expected_time_savings_seconds", 0.0),
-                                        expected_cost_savings_dollars=r.get("expected_cost_savings_dollars", 0.0),
+                                        expected_time_savings_seconds=r.get(
+                                            "expected_time_savings_seconds", 0.0
+                                        ),
+                                        expected_cost_savings_dollars=r.get(
+                                            "expected_cost_savings_dollars", 0.0
+                                        ),
                                         estimated_risk=r.get("estimated_risk", 0.0),
-                                        implementation_difficulty=r.get("implementation_difficulty", "easy"),
-                                        rollback_considerations=r.get("rollback_considerations", ""),
-                                        pattern_ids=r.get("pattern_ids", [])
+                                        implementation_difficulty=r.get(
+                                            "implementation_difficulty", "easy"
+                                        ),
+                                        rollback_considerations=r.get(
+                                            "rollback_considerations", ""
+                                        ),
+                                        pattern_ids=r.get("pattern_ids", []),
                                     )
                                 )
                             plans[w_id] = WorkflowOptimizationPlan(
@@ -608,9 +672,15 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                                 recommendations=recs,
                                 score_before=p_data.get("score_before", 100.0),
                                 score_after=p_data.get("score_after", 100.0),
-                                overall_automation_quality_score=p_data.get("overall_automation_quality_score", 100.0),
-                                estimated_time_savings_seconds=p_data.get("estimated_time_savings_seconds", 0.0),
-                                estimated_cost_savings_dollars=p_data.get("estimated_cost_savings_dollars", 0.0)
+                                overall_automation_quality_score=p_data.get(
+                                    "overall_automation_quality_score", 100.0
+                                ),
+                                estimated_time_savings_seconds=p_data.get(
+                                    "estimated_time_savings_seconds", 0.0
+                                ),
+                                estimated_cost_savings_dollars=p_data.get(
+                                    "estimated_cost_savings_dollars", 0.0
+                                ),
                             )
                         reports.append(
                             WorkflowOptimizationReport(
@@ -618,9 +688,13 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                                 workspace_id=workspace_id,
                                 plans=plans,
                                 optimization_score=rec_meta.get("optimization_score", 100.0),
-                                total_time_savings_seconds=rec_meta.get("total_time_savings_seconds", 0.0),
-                                total_cost_savings_dollars=rec_meta.get("total_cost_savings_dollars", 0.0),
-                                timestamp=row.get("timestamp") or time.time()
+                                total_time_savings_seconds=rec_meta.get(
+                                    "total_time_savings_seconds", 0.0
+                                ),
+                                total_cost_savings_dollars=rec_meta.get(
+                                    "total_cost_savings_dollars", 0.0
+                                ),
+                                timestamp=row.get("timestamp") or time.time(),
                             )
                         )
                 self._reports[workspace_id] = reports
@@ -635,7 +709,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
             return
 
         report = reports[-1]
-        
+
         # Form content summary. Never store credentials or source code.
         content = (
             f"Workflow Optimizations Audited\n"
@@ -656,8 +730,8 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                 "report_id": report.report_id,
                 "workspace_id": workspace_id,
                 "plans_count": len(report.plans),
-                "optimization_score": report.optimization_score
-            }
+                "optimization_score": report.optimization_score,
+            },
         )
 
     def publish_optimization_report(self, report: WorkflowOptimizationReport) -> None:
@@ -681,7 +755,7 @@ class LocalWorkflowOptimizationService(WorkflowOptimizationService):
                 unique_id=f"opt_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="workflow_optimization_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

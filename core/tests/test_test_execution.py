@@ -27,14 +27,16 @@ def test_pytest_adapter_successful_execution(mock_run, tmp_path):
     # Mock subprocess run response
     mock_proc = MagicMock()
     mock_proc.returncode = 0
-    mock_proc.stdout = "============================= 3 passed, 1 skipped in 0.52s =============================\n"
+    mock_proc.stdout = (
+        "============================= 3 passed, 1 skipped in 0.52s =============================\n"
+    )
     mock_proc.stderr = ""
     mock_run.return_value = mock_proc
 
     adapter = PytestAdapter()
     target = ExecutionTarget("t1", "core/tests/test_memory.py")
     res = adapter.execute_tests(str(tmp_path), [target])
-    
+
     assert res.success
     assert res.exit_code == 0
     assert res.metrics.passed_tests == 3
@@ -49,7 +51,7 @@ def test_pytest_adapter_timeout(mock_run, tmp_path):
     adapter = PytestAdapter()
     target = ExecutionTarget("t1", "core/tests/test_memory.py")
     res = adapter.execute_tests(str(tmp_path), [target])
-    
+
     assert not res.success
     assert res.exit_code == -1
     assert "timed out" in res.errors[0]
@@ -66,7 +68,7 @@ def test_runner_and_executor(mock_run, tmp_path):
     executor = LocalTestExecutor()
     target = ExecutionTarget("t1", "core/tests/test_memory.py")
     summary = executor.execute(str(tmp_path), [target])
-    
+
     assert summary.overall_success
     assert summary.total_passed == 1
     assert len(summary.results) == 1
@@ -83,26 +85,21 @@ def test_execution_service_flow(mock_run, tmp_path):
     mock_memory = MagicMock(spec=MemoryService)
     mock_kh = MagicMock(spec=KnowledgeHubService)
 
-    service = LocalTestExecutionService(
-        memory_service=mock_memory,
-        knowledge_hub=mock_kh
-    )
+    service = LocalTestExecutionService(memory_service=mock_memory, knowledge_hub=mock_kh)
     service.initialize()
-    
+
     target = ExecutionTarget("t1", "core/tests/test_memory.py")
     summary = service.execute_workspace_tests(
-        workspace_id="ws_1",
-        workspace_root=str(tmp_path),
-        targets=[target]
+        workspace_id="ws_1", workspace_root=str(tmp_path), targets=[target]
     )
-    
+
     assert summary.overall_success
     assert summary.total_passed == 2
-    
+
     # Store
     service.store_execution_summary(summary)
     mock_memory.add_memory.assert_called_once()
-    
+
     # Publish
     service.publish_execution_report(summary)
     mock_kh.sync_document.assert_called_once()
@@ -113,6 +110,6 @@ def test_backward_compatibility():
         @property
         def framework_name(self):
             return "custom_pytest"
-            
+
     adapter = CustomPytestAdapter()
     assert adapter.framework_name == "custom_pytest"

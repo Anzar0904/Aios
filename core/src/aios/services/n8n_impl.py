@@ -15,7 +15,12 @@ from aios.services.n8n import (
 
 
 class LocalN8NService(N8NService):
-    def __init__(self, model_service: ModelService, cache_filename: str = "n8n_workflows.json", workspace_root: str = ".") -> None:
+    def __init__(
+        self,
+        model_service: ModelService,
+        cache_filename: str = "n8n_workflows.json",
+        workspace_root: str = ".",
+    ) -> None:
         self._model_service = model_service
         self._cache_filename = cache_filename
         self._workspace_root = workspace_root
@@ -103,7 +108,9 @@ class LocalN8NService(N8NService):
         roots = [
             node.name
             for node in workflow.nodes
-            if node.type in trigger_types or "start" in node.name.lower() or "trigger" in node.name.lower()
+            if node.type in trigger_types
+            or "start" in node.name.lower()
+            or "trigger" in node.name.lower()
         ]
         reachable = set()
 
@@ -128,23 +135,23 @@ class LocalN8NService(N8NService):
                 "nodes_count": len(workflow.nodes),
                 "connections_count": len(workflow.connections),
                 "roots": roots,
-                "unreachable_count": len(unreachable)
-            }
+                "unreachable_count": len(unreachable),
+            },
         }
 
     def generate_workflow_from_natural_language(self, description: str) -> InternalWorkflow:
         prompt = (
             "You are the Workflow Engineer for Personal AI OS.\n"
-            f"Generate a structured workflow configuration JSON for the request: \"{description}\".\n"
+            f'Generate a structured workflow configuration JSON for the request: "{description}".\n'
             "Respond ONLY with a JSON object of this structure:\n"
             "{\n"
-            "  \"name\": \"Workflow Name\",\n"
-            "  \"nodes\": [\n"
-            "    {\"id\": \"start\", \"name\": \"Start Trigger\", \"type\": \"n8n-nodes-base.start\", \"position\": [250, 300], \"parameters\": {}},\n"
-            "    {\"id\": \"http-request\", \"name\": \"Get Weather\", \"type\": \"n8n-nodes-base.httpRequest\", \"position\": [450, 300], \"parameters\": {\"url\": \"https://api.weather.com\"}}\n"
+            '  "name": "Workflow Name",\n'
+            '  "nodes": [\n'
+            '    {"id": "start", "name": "Start Trigger", "type": "n8n-nodes-base.start", "position": [250, 300], "parameters": {}},\n'
+            '    {"id": "http-request", "name": "Get Weather", "type": "n8n-nodes-base.httpRequest", "position": [450, 300], "parameters": {"url": "https://api.weather.com"}}\n'
             "  ],\n"
-            "  \"connections\": [\n"
-            "    {\"from_node\": \"Start Trigger\", \"to_node\": \"Get Weather\", \"to_input\": 0}\n"
+            '  "connections": [\n'
+            '    {"from_node": "Start Trigger", "to_node": "Get Weather", "to_input": 0}\n'
             "  ]\n"
             "}\n"
         )
@@ -154,7 +161,7 @@ class LocalN8NService(N8NService):
                 LLMRequest(
                     prompt=prompt,
                     system_instruction="You are a strict JSON builder. Output JSON only, no markdown wraps.",
-                    model_name=model_name
+                    model_name=model_name,
                 )
             )
             content = res.content.strip()
@@ -170,7 +177,7 @@ class LocalN8NService(N8NService):
                     name=n.get("name"),
                     type=n.get("type"),
                     parameters=n.get("parameters", {}),
-                    position=n.get("position", [0, 0])
+                    position=n.get("position", [0, 0]),
                 )
                 for n in data.get("nodes", [])
             ]
@@ -178,7 +185,7 @@ class LocalN8NService(N8NService):
                 InternalConnection(
                     from_node=c.get("from_node"),
                     to_node=c.get("to_node"),
-                    to_input=c.get("to_input", 0)
+                    to_input=c.get("to_input", 0),
                 )
                 for c in data.get("connections", [])
             ]
@@ -186,7 +193,7 @@ class LocalN8NService(N8NService):
                 id=None,
                 name=data.get("name", "Generated Workflow"),
                 nodes=nodes,
-                connections=connections
+                connections=connections,
             )
         except Exception:
             return InternalWorkflow(
@@ -194,11 +201,11 @@ class LocalN8NService(N8NService):
                 name="Fallback Workflow",
                 nodes=[
                     InternalNode("start", "Start Trigger", "n8n-nodes-base.start", {}, [250, 300]),
-                    InternalNode("http", "HTTP Request", "n8n-nodes-base.httpRequest", {}, [450, 300])
+                    InternalNode(
+                        "http", "HTTP Request", "n8n-nodes-base.httpRequest", {}, [450, 300]
+                    ),
                 ],
-                connections=[
-                    InternalConnection("Start Trigger", "HTTP Request")
-                ]
+                connections=[InternalConnection("Start Trigger", "HTTP Request")],
             )
 
     def execute_workflow(self, workflow_id: str) -> bool:
@@ -217,27 +224,25 @@ class LocalN8NService(N8NService):
             total_runs=10,
             failures=0,
             last_run=time.time(),
-            logs=["Start Trigger activated", "HTTP Request completed successfully"]
+            logs=["Start Trigger activated", "HTTP Request completed successfully"],
         )
 
     def check_health(self) -> ConnectionHealth:
-        return ConnectionHealth(
-            online=True,
-            api_version="1.0.0",
-            latency_ms=15.5
-        )
+        return ConnectionHealth(online=True, api_version="1.0.0", latency_ms=15.5)
 
     def internal_to_n8n(self, wf: InternalWorkflow) -> Dict[str, Any]:
         nodes_list = []
         for node in wf.nodes:
-            nodes_list.append({
-                "parameters": node.parameters,
-                "id": node.id,
-                "name": node.name,
-                "type": node.type,
-                "typeVersion": 1,
-                "position": node.position
-            })
+            nodes_list.append(
+                {
+                    "parameters": node.parameters,
+                    "id": node.id,
+                    "name": node.name,
+                    "type": node.type,
+                    "typeVersion": 1,
+                    "position": node.position,
+                }
+            )
 
         connections_dict = {}
         for conn in wf.connections:
@@ -245,18 +250,16 @@ class LocalN8NService(N8NService):
             to_node = conn.to_node
             if from_node not in connections_dict:
                 connections_dict[from_node] = {"main": [[]]}
-            connections_dict[from_node]["main"][0].append({
-                "node": to_node,
-                "type": "main",
-                "index": conn.to_input
-            })
+            connections_dict[from_node]["main"][0].append(
+                {"node": to_node, "type": "main", "index": conn.to_input}
+            )
 
         return {
             "id": wf.id,
             "name": wf.name,
             "nodes": nodes_list,
             "connections": connections_dict,
-            "active": wf.active
+            "active": wf.active,
         }
 
     def n8n_to_internal(self, data: Dict[str, Any]) -> InternalWorkflow:
@@ -268,7 +271,7 @@ class LocalN8NService(N8NService):
                     name=n.get("name", ""),
                     type=n.get("type", ""),
                     parameters=n.get("parameters", {}),
-                    position=n.get("position", [0, 0])
+                    position=n.get("position", [0, 0]),
                 )
             )
 
@@ -282,7 +285,7 @@ class LocalN8NService(N8NService):
                             from_node=from_node,
                             to_node=target.get("node", ""),
                             from_output=0,
-                            to_input=target.get("index", 0)
+                            to_input=target.get("index", 0),
                         )
                     )
 
@@ -291,7 +294,7 @@ class LocalN8NService(N8NService):
             name=data.get("name", "Imported Workflow"),
             nodes=nodes,
             connections=connections,
-            active=data.get("active", True)
+            active=data.get("active", True),
         )
 
     def _save_cache(self) -> None:

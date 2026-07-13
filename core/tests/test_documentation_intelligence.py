@@ -28,14 +28,11 @@ from aios.services.memory import MemoryService
 @pytest.fixture
 def mock_profile_service():
     service = MagicMock(spec=EngineeringProfileService)
-    
-    doc_prof = DocumentationProfile(
-        format="markdown",
-        generate_api_docs=True
-    )
+
+    doc_prof = DocumentationProfile(format="markdown", generate_api_docs=True)
     eng_prof = MagicMock(spec=EngineeringProfile)
     eng_prof.documentation = doc_prof
-    
+
     service.get_profile.return_value = eng_prof
     return service
 
@@ -43,7 +40,7 @@ def mock_profile_service():
 def test_registry_creation():
     registry = DocumentationRegistry()
     template = DocumentTemplate("t1", "README layout", ["Title", "Overview"])
-    
+
     registry.register_template(template)
     assert registry.get_template("t1") == template
 
@@ -56,9 +53,9 @@ def test_metadata_validation():
         title="Project README",
         version="1.0.0",
         author="Antigravity",
-        timestamp=0.0
+        timestamp=0.0,
     )
-    
+
     assert metadata.category == DocumentCategory.README
     assert metadata.source == DocumentSource.SOFTWARE_ENG
     assert metadata.title == "Project README"
@@ -67,7 +64,7 @@ def test_metadata_validation():
 def test_profile_integration():
     doc_prof = DocumentationProfile(format="rst", generate_api_docs=False)
     adapter = DocumentationProfileAdapter(doc_prof)
-    
+
     assert adapter.get_format() == "rst"
     assert adapter.should_generate_api() is False
     assert "language" in adapter.get_style_rules()
@@ -82,10 +79,10 @@ def test_document_registration():
         title="Changelog",
         version="0.2.0",
         author="Antigravity",
-        timestamp=0.0
+        timestamp=0.0,
     )
     artifact = DocumentArtifact("art_1", metadata, "Content summary.")
-    
+
     registry.register_artifact(artifact)
     assert registry.get_artifact("art_1") == artifact
 
@@ -93,25 +90,25 @@ def test_document_registration():
 def test_service_evaluation_flow(mock_profile_service):
     mock_memory = MagicMock(spec=MemoryService)
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    
+
     service = LocalDocumentationService(
         memory_service=mock_memory,
         engineering_profile_service=mock_profile_service,
-        knowledge_hub=mock_kh
+        knowledge_hub=mock_kh,
     )
     service.initialize()
-    
+
     workspace = DocumentationWorkspace("ws_1", "/tmp/path")
     session = service.create_session(workspace)
-    
+
     assert session.status == "initialized"
-    
+
     # Plan
     templates = service.plan_session(session)
     assert len(templates) > 0
     assert session.status == "planning"
     mock_profile_service.get_profile.assert_called_with("default")
-    
+
     # Register artifact
     metadata = DocumentMetadata(
         doc_id="d1",
@@ -120,17 +117,17 @@ def test_service_evaluation_flow(mock_profile_service):
         title="API Doc",
         version="1.0.0",
         author="Antigravity",
-        timestamp=0.0
+        timestamp=0.0,
     )
     art = DocumentArtifact("art_1", metadata, "API classes documentation.")
     service.register_artifact(art)
     assert service.get_artifact("art_1") == art
-    
+
     # Store
     result = DocumentationResult("res_1", session.session_id, [art], True)
     service.store_documentation_summary(result)
     mock_memory.add_memory.assert_called_once()
-    
+
     # Publish
     service.publish_documentation_summary(result)
     mock_kh.sync_document.assert_called_once()
@@ -142,7 +139,7 @@ def test_backward_compatibility():
             templates = super().plan_documentation(session, profile_adapter)
             templates.append(DocumentTemplate("tmpl_custom", "Custom Layout", ["Custom"]))
             return templates
-            
+
     planner = CustomPlanner()
     templates = planner.plan_documentation(MagicMock(), MagicMock())
     template_ids = [t.template_id for t in templates]

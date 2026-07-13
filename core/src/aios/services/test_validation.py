@@ -11,6 +11,7 @@ from aios.services.test_failure import FailureAnalysisReport
 
 class ValidationStatus(Enum):
     """Enumerate validation outcomes matching gating thresholds."""
+
     __test__ = False
     PASS = "pass"
     WARNING = "warning"
@@ -19,6 +20,7 @@ class ValidationStatus(Enum):
 
 class ValidationDecision(Enum):
     """Enumerate release decision status outcomes."""
+
     __test__ = False
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -28,6 +30,7 @@ class ValidationDecision(Enum):
 @dataclass
 class ValidationFinding:
     """Detailed diagnostic discovery during validations."""
+
     __test__ = False
     finding_id: str
     severity: str  # "Low", "Medium", "High", "Critical"
@@ -38,6 +41,7 @@ class ValidationFinding:
 @dataclass
 class ValidationRecommendation:
     """Actionable recommendation to address validation findings."""
+
     __test__ = False
     recommendation_id: str
     recommendation_type: str
@@ -48,6 +52,7 @@ class ValidationRecommendation:
 @dataclass
 class ValidationEvidence:
     """Supporting telemetry record for validation gates."""
+
     __test__ = False
     evidence_id: str
     evidence_type: str  # "execution_summary", "coverage_report", "failure_report"
@@ -58,6 +63,7 @@ class ValidationEvidence:
 @dataclass
 class ValidationGate:
     """Validation gate checking rules based on evidence telemetry."""
+
     __test__ = False
     gate_name: str
     status: ValidationStatus
@@ -68,6 +74,7 @@ class ValidationGate:
 @dataclass
 class ValidationMetrics:
     """Consolidated statistics across test execution runs and coverage targets."""
+
     __test__ = False
     overall_score: float
     passed_gates_count: int
@@ -80,6 +87,7 @@ class ValidationMetrics:
 @dataclass
 class ValidationScore:
     """Detailed score components including weights and penalty counts."""
+
     __test__ = False
     raw_score: float
     weight_metrics: Dict[str, float]
@@ -89,6 +97,7 @@ class ValidationScore:
 @dataclass
 class ValidationSummary:
     """Aggregated validation statistics summary."""
+
     __test__ = False
     summary_id: str
     workspace_id: str
@@ -101,6 +110,7 @@ class ValidationSummary:
 @dataclass
 class ValidationReport:
     """Assembled validation report package consumed by future AI OS services."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -115,6 +125,7 @@ class ValidationReport:
 
 class ValidationService(ServiceLifecycle, abc.ABC):
     """Unified validation compiler synthesizing reports, logging decisions, and publishing summaries."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -123,7 +134,7 @@ class ValidationService(ServiceLifecycle, abc.ABC):
         workspace_id: str,
         execution_summary: ExecutionSummary,
         coverage_report: CoverageReport,
-        failure_report: FailureAnalysisReport
+        failure_report: FailureAnalysisReport,
     ) -> ValidationReport:
         """Assembles authoritative validation report combining executions, coverages, and failure logs."""
         pass

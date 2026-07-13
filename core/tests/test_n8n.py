@@ -20,11 +20,11 @@ def test_workflow_translation_and_serialization():
         name="Test Sync",
         nodes=[
             InternalNode("1", "Trigger", "n8n-nodes-base.cron", {}, [100, 200]),
-            InternalNode("2", "HTTP", "n8n-nodes-base.httpRequest", {"url": "https://api.test"}, [300, 200])
+            InternalNode(
+                "2", "HTTP", "n8n-nodes-base.httpRequest", {"url": "https://api.test"}, [300, 200]
+            ),
         ],
-        connections=[
-            InternalConnection("Trigger", "HTTP")
-        ]
+        connections=[InternalConnection("Trigger", "HTTP")],
     )
 
     # Translate to n8n format
@@ -51,11 +51,9 @@ def test_workflow_graph_validator():
         name="Valid Graph",
         nodes=[
             InternalNode("1", "Start", "n8n-nodes-base.start"),
-            InternalNode("2", "Action", "n8n-nodes-base.httpRequest")
+            InternalNode("2", "Action", "n8n-nodes-base.httpRequest"),
         ],
-        connections=[
-            InternalConnection("Start", "Action")
-        ]
+        connections=[InternalConnection("Start", "Action")],
     )
     res_valid = service.validate_workflow(wf_valid)
     assert res_valid["valid"] is True
@@ -65,14 +63,11 @@ def test_workflow_graph_validator():
     wf_cycle = InternalWorkflow(
         id=None,
         name="Cycle Graph",
-        nodes=[
-            InternalNode("1", "Node A", "type"),
-            InternalNode("2", "Node B", "type")
-        ],
+        nodes=[InternalNode("1", "Node A", "type"), InternalNode("2", "Node B", "type")],
         connections=[
             InternalConnection("Node A", "Node B"),
-            InternalConnection("Node B", "Node A")
-        ]
+            InternalConnection("Node B", "Node A"),
+        ],
     )
     res_cycle = service.validate_workflow(wf_cycle)
     assert res_cycle["valid"] is False
@@ -85,11 +80,9 @@ def test_workflow_graph_validator():
         nodes=[
             InternalNode("1", "Start", "n8n-nodes-base.start"),
             InternalNode("2", "HTTP", "n8n-nodes-base.httpRequest"),
-            InternalNode("3", "Isolated Node", "n8n-nodes-base.httpRequest")
+            InternalNode("3", "Isolated Node", "n8n-nodes-base.httpRequest"),
         ],
-        connections=[
-            InternalConnection("Start", "HTTP")
-        ]
+        connections=[InternalConnection("Start", "HTTP")],
     )
     res_unreachable = service.validate_workflow(wf_unreachable)
     assert res_unreachable["valid"] is False
@@ -111,13 +104,13 @@ def test_natural_language_workflow_generator():
 }
 """
     model_service.execute_request.return_value = LLMResponse(
-        content=mock_llm_json,
-        model_name="claude-3-5-sonnet",
-        provider_name="claude"
+        content=mock_llm_json, model_name="claude-3-5-sonnet", provider_name="claude"
     )
 
     service = LocalN8NService(model_service)
-    wf = service.generate_workflow_from_natural_language("Send email notifications on start trigger")
+    wf = service.generate_workflow_from_natural_language(
+        "Send email notifications on start trigger"
+    )
 
     assert wf.name == "NL Workflow"
     assert len(wf.nodes) == 2
@@ -128,14 +121,16 @@ def test_natural_language_workflow_generator():
 def test_workflow_lifecycle_and_health():
     model_service = MagicMock()
     with tempfile.TemporaryDirectory() as tmpdir:
-        service = LocalN8NService(model_service, cache_filename="workflows.json", workspace_root=tmpdir)
+        service = LocalN8NService(
+            model_service, cache_filename="workflows.json", workspace_root=tmpdir
+        )
         service.initialize()
 
         # Create
         wf = InternalWorkflow(
             id=None,
             name="Lifecycle Test",
-            nodes=[InternalNode("1", "Start", "n8n-nodes-base.start")]
+            nodes=[InternalNode("1", "Start", "n8n-nodes-base.start")],
         )
         created = service.create_workflow(wf)
         assert created.id is not None

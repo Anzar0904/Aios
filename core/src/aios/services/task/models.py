@@ -15,7 +15,7 @@ class TaskStep:
             "command": self.command,
             "optional": self.optional,
             "status": self.status,
-            "output": self.output
+            "output": self.output,
         }
 
     @classmethod
@@ -24,6 +24,7 @@ class TaskStep:
         step.status = data.get("status", "pending")
         step.output = data.get("output", "")
         return step
+
 
 class Task:
     def __init__(
@@ -35,7 +36,7 @@ class Task:
         created_at: Optional[float] = None,
         updated_at: Optional[float] = None,
         steps: Optional[List[TaskStep]] = None,
-        execution_log: Optional[List[str]] = None
+        execution_log: Optional[List[str]] = None,
     ) -> None:
         self.id = id if id is not None else str(uuid.uuid4())
         self.objective = objective
@@ -55,7 +56,7 @@ class Task:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "steps": [s.to_dict() for s in self.steps],
-            "execution_log": self.execution_log
+            "execution_log": self.execution_log,
         }
 
     @classmethod
@@ -69,5 +70,5 @@ class Task:
             created_at=data.get("created_at"),
             updated_at=data.get("updated_at"),
             steps=steps,
-            execution_log=data.get("execution_log", [])
+            execution_log=data.get("execution_log", []),
         )

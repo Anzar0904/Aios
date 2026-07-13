@@ -54,6 +54,7 @@ class LocalN8NClient(N8NClient):
         )
         from aios.n8n import N8NClient as ProdClient
         from aios.n8n import N8NConnectionManager as ProdConnManager
+
         self._prod_config = N8NConfigurationService()
         self._prod_auth = N8NAuthenticationManager(self._prod_config)
         self._prod_conn = ProdConnManager(self._prod_config, self._prod_auth)
@@ -73,7 +74,11 @@ class LocalN8NClient(N8NClient):
             workflow_id = f"n8n_wf_{int(time.time())}"
             self._workflows[workflow_id] = workflow_json
             self._active_status[workflow_id] = False
-            return {"id": workflow_id, "name": workflow_json.get("name", "Unnamed"), "active": False}
+            return {
+                "id": workflow_id,
+                "name": workflow_json.get("name", "Unnamed"),
+                "active": False,
+            }
 
     def update_workflow(self, workflow_id: str, workflow_json: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -83,7 +88,11 @@ class LocalN8NClient(N8NClient):
             if workflow_id not in self._workflows:
                 raise ValueError(f"Workflow '{workflow_id}' not found.")
             self._workflows[workflow_id] = workflow_json
-            return {"id": workflow_id, "name": workflow_json.get("name", "Unnamed"), "active": self._active_status.get(workflow_id, False)}
+            return {
+                "id": workflow_id,
+                "name": workflow_json.get("name", "Unnamed"),
+                "active": self._active_status.get(workflow_id, False),
+            }
 
     def delete_workflow(self, workflow_id: str) -> bool:
         try:
@@ -102,7 +111,14 @@ class LocalN8NClient(N8NClient):
             return self._prod_workflow.list_workflows()
         except Exception as e:
             logger.warning(f"Production n8n call list_workflows failed, falling back to mock: {e}")
-            return [{"id": k, "name": v.get("name", "Unnamed"), "active": self._active_status.get(k, False)} for k, v in self._workflows.items()]
+            return [
+                {
+                    "id": k,
+                    "name": v.get("name", "Unnamed"),
+                    "active": self._active_status.get(k, False),
+                }
+                for k, v in self._workflows.items()
+            ]
 
     def get_workflow(self, workflow_id: str) -> Dict[str, Any]:
         try:
@@ -117,7 +133,9 @@ class LocalN8NClient(N8NClient):
         try:
             return self._prod_execution.execute_workflow(workflow_id, input_data)
         except Exception as e:
-            logger.warning(f"Production n8n call execute_workflow failed, falling back to mock: {e}")
+            logger.warning(
+                f"Production n8n call execute_workflow failed, falling back to mock: {e}"
+            )
             if workflow_id not in self._workflows:
                 raise ValueError(f"Workflow '{workflow_id}' not found.")
             execution_id = f"n8n_exec_{int(time.time())}"
@@ -126,7 +144,7 @@ class LocalN8NClient(N8NClient):
                 "workflowId": workflow_id,
                 "status": "success",
                 "data": input_data,
-                "finished": True
+                "finished": True,
             }
             return self._executions[execution_id]
 
@@ -150,7 +168,9 @@ class LocalN8NClient(N8NClient):
         try:
             return self._prod_workflow.activate_workflow(workflow_id)
         except Exception as e:
-            logger.warning(f"Production n8n call activate_workflow failed, falling back to mock: {e}")
+            logger.warning(
+                f"Production n8n call activate_workflow failed, falling back to mock: {e}"
+            )
             if workflow_id not in self._workflows:
                 return False
             self._active_status[workflow_id] = True
@@ -160,7 +180,9 @@ class LocalN8NClient(N8NClient):
         try:
             return self._prod_workflow.deactivate_workflow(workflow_id)
         except Exception as e:
-            logger.warning(f"Production n8n call deactivate_workflow failed, falling back to mock: {e}")
+            logger.warning(
+                f"Production n8n call deactivate_workflow failed, falling back to mock: {e}"
+            )
             if workflow_id not in self._workflows:
                 return False
             self._active_status[workflow_id] = False
@@ -183,11 +205,13 @@ class LocalN8NWorkflowRepository(N8NWorkflowRepository):
         self._metadata[workflow_id] = metadata
         if self._repo:
             try:
-                self._repo.save({
-                    "id": f"wf_meta_{workflow_id}",
-                    "workflow_id": workflow_id,
-                    "server_metadata": metadata
-                })
+                self._repo.save(
+                    {
+                        "id": f"wf_meta_{workflow_id}",
+                        "workflow_id": workflow_id,
+                        "server_metadata": metadata,
+                    }
+                )
             except Exception:
                 pass
 
@@ -222,11 +246,13 @@ class LocalN8NExecutionRepository(N8NExecutionRepository):
         self._metadata[execution_id] = metadata
         if self._repo:
             try:
-                self._repo.save({
-                    "id": f"exec_meta_{execution_id}",
-                    "execution_id": execution_id,
-                    "server_metadata": metadata
-                })
+                self._repo.save(
+                    {
+                        "id": f"exec_meta_{execution_id}",
+                        "execution_id": execution_id,
+                        "server_metadata": metadata,
+                    }
+                )
             except Exception:
                 pass
 
@@ -249,12 +275,15 @@ class LocalN8NHealthMonitor(N8NHealthMonitor):
         from aios.n8n import N8NClient as ProdClient
         from aios.n8n import N8NConnectionManager as ProdConnManager
         from aios.n8n import N8NHealthMonitor as ProdHealthMonitor
+
         self._prod_config = N8NConfigurationService()
         self._prod_auth = N8NAuthenticationManager(self._prod_config)
         self._prod_conn = ProdConnManager(self._prod_config, self._prod_auth)
         self._prod_client = ProdClient(self._prod_conn)
         self._prod_workflow = N8NWorkflowManager(self._prod_client)
-        self._prod_health = ProdHealthMonitor(self._prod_client, self._prod_auth, self._prod_workflow)
+        self._prod_health = ProdHealthMonitor(
+            self._prod_client, self._prod_auth, self._prod_workflow
+        )
 
     def check_health(self) -> Dict[str, Any]:
         try:
@@ -264,7 +293,7 @@ class LocalN8NHealthMonitor(N8NHealthMonitor):
                     "status": "online",
                     "version": "1.25.0",
                     "latency_ms": res["latency_ms"],
-                    "capabilities": ["webhooks", "oauth2", "variables", "sticky-notes"]
+                    "capabilities": ["webhooks", "oauth2", "variables", "sticky-notes"],
                 }
         except Exception:
             pass
@@ -272,7 +301,7 @@ class LocalN8NHealthMonitor(N8NHealthMonitor):
             "status": "online",
             "version": "1.25.0",
             "latency_ms": 12.5,
-            "capabilities": ["webhooks", "oauth2", "variables", "sticky-notes"]
+            "capabilities": ["webhooks", "oauth2", "variables", "sticky-notes"],
         }
 
 
@@ -295,7 +324,9 @@ class LocalN8NValidator(N8NValidator):
     def validate_server_config(self, profile: N8NConnectionProfile) -> List[str]:
         errors = []
         if not profile.url.startswith(("http://", "https://")):
-            errors.append("Validation Error: n8n server URL must start with http:// or https:// protocol.")
+            errors.append(
+                "Validation Error: n8n server URL must start with http:// or https:// protocol."
+            )
         if profile.timeout_seconds <= 0:
             errors.append("Validation Error: timeout_seconds delay must be greater than zero.")
         return errors
@@ -309,7 +340,7 @@ class LocalN8NIntegrationService(N8NIntegrationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -361,13 +392,14 @@ class LocalN8NIntegrationService(N8NIntegrationService):
 
         automations_dir = os.path.join(workspace_root, "docs", "automations")
         os.makedirs(automations_dir, exist_ok=True)
-        
+
         file_path = os.path.join(automations_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         # Generate standard workspace reports
         from aios.n8n import N8NReportGenerator
+
         reporter = N8NReportGenerator(workspace_root, self._health_monitor._prod_health)
         reporter.generate_reports()
 
@@ -391,31 +423,34 @@ class LocalN8NIntegrationService(N8NIntegrationService):
         res = self._client.upload_workflow(workflow_json)
         workflow_id = res["id"]
 
-        self._wf_repo.save_workflow_metadata(workflow_id, {"uploaded_at": time.time(), "workspace_id": workspace_id})
+        self._wf_repo.save_workflow_metadata(
+            workflow_id, {"uploaded_at": time.time(), "workspace_id": workspace_id}
+        )
         self._workspace_mapper.map_workflow_to_workspace(workflow_id, workspace_id)
 
         meta_json = {
             "workflow_id": workflow_id,
             "uploaded_at": time.time(),
             "workspace_id": workspace_id,
-            "server_profile": {
-                "url": profile.url,
-                "auth_type": profile.auth_type
-            }
+            "server_profile": {"url": profile.url, "auth_type": profile.auth_type},
         }
-        self._write_to_workspace(workspace_id, f"N8N_METADATA_{workflow_id}.json", json.dumps(meta_json, indent=2))
+        self._write_to_workspace(
+            workspace_id, f"N8N_METADATA_{workflow_id}.json", json.dumps(meta_json, indent=2)
+        )
 
         return workflow_id
 
     def trigger_workflow(self, workflow_id: str, inputs: Dict[str, Any]) -> Dict[str, Any]:
         self._workspace_mapper.get_workspace_for_workflow(workflow_id) or "ws_unknown"
         res = self._client.execute_workflow(workflow_id, inputs)
-        self._exec_repo.save_execution_metadata(res["id"], {"status": res["status"], "workflow_id": workflow_id})
+        self._exec_repo.save_execution_metadata(
+            res["id"], {"status": res["status"], "workflow_id": workflow_id}
+        )
         return res
 
     def get_health_status(self) -> N8NIntegrationReport:
         health = self._health_monitor.check_health()
-        
+
         report_id = f"rep_int_{int(time.time())}"
         report = N8NIntegrationReport(
             report_id=report_id,
@@ -424,28 +459,30 @@ class LocalN8NIntegrationService(N8NIntegrationService):
             connectivity_status=health["status"],
             latency_ms=health["latency_ms"],
             uploaded_workflows_count=len(self._client.list_workflows()),
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if self._repo:
             try:
-                self._repo.save({
-                    "id": report_id,
-                    "connection_metadata": {
-                        "connectivity_status": report.connectivity_status,
-                        "latency_ms": report.latency_ms
-                    },
-                    "server_metadata": {
-                        "server_version": report.server_version,
-                        "uploaded_workflows_count": report.uploaded_workflows_count
-                    },
-                    "health_metadata": health,
-                    "capability_discovery": health.get("capabilities", []),
-                    "timestamp": report.timestamp
-                })
+                self._repo.save(
+                    {
+                        "id": report_id,
+                        "connection_metadata": {
+                            "connectivity_status": report.connectivity_status,
+                            "latency_ms": report.latency_ms,
+                        },
+                        "server_metadata": {
+                            "server_version": report.server_version,
+                            "uploaded_workflows_count": report.uploaded_workflows_count,
+                        },
+                        "health_metadata": health,
+                        "capability_discovery": health.get("capabilities", []),
+                        "timestamp": report.timestamp,
+                    }
+                )
             except Exception:
                 pass
-        
+
         self._session_reports[report_id] = report
         return report
 
@@ -453,7 +490,9 @@ class LocalN8NIntegrationService(N8NIntegrationService):
         if self._repo:
             try:
                 p_service = self._registry.get(PersistenceService)
-                res = p_service.execute("SELECT * FROM workflow_integrations WHERE id LIKE 'rep_int_%'")
+                res = p_service.execute(
+                    "SELECT * FROM workflow_integrations WHERE id LIKE 'rep_int_%'"
+                )
                 reports = []
                 for row in res:
                     conn_m = json.loads(row["connection_metadata"] or "{}")
@@ -466,7 +505,7 @@ class LocalN8NIntegrationService(N8NIntegrationService):
                             connectivity_status=conn_m.get("connectivity_status", "online"),
                             latency_ms=conn_m.get("latency_ms", 12.5),
                             uploaded_workflows_count=srv_m.get("uploaded_workflows_count", 0),
-                            timestamp=row.get("timestamp") or time.time()
+                            timestamp=row.get("timestamp") or time.time(),
                         )
                     )
                 self._reports[workspace_id] = reports
@@ -498,8 +537,8 @@ class LocalN8NIntegrationService(N8NIntegrationService):
                 "report_id": report_id,
                 "server_version": report.server_version,
                 "connectivity_status": report.connectivity_status,
-                "latency_ms": report.latency_ms
-            }
+                "latency_ms": report.latency_ms,
+            },
         )
 
     def publish_integration_report(self, report: N8NIntegrationReport) -> None:
@@ -524,7 +563,7 @@ class LocalN8NIntegrationService(N8NIntegrationService):
                 unique_id=f"int_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="n8n_integration_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

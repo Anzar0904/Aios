@@ -5,7 +5,7 @@ def validate_workspace_path(path_str: str, workspace_root: str) -> Path:
     """
     Validates that the given target path is strictly within the active workspace root.
     Resolves symbolic links and normalizes the path to prevent directory traversal.
-    
+
     Raises:
         PermissionError: If the resolved path escapes the workspace root.
         ValueError: If the path is invalid.

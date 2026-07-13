@@ -47,15 +47,19 @@ def test_end_to_end_research_to_n8n_integration():
                 url="https://developer.apple.com/sandbox",
                 title="Apple Sandbox Specs",
                 snippet="macOS uses sandbox-exec configuration profiles.",
-                content="Full apple sandbox documentation details."
+                content="Full apple sandbox documentation details.",
             )
-            
-            with patch.object(research_svc, "research", return_value=ResearchResult(
-                query=research_topic,
-                sources=[mock_source],
-                report="Research report on macOS sandbox-exec [1].",
-                citations=[]
-            )) as mock_research_call:
+
+            with patch.object(
+                research_svc,
+                "research",
+                return_value=ResearchResult(
+                    query=research_topic,
+                    sources=[mock_source],
+                    report="Research report on macOS sandbox-exec [1].",
+                    citations=[],
+                ),
+            ) as mock_research_call:
                 res_result = research_svc.research(research_topic)
                 assert "macOS sandbox-exec" in res_result.report
                 assert res_result.sources[0].url == "https://developer.apple.com/sandbox"
@@ -67,11 +71,9 @@ def test_end_to_end_research_to_n8n_integration():
                 name="Sandbox Compliance Sync",
                 nodes=[
                     InternalNode("1", "Cron Trigger", "n8n-nodes-base.cron"),
-                    InternalNode("2", "HTTP Compliance Check", "n8n-nodes-base.httpRequest")
+                    InternalNode("2", "HTTP Compliance Check", "n8n-nodes-base.httpRequest"),
                 ],
-                connections=[
-                    InternalConnection("Cron Trigger", "HTTP Compliance Check")
-                ]
+                connections=[InternalConnection("Cron Trigger", "HTTP Compliance Check")],
             )
 
             # 4. Validate the workflow
@@ -91,7 +93,7 @@ def test_end_to_end_research_to_n8n_integration():
             # 7. Verify Context Propagation
             brain = Brain(kernel, CommandRegistry())
             context = brain.context_manager.assemble_context("deploy workflow")
-            
+
             # Checks that both project intelligence and developer workspace metadata are loaded
             assert "project_intelligence" in context.extra
             assert "developer_workspace" in context.extra

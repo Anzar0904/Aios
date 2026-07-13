@@ -13,7 +13,9 @@ def get_compiled_career_context(kernel) -> str:
         if profile:
             ctx_parts.append(f"User: {profile.name} (Contact: {profile.contact.email})")
             if profile.career:
-                ctx_parts.append(f"Career Target: {profile.career.current_role} in {profile.career.industry}")
+                ctx_parts.append(
+                    f"Career Target: {profile.career.current_role} in {profile.career.industry}"
+                )
             if profile.goals:
                 ctx_parts.append("Goals:")
                 for g in profile.goals:
@@ -66,7 +68,9 @@ def execute_career_resume(args: str, kernel, conv_manager) -> None:
         profile = personal_svc.get_active_profile()
         if profile and profile.resumes:
             for r in profile.resumes:
-                print(f"Resume ID: {r.id} | Title: {r.title} | Current Version: {r.current_version}")
+                print(
+                    f"Resume ID: {r.id} | Title: {r.title} | Current Version: {r.current_version}"
+                )
         else:
             print("No resumes found on profile. Use 'resume create <title>' to start.")
     except Exception as e:
@@ -79,7 +83,9 @@ def execute_career_optimize(args: str, kernel, conv_manager) -> None:
     print("Optimizing resume summary to match current career target and goals...")
     print(context)
     print("\n- SUGGESTED SUMMARY UPDATE:")
-    print("  'Highly motivated AI software engineer specializing in developer workspace tools, event-driven backends, and modular workflow automations.'")
+    print(
+        "  'Highly motivated AI software engineer specializing in developer workspace tools, event-driven backends, and modular workflow automations.'"
+    )
 
 
 def execute_career_cover_letter(args: str, kernel, conv_manager) -> None:

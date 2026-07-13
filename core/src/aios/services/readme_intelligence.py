@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class READMESection:
     """A single header section content in a README file."""
+
     __test__ = False
     heading: str
     content: str
@@ -17,6 +18,7 @@ class READMESection:
 @dataclass
 class READMETemplate:
     """Target sections sequencing and design rules."""
+
     __test__ = False
     template_id: str
     sections_order: List[str]
@@ -26,6 +28,7 @@ class READMETemplate:
 @dataclass
 class READMEArtifact:
     """Represents a generated/updated README artifact."""
+
     __test__ = False
     artifact_id: str
     workspace_id: str
@@ -37,6 +40,7 @@ class READMEArtifact:
 @dataclass
 class READMESummary:
     """Metadata summary statistics for a README file."""
+
     __test__ = False
     summary_id: str
     overall_status: str  # "valid", "needs_updates", "invalid"
@@ -47,6 +51,7 @@ class READMESummary:
 @dataclass
 class READMEReport:
     """Comprehensive report analyzing discrepancies in an existing README."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -59,16 +64,20 @@ class READMEReport:
 
 class READMEAnalyzer(abc.ABC):
     """Analyzes workspace structures and current documentation to find gaps."""
+
     __test__ = False
 
     @abc.abstractmethod
-    def analyze_readme(self, existing_content: str, workspace_metadata: Dict[str, Any]) -> READMEReport:
+    def analyze_readme(
+        self, existing_content: str, workspace_metadata: Dict[str, Any]
+    ) -> READMEReport:
         """Compares current content to metadata targets to log missing headers."""
         pass
 
 
 class READMEPlanner(abc.ABC):
     """Plans README sections order matching style conventions."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -79,6 +88,7 @@ class READMEPlanner(abc.ABC):
 
 class READMEValidator(abc.ABC):
     """Validates structural formatting and broken links inside markdown files."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -89,6 +99,7 @@ class READMEValidator(abc.ABC):
 
 class READMEGenerator(abc.ABC):
     """Formats planning sections list into a single markdown string."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -99,16 +110,20 @@ class READMEGenerator(abc.ABC):
 
 class READMEUpdater(abc.ABC):
     """Updates targeted sections without overwriting custom modifications."""
+
     __test__ = False
 
     @abc.abstractmethod
-    def update_readme(self, existing: READMEArtifact, changes: List[READMESection]) -> READMEArtifact:
+    def update_readme(
+        self, existing: READMEArtifact, changes: List[READMESection]
+    ) -> READMEArtifact:
         """Merges new section changes into an existing artifact."""
         pass
 
 
 class READMEIntelligenceService(ServiceLifecycle, abc.ABC):
     """Coordinating service executing analyses, updates, and memory synchronizations."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -117,7 +132,7 @@ class READMEIntelligenceService(ServiceLifecycle, abc.ABC):
         workspace_id: str,
         existing_content: str,
         workspace_metadata: Dict[str, Any],
-        template: READMETemplate
+        template: READMETemplate,
     ) -> READMEArtifact:
         """Analyzes gaps and generates an updated README artifact."""
         pass

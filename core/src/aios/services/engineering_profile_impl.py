@@ -85,6 +85,7 @@ class LocalProfileSerializer(ProfileSerializer):
             if isinstance(coding_standards, str):
                 try:
                     import json as _json
+
                     coding_standards = _json.loads(coding_standards)
                 except Exception:
                     coding_standards = []
@@ -93,6 +94,7 @@ class LocalProfileSerializer(ProfileSerializer):
             if isinstance(naming_conventions, str):
                 try:
                     import json as _json
+
                     naming_conventions = _json.loads(naming_conventions)
                 except Exception:
                     naming_conventions = {}
@@ -101,6 +103,7 @@ class LocalProfileSerializer(ProfileSerializer):
                 if isinstance(val, str):
                     try:
                         import json as _json
+
                         return _json.loads(val)
                     except Exception:
                         return default
@@ -109,7 +112,7 @@ class LocalProfileSerializer(ProfileSerializer):
             project = ProjectProfile(
                 project_name=data.get("project_name", ""),
                 version=data.get("project_version", "0.1.0"),
-                description=data.get("project_description", "")
+                description=data.get("project_description", ""),
             )
             coding = CodingProfile(
                 language=data.get("language", "python"),
@@ -170,27 +173,27 @@ class LocalProfileSerializer(ProfileSerializer):
         project = ProjectProfile(
             project_name=project_data.get("project_name", ""),
             version=project_data.get("version", "0.1.0"),
-            description=project_data.get("description", "")
+            description=project_data.get("description", ""),
         )
 
         coding_data = data.get("coding", {})
         coding = CodingProfile(
             language=coding_data.get("language", "python"),
             coding_standards=coding_data.get("coding_standards", []),
-            naming_conventions=coding_data.get("naming_conventions", {})
+            naming_conventions=coding_data.get("naming_conventions", {}),
         )
 
         testing_data = data.get("testing", {})
         testing = TestingProfile(
             framework=testing_data.get("framework", "pytest"),
             min_statement_coverage=float(testing_data.get("min_statement_coverage", 80.0)),
-            min_branch_coverage=float(testing_data.get("min_branch_coverage", 75.0))
+            min_branch_coverage=float(testing_data.get("min_branch_coverage", 75.0)),
         )
 
         exec_data = data.get("execution", {})
         execution = ExecutionProfile(
             max_timeout_seconds=int(exec_data.get("max_timeout_seconds", 300)),
-            sandbox_enabled=bool(exec_data.get("sandbox_enabled", True))
+            sandbox_enabled=bool(exec_data.get("sandbox_enabled", True)),
         )
 
         doc_data = data.get("documentation", {})
@@ -201,32 +204,32 @@ class LocalProfileSerializer(ProfileSerializer):
             markdown_preferences=doc_data.get("markdown_preferences", {}),
             section_ordering=doc_data.get("section_ordering", []),
             naming_conventions=doc_data.get("naming_conventions", {}),
-            versioning_preferences=doc_data.get("versioning_preferences", {})
+            versioning_preferences=doc_data.get("versioning_preferences", {}),
         )
 
         git_data = data.get("github", {})
         github = GitHubProfile(
             org_name=git_data.get("org_name", ""),
             repo_name=git_data.get("repo_name", ""),
-            default_branch=git_data.get("default_branch", "main")
+            default_branch=git_data.get("default_branch", "main"),
         )
 
         rel_data = data.get("release", {})
         release = ReleaseProfile(
             auto_release=bool(rel_data.get("auto_release", False)),
-            versioning_scheme=rel_data.get("versioning_scheme", "semver")
+            versioning_scheme=rel_data.get("versioning_scheme", "semver"),
         )
 
         auto_data = data.get("automation", {})
         automation = AutomationProfile(
             cron_expression=auto_data.get("cron_expression", ""),
-            max_retries=int(auto_data.get("max_retries", 3))
+            max_retries=int(auto_data.get("max_retries", 3)),
         )
 
         work_data = data.get("workspace", {})
         workspace = WorkspaceProfile(
             workspace_root=work_data.get("workspace_root", ""),
-            exclude_patterns=work_data.get("exclude_patterns", [])
+            exclude_patterns=work_data.get("exclude_patterns", []),
         )
 
         return EngineeringProfile(
@@ -240,7 +243,7 @@ class LocalProfileSerializer(ProfileSerializer):
             release=release,
             automation=automation,
             workspace=workspace,
-            timestamp=float(data.get("timestamp", time.time()))
+            timestamp=float(data.get("timestamp", time.time())),
         )
 
 
@@ -294,7 +297,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[Any] = None,
         registry: Optional[Any] = None,
-        profile_repo: Optional[EngineeringProfileRepository] = None
+        profile_repo: Optional[EngineeringProfileRepository] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -312,6 +315,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
         if self._registry:
             try:
                 from aios.services.persistence import PersistenceService
+
                 p_svc = self._registry.get(PersistenceService)
                 if p_svc and p_svc.config:
                     return p_svc.config.policy
@@ -331,33 +335,27 @@ class LocalEngineeringProfileService(EngineeringProfileService):
             "project": {
                 "project_name": "Personal AI OS",
                 "version": "1.0.0",
-                "description": "Principal OS Kernel Layer Configurations."
+                "description": "Principal OS Kernel Layer Configurations.",
             },
             "coding": {
                 "language": "python",
                 "coding_standards": ["PEP8", "type-safety"],
-                "naming_conventions": {"class": "PascalCase", "function": "snake_case"}
+                "naming_conventions": {"class": "PascalCase", "function": "snake_case"},
             },
             "testing": {
                 "framework": "pytest",
                 "min_statement_coverage": 85.0,
-                "min_branch_coverage": 80.0
+                "min_branch_coverage": 80.0,
             },
-            "execution": {
-                "max_timeout_seconds": 600,
-                "sandbox_enabled": True
-            },
+            "execution": {"max_timeout_seconds": 600, "sandbox_enabled": True},
             "documentation": {
                 "format": "markdown",
                 "generate_api_docs": True,
                 "release_formatting_rules": {
                     "include_header_metadata": True,
-                    "use_code_blocks_for_versions": True
+                    "use_code_blocks_for_versions": True,
                 },
-                "markdown_preferences": {
-                    "list_style": "-",
-                    "bold_headers": True
-                },
+                "markdown_preferences": {"list_style": "-", "bold_headers": True},
                 "section_ordering": [
                     "Feature Summary",
                     "Bug Fix Summary",
@@ -368,38 +366,28 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                     "Future Improvements",
                     "Release Checklist",
                     "Deployment Notes",
-                    "Rollback Notes"
+                    "Rollback Notes",
                 ],
                 "naming_conventions": {
                     "release_notes": "RELEASE_NOTES_{version}.md",
                     "changelog": "CHANGELOG.md",
                     "migration_guide": "MIGRATION_GUIDE_{from}_TO_{to}.md",
-                    "upgrade_guide": "UPGRADE_GUIDE_{version}.md"
+                    "upgrade_guide": "UPGRADE_GUIDE_{version}.md",
                 },
                 "versioning_preferences": {
                     "supported_channels": ["alpha", "beta", "rc", "stable"],
-                    "strict_semver": True
-                }
+                    "strict_semver": True,
+                },
             },
-            "github": {
-                "org_name": "Anzar0904",
-                "repo_name": "Aios",
-                "default_branch": "main"
-            },
-            "release": {
-                "auto_release": False,
-                "versioning_scheme": "semver"
-            },
-            "automation": {
-                "cron_expression": "*/5 * * * *",
-                "max_retries": 3
-            },
+            "github": {"org_name": "Anzar0904", "repo_name": "Aios", "default_branch": "main"},
+            "release": {"auto_release": False, "versioning_scheme": "semver"},
+            "automation": {"cron_expression": "*/5 * * * *", "max_retries": 3},
             "workspace": {
                 "workspace_root": "/Users/anzarakhtar/aios",
-                "exclude_patterns": [".venv", "node_modules"]
-            }
+                "exclude_patterns": [".venv", "node_modules"],
+            },
         }
-        
+
         default_profile = self._serializer.deserialize(default_dict)
         policy = self._get_policy()
         if self._profile_repo:
@@ -408,11 +396,13 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                 if not existing:
                     res = self._profile_repo.save(self._serializer.serialize(default_profile))
                     if res.status != PersistenceStatus.SUCCESS:
-                        is_awaiting = (res.status == PersistenceStatus.AWAITING_RUNTIME_CONFIGURATION)
+                        is_awaiting = res.status == PersistenceStatus.AWAITING_RUNTIME_CONFIGURATION
                         if policy == PersistencePolicy.STRICT and not is_awaiting:
                             raise RuntimeError(f"Strict initialization failure: {res.message}")
                         else:
-                            logger.warning(f"Database error during initialize(): {res.message}. Using in-memory.")
+                            logger.warning(
+                                f"Database error during initialize(): {res.message}. Using in-memory."
+                            )
                             self._in_memory_registry.register("default", default_profile)
                     else:
                         self._in_memory_registry.register("default", default_profile)
@@ -433,7 +423,9 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                 if policy == PersistencePolicy.STRICT and not is_awaiting:
                     logger.error("Strict initialization database error.")
                     raise
-                logger.warning(f"Database error during initialize(): {e}. Using in-memory fallback.")
+                logger.warning(
+                    f"Database error during initialize(): {e}. Using in-memory fallback."
+                )
                 self._in_memory_registry.register("default", default_profile)
         else:
             self._in_memory_registry.register("default", default_profile)
@@ -457,21 +449,21 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                     "project": {
                         "project_name": data.get("project_name", ""),
                         "version": data.get("project_version", "1.0.0"),
-                        "description": data.get("project_description", "")
+                        "description": data.get("project_description", ""),
                     },
                     "coding": {
                         "language": data.get("language", "python"),
                         "coding_standards": data.get("coding_standards", []),
-                        "naming_conventions": data.get("naming_conventions", {})
+                        "naming_conventions": data.get("naming_conventions", {}),
                     },
                     "testing": {
                         "framework": data.get("testing_framework", "pytest"),
                         "min_statement_coverage": data.get("min_statement_coverage", 80.0),
-                        "min_branch_coverage": data.get("min_branch_coverage", 75.0)
+                        "min_branch_coverage": data.get("min_branch_coverage", 75.0),
                     },
                     "execution": {
                         "max_timeout_seconds": data.get("max_timeout_seconds", 300),
-                        "sandbox_enabled": data.get("sandbox_enabled", True)
+                        "sandbox_enabled": data.get("sandbox_enabled", True),
                     },
                     "documentation": {
                         "format": data.get("documentation_format", "markdown"),
@@ -480,26 +472,26 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                         "markdown_preferences": data.get("markdown_preferences", {}),
                         "section_ordering": data.get("section_ordering", []),
                         "naming_conventions": data.get("doc_naming_conventions", {}),
-                        "versioning_preferences": data.get("doc_versioning_preferences", {})
+                        "versioning_preferences": data.get("doc_versioning_preferences", {}),
                     },
                     "github": {
                         "org_name": data.get("github_org", ""),
                         "repo_name": data.get("github_repo", ""),
-                        "default_branch": data.get("github_default_branch", "main")
+                        "default_branch": data.get("github_default_branch", "main"),
                     },
                     "release": {
                         "auto_release": data.get("auto_release", False),
-                        "versioning_scheme": data.get("versioning_scheme", "semver")
+                        "versioning_scheme": data.get("versioning_scheme", "semver"),
                     },
                     "automation": {
                         "cron_expression": data.get("cron_expression", ""),
-                        "max_retries": data.get("max_retries", 3)
+                        "max_retries": data.get("max_retries", 3),
                     },
                     "workspace": {
                         "workspace_root": data.get("workspace_root", ""),
-                        "exclude_patterns": data.get("exclude_patterns", [])
+                        "exclude_patterns": data.get("exclude_patterns", []),
                     },
-                    "timestamp": data.get("timestamp", time.time())
+                    "timestamp": data.get("timestamp", time.time()),
                 }
                 profile = self._serializer.deserialize(mapped)
                 self._in_memory_registry.register(profile_id, profile)
@@ -507,7 +499,9 @@ class LocalEngineeringProfileService(EngineeringProfileService):
             except Exception as e:
                 if policy == PersistencePolicy.STRICT:
                     raise
-                logger.warning(f"Database error getting profile {profile_id}: {e}. Falling back to in-memory.")
+                logger.warning(
+                    f"Database error getting profile {profile_id}: {e}. Falling back to in-memory."
+                )
                 return self._in_memory_registry.get(profile_id)
 
         return self._in_memory_registry.get(profile_id)
@@ -550,7 +544,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                 "max_retries": profile.automation.max_retries,
                 "workspace_root": profile.workspace.workspace_root,
                 "exclude_patterns": profile.workspace.exclude_patterns,
-                "timestamp": profile.timestamp
+                "timestamp": profile.timestamp,
             }
             try:
                 res = self._profile_repo.save(mapped)
@@ -611,7 +605,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                     break
             if not target:
                 raise ValueError(f"Version {version} not found in profile history.")
-            
+
             mapped = {
                 "id": target["id"],
                 "workspace_id": target.get("workspace_id", ""),
@@ -642,7 +636,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                 "max_retries": target.get("max_retries", 3),
                 "workspace_root": target.get("workspace_root", ""),
                 "exclude_patterns": target.get("exclude_patterns", []),
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
             res = self._profile_repo.save(mapped)
             if res.status != PersistenceStatus.SUCCESS:
@@ -650,7 +644,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                     raise RuntimeError(f"Strict persistence rollback failure: {res.message}")
                 else:
                     logger.warning(f"Persistence best-effort rollback fallback: {res.message}")
-            
+
             p = self.get_profile(profile_id)
             if p:
                 self._in_memory_registry.register(profile_id, p)
@@ -669,7 +663,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
             f"Testing framework: {profile.testing.framework} (Target statement: {profile.testing.min_statement_coverage:.1f}%)\n"
             f"Default GitHub Branch: {profile.github.default_branch}"
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -678,8 +672,8 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                 session_id=profile.profile_id,
                 tags=["engineering_profile", "configuration"],
                 importance=2,
-                source_subsystem="profile_service"
-            )
+                source_subsystem="profile_service",
+            ),
         )
 
     def publish_profile_summary(self, profile: EngineeringProfile) -> None:
@@ -707,7 +701,7 @@ class LocalEngineeringProfileService(EngineeringProfileService):
                 unique_id=f"profile_summary_{profile.profile_id}",
                 timestamp=profile.timestamp,
                 source_subsystem="profile_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

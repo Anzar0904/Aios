@@ -41,5 +41,5 @@ class EngineeringGraph:
                     "file": filepath,
                     "docstring": cls.get("docstring", ""),
                     "methods": cls.get("methods", []),
-                    "bases": bases
+                    "bases": bases,
                 }

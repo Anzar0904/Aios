@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class ExecutionTarget:
     """Represents a test file, class, or method target for execution."""
+
     __test__ = False
     target_id: str
     file_path: str
@@ -18,6 +19,7 @@ class ExecutionTarget:
 @dataclass
 class ExecutionLog:
     """Represents a log line captured during execution."""
+
     __test__ = False
     timestamp: float
     level: str
@@ -27,6 +29,7 @@ class ExecutionLog:
 @dataclass
 class ExecutionMetrics:
     """Consolidates execution test count totals."""
+
     __test__ = False
     total_tests: int
     passed_tests: int
@@ -38,6 +41,7 @@ class ExecutionMetrics:
 @dataclass
 class ExecutionResult:
     """Assembled execution metrics outcome for a single test target execution."""
+
     __test__ = False
     target: ExecutionTarget
     success: bool
@@ -51,6 +55,7 @@ class ExecutionResult:
 @dataclass
 class ExecutionSummary:
     """Aggregated execution details for all execution targets run."""
+
     __test__ = False
     summary_id: str
     workspace_id: str
@@ -66,6 +71,7 @@ class ExecutionSummary:
 @dataclass
 class ExecutionSession:
     """Tracks active execution session state details."""
+
     __test__ = False
     session_id: str
     workspace_id: str
@@ -76,6 +82,7 @@ class ExecutionSession:
 
 class TestFrameworkAdapter(abc.ABC):
     """Abstract interface defining framework-specific adapters."""
+
     __test__ = False
 
     @property
@@ -92,6 +99,7 @@ class TestFrameworkAdapter(abc.ABC):
 
 class TestRunner(abc.ABC):
     """Standard execution runner orchestrating sessions."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -102,6 +110,7 @@ class TestRunner(abc.ABC):
 
 class TestExecutor(abc.ABC):
     """Primary logic engine managing runner instances."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -112,14 +121,12 @@ class TestExecutor(abc.ABC):
 
 class TestExecutionService(ServiceLifecycle, abc.ABC):
     """Coordinating service triggering execution runs, caching summaries, and publishing reports."""
+
     __test__ = False
 
     @abc.abstractmethod
     def execute_workspace_tests(
-        self,
-        workspace_id: str,
-        workspace_root: str,
-        targets: List[ExecutionTarget]
+        self, workspace_id: str, workspace_root: str, targets: List[ExecutionTarget]
     ) -> ExecutionSummary:
         """Triggers targeted execution flow inside workspace."""
         pass

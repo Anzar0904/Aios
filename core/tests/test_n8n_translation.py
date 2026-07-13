@@ -52,15 +52,21 @@ def mock_model_service():
 
 @pytest.fixture
 def dummy_workflow():
-    n_trig = WorkflowNode("n_trig", "Webhook Trigger", "trigger", {"trigger_type": "webhook", "path": "deploy-path"})
-    n_act = WorkflowNode("n_act", "HTTP Post", "action", {"action_type": "http_request", "url": "https://deploy.org"})
+    n_trig = WorkflowNode(
+        "n_trig", "Webhook Trigger", "trigger", {"trigger_type": "webhook", "path": "deploy-path"}
+    )
+    n_act = WorkflowNode(
+        "n_act", "HTTP Post", "action", {"action_type": "http_request", "url": "https://deploy.org"}
+    )
     edge = WorkflowEdge("e1", "n_trig", "n_act")
-    
+
     graph = MagicMock()
     graph.nodes = [n_trig, n_act]
     graph.edges = [edge]
-    
-    policy = WorkflowExecutionPolicy(max_retries=3, retry_delay_seconds=5, timeout_seconds=120, concurrency_limit=1)
+
+    policy = WorkflowExecutionPolicy(
+        max_retries=3, retry_delay_seconds=5, timeout_seconds=120, concurrency_limit=1
+    )
 
     return WorkflowDefinition(
         workflow_id="wf_deploy",
@@ -70,14 +76,14 @@ def dummy_workflow():
         actions=[],
         credentials=[],
         policy=policy,
-        metadata=WFMetadata(["deploy"])
+        metadata=WFMetadata(["deploy"]),
     )
 
 
 def test_ir_compilation(dummy_workflow):
     compiler = LocalWorkflowCompiler()
     ir = compiler.compile_definition_to_ir(dummy_workflow)
-    
+
     assert ir.workflow_id == "wf_deploy"
     assert ir.name == "Deploy Backend"
     assert len(ir.nodes) == 2
@@ -118,17 +124,17 @@ def test_validation_errors(dummy_workflow):
     assert len(errors) == 0
 
     # Introduce duplicate node ID
-    n8n_json["nodes"].append({
-        "id": "n_trig",
-        "name": "Duplicate Node",
-        "type": "n8n-nodes-base.manualTrigger"
-    })
+    n8n_json["nodes"].append(
+        {"id": "n_trig", "name": "Duplicate Node", "type": "n8n-nodes-base.manualTrigger"}
+    )
     errors = validator.validate_translation(ir, n8n_json)
     assert len(errors) > 0
     assert any("duplicate node id" in e.lower() for e in errors)
 
 
-def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_service, dummy_workflow):
+def test_workspace_integration(
+    tmp_path, mock_memory_service, mock_workspace_service, dummy_workflow
+):
     ws_id = "ws_test_trans"
     ws_root = str(tmp_path / ws_id)
     os.makedirs(ws_root, exist_ok=True)
@@ -139,28 +145,25 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    translator = LocalWorkflowTranslator(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    translator = LocalWorkflowTranslator(memory_service=mock_memory_service, registry=registry)
     translator.initialize()
 
     translator.translate_workflow(dummy_workflow, ws_id)
-    expected_report = os.path.join(ws_root, "docs", "automations", "TRANSLATION_REPORT_wf_deploy.md")
+    expected_report = os.path.join(
+        ws_root, "docs", "automations", "TRANSLATION_REPORT_wf_deploy.md"
+    )
     expected_json = os.path.join(ws_root, "docs", "automations", "N8N_WORKFLOW_wf_deploy.json")
 
     assert os.path.exists(expected_report)
     assert os.path.exists(expected_json)
-    
+
     with open(expected_report, "r") as f:
         content = f.read()
     assert "# n8n Translation Pipeline Execution Report" in content
 
 
 def test_memory_integration(mock_memory_service, dummy_workflow):
-    translator = LocalWorkflowTranslator(
-        memory_service=mock_memory_service
-    )
+    translator = LocalWorkflowTranslator(memory_service=mock_memory_service)
     translator.initialize()
 
     report = translator.translate_workflow(dummy_workflow, "ws_1")
@@ -178,10 +181,7 @@ def test_memory_integration(mock_memory_service, dummy_workflow):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    translator = LocalWorkflowTranslator(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
+    translator = LocalWorkflowTranslator(memory_service=mock_memory_service, knowledge_hub=mock_kh)
     translator.initialize()
 
     report = TranslationReport(
@@ -192,7 +192,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         connection_count=2,
         warnings=[],
         n8n_json_file_path="/workspace/target.json",
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     translator.publish_translation_report(report)
 

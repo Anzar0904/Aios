@@ -96,15 +96,17 @@ def test_career_profile_manager(mock_personal_service):
 
 def test_job_analyzer(mock_model_service, mock_personal_service):
     analyzer = LocalJobAnalyzer(mock_model_service, mock_personal_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "required_skills": ["Python", "System Design"],
-            "preferred_technologies": ["Kubernetes"],
-            "estimated_ats_keywords": ["Python Developer"],
-            "match_score": 85,
-            "recommended_improvements": ["Add Kubernetes cert"],
-        }),
+        content=json.dumps(
+            {
+                "required_skills": ["Python", "System Design"],
+                "preferred_technologies": ["Kubernetes"],
+                "estimated_ats_keywords": ["Python Developer"],
+                "match_score": 85,
+                "recommended_improvements": ["Add Kubernetes cert"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -117,13 +119,17 @@ def test_job_analyzer(mock_model_service, mock_personal_service):
 
 def test_resume_optimizer_tailoring(mock_model_service, mock_personal_service):
     optimizer = LocalResumeOptimizer(mock_model_service, mock_personal_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "summary": "Tailored senior profile with strong focus on Kubernetes and python.",
-            "tailored_experiences": ["Enhanced Python backend services scaling up to 10M requests."],
-            "suggested_project_ordering": ["SmartProject"],
-        }),
+        content=json.dumps(
+            {
+                "summary": "Tailored senior profile with strong focus on Kubernetes and python.",
+                "tailored_experiences": [
+                    "Enhanced Python backend services scaling up to 10M requests."
+                ],
+                "suggested_project_ordering": ["SmartProject"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -138,7 +144,7 @@ def test_resume_optimizer_tailoring(mock_model_service, mock_personal_service):
                 experiences=[],
                 projects=[ProjectReference(name="SmartProject", description="AI project")],
             )
-        ]
+        ],
     )
 
     new_version = optimizer.tailor_resume(resume, "Senior python dev role description.")
@@ -149,12 +155,14 @@ def test_resume_optimizer_tailoring(mock_model_service, mock_personal_service):
 
 def test_resume_optimizer_ats_keywords(mock_model_service, mock_personal_service):
     optimizer = LocalResumeOptimizer(mock_model_service, mock_personal_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "summary": "Optimized summary with Kubernetes",
-            "optimized_descriptions": ["Worked on Kubernetes scaling deployments"],
-        }),
+        content=json.dumps(
+            {
+                "summary": "Optimized summary with Kubernetes",
+                "optimized_descriptions": ["Worked on Kubernetes scaling deployments"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -162,7 +170,11 @@ def test_resume_optimizer_ats_keywords(mock_model_service, mock_personal_service
     base_version = ResumeVersion(
         version=1,
         summary="Plain Summary",
-        experiences=[Experience(company="Google", role="Engineer", start_date="2020", description="Plain experience")],
+        experiences=[
+            Experience(
+                company="Google", role="Engineer", start_date="2020", description="Plain experience"
+            )
+        ],
     )
 
     res = optimizer.optimize_ats(base_version, ["Kubernetes"])
@@ -172,14 +184,16 @@ def test_resume_optimizer_ats_keywords(mock_model_service, mock_personal_service
 
 def test_ats_analyzer(mock_model_service):
     analyzer = LocalATSAnalyzer(mock_model_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "ats_score": 90,
-            "matched_keywords": ["Python"],
-            "missing_keywords": ["Docker"],
-            "recommendations": ["Add Docker project details"],
-        }),
+        content=json.dumps(
+            {
+                "ats_score": 90,
+                "matched_keywords": ["Python"],
+                "missing_keywords": ["Docker"],
+                "recommendations": ["Add Docker project details"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -192,7 +206,7 @@ def test_ats_analyzer(mock_model_service):
 
 def test_cover_letter_generator(mock_model_service):
     generator = LocalCoverLetterGenerator(mock_model_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
         content="Dear Hiring Manager, this is my cover letter.",
         model_name="mock-model",
@@ -206,15 +220,17 @@ def test_cover_letter_generator(mock_model_service):
 
 def test_portfolio_analyzer(mock_model_service, mock_github_service):
     analyzer = LocalPortfolioAnalyzer(mock_model_service, mock_github_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "strongest_work": ["SmartProject"],
-            "ranked_projects": ["SmartProject"],
-            "readme_improvements": ["Add install script section"],
-            "documentation_gaps": ["No API docs found"],
-            "portfolio_summary_description": "Strong developer focusing on AI.",
-        }),
+        content=json.dumps(
+            {
+                "strongest_work": ["SmartProject"],
+                "ranked_projects": ["SmartProject"],
+                "readme_improvements": ["Add install script section"],
+                "documentation_gaps": ["No API docs found"],
+                "portfolio_summary_description": "Strong developer focusing on AI.",
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -237,7 +253,7 @@ def test_application_tracker(mock_personal_service):
         notes="Nice interview prep",
     )
     tracker.add_application(app)
-    
+
     apps = tracker.list_applications()
     assert len(apps) == 1
     assert apps[0].company == "Hooli"
@@ -249,13 +265,15 @@ def test_application_tracker(mock_personal_service):
 
 def test_interview_coach(mock_model_service):
     coach = LocalInterviewCoach(mock_model_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "company_prep": "Value speed and scalability",
-            "weakness_analysis": "Focus on high throughput design patterns",
-            "learning_roadmap": ["Step 1: scale-out design", "Step 2: microservices"],
-        }),
+        content=json.dumps(
+            {
+                "company_prep": "Value speed and scalability",
+                "weakness_analysis": "Focus on high throughput design patterns",
+                "learning_roadmap": ["Step 1: scale-out design", "Step 2: microservices"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -276,15 +294,17 @@ def test_interview_coach(mock_model_service):
 
 def test_career_planner(mock_model_service, mock_personal_service):
     planner = LocalCareerPlanner(mock_model_service, mock_personal_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "evaluated_goals": "Target date is realistic",
-            "missing_skills_analysis": "Needs leadership training",
-            "career_alternatives": ["Product Manager", "Architect"],
-            "growth_milestones": ["Get cert", "Lead project"],
-            "estimated_impact": 95,
-        }),
+        content=json.dumps(
+            {
+                "evaluated_goals": "Target date is realistic",
+                "missing_skills_analysis": "Needs leadership training",
+                "career_alternatives": ["Product Manager", "Architect"],
+                "growth_milestones": ["Get cert", "Lead project"],
+                "estimated_impact": 95,
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -296,14 +316,16 @@ def test_career_planner(mock_model_service, mock_personal_service):
 
 def test_job_matcher(mock_model_service, mock_personal_service):
     matcher = LocalJobMatcher(mock_model_service, mock_personal_service)
-    
+
     mock_model_service.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "score": 90,
-            "matched": ["System Design"],
-            "gap": ["None"],
-            "recommended_action": "Apply now!",
-        }),
+        content=json.dumps(
+            {
+                "score": 90,
+                "matched": ["System Design"],
+                "gap": ["None"],
+                "recommended_action": "Apply now!",
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )

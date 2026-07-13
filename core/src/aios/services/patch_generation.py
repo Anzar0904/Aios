@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class PatchMetadata:
     """Tracks patch metadata, identifiers, and validations."""
+
     patch_id: str
     file_path: str
     timestamp: float
@@ -19,6 +20,7 @@ class PatchMetadata:
 @dataclass
 class PatchStatistics:
     """Consolidates modification metrics across code patches."""
+
     lines_added: int
     lines_removed: int
     files_modified: int
@@ -28,6 +30,7 @@ class PatchStatistics:
 @dataclass
 class PatchPreview:
     """Human-readable preview of planned code alterations."""
+
     preview_id: str
     file_path: str
     diff_content: str
@@ -37,6 +40,7 @@ class PatchPreview:
 @dataclass
 class PatchBundle:
     """Aggregates multiple file diffs and metadata."""
+
     bundle_id: str
     patches: Dict[str, str]  # file_path -> unified_diff_content
     metadata: Dict[str, PatchMetadata]
@@ -47,6 +51,7 @@ class PatchBundle:
 @dataclass
 class ReviewPackage:
     """Consolidated package for developer code review before merge approval."""
+
     package_id: str
     workspace_id: str
     bundle: PatchBundle
@@ -70,10 +75,7 @@ class PatchGenerator(abc.ABC):
 
     @abc.abstractmethod
     def generate_patch_bundle(
-        self,
-        workspace_root: str,
-        original_repo_root: str,
-        affected_files: List[str]
+        self, workspace_root: str, original_repo_root: str, affected_files: List[str]
     ) -> PatchBundle:
         """Generates a PatchBundle containing all changed file diffs."""
         pass
@@ -93,9 +95,7 @@ class ConflictDetector(abc.ABC):
 
     @abc.abstractmethod
     def detect_conflicts(
-        self,
-        bundle: PatchBundle,
-        original_repo_root: str
+        self, bundle: PatchBundle, original_repo_root: str
     ) -> tuple[List[str], List[str]]:
         """Checks for merge conflicts and planning inconsistencies."""
         pass
@@ -124,7 +124,7 @@ class PatchGenerationService(ServiceLifecycle, abc.ABC):
         workspace_id: str,
         original_repo_root: str,
         workspace_root: str,
-        affected_files: List[str]
+        affected_files: List[str],
     ) -> ReviewPackage:
         """Assembles a full review package containing preview, stats, and conflict checks."""
         pass

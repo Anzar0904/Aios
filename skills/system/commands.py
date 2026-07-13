@@ -22,6 +22,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
     if kernel:
         try:
             from aios.services.context import ContextService
+
             ctx_svc = kernel.registry.get(ContextService)
             ctx = ctx_svc.get_current_context()
             if ctx:
@@ -30,11 +31,13 @@ def register_commands(registry, kernel, conv_manager) -> None:
             pass
 
     from aios.services.task import ProgressTracker, TaskHistory
+
     task_store_dir = Path(workspace_root) / ".aios_tasks"
     task_history = TaskHistory(task_store_dir)
     progress_tracker = ProgressTracker()
 
     from aios.services.action.history import ActionHistory
+
     action_store_dir = Path(workspace_root) / ".aios_actions"
     action_history = ActionHistory(action_store_dir)
 
@@ -62,9 +65,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
             required_tools=[],
             example_usage="run task Review my repository and generate release notes",
         ),
-        lambda args: handle_run_task(
-            registry, kernel, task_history, progress_tracker, args
-        ),
+        lambda args: handle_run_task(registry, kernel, task_history, progress_tracker, args),
     )
 
     registry.register_command(
@@ -100,9 +101,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
             required_tools=[],
             example_usage="task resume <task_id>",
         ),
-        lambda args: handle_task_resume(
-            registry, kernel, task_history, progress_tracker, args
-        ),
+        lambda args: handle_task_resume(registry, kernel, task_history, progress_tracker, args),
     )
 
     registry.register_command(

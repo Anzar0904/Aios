@@ -23,8 +23,8 @@
 - **Untracked Files**: 0
 
 ### Recent Commits
+- 9539e1c AI OS v1.0.0 - Initial public release
 - 54ad4d2 fix: resolve sys variable scope UnboundLocalError in dashboard subcommand
 - d07c121 chore: release version 1.0.0 (Sprint 31 & 32)
 - 52a7cb4 feat: implement Approval Engine & Governance middleware (Sprint 30)
 - 78b60a4 feat: implement Business Intelligence subsystem (Sprint 29)
-- 040256b feat: implement Project Intelligence subsystem (Sprint 28)

@@ -44,18 +44,28 @@ def mock_model_service():
 
 def test_state_machine_valid_transitions():
     validator = LocalApprovalHistoryValidator()
-    
+
     # Valid transitions
     assert validator.validate_transition(ApprovalState.DRAFT, ApprovalState.SUBMITTED) is True
-    assert validator.validate_transition(ApprovalState.SUBMITTED, ApprovalState.UNDER_REVIEW) is True
+    assert (
+        validator.validate_transition(ApprovalState.SUBMITTED, ApprovalState.UNDER_REVIEW) is True
+    )
     assert validator.validate_transition(ApprovalState.UNDER_REVIEW, ApprovalState.APPROVED) is True
-    assert validator.validate_transition(ApprovalState.UNDER_REVIEW, ApprovalState.CHANGES_REQUESTED) is True
-    assert validator.validate_transition(ApprovalState.CHANGES_REQUESTED, ApprovalState.UPDATED) is True
+    assert (
+        validator.validate_transition(ApprovalState.UNDER_REVIEW, ApprovalState.CHANGES_REQUESTED)
+        is True
+    )
+    assert (
+        validator.validate_transition(ApprovalState.CHANGES_REQUESTED, ApprovalState.UPDATED)
+        is True
+    )
     assert validator.validate_transition(ApprovalState.UPDATED, ApprovalState.UNDER_REVIEW) is True
-    
+
     # Invalid transitions
     assert validator.validate_transition(ApprovalState.DRAFT, ApprovalState.APPROVED) is False
-    assert validator.validate_transition(ApprovalState.APPROVED, ApprovalState.UNDER_REVIEW) is False
+    assert (
+        validator.validate_transition(ApprovalState.APPROVED, ApprovalState.UNDER_REVIEW) is False
+    )
     assert validator.validate_transition(ApprovalState.REJECTED, ApprovalState.SUBMITTED) is False
 
 
@@ -81,9 +91,33 @@ def test_history_service_transitions(mock_memory_service):
 def test_analyzer_statistics_and_trends():
     analyzer = LocalReviewHistoryAnalyzerWrapper()
     records = [
-        ApprovalDecisionRecord("rec_1", "sess_1", "ws_1", ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, 100.0),
-        ApprovalDecisionRecord("rec_2", "sess_2", "ws_1", ApprovalState.CHANGES_REQUESTED, 0.7, 75.0, 70.0, True, 1, 110.0),
-        ApprovalDecisionRecord("rec_3", "sess_3", "ws_1", ApprovalState.APPROVED_WITH_CONDITIONS, 0.95, 95.0, 90.0, False, 3, 120.0),
+        ApprovalDecisionRecord(
+            "rec_1", "sess_1", "ws_1", ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, 100.0
+        ),
+        ApprovalDecisionRecord(
+            "rec_2",
+            "sess_2",
+            "ws_1",
+            ApprovalState.CHANGES_REQUESTED,
+            0.7,
+            75.0,
+            70.0,
+            True,
+            1,
+            110.0,
+        ),
+        ApprovalDecisionRecord(
+            "rec_3",
+            "sess_3",
+            "ws_1",
+            ApprovalState.APPROVED_WITH_CONDITIONS,
+            0.95,
+            95.0,
+            90.0,
+            False,
+            3,
+            120.0,
+        ),
     ]
 
     # Stats
@@ -106,11 +140,15 @@ def test_analyzer_pattern_discovery():
     analyzer = LocalReviewHistoryAnalyzerWrapper()
     entries = [
         ApprovalHistoryEntry("ent_1", "sess_1", "ws_1", [], {"documentation_incomplete": True}),
-        ApprovalHistoryEntry("ent_2", "sess_2", "ws_1", [], {"documentation_incomplete": True})
+        ApprovalHistoryEntry("ent_2", "sess_2", "ws_1", [], {"documentation_incomplete": True}),
     ]
     records = [
-        ApprovalDecisionRecord("rec_1", "sess_1", "ws_1", ApprovalState.REJECTED, 0.6, 50.0, 45.0, True, 1, 100.0),
-        ApprovalDecisionRecord("rec_2", "sess_2", "ws_1", ApprovalState.REJECTED, 0.6, 55.0, 40.0, True, 1, 110.0),
+        ApprovalDecisionRecord(
+            "rec_1", "sess_1", "ws_1", ApprovalState.REJECTED, 0.6, 50.0, 45.0, True, 1, 100.0
+        ),
+        ApprovalDecisionRecord(
+            "rec_2", "sess_2", "ws_1", ApprovalState.REJECTED, 0.6, 55.0, 40.0, True, 1, 110.0
+        ),
     ]
 
     patterns = analyzer.discover_patterns(entries, records)
@@ -131,18 +169,17 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalApprovalHistoryService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalApprovalHistoryService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
-    record = ApprovalDecisionRecord("rec_1", "sess_1", ws_id, ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time())
+    record = ApprovalDecisionRecord(
+        "rec_1", "sess_1", ws_id, ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time()
+    )
     service.record_decision(record)
-    
+
     service.run_history_analysis(ws_id)
     expected_file = os.path.join(ws_root, "docs", "histories", f"APPROVAL_HISTORY_{ws_id}.md")
-    
+
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
         content = f.read()
@@ -150,12 +187,12 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalApprovalHistoryService(
-        memory_service=mock_memory_service
-    )
+    service = LocalApprovalHistoryService(memory_service=mock_memory_service)
     service.initialize()
 
-    record = ApprovalDecisionRecord("rec_1", "sess_1", "ws_1", ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time())
+    record = ApprovalDecisionRecord(
+        "rec_1", "sess_1", "ws_1", ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time()
+    )
     service.record_decision(record)
 
     service.store_history_summary("ws_1")
@@ -172,18 +209,12 @@ def test_memory_integration(mock_memory_service):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    service = LocalApprovalHistoryService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
+    service = LocalApprovalHistoryService(memory_service=mock_memory_service, knowledge_hub=mock_kh)
     service.initialize()
 
     stats = ApprovalStatistics(1, 1, 0, 0, 0.9, 90.0, 80.0)
     report = ApprovalHistoryReport(
-        report_id="rep_hist_ws_1",
-        workspace_id="ws_1",
-        statistics=stats,
-        timestamp=time.time()
+        report_id="rep_hist_ws_1", workspace_id="ws_1", statistics=stats, timestamp=time.time()
     )
     service.publish_history_report(report)
 
@@ -204,11 +235,14 @@ def test_backward_compatibility(mock_memory_service):
     service = CustomHistoryService(memory_service=mock_memory_service)
     service.initialize()
 
-    record = ApprovalDecisionRecord("rec_1", "sess_1", "ws_1", ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time())
+    record = ApprovalDecisionRecord(
+        "rec_1", "sess_1", "ws_1", ApprovalState.APPROVED, 0.9, 85.0, 80.0, False, 2, time.time()
+    )
     service.record_decision(record)
     assert record.metadata_custom == "intercepted"
 
 
 class LocalReviewHistoryAnalyzerWrapper(LocalApprovalHistoryAnalyzer):
     """Wrapper class assisting test checks on analyzer logic."""
+
     pass

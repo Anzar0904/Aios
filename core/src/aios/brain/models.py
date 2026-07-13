@@ -48,7 +48,6 @@ class WorkflowStep:
     parallel: bool = False
 
 
-
 @dataclass
 class Workflow:
     workflow_id: str

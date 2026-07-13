@@ -62,7 +62,6 @@ class PersistenceResult:
         self.payload = payload
 
 
-
 class PersistenceConfigurationService(ServiceLifecycle):
     """Configuration management service for the Persistence Platform."""
 
@@ -71,12 +70,18 @@ class PersistenceConfigurationService(ServiceLifecycle):
         self.provider_name: str = "postgresql"
         # Discovery of standard environment variables
         self.host: str = os.getenv("POSTGRES_HOST", "")
-        self.port: int = int(os.getenv("POSTGRES_PORT", "5432")) if os.getenv("POSTGRES_PORT") else 5432
+        self.port: int = (
+            int(os.getenv("POSTGRES_PORT", "5432")) if os.getenv("POSTGRES_PORT") else 5432
+        )
         self.database: str = os.getenv("POSTGRES_DATABASE", "")
         self.user: str = os.getenv("POSTGRES_USER", "")
         self.password: str = os.getenv("POSTGRES_PASSWORD", "")
         self.sslmode: str = os.getenv("POSTGRES_SSLMODE", "prefer")
-        self.connection_timeout: int = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5")) if os.getenv("POSTGRES_CONNECT_TIMEOUT") else 5
+        self.connection_timeout: int = (
+            int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5"))
+            if os.getenv("POSTGRES_CONNECT_TIMEOUT")
+            else 5
+        )
         self.max_retries: int = 3
         self.pool_min_size: int = 2
         self.pool_max_size: int = 10
@@ -90,7 +95,7 @@ class TransportResult:
         self,
         rows: List[Dict[str, Any]],
         last_inserted_id: Optional[Any] = None,
-        rows_affected: int = 0
+        rows_affected: int = 0,
     ) -> None:
         self.rows = rows
         self.last_inserted_id = last_inserted_id
@@ -109,10 +114,7 @@ class TransportHealth:
     """Runtime health status representing connection state, latency, and diagnostics."""
 
     def __init__(
-        self,
-        is_alive: bool,
-        latency_ms: float,
-        error_message: Optional[str] = None
+        self, is_alive: bool, latency_ms: float, error_message: Optional[str] = None
     ) -> None:
         self.is_alive = is_alive
         self.latency_ms = latency_ms
@@ -149,6 +151,7 @@ class TransportTransaction(abc.ABC):
 
 class DatabaseTransport(abc.ABC):
     """Abstract interface exposing the low-level database transport engine."""
+
     placeholder = "?"
 
     def __init__(self, config: PersistenceConfigurationService) -> None:
@@ -205,7 +208,9 @@ class TransportFactory:
         """Registers a DatabaseTransport class under a given name."""
         self._transports[name] = transport_cls
 
-    def create_transport(self, name: str, config: PersistenceConfigurationService) -> DatabaseTransport:
+    def create_transport(
+        self, name: str, config: PersistenceConfigurationService
+    ) -> DatabaseTransport:
         """Creates an instance of the target DatabaseTransport class."""
         transport_cls = self._transports.get(name)
         if transport_cls is None:
@@ -867,133 +872,169 @@ class AIProviderRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, provider: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, provider_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, provider_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderCapabilityRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, capabilities: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, capability_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, capability_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderHealthRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, health: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, health_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, health_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderTelemetryRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, telemetry: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, telemetry_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, telemetry_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderStatisticsRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, statistics: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, statistics_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, statistics_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderQuotaRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, quota: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, quota_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, quota_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderRoutingRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, routing: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, routing_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, routing_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderSessionRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, session: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, session_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, session_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderCheckpointRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, checkpoint: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, checkpoint_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, checkpoint_id: str) -> PersistenceResult:
         pass
+
 
 class ProviderFailoverRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, failover: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, failover_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, failover_id: str) -> PersistenceResult:
         pass
+
 
 class AIUsageStatisticsRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, usage: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, usage_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, usage_id: str) -> PersistenceResult:
         pass
+
 
 class AIMemoryRepository(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def save(self, memory: Dict[str, Any]) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def get(self, memory_id: str) -> PersistenceResult:
         pass
+
     @abc.abstractmethod
     def delete(self, memory_id: str) -> PersistenceResult:
         pass
+
 
 class AIMemoryPersistenceService(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
@@ -1194,11 +1235,15 @@ class CacheRebuildService(ServiceLifecycle, abc.ABC):
 
 class CacheStatisticsCollector(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def record_hit(self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None) -> None:
+    def record_hit(
+        self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None
+    ) -> None:
         pass
 
     @abc.abstractmethod
-    def record_miss(self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None) -> None:
+    def record_miss(
+        self, subsystem: str, latency_ms: float, correlation_id: Optional[str] = None
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -1238,7 +1283,9 @@ class CacheDiagnostics(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify cache config") -> None:
+    def log_error(
+        self, message: str, severity: str = "ERROR", remediation: str = "Verify cache config"
+    ) -> None:
         pass
 
 
@@ -1256,7 +1303,7 @@ class RedisCacheService(ServiceLifecycle, abc.ABC):
         entity_id: str,
         fetch_func: Callable[[], Any],
         policy: Optional[CachePolicy] = None,
-        ttl: Optional[int] = None
+        ttl: Optional[int] = None,
     ) -> Any:
         pass
 
@@ -1267,7 +1314,7 @@ class RedisCacheService(ServiceLifecycle, abc.ABC):
         entity_id: str,
         value: Any,
         policy: Optional[CachePolicy] = None,
-        ttl: Optional[int] = None
+        ttl: Optional[int] = None,
     ) -> bool:
         pass
 
@@ -1293,7 +1340,7 @@ class SessionRegistry(ServiceLifecycle, abc.ABC):
         recovery_strategy: str,
         redis_prefix: str,
         source_of_truth: Optional[str] = None,
-        heartbeat_required: bool = False
+        heartbeat_required: bool = False,
     ) -> None:
         pass
 
@@ -1323,9 +1370,7 @@ class SessionRecoveryManager(ServiceLifecycle, abc.ABC):
 
     @abc.abstractmethod
     def register_recovery_handler(
-        self,
-        session_type: str,
-        handler: Callable[[str], Optional[Dict[str, Any]]]
+        self, session_type: str, handler: Callable[[str], Optional[Dict[str, Any]]]
     ) -> None:
         pass
 
@@ -1340,7 +1385,9 @@ class SessionStatisticsCollector(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def record_read(self, session_type: str, hit: bool, correlation_id: Optional[str] = None) -> None:
+    def record_read(
+        self, session_type: str, hit: bool, correlation_id: Optional[str] = None
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -1388,7 +1435,12 @@ class SessionDiagnostics(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify session configuration") -> None:
+    def log_error(
+        self,
+        message: str,
+        severity: str = "ERROR",
+        remediation: str = "Verify session configuration",
+    ) -> None:
         pass
 
 
@@ -1406,7 +1458,7 @@ class SessionStore(ServiceLifecycle, abc.ABC):
         session_id: str,
         data: Dict[str, Any],
         workspace_id: Optional[str] = None,
-        project_id: Optional[str] = None
+        project_id: Optional[str] = None,
     ) -> bool:
         pass
 
@@ -1439,7 +1491,7 @@ class SessionManager(ServiceLifecycle, abc.ABC):
         session_id: str,
         data: Dict[str, Any],
         workspace_id: Optional[str] = None,
-        project_id: Optional[str] = None
+        project_id: Optional[str] = None,
     ) -> bool:
         pass
 
@@ -1497,7 +1549,7 @@ class LockRegistry(ServiceLifecycle, abc.ABC):
         timeout: float,
         recovery_strategy: str,
         deadlock_rules: Dict[str, Any],
-        retry_policy: Dict[str, Any]
+        retry_policy: Dict[str, Any],
     ) -> None:
         pass
 
@@ -1518,7 +1570,7 @@ class LockLeaseManager(ServiceLifecycle, abc.ABC):
         lock_id: str,
         owner_id: str,
         policy: LockPolicy,
-        lease_duration: Optional[float] = None
+        lease_duration: Optional[float] = None,
     ) -> bool:
         pass
 
@@ -1579,7 +1631,9 @@ class MutexManager(ServiceLifecycle, abc.ABC):
 
 class CoordinationStatisticsCollector(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def record_acquisition(self, lock_type: str, policy: LockPolicy, success: bool, wait_time_ms: float) -> None:
+    def record_acquisition(
+        self, lock_type: str, policy: LockPolicy, success: bool, wait_time_ms: float
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -1619,7 +1673,9 @@ class CoordinationDiagnostics(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify configuration") -> None:
+    def log_error(
+        self, message: str, severity: str = "ERROR", remediation: str = "Verify configuration"
+    ) -> None:
         pass
 
 
@@ -1638,7 +1694,7 @@ class DistributedLockManager(ServiceLifecycle, abc.ABC):
         owner_id: str,
         policy: LockPolicy,
         lease_duration: Optional[float] = None,
-        timeout: Optional[float] = None
+        timeout: Optional[float] = None,
     ) -> bool:
         pass
 
@@ -1690,7 +1746,7 @@ class QueueRegistry(ServiceLifecycle, abc.ABC):
         dlq_name: str,
         worker_type: str,
         concurrency_limit: int,
-        recovery_strategy: str
+        recovery_strategy: str,
     ) -> None:
         pass
 
@@ -1711,7 +1767,7 @@ class QueueManager(ServiceLifecycle, abc.ABC):
         job_id: str,
         payload: Dict[str, Any],
         priority: Optional[QueuePriority] = None,
-        delay: float = 0.0
+        delay: float = 0.0,
     ) -> bool:
         pass
 
@@ -1834,7 +1890,12 @@ class QueueDiagnostics(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Verify queue configurations") -> None:
+    def log_error(
+        self,
+        message: str,
+        severity: str = "ERROR",
+        remediation: str = "Verify queue configurations",
+    ) -> None:
         pass
 
 
@@ -1871,7 +1932,9 @@ class JobState(enum.Enum):
 
 class JobStateMachine(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def transition_to(self, job_id: str, new_state: JobState, metadata: Optional[Dict[str, Any]] = None) -> bool:
+    def transition_to(
+        self, job_id: str, new_state: JobState, metadata: Optional[Dict[str, Any]] = None
+    ) -> bool:
         pass
 
     @abc.abstractmethod
@@ -1891,7 +1954,7 @@ class QuotaRegistry(ServiceLifecycle, abc.ABC):
         burst_size: int,
         window_duration: float,
         fallback_strategy: str,
-        sync_policy: str
+        sync_policy: str,
     ) -> None:
         pass
 
@@ -1970,7 +2033,9 @@ class RateLimitDiagnostics(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Check quota settings") -> None:
+    def log_error(
+        self, message: str, severity: str = "ERROR", remediation: str = "Check quota settings"
+    ) -> None:
         pass
 
 
@@ -2036,7 +2101,9 @@ class RedisRuntimeDiagnostics(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Check Redis configuration") -> None:
+    def log_error(
+        self, message: str, severity: str = "ERROR", remediation: str = "Check Redis configuration"
+    ) -> None:
         pass
 
 
@@ -2050,7 +2117,6 @@ class RedisRuntimeReporter(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
     def generate_report(self) -> str:
         pass
-
 
 
 class RedisRuntimeValidator(ServiceLifecycle, abc.ABC):
@@ -2134,7 +2200,7 @@ class QdrantProvider(ServiceLifecycle, abc.ABC):
         vector_size: int,
         distance: str,
         on_disk_payload: bool = True,
-        quantization_config: Optional[Dict[str, Any]] = None
+        quantization_config: Optional[Dict[str, Any]] = None,
     ) -> bool:
         pass
 
@@ -2161,7 +2227,7 @@ class QdrantProvider(ServiceLifecycle, abc.ABC):
         vector: List[float],
         filter_query: Optional[Dict[str, Any]] = None,
         limit: int = 5,
-        score_threshold: Optional[float] = None
+        score_threshold: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         pass
 
@@ -2258,7 +2324,9 @@ class QdrantDiagnosticsEngine(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def log_error(self, message: str, severity: str = "ERROR", remediation: str = "Check Qdrant configuration") -> None:
+    def log_error(
+        self, message: str, severity: str = "ERROR", remediation: str = "Check Qdrant configuration"
+    ) -> None:
         pass
 
 
@@ -2459,7 +2527,9 @@ class ContextAssembly:
 
 class ContextBuilder(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def rank_candidates(self, candidates: List[ContextCandidate], objective: str) -> List[ContextRanking]:
+    def rank_candidates(
+        self, candidates: List[ContextCandidate], objective: str
+    ) -> List[ContextRanking]:
         pass
 
     @abc.abstractmethod
@@ -2467,7 +2537,9 @@ class ContextBuilder(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def assemble_context(self, candidates: List[ContextCandidate], token_budget: int) -> ContextAssembly:
+    def assemble_context(
+        self, candidates: List[ContextCandidate], token_budget: int
+    ) -> ContextAssembly:
         pass
 
 
@@ -2549,7 +2621,9 @@ class SemanticSearchService(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def cross_collection_search(self, query: SemanticQuery, collections: List[str]) -> List[SemanticResult]:
+    def cross_collection_search(
+        self, query: SemanticQuery, collections: List[str]
+    ) -> List[SemanticResult]:
         pass
 
     @abc.abstractmethod
@@ -2567,24 +2641,26 @@ class SemanticSearchService(ServiceLifecycle, abc.ABC):
 
 @dataclass
 class QueryAnalysis:
-    intent: str                              # question|documentation|code|engineering|research|conversation|automation|configuration
-    domains: List[str]                       # list of matching domain names
-    complexity: str                          # simple|moderate|complex
+    intent: str  # question|documentation|code|engineering|research|conversation|automation|configuration
+    domains: List[str]  # list of matching domain names
+    complexity: str  # simple|moderate|complex
     workspace_id: Optional[str] = None
     project_id: Optional[str] = None
     strategy: Dict[str, Any] = field(default_factory=dict)
     # Enhanced fields for Milestone 5 Hybrid Retrieval
-    search_scope: str = "global"            # global|workspace|project|collection
+    search_scope: str = "global"  # global|workspace|project|collection
     collection_candidates: List[str] = field(default_factory=list)
-    retrieval_strategy: str = "hybrid"      # hybrid|semantic|lexical|ensemble
-    confidence: float = 1.0                 # 0.0-1.0 classification confidence
+    retrieval_strategy: str = "hybrid"  # hybrid|semantic|lexical|ensemble
+    confidence: float = 1.0  # 0.0-1.0 classification confidence
     estimated_complexity: str = "standard"  # quick|standard|deep
     intent_signals: List[str] = field(default_factory=list)  # raw signals
 
 
 class QueryAnalysisService(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def analyze_query(self, query_text: str, context_metadata: Optional[Dict[str, Any]] = None) -> QueryAnalysis:
+    def analyze_query(
+        self, query_text: str, context_metadata: Optional[Dict[str, Any]] = None
+    ) -> QueryAnalysis:
         pass
 
     @abc.abstractmethod
@@ -2619,7 +2695,9 @@ class RetrievalCandidate:
 
 class CandidateRanker(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def rank_candidates(self, candidates: List[RetrievalCandidate], weights: Optional[Dict[str, float]] = None) -> List[RetrievalCandidate]:
+    def rank_candidates(
+        self, candidates: List[RetrievalCandidate], weights: Optional[Dict[str, float]] = None
+    ) -> List[RetrievalCandidate]:
         pass
 
     @abc.abstractmethod
@@ -2641,11 +2719,15 @@ class ContextAssemblyResult:
 
 class ContextOptimizer(ServiceLifecycle, abc.ABC):
     @abc.abstractmethod
-    def optimize_context(self, candidates: List[RetrievalCandidate], token_budget: int) -> ContextAssemblyResult:
+    def optimize_context(
+        self, candidates: List[RetrievalCandidate], token_budget: int
+    ) -> ContextAssemblyResult:
         pass
 
     @abc.abstractmethod
-    def merge_overlapping_chunks(self, candidates: List[RetrievalCandidate]) -> List[RetrievalCandidate]:
+    def merge_overlapping_chunks(
+        self, candidates: List[RetrievalCandidate]
+    ) -> List[RetrievalCandidate]:
         pass
 
     @abc.abstractmethod
@@ -2659,7 +2741,9 @@ class RetrievalCache(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def set_query_results(self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300) -> None:
+    def set_query_results(
+        self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -2667,7 +2751,9 @@ class RetrievalCache(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def set_candidate_results(self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300) -> None:
+    def set_candidate_results(
+        self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -2675,7 +2761,9 @@ class RetrievalCache(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def set_ranking_results(self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300) -> None:
+    def set_ranking_results(
+        self, cache_key: str, results: List[RetrievalCandidate], ttl: int = 300
+    ) -> None:
         pass
 
     @abc.abstractmethod
@@ -2703,7 +2791,7 @@ class HybridRetrievalService(ServiceLifecycle, abc.ABC):
         workspace_id: Optional[str] = None,
         project_id: Optional[str] = None,
         token_budget: int = 4000,
-        filter_query: Optional[Dict[str, Any]] = None
+        filter_query: Optional[Dict[str, Any]] = None,
     ) -> ContextAssemblyResult:
         pass
 
@@ -2755,7 +2843,7 @@ class VectorMemoryRepository(ServiceLifecycle, abc.ABC):
         vector: List[float],
         filter_query: Optional[Dict[str, Any]] = None,
         limit: int = 5,
-        score_threshold: Optional[float] = None
+        score_threshold: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         pass
 
@@ -2829,7 +2917,7 @@ class SemanticMemoryManager(ServiceLifecycle, abc.ABC):
         text: str,
         metadata: Dict[str, Any],
         tags: List[str],
-        importance_override: Optional[float] = None
+        importance_override: Optional[float] = None,
     ) -> bool:
         pass
 
@@ -2840,7 +2928,7 @@ class SemanticMemoryManager(ServiceLifecycle, abc.ABC):
         query_text: str,
         filter_query: Optional[Dict[str, Any]] = None,
         limit: int = 5,
-        score_threshold: Optional[float] = None
+        score_threshold: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         pass
 
@@ -2959,15 +3047,3 @@ class KnowledgeNode:
         """Deserializes a KnowledgeNode from a JSON string."""
         data = json.loads(json_str)
         return cls.from_dict(data)
-
-
-
-
-
-
-
-
-
-
-
-

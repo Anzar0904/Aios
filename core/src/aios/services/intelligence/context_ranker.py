@@ -34,7 +34,7 @@ class ContextRanker:
                 )
             else:
                 selected["directory_tree"] = tree
-                
+
         # 2. Git Status and Git Diff
         git_keywords = ["git", "diff", "commit", "release", "security", "change", "review"]
         if any(kw in action_lower or kw in query_lower for kw in git_keywords):
@@ -47,12 +47,12 @@ class ContextRanker:
             selected["git_diff"] = "Omitted for context focus."
             selected["git_diff_cached"] = "Omitted for context focus."
             selected["last_commits"] = full_analysis.get("last_commits", [])[:3]
-            
+
         # 3. TODOs
         todo_keywords = ["todo", "fixme", "smell", "repository", "quality"]
         if any(kw in action_lower or kw in query_lower for kw in todo_keywords):
             selected["open_todos"] = full_analysis.get("open_todos", "")
         else:
             selected["open_todos"] = "Omitted for context focus."
-            
+
         return selected

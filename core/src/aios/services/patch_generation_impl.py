@@ -37,12 +37,9 @@ class LocalDiffGenerator(DiffGenerator):
     def generate_diff(self, original_content: str, modified_content: str, file_path: str) -> str:
         original_lines = original_content.splitlines(keepends=True)
         modified_lines = modified_content.splitlines(keepends=True)
-        
+
         diff = difflib.unified_diff(
-            original_lines,
-            modified_lines,
-            fromfile=f"a/{file_path}",
-            tofile=f"b/{file_path}"
+            original_lines, modified_lines, fromfile=f"a/{file_path}", tofile=f"b/{file_path}"
         )
         return "".join(diff)
 
@@ -54,14 +51,11 @@ class LocalPatchGenerator(PatchGenerator):
         self._diff_gen = diff_generator
 
     def generate_patch_bundle(
-        self,
-        workspace_root: str,
-        original_repo_root: str,
-        affected_files: List[str]
+        self, workspace_root: str, original_repo_root: str, affected_files: List[str]
     ) -> PatchBundle:
         patches = {}
         metadata = {}
-        
+
         total_added = 0
         total_removed = 0
         modified_count = 0
@@ -71,13 +65,13 @@ class LocalPatchGenerator(PatchGenerator):
             # 1. Resolve file path in original and workspace
             workspace_file = os.path.join(workspace_root, f)
             original_file = os.path.join(original_repo_root, f)
-            
+
             # 2. Load content
             workspace_content = ""
             if os.path.isfile(workspace_file):
                 with open(workspace_file, "r") as fh:
                     workspace_content = fh.read()
-                    
+
             original_content = ""
             if os.path.isfile(original_file):
                 with open(original_file, "r") as fh:
@@ -109,21 +103,21 @@ class LocalPatchGenerator(PatchGenerator):
 
             # Calculate SHA-256 Checksum
             sha = hashlib.sha256(diff.encode("utf-8")).hexdigest()
-            
+
             metadata[f] = PatchMetadata(
                 patch_id=f"patch_{sha[:10]}",
                 file_path=f,
                 timestamp=time.time(),
                 checksum=sha,
                 size_bytes=len(diff),
-                author="ai_software_engineer"
+                author="ai_software_engineer",
             )
 
         stats = PatchStatistics(
             lines_added=total_added,
             lines_removed=total_removed,
             files_modified=modified_count,
-            chunks_count=total_chunks
+            chunks_count=total_chunks,
         )
 
         return PatchBundle(
@@ -131,7 +125,7 @@ class LocalPatchGenerator(PatchGenerator):
             patches=patches,
             metadata=metadata,
             statistics=stats,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -141,12 +135,12 @@ class LocalPatchValidator(PatchValidator):
     def validate_patch_bundle(self, bundle: PatchBundle, workspace_root: str) -> tuple[bool, str]:
         if not bundle.patches:
             return False, "Patch bundle has no patches."
-            
+
         for f, diff in bundle.patches.items():
             # Basic validation: ensure diff headers exist
             if "--- a/" not in diff or "+++ b/" not in diff:
                 return False, f"Diff for {f} is malformed (headers missing)."
-                
+
             # Verify checksum matches metadata
             sha = hashlib.sha256(diff.encode("utf-8")).hexdigest()
             meta = bundle.metadata.get(f)
@@ -160,9 +154,7 @@ class LocalConflictDetector(ConflictDetector):
     """Detects merge collisions between workspace and origin repository roots."""
 
     def detect_conflicts(
-        self,
-        bundle: PatchBundle,
-        original_repo_root: str
+        self, bundle: PatchBundle, original_repo_root: str
     ) -> tuple[List[str], List[str]]:
         conflicts = []
         inconsistencies = []
@@ -174,7 +166,7 @@ class LocalConflictDetector(ConflictDetector):
                 # If modified inside repo root directly since the workspace session (simulated check)
                 # In real scenario we compare timestamp or git ref. Here we check path.
                 pass
-                
+
         # Basic dependency check
         for f in bundle.patches.keys():
             if f.endswith(".py"):
@@ -197,14 +189,14 @@ class LocalPatchSerializer(PatchSerializer):
                 "timestamp": v.timestamp,
                 "checksum": v.checksum,
                 "size_bytes": v.size_bytes,
-                "author": v.author
+                "author": v.author,
             }
-        
+
         stats_dict = {
             "lines_added": bundle.statistics.lines_added,
             "lines_removed": bundle.statistics.lines_removed,
             "files_modified": bundle.statistics.files_modified,
-            "chunks_count": bundle.statistics.chunks_count
+            "chunks_count": bundle.statistics.chunks_count,
         }
 
         data = {
@@ -212,13 +204,13 @@ class LocalPatchSerializer(PatchSerializer):
             "patches": bundle.patches,
             "metadata": meta_dict,
             "statistics": stats_dict,
-            "timestamp": bundle.timestamp
+            "timestamp": bundle.timestamp,
         }
         return json.dumps(data, indent=2)
 
     def deserialize_bundle(self, content: str) -> PatchBundle:
         data = json.loads(content)
-        
+
         meta = {}
         for k, v in data.get("metadata", {}).items():
             meta[k] = PatchMetadata(
@@ -227,23 +219,23 @@ class LocalPatchSerializer(PatchSerializer):
                 timestamp=v["timestamp"],
                 checksum=v["checksum"],
                 size_bytes=v["size_bytes"],
-                author=v["author"]
+                author=v["author"],
             )
-            
+
         st_data = data.get("statistics", {})
         stats = PatchStatistics(
             lines_added=st_data.get("lines_added", 0),
             lines_removed=st_data.get("lines_removed", 0),
             files_modified=st_data.get("files_modified", 0),
-            chunks_count=st_data.get("chunks_count", 0)
+            chunks_count=st_data.get("chunks_count", 0),
         )
-        
+
         return PatchBundle(
             bundle_id=data["bundle_id"],
             patches=data["patches"],
             metadata=meta,
             statistics=stats,
-            timestamp=data["timestamp"]
+            timestamp=data["timestamp"],
         )
 
 
@@ -254,12 +246,12 @@ class LocalPatchGenerationService(PatchGenerationService):
         self,
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
         self._registry = registry
-        
+
         self._diff_generator = LocalDiffGenerator()
         self._generator = LocalPatchGenerator(self._diff_generator)
         self._validator = LocalPatchValidator()
@@ -279,19 +271,23 @@ class LocalPatchGenerationService(PatchGenerationService):
         workspace_id: str,
         original_repo_root: str,
         workspace_root: str,
-        affected_files: List[str]
+        affected_files: List[str],
     ) -> ReviewPackage:
         logger.info(f"Creating review package for workspace: '{workspace_id}'")
-        
+
         # 1. Generate bundle
-        bundle = self._generator.generate_patch_bundle(workspace_root, original_repo_root, affected_files)
-        
+        bundle = self._generator.generate_patch_bundle(
+            workspace_root, original_repo_root, affected_files
+        )
+
         # 2. Validate
         valid, msg = self._validator.validate_patch_bundle(bundle, workspace_root)
         val_status = "passed" if valid else "failed"
 
         # 3. Detect conflicts
-        conflicts, inconsistencies = self._conflict_detector.detect_conflicts(bundle, original_repo_root)
+        conflicts, inconsistencies = self._conflict_detector.detect_conflicts(
+            bundle, original_repo_root
+        )
 
         # 4. Generate previews
         previews = []
@@ -301,7 +297,7 @@ class LocalPatchGenerationService(PatchGenerationService):
                     preview_id=f"prev_{bundle.metadata[f].patch_id}",
                     file_path=f,
                     diff_content=diff,
-                    human_readable_summary=f"Unified diff for {f} containing {bundle.statistics.lines_added} additions and {bundle.statistics.lines_removed} deletions."
+                    human_readable_summary=f"Unified diff for {f} containing {bundle.statistics.lines_added} additions and {bundle.statistics.lines_removed} deletions.",
                 )
             )
 
@@ -313,7 +309,7 @@ class LocalPatchGenerationService(PatchGenerationService):
             previews=previews,
             conflicts=conflicts,
             planning_inconsistencies=inconsistencies,
-            validation_status=val_status
+            validation_status=val_status,
         )
 
         # Write patch file inside workspace for review tracking
@@ -337,7 +333,7 @@ class LocalPatchGenerationService(PatchGenerationService):
             f"Files Modified Count: {review_package.bundle.statistics.files_modified}\n"
             f"Conflicts Detected: {review_package.conflicts}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -346,8 +342,8 @@ class LocalPatchGenerationService(PatchGenerationService):
                 session_id=f"sess_{review_package.workspace_id}",
                 tags=["patch_generation", "code_review"],
                 importance=2,
-                source_subsystem="patch_generator"
-            )
+                source_subsystem="patch_generator",
+            ),
         )
 
     def publish_patch_report(self, review_package: ReviewPackage) -> None:
@@ -373,8 +369,7 @@ class LocalPatchGenerationService(PatchGenerationService):
             f"- **Lines Added**: {review_package.bundle.statistics.lines_added}\n"
             f"- **Lines Removed**: {review_package.bundle.statistics.lines_removed}\n"
             f"- **Conflicts Detected Count**: {len(review_package.conflicts)}\n\n"
-            f"## File Preview Diffs\n"
-            + "\n".join(previews_md)
+            f"## File Preview Diffs\n" + "\n".join(previews_md)
         )
 
         doc = KnowledgeDocument(
@@ -385,7 +380,7 @@ class LocalPatchGenerationService(PatchGenerationService):
                 unique_id=f"patch_report_{review_package.package_id}",
                 timestamp=review_package.bundle.timestamp,
                 source_subsystem="patch_generator",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

@@ -89,7 +89,7 @@ class LocalWorkflowPerformanceAnalyzer(WorkflowPerformanceAnalyzer):
             p95_duration=p95,
             timeout_count=timeouts,
             cancelled_count=cancelled,
-            skipped_count=skipped
+            skipped_count=skipped,
         )
 
 
@@ -99,7 +99,7 @@ class LocalWorkflowFailureAnalyzer(WorkflowFailureAnalyzer):
     def analyze_failures(self, records: List[WorkflowExecutionRecord]) -> List[str]:
         patterns = []
         errors = [r.error_message for r in records if r.error_message]
-        
+
         # Check repeated errors
         err_counts = {}
         for err in errors:
@@ -107,7 +107,9 @@ class LocalWorkflowFailureAnalyzer(WorkflowFailureAnalyzer):
 
         for msg, count in err_counts.items():
             if count > 1:
-                patterns.append(f"Recurring Failure: Error message '{msg}' was encountered {count} times.")
+                patterns.append(
+                    f"Recurring Failure: Error message '{msg}' was encountered {count} times."
+                )
 
         return patterns
 
@@ -122,7 +124,7 @@ class LocalWorkflowRetryAnalyzer(WorkflowRetryAnalyzer):
         return {
             "total_retries_triggered": total_retries,
             "max_retries_single_run": max_retry_run,
-            "retry_frequency_ratio": total_retries / max(total_runs, 1)
+            "retry_frequency_ratio": total_retries / max(total_runs, 1),
         }
 
 
@@ -133,9 +135,13 @@ class LocalWorkflowMonitoringValidator(WorkflowMonitoringValidator):
         errors = []
         for r in records:
             if r.end_time and r.end_time < r.start_time:
-                errors.append(f"Timestamp Integrity Breach: execution '{r.execution_id}' ends before it starts.")
+                errors.append(
+                    f"Timestamp Integrity Breach: execution '{r.execution_id}' ends before it starts."
+                )
             if r.metrics.duration_seconds < 0:
-                errors.append(f"Metrics Inconsistency: execution '{r.execution_id}' duration is negative.")
+                errors.append(
+                    f"Metrics Inconsistency: execution '{r.execution_id}' duration is negative."
+                )
         return errors
 
 
@@ -147,7 +153,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -199,7 +205,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
 
         monitors_dir = os.path.join(workspace_root, "docs", "monitors")
         os.makedirs(monitors_dir, exist_ok=True)
-        
+
         file_path = os.path.join(monitors_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -207,7 +213,9 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
         return file_path
 
     def record_execution(self, record: WorkflowExecutionRecord) -> None:
-        logger.info(f"Logging execution trace '{record.execution_id}' for workflow '{record.workflow_id}'")
+        logger.info(
+            f"Logging execution trace '{record.execution_id}' for workflow '{record.workflow_id}'"
+        )
 
         # 1. Track trace
         self._tracker.track_execution(record)
@@ -219,22 +227,39 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
 
         if self._exec_repo:
             try:
-                self._exec_repo.save({
-                    "id": record.execution_id,
-                    "workflow_id": record.workflow_id,
-                    "workspace_id": record.workspace_id,
-                    "status": record.state.value if hasattr(record.state, "value") else str(record.state),
-                    "success": 1 if (record.state.value if hasattr(record.state, "value") else str(record.state)) == "success" else 0,
-                    "error_summary": record.error_message,
-                    "execution_time": record.metrics.duration_seconds if record.metrics else 0.0,
-                    "created_at": record.start_time,
-                    "closed_at": record.end_time,
-                    "metadata": {
-                        "retry_count": record.metrics.retry_count if record.metrics else 0,
-                        "cpu_usage_pct": record.metrics.cpu_usage_pct if record.metrics else 0.0,
-                        "memory_usage_mb": record.metrics.memory_usage_mb if record.metrics else 0.0
+                self._exec_repo.save(
+                    {
+                        "id": record.execution_id,
+                        "workflow_id": record.workflow_id,
+                        "workspace_id": record.workspace_id,
+                        "status": record.state.value
+                        if hasattr(record.state, "value")
+                        else str(record.state),
+                        "success": 1
+                        if (
+                            record.state.value
+                            if hasattr(record.state, "value")
+                            else str(record.state)
+                        )
+                        == "success"
+                        else 0,
+                        "error_summary": record.error_message,
+                        "execution_time": record.metrics.duration_seconds
+                        if record.metrics
+                        else 0.0,
+                        "created_at": record.start_time,
+                        "closed_at": record.end_time,
+                        "metadata": {
+                            "retry_count": record.metrics.retry_count if record.metrics else 0,
+                            "cpu_usage_pct": record.metrics.cpu_usage_pct
+                            if record.metrics
+                            else 0.0,
+                            "memory_usage_mb": record.metrics.memory_usage_mb
+                            if record.metrics
+                            else 0.0,
+                        },
                     }
-                })
+                )
             except Exception:
                 pass
 
@@ -254,7 +279,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
 
         for w_id in workflow_ids:
             w_recs = [r for r in all_records if r.workflow_id == w_id]
-            
+
             # Analytics compiles
             stats = self._perf_analyzer.analyze_performance(w_recs)
             statistics[w_id] = stats
@@ -264,17 +289,17 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
             failures = sum(1 for r in w_recs if r.state == WorkflowExecutionState.FAILED)
             timeouts = sum(1 for r in w_recs if r.state == WorkflowExecutionState.TIMEOUT)
             retries = sum(1 for r in w_recs if r.metrics.retry_count > 0)
-            
+
             deductions = (failures * 20.0) + (timeouts * 20.0) + (retries * 10.0)
             score = max(0.0, 100.0 - deductions)
             reliability = stats.success_rate
-            
+
             status = "healthy"
             if score < 60.0:
                 status = "degraded"
             elif score < 90.0:
                 status = "warning"
-                
+
             health_scores[w_id] = WorkflowHealthScore(w_id, score, reliability, status)
 
             # Anomaly trigger warning checks
@@ -288,7 +313,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                         alert_type="repeated_failure",
                         severity="critical",
                         message=pattern,
-                        timestamp=time.time()
+                        timestamp=time.time(),
                     )
                 )
 
@@ -302,7 +327,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                         alert_type="long_duration",
                         severity="warning",
                         message=f"Long Duration: {len(long_runs)} runs exceeded the 300 seconds timeout threshold.",
-                        timestamp=time.time()
+                        timestamp=time.time(),
                     )
                 )
 
@@ -316,7 +341,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                         alert_type="high_retry",
                         severity="warning",
                         message=f"High Retries: {len(high_retries)} runs triggered more than 2 retry cycles.",
-                        timestamp=time.time()
+                        timestamp=time.time(),
                     )
                 )
 
@@ -327,26 +352,43 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
             statistics=statistics,
             health_scores=health_scores,
             alerts=alerts,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if self._mon_repo:
             try:
-                self._mon_repo.save({
-                    "id": report.report_id,
-                    "workflow_id": list(statistics.keys())[0] if statistics else "system",
-                    "execution_summaries": {w_id: {"runs": s.total_runs} for w_id, s in statistics.items()},
-                    "health_summaries": {w_id: {"score": h.score, "status": h.status} for w_id, h in health_scores.items()},
-                    "performance_summaries": {w_id: {"avg_duration": s.average_duration, "p95": s.p95_duration} for w_id, s in statistics.items()},
-                    "alert_summaries": [
-                        {"alert_id": a.alert_id, "alert_type": a.alert_type, "severity": a.severity, "message": a.message}
-                        for a in alerts
-                    ],
-                    "success_rates": {w_id: s.success_rate for w_id, s in statistics.items()},
-                    "latency_summaries": {w_id: s.average_duration for w_id, s in statistics.items()},
-                    "retry_summaries": {w_id: s.retry_rate for w_id, s in statistics.items()},
-                    "timestamp": report.timestamp
-                })
+                self._mon_repo.save(
+                    {
+                        "id": report.report_id,
+                        "workflow_id": list(statistics.keys())[0] if statistics else "system",
+                        "execution_summaries": {
+                            w_id: {"runs": s.total_runs} for w_id, s in statistics.items()
+                        },
+                        "health_summaries": {
+                            w_id: {"score": h.score, "status": h.status}
+                            for w_id, h in health_scores.items()
+                        },
+                        "performance_summaries": {
+                            w_id: {"avg_duration": s.average_duration, "p95": s.p95_duration}
+                            for w_id, s in statistics.items()
+                        },
+                        "alert_summaries": [
+                            {
+                                "alert_id": a.alert_id,
+                                "alert_type": a.alert_type,
+                                "severity": a.severity,
+                                "message": a.message,
+                            }
+                            for a in alerts
+                        ],
+                        "success_rates": {w_id: s.success_rate for w_id, s in statistics.items()},
+                        "latency_summaries": {
+                            w_id: s.average_duration for w_id, s in statistics.items()
+                        },
+                        "retry_summaries": {w_id: s.retry_rate for w_id, s in statistics.items()},
+                        "timestamp": report.timestamp,
+                    }
+                )
             except Exception:
                 pass
 
@@ -369,7 +411,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output telemetry outline details.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -427,11 +469,11 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                     success_rates = json.loads(row["success_rates"] or "{}")
                     latency_sums = json.loads(row["latency_summaries"] or "{}")
                     retry_sums = json.loads(row["retry_summaries"] or "{}")
-                    
+
                     statistics = {}
                     health_scores = {}
                     alerts = []
-                    
+
                     for w_id in exec_sums.keys():
                         statistics[w_id] = WorkflowStatistics(
                             total_runs=exec_sums.get(w_id, {}).get("runs", 0),
@@ -441,14 +483,16 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                             average_duration=latency_sums.get(w_id, 0.0),
                             median_duration=latency_sums.get(w_id, 0.0),
                             p95_duration=perf_sums.get(w_id, {}).get("p95", 0.0),
-                            timeout_count=0, cancelled_count=0, skipped_count=0
+                            timeout_count=0,
+                            cancelled_count=0,
+                            skipped_count=0,
                         )
                         h_data = health_sums.get(w_id, {})
                         health_scores[w_id] = WorkflowHealthScore(
                             workflow_id=w_id,
                             score=h_data.get("score", 100.0),
                             reliability=success_rates.get(w_id, 1.0),
-                            status=h_data.get("status", "healthy")
+                            status=h_data.get("status", "healthy"),
                         )
                     for a in alerts_data:
                         alerts.append(
@@ -458,7 +502,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                                 alert_type=a.get("alert_type", ""),
                                 severity=a.get("severity", ""),
                                 message=a.get("message", ""),
-                                timestamp=row.get("timestamp") or time.time()
+                                timestamp=row.get("timestamp") or time.time(),
                             )
                         )
                     reports.append(
@@ -468,7 +512,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                             statistics=statistics,
                             health_scores=health_scores,
                             alerts=alerts,
-                            timestamp=row.get("timestamp") or time.time()
+                            timestamp=row.get("timestamp") or time.time(),
                         )
                     )
                 self._reports[workspace_id] = reports
@@ -483,7 +527,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
             return
 
         report = reports[-1]
-        
+
         # Form content summary. Never store credentials or source code.
         content = (
             f"Workflow Telemetry Logged\n"
@@ -503,8 +547,8 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                 "report_id": report.report_id,
                 "workspace_id": workspace_id,
                 "alerts_count": len(report.alerts),
-                "workflows_count": len(report.statistics)
-            }
+                "workflows_count": len(report.statistics),
+            },
         )
 
     def publish_monitoring_report(self, report: WorkflowMonitoringReport) -> None:
@@ -528,7 +572,7 @@ class LocalWorkflowMonitoringService(WorkflowMonitoringService):
                 unique_id=f"mon_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="workflow_monitoring_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

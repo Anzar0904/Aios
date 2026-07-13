@@ -245,7 +245,9 @@ class LocalATSAnalyzer(ATSAnalyzer):
     def __init__(self, model_service: ModelService) -> None:
         self._model = model_service
 
-    def score_resume_against_job(self, resume_version: ResumeVersion, job_description: str) -> Dict[str, Any]:
+    def score_resume_against_job(
+        self, resume_version: ResumeVersion, job_description: str
+    ) -> Dict[str, Any]:
         prompt = (
             f"You are an ATS Parser and Job Match Analyzer. Compare this resume version with the job details:\n\n"
             f"Resume Summary: {resume_version.summary}\n"
@@ -313,19 +315,23 @@ class LocalPortfolioAnalyzer(PortfolioAnalyzer):
         for r in repos[:5]:
             try:
                 stats = self._github.get_repository_stats(f"{r.owner}/{r.name}")
-                repos_summary.append({
-                    "name": r.name,
-                    "description": r.description,
-                    "stars": stats.get("stars", 0),
-                    "forks": stats.get("forks", 0),
-                })
+                repos_summary.append(
+                    {
+                        "name": r.name,
+                        "description": r.description,
+                        "stars": stats.get("stars", 0),
+                        "forks": stats.get("forks", 0),
+                    }
+                )
             except Exception:
-                repos_summary.append({
-                    "name": r.name,
-                    "description": r.description,
-                    "stars": 0,
-                    "forks": 0,
-                })
+                repos_summary.append(
+                    {
+                        "name": r.name,
+                        "description": r.description,
+                        "stars": 0,
+                        "forks": 0,
+                    }
+                )
 
         prompt = (
             f"You are a Technical Portfolio Reviewer. Analyze these GitHub repositories:\n\n"
@@ -370,7 +376,9 @@ class LocalApplicationTracker(ApplicationTracker):
         profile = self._personal.get_active_profile()
         if not profile:
             return []
-        apps_data = profile.knowledge  # we can save applications dynamically inside profile knowledge tags or extra fields
+        apps_data = (
+            profile.knowledge
+        )  # we can save applications dynamically inside profile knowledge tags or extra fields
         # Look for a specific entry labeled 'applications'
         for entry in apps_data:
             if entry.id == "applications_tracker":
@@ -413,6 +421,7 @@ class LocalApplicationTracker(ApplicationTracker):
         ]
 
         from aios.services.personal import KnowledgeEntry
+
         new_entry = KnowledgeEntry(
             id="applications_tracker",
             title="Applications Tracker History",
@@ -508,11 +517,19 @@ class LocalInterviewCoach(InterviewCoach):
                     content = content[4:]
             return json.loads(content)
         except Exception:
-            return ["Tell me about a time you resolved a tech challenge.", "Explain how virtual memory works."]
+            return [
+                "Tell me about a time you resolved a tech challenge.",
+                "Explain how virtual memory works.",
+            ]
 
 
 class LocalCareerPlanner(CareerPlanner):
-    def __init__(self, model_service: ModelService, personal_service: PersonalService, registry: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        model_service: ModelService,
+        personal_service: PersonalService,
+        registry: Optional[Any] = None,
+    ) -> None:
         self._model = model_service
         self._personal = personal_service
         self._registry = registry
@@ -568,6 +585,7 @@ class LocalCareerPlanner(CareerPlanner):
                 KnowledgeHubService,
                 KnowledgeMetadata,
             )
+
             knowledge_hub = self._registry.get(KnowledgeHubService) if self._registry else None
             if knowledge_hub:
                 md_content = f"# Career Growth Plan\n\n## Missing Skills Analysis\n{plan.get('missing_skills_analysis')}\n\n## Growth Milestones\n"
@@ -582,15 +600,14 @@ class LocalCareerPlanner(CareerPlanner):
                         unique_id=f"career_plan_{int(time.time())}",
                         timestamp=time.time(),
                         source_subsystem="career_os",
-                        category="Career"
-                    )
+                        category="Career",
+                    ),
                 )
                 knowledge_hub.sync_document(doc, "notion")
         except Exception:
             pass
 
         return plan
-
 
 
 class LocalJobMatcher(JobMatcher):
@@ -632,12 +649,14 @@ class LocalJobMatcher(JobMatcher):
                         content = content[4:]
                 results.append(json.loads(content))
             except Exception:
-                results.append({
-                    "score": 50,
-                    "matched": [],
-                    "gap": ["parsing issue"],
-                    "recommended_action": "Check job details manually",
-                })
+                results.append(
+                    {
+                        "score": 50,
+                        "matched": [],
+                        "gap": ["parsing issue"],
+                        "recommended_action": "Check job details manually",
+                    }
+                )
         return results
 
 
@@ -671,7 +690,6 @@ class LocalCareerOSService(CareerOSService):
         self._interview_coach = LocalInterviewCoach(model_service)
         self._career_planner = LocalCareerPlanner(model_service, personal_service, registry)
         self._job_matcher = LocalJobMatcher(model_service, personal_service)
-
 
     def initialize(self) -> None:
         logger.info("Initializing LocalCareerOSService")

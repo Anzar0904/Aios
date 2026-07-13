@@ -91,7 +91,7 @@ def rate_limit_env():
     rate_limit_diag = RateLimitDiagnosticsImpl(redis_provider)
     rate_limit_health = RateLimitHealthMonitorImpl(redis_provider)
     rate_limit_recommend = RateLimitRecommendationEngineImpl(rate_limit_stats, rate_limit_diag)
-    
+
     rate_limit_manager = RateLimitManagerImpl(
         redis_provider,
         quota_registry,
@@ -101,13 +101,10 @@ def rate_limit_env():
         quota_sync_mgr,
         rate_limit_recovery_mgr,
         rate_limit_stats,
-        rate_limit_diag
+        rate_limit_diag,
     )
     redis_rate_limit_service = RedisRateLimitServiceImpl(
-        redis_provider,
-        quota_registry,
-        rate_limit_manager,
-        rate_limit_stats
+        redis_provider, quota_registry, rate_limit_manager, rate_limit_stats
     )
 
     quota_registry.initialize()
@@ -161,7 +158,7 @@ def rate_limit_env():
 
 def test_quota_registry(rate_limit_env):
     reg = rate_limit_env["quota_registry"]
-    
+
     all_types = reg.get_all_types()
     assert "ai_provider" in all_types
     assert "workspace" in all_types
@@ -229,7 +226,9 @@ def test_redis_outage_fallback(rate_limit_env):
     provider = rate_limit_env["redis_provider"]
 
     # Outage simulated
-    provider.transport.execute_command = MagicMock(side_effect=RuntimeError("Redis connection lost"))
+    provider.transport.execute_command = MagicMock(
+        side_effect=RuntimeError("Redis connection lost")
+    )
 
     # Under fallback, capacity degrades to 50% (5 for ai_provider)
     for _ in range(5):

@@ -90,7 +90,7 @@ def queue_env():
     retry_q_mgr = RetryQueueManagerImpl(queue_registry, queue_stats)
     queue_recovery_mgr = QueueRecoveryManagerImpl(queue_stats)
     queue_worker_coordinator = QueueWorkerCoordinatorImpl()
-    
+
     queue_manager = QueueManagerImpl(
         redis_provider,
         queue_registry,
@@ -98,14 +98,11 @@ def queue_env():
         delayed_q_mgr,
         retry_q_mgr,
         queue_stats,
-        queue_diag
+        queue_diag,
     )
     queue_scheduler = QueueSchedulerImpl(queue_manager)
     redis_queue_service = RedisQueueServiceImpl(
-        redis_provider,
-        queue_registry,
-        queue_manager,
-        queue_stats
+        redis_provider, queue_registry, queue_manager, queue_stats
     )
 
     queue_registry.initialize()
@@ -162,7 +159,7 @@ def queue_env():
 
 def test_queue_ownership_registry(queue_env):
     reg = queue_env["queue_registry"]
-    
+
     all_types = reg.get_all_types()
     assert "engineering" in all_types
     assert "automation" in all_types
@@ -214,7 +211,9 @@ def test_priority_ordering(queue_env):
 
     # Enqueue multiple jobs with different priorities
     mgr.enqueue("engineering", "job-low", {"desc": "low"}, priority=QueuePriority.LOW)
-    mgr.enqueue("engineering", "job-critical", {"desc": "critical"}, priority=QueuePriority.CRITICAL)
+    mgr.enqueue(
+        "engineering", "job-critical", {"desc": "critical"}, priority=QueuePriority.CRITICAL
+    )
     mgr.enqueue("engineering", "job-high", {"desc": "high"}, priority=QueuePriority.HIGH)
 
     # Dequeue -> should retrieve highest priority first (job-critical)
@@ -252,7 +251,7 @@ def test_retry_and_dead_letter_queue(queue_env):
     stats = queue_env["queue_stats"]
 
     mgr.enqueue("engineering", "job-retry", {"job": "data"})
-    
+
     # Simulates job dequeue
     job = mgr.dequeue("engineering", "worker-1")
     assert job is not None
@@ -267,7 +266,7 @@ def test_retry_and_dead_letter_queue(queue_env):
     # Accumulate failures to exceed limit
     retry_q.handle_failure(job, "Connection timeout error")
     retry_q.handle_failure(job, "Connection timeout error")
-    
+
     # Exceed limit
     should_retry_last = retry_q.handle_failure(job, "Connection timeout error")
     assert should_retry_last is False
@@ -301,7 +300,9 @@ def test_redis_outage_fallback(queue_env):
     provider = queue_env["redis_provider"]
 
     # Outage simulated
-    provider.transport.execute_command = MagicMock(side_effect=RuntimeError("Redis connection lost"))
+    provider.transport.execute_command = MagicMock(
+        side_effect=RuntimeError("Redis connection lost")
+    )
 
     # Enqueue succeeds under fallback
     enqueued = mgr.enqueue("workflow", "job-fallback", {"info": "outage"})

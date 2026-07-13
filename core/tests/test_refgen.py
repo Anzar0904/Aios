@@ -380,8 +380,14 @@ class TestReferenceIdempotency:
         engine.run()
 
         sizes1 = {}
-        for filename in ["services.md", "interfaces.md", "lifecycle.md",
-                        "dependency_injection.md", "api_reference.md", "README.md"]:
+        for filename in [
+            "services.md",
+            "interfaces.md",
+            "lifecycle.md",
+            "dependency_injection.md",
+            "api_reference.md",
+            "README.md",
+        ]:
             file_path = reference_dir / filename
             sizes1[filename] = file_path.stat().st_size
 
@@ -389,8 +395,14 @@ class TestReferenceIdempotency:
         engine.run()
 
         sizes2 = {}
-        for filename in ["services.md", "interfaces.md", "lifecycle.md",
-                        "dependency_injection.md", "api_reference.md", "README.md"]:
+        for filename in [
+            "services.md",
+            "interfaces.md",
+            "lifecycle.md",
+            "dependency_injection.md",
+            "api_reference.md",
+            "README.md",
+        ]:
             file_path = reference_dir / filename
             sizes2[filename] = file_path.stat().st_size
 

@@ -55,7 +55,11 @@ class Brain:
         except Exception:
             personal_service = None
         self.context_manager = ContextManager(
-            self.context_service, self.memory_service, project_intel, dev_workspace, personal_service
+            self.context_service,
+            self.memory_service,
+            project_intel,
+            dev_workspace,
+            personal_service,
         )
         self.planner = BrainPlanner(self.skill_selector, self.model_service)
         self.workflow_executor = WorkflowExecutor(self.kernel, self.command_registry)
@@ -97,17 +101,14 @@ class Brain:
             # Multi-skill response merge using selected model
             prompt = (
                 "You are the Brain coordinator for Personal AI OS.\n"
-                f"You planned and executed a multi-step workflow for the user objective: \"{query}\".\n"
+                f'You planned and executed a multi-step workflow for the user objective: "{query}".\n'
                 "Here are the outputs from each executed step:\n"
                 f"{chr(10).join(step_summaries)}\n\n"
                 "Consolidate these outputs into a single, user-friendly response that directly answers the user's objective."
             )
             try:
                 res = self.model_service.execute_request(
-                    LLMRequest(
-                        prompt=prompt,
-                        model_name=provider_selection.model_name
-                    )
+                    LLMRequest(prompt=prompt, model_name=provider_selection.model_name)
                 )
                 final_response = res.content
             except Exception as e:

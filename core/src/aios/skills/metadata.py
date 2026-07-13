@@ -17,4 +17,3 @@ class SkillMetadata:
     required_memory: List[str] = field(default_factory=list)
     prompt_directory: str = "prompts"
     enabled: bool = True
-

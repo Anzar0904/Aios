@@ -26,6 +26,8 @@ class DeveloperWorkspaceService(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def execute_safe_command(self, command: str, args: List[str], workspace_root: str) -> Dict[str, Any]:
+    def execute_safe_command(
+        self, command: str, args: List[str], workspace_root: str
+    ) -> Dict[str, Any]:
         """Executes a development command (like tests or linting) safely, validating parameters."""
         pass

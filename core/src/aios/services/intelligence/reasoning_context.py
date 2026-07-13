@@ -13,7 +13,7 @@ class ReasoningContext:
         memories: List[Any],
         workspace: Dict[str, Any],
         selected_tools: List[str],
-        expanded_query: str
+        expanded_query: str,
     ) -> None:
         self.intent = intent
         self.repository_analysis = repository_analysis

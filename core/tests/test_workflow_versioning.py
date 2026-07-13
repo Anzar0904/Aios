@@ -36,8 +36,10 @@ def mock_workspace_service():
 def test_version_registry():
     registry = LocalWorkflowVersionRegistry()
     meta = WorkflowVersionMetadata("Alice", "tag1", "1.0.0", "Init", "active")
-    v = WorkflowVersion("v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), meta, "compatible", "notes")
-    
+    v = WorkflowVersion(
+        "v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), meta, "compatible", "notes"
+    )
+
     registry.register_version(v)
     assert registry.get_version("v_1") == v
     assert registry.get_graph("wf_1").versions["v_1"] == v
@@ -45,18 +47,24 @@ def test_version_registry():
 
 def test_compatibility_analyzer():
     compat = LocalWorkflowCompatibilityAnalyzer()
-    
+
     m1 = WorkflowVersionMetadata("Alice", "tag1", "1.0.0", "Init", "active")
-    v1 = WorkflowVersion("v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m1, "compatible", "notes")
-    
+    v1 = WorkflowVersion(
+        "v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m1, "compatible", "notes"
+    )
+
     m2 = WorkflowVersionMetadata("Alice", "tag2", "1.1.0", "Upgrade minor", "active")
-    v2 = WorkflowVersion("v_2", "wf_1", "ir2", "tr2", "op2", "ap2", "tl2", time.time(), m2, "compatible", "notes")
+    v2 = WorkflowVersion(
+        "v_2", "wf_1", "ir2", "tr2", "op2", "ap2", "tl2", time.time(), m2, "compatible", "notes"
+    )
 
     res_minor = compat.analyze_compatibility(v1, v2)
     assert res_minor["status"] == "compatible"
 
     m3 = WorkflowVersionMetadata("Alice", "tag3", "2.0.0", "Upgrade major", "active")
-    v3 = WorkflowVersion("v_3", "wf_1", "ir3", "tr3", "op3", "ap3", "tl3", time.time(), m3, "compatible", "notes")
+    v3 = WorkflowVersion(
+        "v_3", "wf_1", "ir3", "tr3", "op3", "ap3", "tl3", time.time(), m3, "compatible", "notes"
+    )
 
     res_major = compat.analyze_compatibility(v1, v3)
     assert res_major["status"] == "breaking"
@@ -65,11 +73,15 @@ def test_compatibility_analyzer():
 
 def test_migration_planner():
     planner = LocalWorkflowMigrationPlanner()
-    
+
     m1 = WorkflowVersionMetadata("Alice", "tag1", "1.0.0", "Init", "active")
-    v1 = WorkflowVersion("v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m1, "compatible", "notes")
+    v1 = WorkflowVersion(
+        "v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m1, "compatible", "notes"
+    )
     m2 = WorkflowVersionMetadata("Alice", "tag2", "2.0.0", "Upgrade breaking", "active")
-    v2 = WorkflowVersion("v_2", "wf_1", "ir2", "tr2", "op2", "ap2", "tl2", time.time(), m2, "compatible", "notes")
+    v2 = WorkflowVersion(
+        "v_2", "wf_1", "ir2", "tr2", "op2", "ap2", "tl2", time.time(), m2, "compatible", "notes"
+    )
 
     plan = planner.create_migration_plan(v1, v2)
     assert plan.compatibility_status == "breaking"
@@ -85,12 +97,36 @@ def test_version_validator():
     validator = LocalWorkflowVersionValidator()
 
     m_valid = WorkflowVersionMetadata("Alice", "tag1", "1.0.0", "Init", "active")
-    v_valid = WorkflowVersion("v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m_valid, "compatible", "notes")
+    v_valid = WorkflowVersion(
+        "v_1",
+        "wf_1",
+        "ir1",
+        "tr1",
+        "op1",
+        "ap1",
+        "tl1",
+        time.time(),
+        m_valid,
+        "compatible",
+        "notes",
+    )
     assert len(validator.validate_version(v_valid)) == 0
 
     # Invalid semver
     m_invalid = WorkflowVersionMetadata("Alice", "tag1", "1.a.0", "Init", "active")
-    v_invalid = WorkflowVersion("v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m_invalid, "compatible", "notes")
+    v_invalid = WorkflowVersion(
+        "v_1",
+        "wf_1",
+        "ir1",
+        "tr1",
+        "op1",
+        "ap1",
+        "tl1",
+        time.time(),
+        m_invalid,
+        "compatible",
+        "notes",
+    )
     errors = validator.validate_version(v_invalid)
     assert len(errors) > 0
     assert any("semantic version" in e.lower() for e in errors)
@@ -125,10 +161,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalWorkflowVersionService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalWorkflowVersionService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
     service.create_version("wf_1", "Alice", "1.0.0", "Init", "{}")
@@ -142,9 +175,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalWorkflowVersionService(
-        memory_service=mock_memory_service
-    )
+    service = LocalWorkflowVersionService(memory_service=mock_memory_service)
     service.initialize()
 
     service.create_version("wf_1", "Alice", "1.0.0", "Init", "{}")
@@ -163,10 +194,7 @@ def test_memory_integration(mock_memory_service):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    service = LocalWorkflowVersionService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
+    service = LocalWorkflowVersionService(memory_service=mock_memory_service, knowledge_hub=mock_kh)
     service.initialize()
 
     report = WorkflowVersionReport(
@@ -174,7 +202,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         workspace_id="ws_1",
         timeline_summaries={},
         difs_count=1,
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.publish_version_report(report)
 
@@ -194,6 +222,8 @@ def test_backward_compatibility():
 
     val = CustomVersionValidator()
     m = WorkflowVersionMetadata("Alice", "tag1", "1.0.0", "Init", "active")
-    v = WorkflowVersion("v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m, "compatible", "notes")
+    v = WorkflowVersion(
+        "v_1", "wf_1", "ir1", "tr1", "op1", "ap1", "tl1", time.time(), m, "compatible", "notes"
+    )
     errors = val.validate_version(v)
     assert "Custom validation check run." in errors

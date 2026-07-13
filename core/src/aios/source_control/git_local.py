@@ -58,7 +58,9 @@ class LocalGitExecutor(DIInitializeMixin):
     def create_branch(self, branch_name: str, cwd: Optional[str] = None) -> str:
         return self.run_git(["checkout", "-b", branch_name], cwd=cwd)
 
-    def delete_branch(self, branch_name: str, force: bool = False, cwd: Optional[str] = None) -> str:
+    def delete_branch(
+        self, branch_name: str, force: bool = False, cwd: Optional[str] = None
+    ) -> str:
         flag = "-D" if force else "-d"
         return self.run_git(["branch", flag, branch_name], cwd=cwd)
 
@@ -105,7 +107,9 @@ class LocalGitExecutor(DIInitializeMixin):
         cmd += ["-m", message]
         return self.run_git(cmd, cwd=cwd)
 
-    def diff(self, base: Optional[str] = None, head: Optional[str] = None, cwd: Optional[str] = None) -> str:
+    def diff(
+        self, base: Optional[str] = None, head: Optional[str] = None, cwd: Optional[str] = None
+    ) -> str:
         cmd = ["diff"]
         if base and head:
             cmd.append(f"{base}..{head}")

@@ -9,6 +9,7 @@ from aios.services.software_engineer import ImplementationTask, SoftwareEngineer
 
 class ExecutionState(Enum):
     """Lifecycle states of a plan execution session."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -20,6 +21,7 @@ class ExecutionState(Enum):
 @dataclass
 class ExecutionStep:
     """Represents an individual step or action during task execution."""
+
     step_id: str
     name: str
     command: str
@@ -30,6 +32,7 @@ class ExecutionStep:
 @dataclass
 class ExecutionCheckpoint:
     """Saves execution state after a task completes, supporting resume and rollback."""
+
     checkpoint_id: str
     task_id: str
     timestamp: float
@@ -41,6 +44,7 @@ class ExecutionCheckpoint:
 @dataclass
 class RollbackPlan:
     """Prepares instructions to revert changes without autonomously performing edits."""
+
     plan_id: str
     task_id: str
     timestamp: float
@@ -51,6 +55,7 @@ class RollbackPlan:
 @dataclass
 class ExecutionSession:
     """State tracking for a specific plan execution session."""
+
     session_id: str
     plan_id: str
     state: ExecutionState
@@ -66,6 +71,7 @@ class ExecutionSession:
 @dataclass
 class ExecutionResult:
     """Unified result payload for session execution completions or state updates."""
+
     success: bool
     completed_tasks: List[str]
     failed_tasks: List[str]
@@ -80,10 +86,7 @@ class ExecutionValidator(abc.ABC):
 
     @abc.abstractmethod
     def validate_pre_execution(
-        self,
-        plan: SoftwareEngineeringPlan,
-        task: ImplementationTask,
-        session: ExecutionSession
+        self, plan: SoftwareEngineeringPlan, task: ImplementationTask, session: ExecutionSession
     ) -> tuple[bool, str]:
         """Validates that a task is safe to execute based on state and dependency availability."""
         pass
@@ -97,7 +100,7 @@ class TaskExecutor(abc.ABC):
         self,
         task: ImplementationTask,
         session: ExecutionSession,
-        step_approval_callback: Callable[[], bool]
+        step_approval_callback: Callable[[], bool],
     ) -> tuple[bool, str, List[ExecutionStep]]:
         """Sequentially runs execution actions if human approval callback returns True."""
         pass
@@ -121,7 +124,9 @@ class ExecutionEngine(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def start_execution(self, session_id: str, step_approval_callback: Callable[[], bool]) -> ExecutionResult:
+    def start_execution(
+        self, session_id: str, step_approval_callback: Callable[[], bool]
+    ) -> ExecutionResult:
         """Begins executing tasks in a session."""
         pass
 
@@ -131,7 +136,9 @@ class ExecutionEngine(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def resume_execution(self, session_id: str, step_approval_callback: Callable[[], bool]) -> ExecutionResult:
+    def resume_execution(
+        self, session_id: str, step_approval_callback: Callable[[], bool]
+    ) -> ExecutionResult:
         """Resumes a paused execution session."""
         pass
 

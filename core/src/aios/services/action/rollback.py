@@ -10,7 +10,7 @@ class RollbackCoordinator:
     def rollback_step(self, step: ActionStep) -> bool:
         if not step.is_reversible:
             return False
-            
+
         if step.action_type.value in ("MODIFY", "DELETE") and step.backup_content:
             path = step.tool_args.get("path")
             if path:
@@ -20,11 +20,11 @@ class RollbackCoordinator:
                 if res.success:
                     step.status = "rolled_back"
                     return True
-                    
+
         if step.undo_args:
             res = self.tool_service.execute_tool(step.tool_name, step.undo_args)
             if res.success:
                 step.status = "rolled_back"
                 return True
-                
+
         return False

@@ -53,9 +53,7 @@ class PromptBuilder:
             try:
                 template_content = template_path.read_text(encoding="utf-8")
             except Exception as e:
-                raise RuntimeError(
-                    f"Failed to read prompt template '{template_name}': {e}"
-                ) from e
+                raise RuntimeError(f"Failed to read prompt template '{template_name}': {e}") from e
 
         # Format memories
         formatted_memories = ""
@@ -121,9 +119,7 @@ class PromptBuilder:
             try:
                 template_content = template_path.read_text(encoding="utf-8")
             except Exception as e:
-                raise RuntimeError(
-                    f"Failed to read prompt template '{template_name}': {e}"
-                ) from e
+                raise RuntimeError(f"Failed to read prompt template '{template_name}': {e}") from e
 
         # Format memories
         formatted_memories = ""

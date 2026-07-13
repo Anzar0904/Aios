@@ -39,13 +39,7 @@ _TIMESTAMP_FMT = "%Y-%m-%dT%H:%M:%SZ"
 
 def _header(title: str, description: str) -> str:
     now = datetime.datetime.utcnow().strftime(_TIMESTAMP_FMT)
-    return (
-        f"{_GENERATED_BANNER}\n"
-        f"# {title}\n\n"
-        f"> {description}\n\n"
-        f"*Generated: {now}*\n\n"
-        "---\n\n"
-    )
+    return f"{_GENERATED_BANNER}\n# {title}\n\n> {description}\n\n*Generated: {now}*\n\n---\n\n"
 
 
 def _toc(items: List[str]) -> str:
@@ -237,10 +231,14 @@ def render_skill_catalog(skills: List[SkillEntry]) -> str:
             lines.append(f"**Capabilities:** {', '.join(f'`{c}`' for c in skill.capabilities)}\n")
 
         if skill.required_models:
-            lines.append(f"**Required Models:** {', '.join(f'`{m}`' for m in skill.required_models)}\n")
+            lines.append(
+                f"**Required Models:** {', '.join(f'`{m}`' for m in skill.required_models)}\n"
+            )
 
         if skill.required_tools:
-            lines.append(f"**Required Tools:** {', '.join(f'`{t}`' for t in skill.required_tools)}\n")
+            lines.append(
+                f"**Required Tools:** {', '.join(f'`{t}`' for t in skill.required_tools)}\n"
+            )
 
         lines.append("---\n")
 
@@ -251,9 +249,7 @@ def render_skill_catalog(skills: List[SkillEntry]) -> str:
     for skill in skills:
         cmds = len(skill.commands)
         caps = len(skill.capabilities)
-        lines.append(
-            f"| **{skill.name}** | {skill.version} | {skill.category} | {cmds} | {caps} |"
-        )
+        lines.append(f"| **{skill.name}** | {skill.version} | {skill.category} | {cmds} | {caps} |")
     lines.append("")
 
     return "\n".join(lines)
@@ -299,7 +295,9 @@ def render_provider_catalog(providers: List[ProviderEntry]) -> str:
         lines.append("")
 
         if p.supported_models:
-            lines.append(f"**Supported Models:** {', '.join(f'`{m}`' for m in p.supported_models)}\n")
+            lines.append(
+                f"**Supported Models:** {', '.join(f'`{m}`' for m in p.supported_models)}\n"
+            )
 
         if p.capabilities:
             cap_bullets = [f"`{k}`: {'✅' if v else '❌'}" for k, v in p.capabilities.items()]
@@ -329,9 +327,7 @@ def render_provider_catalog(providers: List[ProviderEntry]) -> str:
     lines.append(header)
     lines.append(sep)
     for p in sorted(providers, key=lambda x: x.priority):
-        row_caps = " | ".join(
-            ("✅" if p.capabilities.get(cap) else "❌") for cap in all_caps
-        )
+        row_caps = " | ".join(("✅" if p.capabilities.get(cap) else "❌") for cap in all_caps)
         lines.append(f"| **{p.name}** | {row_caps} |")
     lines.append("")
 
@@ -457,7 +453,9 @@ def render_db_model_catalog(models: List[DbModelEntry]) -> str:
     dataclasses_ = [m for m in models if m.kind == "dataclass"]
     classes_ = [m for m in models if m.kind == "class"]
 
-    lines.append(_toc(["Overview", "Enumerations", "Dataclasses", "Other Models", "Summary Statistics"]))
+    lines.append(
+        _toc(["Overview", "Enumerations", "Dataclasses", "Other Models", "Summary Statistics"])
+    )
 
     lines.append("## Overview\n")
     lines.append(
@@ -551,9 +549,6 @@ def render_index(
     lines.append("")
     lines.append("## Regeneration\n")
     lines.append(
-        "Run the generator from the repository root:\n\n"
-        "```bash\n"
-        "python -m aios.docgen\n"
-        "```\n"
+        "Run the generator from the repository root:\n\n```bash\npython -m aios.docgen\n```\n"
     )
     return "\n".join(lines)

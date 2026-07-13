@@ -10,19 +10,12 @@ class ConversationMessage:
         self.timestamp = timestamp if timestamp is not None else time.time()
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
-            "role": self.role,
-            "content": self.content,
-            "timestamp": self.timestamp
-        }
+        return {"role": self.role, "content": self.content, "timestamp": self.timestamp}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ConversationMessage":
-        return cls(
-            role=data["role"],
-            content=data["content"],
-            timestamp=data.get("timestamp")
-        )
+        return cls(role=data["role"], content=data["content"], timestamp=data.get("timestamp"))
+
 
 class ConversationSummary:
     def __init__(
@@ -31,7 +24,7 @@ class ConversationSummary:
         decisions: List[str],
         action_items: List[str],
         unresolved_questions: List[str],
-        timestamp: Optional[float] = None
+        timestamp: Optional[float] = None,
     ) -> None:
         self.summary = summary
         self.decisions = decisions
@@ -45,7 +38,7 @@ class ConversationSummary:
             "decisions": self.decisions,
             "action_items": self.action_items,
             "unresolved_questions": self.unresolved_questions,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
     @classmethod
@@ -55,8 +48,9 @@ class ConversationSummary:
             decisions=data.get("decisions", []),
             action_items=data.get("action_items", []),
             unresolved_questions=data.get("unresolved_questions", []),
-            timestamp=data.get("timestamp")
+            timestamp=data.get("timestamp"),
         )
+
 
 class Conversation:
     def __init__(
@@ -68,7 +62,7 @@ class Conversation:
         active_agent: Optional[str] = None,
         messages: Optional[List[ConversationMessage]] = None,
         summary: Optional[ConversationSummary] = None,
-        archived: bool = False
+        archived: bool = False,
     ) -> None:
         self.id = id if id is not None else str(uuid.uuid4())
         self.title = title if title is not None else f"Conversation {self.id[:8]}"
@@ -88,7 +82,7 @@ class Conversation:
             "active_agent": self.active_agent,
             "messages": [m.to_dict() for m in self.messages],
             "summary": self.summary.to_dict() if self.summary else None,
-            "archived": self.archived
+            "archived": self.archived,
         }
 
     @classmethod
@@ -104,8 +98,9 @@ class Conversation:
             active_agent=data.get("active_agent"),
             messages=messages,
             summary=summary,
-            archived=data.get("archived", False)
+            archived=data.get("archived", False),
         )
+
 
 class ConversationContext:
     def __init__(self, conversation: Conversation, workspace_root: str) -> None:

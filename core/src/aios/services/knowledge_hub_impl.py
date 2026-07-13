@@ -43,9 +43,7 @@ class NotionProvider(KnowledgeProvider):
         # Test authentication by fetching users list
         try:
             req = urllib.request.Request(
-                f"{self._base_url}/users/me",
-                headers=self._headers,
-                method="GET"
+                f"{self._base_url}/users/me", headers=self._headers, method="GET"
             )
             with urllib.request.urlopen(req, timeout=self._config.timeout) as resp:
                 return resp.status == 200
@@ -58,12 +56,7 @@ class NotionProvider(KnowledgeProvider):
             return [{"id": "mock_db_1", "title": "Missions DB"}]
 
         # Discover databases via search
-        payload = {
-            "filter": {
-                "value": "database",
-                "property": "object"
-            }
-        }
+        payload = {"filter": {"value": "database", "property": "object"}}
         try:
             data = self._post("/search", payload)
             results = data.get("results", [])
@@ -76,12 +69,7 @@ class NotionProvider(KnowledgeProvider):
         if self._config.offline_mode:
             return [KnowledgePage(page_id="mock_page_1", title="Default Parent Page")]
 
-        payload = {
-            "filter": {
-                "value": "page",
-                "property": "object"
-            }
-        }
+        payload = {"filter": {"value": "page", "property": "object"}}
         try:
             data = self._post("/search", payload)
             results = data.get("results", [])
@@ -124,7 +112,9 @@ class NotionProvider(KnowledgeProvider):
 
     def read_page(self, page_id: str) -> Optional[KnowledgePage]:
         if self._config.offline_mode:
-            return KnowledgePage(page_id=page_id, title="Mocked Page Content", content="Mocked Markdown Content")
+            return KnowledgePage(
+                page_id=page_id, title="Mocked Page Content", content="Mocked Markdown Content"
+            )
 
         try:
             # 1. Get page details
@@ -137,7 +127,13 @@ class NotionProvider(KnowledgeProvider):
             content_lines = []
             for b in blocks:
                 type_ = b.get("type")
-                if type_ in ["paragraph", "heading_1", "heading_2", "heading_3", "bulleted_list_item"]:
+                if type_ in [
+                    "paragraph",
+                    "heading_1",
+                    "heading_2",
+                    "heading_3",
+                    "bulleted_list_item",
+                ]:
                     text = self._extract_rich_text(b.get(type_, {}).get("rich_text", []))
                     if type_ == "heading_1":
                         content_lines.append(f"# {text}")
@@ -168,20 +164,19 @@ class NotionProvider(KnowledgeProvider):
         properties: Optional[Dict[str, Any]] = None,
     ) -> Optional[KnowledgePage]:
         if self._config.offline_mode:
-            return KnowledgePage(page_id=f"notion_{int(time.time())}", title=title, content=content, url="http://mock-notion.com")
+            return KnowledgePage(
+                page_id=f"notion_{int(time.time())}",
+                title=title,
+                content=content,
+                url="http://mock-notion.com",
+            )
 
         # Convert markdown text content to block list
         blocks = self._markdown_to_blocks(content)
 
         payload = {
             "parent": {"page_id": parent_id},
-            "properties": {
-                "title": {
-                    "title": [
-                        {"text": {"content": title}}
-                    ]
-                }
-            },
+            "properties": {"title": {"title": [{"text": {"content": title}}]}},
             "children": blocks,
         }
 
@@ -208,20 +203,18 @@ class NotionProvider(KnowledgeProvider):
         properties: Optional[Dict[str, Any]] = None,
     ) -> Optional[KnowledgePage]:
         if self._config.offline_mode:
-            return KnowledgePage(page_id=page_id, title=title or "Updated Title", content=content or "Updated Content")
+            return KnowledgePage(
+                page_id=page_id,
+                title=title or "Updated Title",
+                content=content or "Updated Content",
+            )
 
         try:
             # 1. Update properties (including Title)
             if title or properties:
                 payload = {}
                 if title:
-                    payload["properties"] = {
-                        "title": {
-                            "title": [
-                                {"text": {"content": title}}
-                            ]
-                        }
-                    }
+                    payload["properties"] = {"title": {"title": [{"text": {"content": title}}]}}
                 self._patch(f"/pages/{page_id}", payload)
 
             # 2. Update content blocks if provided
@@ -300,11 +293,7 @@ class NotionProvider(KnowledgeProvider):
         return {
             "object": "block",
             "type": type_,
-            type_: {
-                "rich_text": [
-                    {"type": "text", "text": {"content": text}}
-                ]
-            }
+            type_: {"rich_text": [{"type": "text", "text": {"content": text}}]},
         }
 
     def _get_title(self, page_or_db: dict) -> str:
@@ -312,7 +301,11 @@ class NotionProvider(KnowledgeProvider):
         title_prop = props.get("title") or props.get("Name")
         if title_prop and title_prop.get("title"):
             return self._extract_rich_text(title_prop.get("title", []))
-        return page_or_db.get("title", [{"text": {"content": "Untitled"}}])[0].get("text", {}).get("content", "Untitled")
+        return (
+            page_or_db.get("title", [{"text": {"content": "Untitled"}}])[0]
+            .get("text", {})
+            .get("content", "Untitled")
+        )
 
     def _extract_rich_text(self, rich_texts: List[dict]) -> str:
         return "".join(t.get("text", {}).get("content", "") for t in rich_texts)
@@ -349,7 +342,7 @@ class LocalKnowledgeHub(KnowledgeHubService):
                 document_id=doc.document_id,
                 provider=provider_name,
                 status="failed",
-                error_message=f"Provider {provider_name} not found"
+                error_message=f"Provider {provider_name} not found",
             )
 
         # Calculate hash of document contents to check for updates
@@ -364,7 +357,7 @@ class LocalKnowledgeHub(KnowledgeHubService):
                     document_id=doc.document_id,
                     provider=provider_name,
                     status="skipped",
-                    provider_page_id=reg_entry.get("provider_page_id")
+                    provider_page_id=reg_entry.get("provider_page_id"),
                 )
 
             # Update existing page
@@ -380,6 +373,7 @@ class LocalKnowledgeHub(KnowledgeHubService):
                 try:
                     from aios.registry import ServiceRegistry
                     from aios.services.persistence import SemanticMemoryManager
+
                     registry = self._registry or ServiceRegistry._global_registry
                     if registry:
                         sem_mgr = registry.get(SemanticMemoryManager)
@@ -393,14 +387,14 @@ class LocalKnowledgeHub(KnowledgeHubService):
                                 "document_id": doc.document_id,
                                 "category": doc.metadata.category,
                                 "timestamp": time.time(),
-                                "type": "notion_sync"
+                                "type": "notion_sync",
                             }
                             sem_mgr.index_memory(
                                 repository_name="knowledge_memory",
                                 entity_id=doc.document_id,
                                 text=text_summary,
                                 metadata=metadata,
-                                tags=["knowledge_hub", "notion_sync", doc.metadata.category]
+                                tags=["knowledge_hub", "notion_sync", doc.metadata.category],
                             )
                 except Exception:
                     pass
@@ -410,14 +404,14 @@ class LocalKnowledgeHub(KnowledgeHubService):
                     provider=provider_name,
                     status="success",
                     provider_page_id=page_id,
-                    timestamp=time.time()
+                    timestamp=time.time(),
                 )
             else:
                 return KnowledgeSyncResult(
                     document_id=doc.document_id,
                     provider=provider_name,
                     status="failed",
-                    error_message="Failed to update page"
+                    error_message="Failed to update page",
                 )
 
         # Create new page
@@ -425,7 +419,10 @@ class LocalKnowledgeHub(KnowledgeHubService):
         properties = {}
 
         # Use default database if matching category is configured
-        if self._config.default_databases and doc.metadata.category in self._config.default_databases:
+        if (
+            self._config.default_databases
+            and doc.metadata.category in self._config.default_databases
+        ):
             db_id = self._config.default_databases[doc.metadata.category]
             properties["database_id"] = db_id
 
@@ -454,6 +451,7 @@ class LocalKnowledgeHub(KnowledgeHubService):
             try:
                 from aios.registry import ServiceRegistry
                 from aios.services.persistence import SemanticMemoryManager
+
                 registry = self._registry or ServiceRegistry._global_registry
                 if registry:
                     sem_mgr = registry.get(SemanticMemoryManager)
@@ -467,14 +465,14 @@ class LocalKnowledgeHub(KnowledgeHubService):
                             "document_id": doc.document_id,
                             "category": doc.metadata.category,
                             "timestamp": time.time(),
-                            "type": "notion_sync"
+                            "type": "notion_sync",
                         }
                         sem_mgr.index_memory(
                             repository_name="knowledge_memory",
                             entity_id=doc.document_id,
                             text=text_summary,
                             metadata=metadata,
-                            tags=["knowledge_hub", "notion_sync", doc.metadata.category]
+                            tags=["knowledge_hub", "notion_sync", doc.metadata.category],
                         )
             except Exception:
                 pass
@@ -484,14 +482,14 @@ class LocalKnowledgeHub(KnowledgeHubService):
                 provider=provider_name,
                 status="success",
                 provider_page_id=created.page_id,
-                timestamp=time.time()
+                timestamp=time.time(),
             )
         else:
             return KnowledgeSyncResult(
                 document_id=doc.document_id,
                 provider=provider_name,
                 status="failed",
-                error_message="Failed to create page"
+                error_message="Failed to create page",
             )
 
     def get_sync_status(self, document_id: str) -> Optional[KnowledgeMetadata]:

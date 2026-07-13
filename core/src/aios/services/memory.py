@@ -123,7 +123,9 @@ class MemoryRetriever(abc.ABC):
 
 class MemoryClassifier(abc.ABC):
     @abc.abstractmethod
-    def classify_memory(self, content: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def classify_memory(
+        self, content: str, context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Automatically classifies memory content, extracting category, importance, tags,
         related projects, missions, companies, technologies, skills, and files.

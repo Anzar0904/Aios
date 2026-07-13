@@ -27,7 +27,9 @@ class SourceControlProvider(DIInitializeMixin):
     def get_repository_metadata(self, repo_name: str) -> RepositoryMetadata:
         raise NotImplementedError()
 
-    def create_repository(self, name: str, is_private: bool = False, description: Optional[str] = None) -> RepositoryMetadata:
+    def create_repository(
+        self, name: str, is_private: bool = False, description: Optional[str] = None
+    ) -> RepositoryMetadata:
         raise NotImplementedError()
 
     def fork_repository(self, repo_name: str) -> RepositoryMetadata:
@@ -37,27 +39,54 @@ class SourceControlProvider(DIInitializeMixin):
         raise NotImplementedError()
 
     # Pull Requests
-    def create_pull_request(self, repo_name: str, title: str, head: str, base: str, body: Optional[str] = None, is_draft: bool = False) -> PullRequestInfo:
+    def create_pull_request(
+        self,
+        repo_name: str,
+        title: str,
+        head: str,
+        base: str,
+        body: Optional[str] = None,
+        is_draft: bool = False,
+    ) -> PullRequestInfo:
         raise NotImplementedError()
 
     def inspect_pull_request(self, repo_name: str, pr_number: int) -> PullRequestInfo:
         raise NotImplementedError()
 
-    def update_pull_request(self, repo_name: str, pr_number: int, payload: Dict[str, Any]) -> PullRequestInfo:
+    def update_pull_request(
+        self, repo_name: str, pr_number: int, payload: Dict[str, Any]
+    ) -> PullRequestInfo:
         raise NotImplementedError()
 
-    def merge_pull_request(self, repo_name: str, pr_number: int, commit_message: Optional[str] = None) -> bool:
+    def merge_pull_request(
+        self, repo_name: str, pr_number: int, commit_message: Optional[str] = None
+    ) -> bool:
         raise NotImplementedError()
 
     # Issues
-    def create_issue(self, repo_name: str, title: str, body: Optional[str] = None, assignees: List[str] = None, labels: List[str] = None) -> IssueInfo:
+    def create_issue(
+        self,
+        repo_name: str,
+        title: str,
+        body: Optional[str] = None,
+        assignees: List[str] = None,
+        labels: List[str] = None,
+    ) -> IssueInfo:
         raise NotImplementedError()
 
     def inspect_issue(self, repo_name: str, issue_number: int) -> IssueInfo:
         raise NotImplementedError()
 
     # Releases
-    def create_release(self, repo_name: str, tag_name: str, name: str, body: Optional[str] = None, draft: bool = False, prerelease: bool = False) -> ReleaseInfo:
+    def create_release(
+        self,
+        repo_name: str,
+        tag_name: str,
+        name: str,
+        body: Optional[str] = None,
+        draft: bool = False,
+        prerelease: bool = False,
+    ) -> ReleaseInfo:
         raise NotImplementedError()
 
     # Webhooks
@@ -111,6 +140,7 @@ class ProviderDiscovery(DIInitializeMixin):
     def discover_and_register(self) -> None:
         # Registers the default GitHub provider
         from aios.source_control.github_provider import GitHubProvider
+
         gh = GitHubProvider()
         self.registry.register_provider(gh)
 
@@ -142,7 +172,7 @@ class ProviderHealthMonitor(DIInitializeMixin):
             "status": "online",
             "average_latency_sec": avg,
             "p95_latency_sec": p95,
-            "failures": self.failure_counts.get(provider_name, 0)
+            "failures": self.failure_counts.get(provider_name, 0),
         }
 
 
@@ -173,7 +203,7 @@ class ProviderDiagnostics(DIInitializeMixin):
             "git_version": git_version,
             "gh_cli_installed": gh_installed,
             "gh_cli_authenticated": gh_authenticated,
-            "pat_configured": os.environ.get("GITHUB_TOKEN") is not None
+            "pat_configured": os.environ.get("GITHUB_TOKEN") is not None,
         }
 
 

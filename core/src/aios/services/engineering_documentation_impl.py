@@ -38,8 +38,7 @@ class LocalADRGenerator(ADRGenerator):
             f"**Status**: {record.status.upper()}\n\n"
             f"## Context\n{record.context}\n\n"
             f"## Decision\n{record.decision}\n\n"
-            f"## Alternatives Considered\n"
-            + (alts if alts else "- *None.*") + "\n\n"
+            f"## Alternatives Considered\n" + (alts if alts else "- *None.*") + "\n\n"
             f"## Consequences\n{record.consequences}\n"
         )
 
@@ -48,14 +47,11 @@ class LocalEngineeringReportGenerator(EngineeringReportGenerator):
     """Concrete generator compiling metrics summaries into Markdown reports."""
 
     def generate_engineering_report(
-        self,
-        summary: ImplementationSummary,
-        validation: ValidationSummary,
-        risk: RiskSummary
+        self, summary: ImplementationSummary, validation: ValidationSummary, risk: RiskSummary
     ) -> str:
         feats = "\n".join(f"- {f}" for f in summary.features_added)
         files = "\n".join(f"- `{f}`" for f in summary.files_modified)
-        
+
         return (
             "# Executive Implementation Report\n\n"
             "## Features Implemented\n" + (feats if feats else "- *None.*") + "\n\n"
@@ -82,7 +78,7 @@ class LocalEngineeringDocumentPlanner(EngineeringDocumentPlanner):
                 context="Requirements for global Markdown and Mermaid spec generation.",
                 decision="Implement central orchestrator services registered in bootstrap.",
                 alternatives=["Decentralized files updates"],
-                consequences="Standardizes system-wide documentation."
+                consequences="Standardizes system-wide documentation.",
             )
         ]
 
@@ -93,15 +89,15 @@ class LocalEngineeringDocumentValidator(EngineeringDocumentValidator):
     def validate_engineering_document(self, artifact: EngineeringDocumentArtifact) -> List[str]:
         errors = []
         seen = set()
-        
+
         for adr in artifact.adr_records:
             if adr.adr_id in seen:
                 errors.append(f"Duplicate ADR ID: '{adr.adr_id}' detected.")
             seen.add(adr.adr_id)
-            
+
             if not adr.context.strip():
                 errors.append(f"ADR '{adr.adr_id}' context block is empty.")
-                
+
             if not adr.decision.strip():
                 errors.append(f"ADR '{adr.adr_id}' decision block is empty.")
 
@@ -116,7 +112,7 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -137,16 +133,18 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
     def stop(self) -> None:
         pass
 
-    def create_adr_document(self, workspace_id: str, record: DecisionRecord) -> EngineeringDocumentArtifact:
+    def create_adr_document(
+        self, workspace_id: str, record: DecisionRecord
+    ) -> EngineeringDocumentArtifact:
         logger.info(f"Generating ADR '{record.adr_id}' document.")
-        
+
         content = self._adr_generator.generate_adr(record)
         artifact = EngineeringDocumentArtifact(
             artifact_id=f"adr_{record.adr_id}",
             workspace_id=workspace_id,
             content=content,
             adr_records=[record],
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # Refine with Model
@@ -161,7 +159,7 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown syntax directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = response.content.strip()
@@ -177,17 +175,17 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
         workspace_id: str,
         summary: ImplementationSummary,
         validation: ValidationSummary,
-        risk: RiskSummary
+        risk: RiskSummary,
     ) -> EngineeringDocumentArtifact:
         logger.info(f"Generating Engineering Report '{summary.summary_id}'.")
-        
+
         content = self._report_generator.generate_engineering_report(summary, validation, risk)
         artifact = EngineeringDocumentArtifact(
             artifact_id=f"eng_rep_{summary.summary_id}",
             workspace_id=workspace_id,
             content=content,
             adr_records=[],
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # Refine with Model
@@ -202,7 +200,7 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown syntax directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = response.content.strip()
@@ -219,7 +217,7 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
             f"Workspace ID: {artifact.workspace_id}\n"
             f"ADRs count: {len(artifact.adr_records)}"
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -228,8 +226,8 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
                 session_id=artifact.artifact_id,
                 tags=["engineering_documentation", "adr_summary"],
                 importance=2,
-                source_subsystem="engineering_documentation_service"
-            )
+                source_subsystem="engineering_documentation_service",
+            ),
         )
 
     def publish_engineering_report(self, report: EngineeringDocumentationReport) -> None:
@@ -256,7 +254,7 @@ class LocalEngineeringDocumentationService(EngineeringDocumentationService):
                 unique_id=f"eng_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="engineering_documentation_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

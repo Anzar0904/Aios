@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 
 class ReviewerRole(Enum):
     """Enumerate configurable human reviewer roles."""
+
     OWNER = "Owner"
     MAINTAINER = "Maintainer"
     REVIEWER = "Reviewer"
@@ -19,6 +20,7 @@ class ReviewerRole(Enum):
 
 class ReviewAction(Enum):
     """Immutable log actions for collaborative reviews."""
+
     CREATE = "create"
     COMMENT = "comment"
     REPLY = "reply"
@@ -31,6 +33,7 @@ class ReviewAction(Enum):
 @dataclass
 class Reviewer:
     """Configurable reviewer profile details containing permissions."""
+
     reviewer_id: str
     name: str
     role: ReviewerRole
@@ -40,6 +43,7 @@ class Reviewer:
 @dataclass
 class ReviewComment:
     """Individual human review comment linked to structural items."""
+
     comment_id: str
     author: str
     content: str
@@ -53,6 +57,7 @@ class ReviewComment:
 @dataclass
 class ReviewThread:
     """Thread grouping root comments and nested replies."""
+
     thread_id: str
     root_comment: ReviewComment
     resolution_state: str = "open"  # "open", "resolved"
@@ -63,6 +68,7 @@ class ReviewThread:
 @dataclass
 class ReviewVote:
     """Reviewer decision vote capturing rationale details."""
+
     voter_id: str
     vote_value: str  # "approve", "approve_with_conditions", "request_changes", "reject"
     rationale: str
@@ -72,6 +78,7 @@ class ReviewVote:
 @dataclass
 class ReviewAuditLog:
     """Single immutable audit log entry details."""
+
     log_id: str
     action: ReviewAction
     actor: str
@@ -82,6 +89,7 @@ class ReviewAuditLog:
 @dataclass
 class ReviewTimeline:
     """Immutable chronological review timeline containing audit items."""
+
     timeline_id: str
     events: List[ReviewAuditLog] = field(default_factory=list)
 
@@ -89,6 +97,7 @@ class ReviewTimeline:
 @dataclass
 class ReviewCheckpoint:
     """State snapshot of active voting and comment statistics."""
+
     checkpoint_id: str
     version: str
     timestamp: float
@@ -99,6 +108,7 @@ class ReviewCheckpoint:
 @dataclass
 class ReviewResolution:
     """Official gate review decision and outcome details."""
+
     resolution_id: str
     session_id: str
     decision: str
@@ -109,6 +119,7 @@ class ReviewResolution:
 @dataclass
 class ReviewFeedback:
     """Post-gate reviewer ratings and feedback notes."""
+
     feedback_id: str
     author: str
     rating: int  # e.g., 1-5 stars
@@ -119,6 +130,7 @@ class ReviewFeedback:
 @dataclass
 class ReviewCollaborationReport:
     """Outcome report detailing thread states, timelines, and audit traces."""
+
     report_id: str
     workspace_id: str
     session_id: str
@@ -133,12 +145,16 @@ class ReviewCollaborationService(ServiceLifecycle, abc.ABC):
     """Primary service coordinating human feedback, threads, votes, and workspace logging."""
 
     @abc.abstractmethod
-    def create_thread(self, workspace_id: str, session_id: str, comment: ReviewComment) -> ReviewThread:
+    def create_thread(
+        self, workspace_id: str, session_id: str, comment: ReviewComment
+    ) -> ReviewThread:
         """Instantiates a new discussion thread."""
         pass
 
     @abc.abstractmethod
-    def reply_to_comment(self, workspace_id: str, thread_id: str, comment_id: str, reply: ReviewComment) -> ReviewComment:
+    def reply_to_comment(
+        self, workspace_id: str, thread_id: str, comment_id: str, reply: ReviewComment
+    ) -> ReviewComment:
         """Appends nested comment reply inside an active discussion thread."""
         pass
 

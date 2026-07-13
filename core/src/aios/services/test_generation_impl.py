@@ -126,7 +126,7 @@ class LocalTestGenerator(TestGenerator):
         workspace_root: str,
         target_file: str,
         patterns: str,
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> GeneratedTestArtifact:
         # Determine test filename
         base = os.path.basename(target_file)
@@ -138,7 +138,9 @@ class LocalTestGenerator(TestGenerator):
         # Gather snippets
         fixture_code = "\n".join(self._fixtures.generate_fixtures(target_file))
         mocks_code = "\n    ".join(self._mocks.generate_mocks(target_file))
-        cases_code = "    # Test Case execution steps:\n    " + "\n    ".join([c["exec"] for c in self._cases.build_cases(target_file, patterns)])
+        cases_code = "    # Test Case execution steps:\n    " + "\n    ".join(
+            [c["exec"] for c in self._cases.build_cases(target_file, patterns)]
+        )
         assert_code = "\n    ".join(self._assertions.generate_assertions(target_file))
         edge_code = "\n    ".join(self._edge.generate_edge_cases(target_file))
         reg_code = "\n    ".join(self._regression.generate_regression_tests(target_file))
@@ -149,11 +151,11 @@ class LocalTestGenerator(TestGenerator):
             "cases": cases_code,
             "assertions": assert_code,
             "edge_cases": edge_code,
-            "regression": reg_code
+            "regression": reg_code,
         }
 
         content = self._template_engine.render_template("", context)
-        
+
         # Write to isolated workspace root
         target_dest = os.path.join(workspace_root, test_file_path)
         os.makedirs(os.path.dirname(target_dest), exist_ok=True)
@@ -161,13 +163,13 @@ class LocalTestGenerator(TestGenerator):
             fh.write(content)
 
         sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        
+
         return GeneratedTestArtifact(
             artifact_id=f"test_art_{sha[:10]}",
             file_path=test_file_path,
             content=content,
             checksum=sha,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -179,7 +181,7 @@ class LocalTestGenerationService(TestGenerationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -204,7 +206,7 @@ class LocalTestGenerationService(TestGenerationService):
         objective: str,
         workspace_root: str,
         target_files: List[str],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> TestGenerationReport:
         logger.info(f"Generating test suites inside workspace: '{workspace_id}'")
 
@@ -215,8 +217,10 @@ class LocalTestGenerationService(TestGenerationService):
         artifacts = []
         warnings = []
         for tf in target_files:
-            artifact = self._generator.generate_test_suite(workspace_root, tf, patterns, code_summary)
-            
+            artifact = self._generator.generate_test_suite(
+                workspace_root, tf, patterns, code_summary
+            )
+
             # If Model Service is present, refine using LLM
             if self._model:
                 try:
@@ -233,7 +237,7 @@ class LocalTestGenerationService(TestGenerationService):
                             prompt=prompt,
                             system_instruction="Output pure Python code only.",
                             task_category="testing",
-                            preferences={"JSON_output": False}
+                            preferences={"JSON_output": False},
                         )
                     )
 
@@ -248,7 +252,7 @@ class LocalTestGenerationService(TestGenerationService):
                     target_dest = os.path.join(workspace_root, artifact.file_path)
                     with open(target_dest, "w") as fh:
                         fh.write(refined_code)
-                    
+
                     artifact.content = refined_code
                     artifact.checksum = hashlib.sha256(refined_code.encode("utf-8")).hexdigest()
                 except Exception as e:
@@ -258,7 +262,9 @@ class LocalTestGenerationService(TestGenerationService):
             try:
                 compile(artifact.content, artifact.file_path, "exec")
             except SyntaxError as e:
-                warnings.append(f"Generated test file {artifact.file_path} failed compilation: {e.msg}")
+                warnings.append(
+                    f"Generated test file {artifact.file_path} failed compilation: {e.msg}"
+                )
 
             artifacts.append(artifact)
 
@@ -272,7 +278,7 @@ class LocalTestGenerationService(TestGenerationService):
             pattern_summary=patterns,
             warnings=warnings,
             confidence_estimate=0.98 if len(warnings) == 0 else 0.50,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         return report
@@ -287,7 +293,7 @@ class LocalTestGenerationService(TestGenerationService):
             f"Warnings Detail: {report.warnings}\n"
             f"Confidence Estimate: {report.confidence_estimate}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -296,8 +302,8 @@ class LocalTestGenerationService(TestGenerationService):
                 session_id=report.report_id,
                 tags=["test_generation", "quality_validation"],
                 importance=2,
-                source_subsystem="test_generator"
-            )
+                source_subsystem="test_generator",
+            ),
         )
 
     def publish_generation_report(self, report: TestGenerationReport) -> None:
@@ -320,9 +326,13 @@ class LocalTestGenerationService(TestGenerationService):
             f"**Discovered Patterns**: {report.pattern_summary}\n"
             f"**Confidence Estimate**: {report.confidence_estimate}\n\n"
             f"## Compilation Warnings\n"
-            + ("\n".join(warnings_md) if warnings_md else "- *No warnings, syntax compiles cleanly.*") + "\n\n"
-            "## Generated Test Code Previews\n"
-            + "\n".join(suites_md)
+            + (
+                "\n".join(warnings_md)
+                if warnings_md
+                else "- *No warnings, syntax compiles cleanly.*"
+            )
+            + "\n\n"
+            "## Generated Test Code Previews\n" + "\n".join(suites_md)
         )
 
         doc = KnowledgeDocument(
@@ -333,7 +343,7 @@ class LocalTestGenerationService(TestGenerationService):
                 unique_id=f"test_gen_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="test_generator",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

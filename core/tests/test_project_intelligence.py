@@ -16,15 +16,16 @@ def test_project_intelligence_analysis():
         (workspace_root / "src").mkdir()
         (workspace_root / "src" / "main.py").write_text(
             "print('Hello')\n# TODO: Implement user feedback\n# FIXME: Resolve bug",
-            encoding="utf-8"
+            encoding="utf-8",
         )
         (workspace_root / "src" / "utils.js").write_text(
-            "console.log('Util')\n// TODO: Add support for CORS",
-            encoding="utf-8"
+            "console.log('Util')\n// TODO: Add support for CORS", encoding="utf-8"
         )
         # Ignored directory file
         (workspace_root / "node_modules").mkdir()
-        (workspace_root / "node_modules" / "ignored.js").write_text("console.log('Ignored')", encoding="utf-8")
+        (workspace_root / "node_modules" / "ignored.js").write_text(
+            "console.log('Ignored')", encoding="utf-8"
+        )
 
         # Config files
         pyproject_content = """
@@ -55,7 +56,7 @@ dependencies = [
         assert "npm/yarn" in context.package_managers
         assert "poetry/pip" in context.package_managers
         assert "react" in context.frameworks or "fastapi" in context.frameworks
-        
+
         # Verify TODOs
         assert len(context.todo_markers) == 3
         todo_texts = [t["text"] for t in context.todo_markers]
@@ -90,7 +91,7 @@ def test_incremental_indexing():
         main_py.write_text("print('updated')\n# TODO: updated_todo", encoding="utf-8")
         # Ensure st_mtime shifts
         main_py.stat().st_mtime
-        main_py.stat() # reload cache
+        main_py.stat()  # reload cache
 
         # Third scan - cache miss because file content and timestamp changed
         context3 = service.analyze_workspace(str(workspace_root))
@@ -108,15 +109,13 @@ def test_brain_context_manager_integration():
         git_repo_path="/tmp/test_workspace/.git",
         git_branch="main",
         project_root="/tmp/test_workspace",
-        project_name="test_proj"
+        project_name="test_proj",
     )
     context_service.get_current_context.return_value = workspace_ctx
     memory_service.search_memory.return_value = []
 
     mock_proj_context = ProjectContext(
-        project_root="/tmp/test_workspace",
-        languages={".py": 5},
-        git_branch="main"
+        project_root="/tmp/test_workspace", languages={".py": 5}, git_branch="main"
     )
     project_intel.analyze_workspace.return_value = mock_proj_context
 

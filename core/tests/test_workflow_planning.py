@@ -42,7 +42,7 @@ def mock_model_service():
 
 def test_intent_analysis():
     analyzer = LocalWorkflowIntentAnalyzer()
-    
+
     # CD Intent
     res_cd = analyzer.analyze_intent("Release v1.2.0 and deploy application to production")
     assert res_cd["target_template"] == "cd_pipeline"
@@ -56,16 +56,13 @@ def test_intent_analysis():
 
 def test_dependency_resolution():
     resolver = LocalWorkflowDependencyResolver()
-    
+
     n1 = WorkflowNode("n1", "Start", "trigger")
     n2 = WorkflowNode("n2", "Lint", "action")
     n3 = WorkflowNode("n3", "Test", "action")
-    
-    edges = [
-        WorkflowEdge("e1", "n1", "n2"),
-        WorkflowEdge("e2", "n2", "n3")
-    ]
-    
+
+    edges = [WorkflowEdge("e1", "n1", "n2"), WorkflowEdge("e2", "n2", "n3")]
+
     ordered = resolver.resolve_dependencies([n1, n2, n3], edges)
     # n1 triggers n2, n2 triggers n3. So topological order must be n1 -> n2 -> n3
     assert ordered == ["n1", "n2", "n3"]
@@ -73,26 +70,23 @@ def test_dependency_resolution():
 
 def test_optimizer_merges_and_prunes():
     optimizer = LocalWorkflowOptimizer()
-    
+
     n_trig = WorkflowNode("trig", "Webhook", "trigger")
     n_act1 = WorkflowNode("act_pytest", "Pytest Suite", "action")
-    n_act2 = WorkflowNode("act_pytest_dup", "Pytest Suite", "action") # duplicate
-    n_isolated = WorkflowNode("act_isolated", "Isolated Script", "action") # unreachable
-    
-    edges = [
-        WorkflowEdge("e1", "trig", "act_pytest"),
-        WorkflowEdge("e2", "trig", "act_pytest_dup")
-    ]
-    
+    n_act2 = WorkflowNode("act_pytest_dup", "Pytest Suite", "action")  # duplicate
+    n_isolated = WorkflowNode("act_isolated", "Isolated Script", "action")  # unreachable
+
+    edges = [WorkflowEdge("e1", "trig", "act_pytest"), WorkflowEdge("e2", "trig", "act_pytest_dup")]
+
     opt_nodes, opt_edges, opts = optimizer.optimize_graph(
         [n_trig, n_act1, n_act2, n_isolated], edges
     )
-    
+
     # Duplicate action must be merged
     assert len(opt_nodes) == 2  # trig and act_pytest (isolated pruned, duplicate merged)
     assert any("merged duplicate" in o.lower() for o in opts)
     assert any("discarded unreachable" in o.lower() for o in opts)
-    
+
     # Edges should be consolidated to one single edge
     assert len(opt_edges) == 1
     assert opt_edges[0].source_node_id == "trig"
@@ -110,17 +104,16 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    planner = LocalWorkflowPlanner(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    planner = LocalWorkflowPlanner(memory_service=mock_memory_service, registry=registry)
     planner.initialize()
 
     session = planner.create_planning_session(ws_id, "Analyze and run security scan checks")
     planner.generate_plan(session)
 
-    expected_file = os.path.join(ws_root, "docs", "planners", f"PLANNING_REPORT_{session.session_id}.md")
-    
+    expected_file = os.path.join(
+        ws_root, "docs", "planners", f"PLANNING_REPORT_{session.session_id}.md"
+    )
+
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
         content = f.read()
@@ -129,9 +122,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service):
-    planner = LocalWorkflowPlanner(
-        memory_service=mock_memory_service
-    )
+    planner = LocalWorkflowPlanner(memory_service=mock_memory_service)
     planner.initialize()
 
     session = planner.create_planning_session("ws_1", "Run backups cron daily")
@@ -150,10 +141,7 @@ def test_memory_integration(mock_memory_service):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    planner = LocalWorkflowPlanner(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
+    planner = LocalWorkflowPlanner(memory_service=mock_memory_service, knowledge_hub=mock_kh)
     planner.initialize()
 
     report = WorkflowPlanningReport(
@@ -162,7 +150,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         session_id="sess_1",
         raw_intent="Deploy website frontend",
         planned_workflow_id="wf_cd_123",
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     planner.publish_planning_report(report)
 

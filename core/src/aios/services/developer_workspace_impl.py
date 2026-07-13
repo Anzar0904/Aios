@@ -28,7 +28,7 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
                 cwd=str(root_path),
                 capture_output=True,
                 text=True,
-                shell=False
+                shell=False,
             )
             if res_status.returncode == 0:
                 git_status = res_status.stdout.strip()
@@ -37,7 +37,7 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
                         continue
                     code = line[:2]
                     filepath = line[3:].strip().strip('"')
-                    
+
                     if code[0] in ("A", "M", "R", "C"):
                         staged_files.append(filepath)
                     if code[1] in ("M", "D"):
@@ -51,7 +51,7 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
                 cwd=str(root_path),
                 capture_output=True,
                 text=True,
-                shell=False
+                shell=False,
             )
             if res_diff.returncode == 0:
                 git_diff_summary = res_diff.stdout.strip()
@@ -62,7 +62,7 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
                 cwd=str(root_path),
                 capture_output=True,
                 text=True,
-                shell=False
+                shell=False,
             )
             if res_branch.returncode == 0:
                 git_branch = res_branch.stdout.strip()
@@ -82,7 +82,9 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
                 dirs[:] = [d for d in dirs if d not in default_ignores]
 
                 for file in files:
-                    if (file.startswith("test_") and file.endswith(".py")) or file.endswith("_test.py"):
+                    if (file.startswith("test_") and file.endswith(".py")) or file.endswith(
+                        "_test.py"
+                    ):
                         detected_tests.append(str(rel_dir / file))
                     elif file.endswith(".test.js") or file.endswith(".spec.ts"):
                         detected_tests.append(str(rel_dir / file))
@@ -96,7 +98,9 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
         try:
             if (root_path / "pyproject.toml").is_file():
                 build_systems.append("poetry")
-                content = (root_path / "pyproject.toml").read_text(encoding="utf-8", errors="ignore")
+                content = (root_path / "pyproject.toml").read_text(
+                    encoding="utf-8", errors="ignore"
+                )
                 if "ruff" in content:
                     linters.append("ruff")
                 if "black" in content:
@@ -134,10 +138,12 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
             build_systems=build_systems,
             linters=linters,
             diagnostics=diagnostics,
-            extra={"git_branch": git_branch}
+            extra={"git_branch": git_branch},
         )
 
-    def execute_safe_command(self, command: str, args: List[str], workspace_root: str) -> Dict[str, Any]:
+    def execute_safe_command(
+        self, command: str, args: List[str], workspace_root: str
+    ) -> Dict[str, Any]:
         whitelist = {"pytest", "ruff", "black", "npm", "cargo"}
         if command not in whitelist:
             return {"success": False, "error": f"Command '{command}' is not whitelisted."}
@@ -146,22 +152,21 @@ class LocalDeveloperWorkspace(DeveloperWorkspaceService):
         metacharacters = {";", "&", "|", "<", ">", "$", "(", ")", "`", "\n"}
         for arg in args:
             if any(char in arg for char in metacharacters):
-                return {"success": False, "error": f"Safety check failed: suspicious character in argument '{arg}'"}
+                return {
+                    "success": False,
+                    "error": f"Safety check failed: suspicious character in argument '{arg}'",
+                }
 
         try:
             full_command = [command] + args
             res = subprocess.run(
-                full_command,
-                cwd=workspace_root,
-                capture_output=True,
-                text=True,
-                shell=False
+                full_command, cwd=workspace_root, capture_output=True, text=True, shell=False
             )
             return {
                 "success": True,
                 "returncode": res.returncode,
                 "stdout": res.stdout,
-                "stderr": res.stderr
+                "stderr": res.stderr,
             }
         except Exception as e:
             return {"success": False, "error": f"Execution failed: {str(e)}"}

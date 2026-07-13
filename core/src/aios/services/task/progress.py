@@ -28,7 +28,7 @@ class ProgressTracker:
             preview = "\n".join([f"    | {line}" for line in lines[:5]])
             print(preview)
             if len(lines) > 5:
-                print(f"    | ... ({len(lines)-5} more lines)")
+                print(f"    | ... ({len(lines) - 5} more lines)")
             print()
 
     def print_progress(self, task: Task) -> None:

@@ -27,7 +27,9 @@ from aios.services.personal import (
 
 
 class LocalPersonalService(PersonalService):
-    def __init__(self, cache_filename: str = "personal_profiles.json", workspace_root: str = ".") -> None:
+    def __init__(
+        self, cache_filename: str = "personal_profiles.json", workspace_root: str = "."
+    ) -> None:
         self._cache_filename = cache_filename
         self._workspace_root = workspace_root
         self._profiles: Dict[str, PersonalProfile] = {}
@@ -50,8 +52,10 @@ class LocalPersonalService(PersonalService):
             default_p = PersonalProfile(
                 id="professional",
                 name="Default Developer",
-                contact=Contact(email="developer@example.com", phone="123-456", location="Localhost"),
-                preferences=[Preference(key="editor", value="vscode")]
+                contact=Contact(
+                    email="developer@example.com", phone="123-456", location="Localhost"
+                ),
+                preferences=[Preference(key="editor", value="vscode")],
             )
             self.create_profile(default_p)
             self._active_profile_id = "professional"
@@ -108,19 +112,22 @@ class LocalPersonalService(PersonalService):
             "contact": {
                 "email": profile.contact.email,
                 "phone": profile.contact.phone,
-                "location": profile.contact.location
-            }
+                "location": profile.contact.location,
+            },
         }
 
         # Career related injection
-        if any(kw in objective_lower for kw in ("resume", "job", "career", "experience", "education", "interview")):
+        if any(
+            kw in objective_lower
+            for kw in ("resume", "job", "career", "experience", "education", "interview")
+        ):
             context["resumes"] = [self._serialize_resume(r) for r in profile.resumes]
             if profile.career:
                 context["career"] = {
                     "industry": profile.career.industry,
                     "current_role": profile.career.current_role,
                     "years_experience": profile.career.years_experience,
-                    "target_roles": profile.career.target_roles
+                    "target_roles": profile.career.target_roles,
                 }
             context["achievements"] = [
                 {"title": a.title, "description": a.description, "date": a.date}
@@ -128,13 +135,27 @@ class LocalPersonalService(PersonalService):
             ]
 
         # Learning & Goals related injection
-        elif any(kw in objective_lower for kw in ("learn", "study", "course", "goal", "certificate")):
+        elif any(
+            kw in objective_lower for kw in ("learn", "study", "course", "goal", "certificate")
+        ):
             context["goals"] = [
-                {"id": g.id, "title": g.title, "target_date": g.target_date, "status": g.status, "category": g.category}
+                {
+                    "id": g.id,
+                    "title": g.title,
+                    "target_date": g.target_date,
+                    "status": g.status,
+                    "category": g.category,
+                }
                 for g in profile.goals
             ]
             context["learning"] = [
-                {"id": l.id, "title": l.title, "source": l.source, "status": l.status, "progress": l.progress_percentage}
+                {
+                    "id": l.id,
+                    "title": l.title,
+                    "source": l.source,
+                    "status": l.status,
+                    "progress": l.progress_percentage,
+                }
                 for l in profile.learning
             ]
             context["certificates"] = [
@@ -145,7 +166,13 @@ class LocalPersonalService(PersonalService):
         # Project & Portfolio related injection
         elif any(kw in objective_lower for kw in ("project", "portfolio", "code", "build", "repo")):
             context["portfolio"] = [
-                {"id": p.id, "name": p.name, "description": p.description, "tech": p.technologies, "repo": p.repository_url}
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "description": p.description,
+                    "tech": p.technologies,
+                    "repo": p.repository_url,
+                }
                 for p in profile.portfolio
             ]
 
@@ -158,10 +185,7 @@ class LocalPersonalService(PersonalService):
 
         # Fallback preference injection
         else:
-            context["preferences"] = [
-                {"key": p.key, "value": p.value}
-                for p in profile.preferences
-            ]
+            context["preferences"] = [{"key": p.key, "value": p.value} for p in profile.preferences]
 
         return context
 
@@ -170,10 +194,7 @@ class LocalPersonalService(PersonalService):
         serialized = {}
         for pid, p in self._profiles.items():
             serialized[pid] = self._serialize_profile(p)
-        payload = {
-            "active_profile_id": self._active_profile_id,
-            "profiles": serialized
-        }
+        payload = {"active_profile_id": self._active_profile_id, "profiles": serialized}
         try:
             cache_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         except Exception:
@@ -183,14 +204,20 @@ class LocalPersonalService(PersonalService):
         return {
             "id": p.id,
             "name": p.name,
-            "contact": {"email": p.contact.email, "phone": p.contact.phone, "location": p.contact.location},
+            "contact": {
+                "email": p.contact.email,
+                "phone": p.contact.phone,
+                "location": p.contact.location,
+            },
             "socials": [{"platform": s.platform, "url": s.url} for s in p.socials],
             "career": {
                 "industry": p.career.industry,
                 "current_role": p.career.current_role,
                 "years_experience": p.career.years_experience,
-                "target_roles": p.career.target_roles
-            } if p.career else None,
+                "target_roles": p.career.target_roles,
+            }
+            if p.career
+            else None,
             "resumes": [self._serialize_resume(r) for r in p.resumes],
             "portfolio": [
                 {
@@ -199,20 +226,37 @@ class LocalPersonalService(PersonalService):
                     "description": proj.description,
                     "technologies": proj.technologies,
                     "repository_url": proj.repository_url,
-                    "live_url": proj.live_url
+                    "live_url": proj.live_url,
                 }
                 for proj in p.portfolio
             ],
             "goals": [
-                {"id": g.id, "title": g.title, "target_date": g.target_date, "status": g.status, "category": g.category}
+                {
+                    "id": g.id,
+                    "title": g.title,
+                    "target_date": g.target_date,
+                    "status": g.status,
+                    "category": g.category,
+                }
                 for g in p.goals
             ],
             "learning": [
-                {"id": l.id, "title": l.title, "source": l.source, "status": l.status, "progress_percentage": l.progress_percentage}
+                {
+                    "id": l.id,
+                    "title": l.title,
+                    "source": l.source,
+                    "status": l.status,
+                    "progress_percentage": l.progress_percentage,
+                }
                 for l in p.learning
             ],
             "certificates": [
-                {"name": c.name, "issuing_organization": c.issuing_organization, "issue_date": c.issue_date, "credential_id": c.credential_id}
+                {
+                    "name": c.name,
+                    "issuing_organization": c.issuing_organization,
+                    "issue_date": c.issue_date,
+                    "credential_id": c.credential_id,
+                }
                 for c in p.certificates
             ],
             "achievements": [
@@ -228,14 +272,20 @@ class LocalPersonalService(PersonalService):
                 for t in p.templates
             ],
             "knowledge": [
-                {"id": k.id, "title": k.title, "content": k.content, "tags": k.tags, "updated_at": k.updated_at}
+                {
+                    "id": k.id,
+                    "title": k.title,
+                    "content": k.content,
+                    "tags": k.tags,
+                    "updated_at": k.updated_at,
+                }
                 for k in p.knowledge
             ],
             "documents": [
                 {"id": d.id, "title": d.title, "file_path": d.file_path, "category": d.category}
                 for d in p.documents
             ],
-            "version": p.version
+            "version": p.version,
         }
 
     def _serialize_resume(self, r: Resume) -> Dict[str, Any]:
@@ -248,25 +298,33 @@ class LocalPersonalService(PersonalService):
                     "version": v.version,
                     "summary": v.summary,
                     "experiences": [
-                        {"company": e.company, "role": e.role, "start_date": e.start_date, "end_date": e.end_date, "description": e.description}
+                        {
+                            "company": e.company,
+                            "role": e.role,
+                            "start_date": e.start_date,
+                            "end_date": e.end_date,
+                            "description": e.description,
+                        }
                         for e in v.experiences
                     ],
                     "educations": [
-                        {"institution": ed.institution, "degree": ed.degree, "field_of_study": ed.field_of_study, "grad_date": ed.grad_date}
+                        {
+                            "institution": ed.institution,
+                            "degree": ed.degree,
+                            "field_of_study": ed.field_of_study,
+                            "grad_date": ed.grad_date,
+                        }
                         for ed in v.educations
                     ],
-                    "skills": [
-                        {"category": s.category, "skills": s.skills}
-                        for s in v.skills
-                    ],
+                    "skills": [{"category": s.category, "skills": s.skills} for s in v.skills],
                     "projects": [
                         {"name": pr.name, "description": pr.description, "url": pr.url}
                         for pr in v.projects
                     ],
-                    "created_at": v.created_at
+                    "created_at": v.created_at,
                 }
                 for v in r.versions
-            ]
+            ],
         }
 
     def _deserialize_profile(self, data: Dict[str, Any]) -> PersonalProfile:
@@ -274,10 +332,10 @@ class LocalPersonalService(PersonalService):
         contact = Contact(
             email=contact_data.get("email", ""),
             phone=contact_data.get("phone", ""),
-            location=contact_data.get("location", "")
+            location=contact_data.get("location", ""),
         )
         socials = [SocialProfile(**s) for s in data.get("socials", [])]
-        
+
         career_data = data.get("career")
         career = CareerProfile(**career_data) if career_data else None
 
@@ -297,7 +355,7 @@ class LocalPersonalService(PersonalService):
                         educations=eds,
                         skills=sks,
                         projects=prjs,
-                        created_at=vdata.get("created_at", 0.0)
+                        created_at=vdata.get("created_at", 0.0),
                     )
                 )
             resumes.append(
@@ -305,7 +363,7 @@ class LocalPersonalService(PersonalService):
                     id=rdata.get("id", ""),
                     title=rdata.get("title", ""),
                     versions=versions,
-                    current_version=rdata.get("current_version", 1)
+                    current_version=rdata.get("current_version", 1),
                 )
             )
 
@@ -335,5 +393,5 @@ class LocalPersonalService(PersonalService):
             templates=templates,
             knowledge=knowledge,
             documents=documents,
-            version=data.get("version", 1)
+            version=data.get("version", 1),
         )

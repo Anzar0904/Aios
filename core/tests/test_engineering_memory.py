@@ -126,7 +126,7 @@ def test_record_and_update_task(memory_setup):
         "assigned_agent": "Antigravity",
         "dependencies": ["dep_001"],
         "retry_count": 0,
-        "operation_results": {}
+        "operation_results": {},
     }
 
     # Record task
@@ -161,7 +161,7 @@ def test_record_and_update_plan(memory_setup):
         "dependency_graph": {"nodes": []},
         "planning_statistics": {"time_taken": 1.2},
         "planning_version": 1,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }
 
     # Record plan
@@ -189,7 +189,7 @@ def test_archive_and_restore(memory_setup):
         "publication_status": "draft",
         "knowledge_references": ["ref_1"],
         "checksums": {"sha256": "abc"},
-        "version": 1
+        "version": 1,
     }
 
     # Record doc
@@ -214,29 +214,33 @@ def test_archive_and_restore(memory_setup):
 
 def test_statistics(memory_setup):
     ms = memory_setup["memory_service"]
-    
+
     # Empty stats initially
     stats_res = ms.Statistics()
     assert stats_res.status == PersistenceStatus.SUCCESS
     assert stats_res.payload["task_count"] == 0
 
     # Insert a task
-    ms.Record("tasks", "task_1", {
-        "id": "task_1",
-        "name": "t1",
-        "description": "d",
-        "priority": "Low",
-        "status": "completed",
-        "creation_time": time.time(),
-        "update_time": time.time(),
-        "completion_time": time.time(),
-        "workspace": "ws",
-        "current_phase": "p",
-        "assigned_agent": "a",
-        "dependencies": [],
-        "retry_count": 0,
-        "operation_results": {}
-    })
+    ms.Record(
+        "tasks",
+        "task_1",
+        {
+            "id": "task_1",
+            "name": "t1",
+            "description": "d",
+            "priority": "Low",
+            "status": "completed",
+            "creation_time": time.time(),
+            "update_time": time.time(),
+            "completion_time": time.time(),
+            "workspace": "ws",
+            "current_phase": "p",
+            "assigned_agent": "a",
+            "dependencies": [],
+            "retry_count": 0,
+            "operation_results": {},
+        },
+    )
 
     # Stats compilation should update
     stats_res2 = ms.Statistics()
@@ -256,19 +260,23 @@ def test_strict_policy_fails_on_db_issue(memory_setup):
 
     # Call should raise RuntimeError under STRICT policy
     with pytest.raises(RuntimeError):
-        ms.Record("tasks", "task_error", {
-            "id": "task_error",
-            "name": "t_err",
-            "description": "d",
-            "priority": "Low",
-            "status": "pending",
-            "creation_time": time.time(),
-            "update_time": time.time(),
-            "completion_time": 0.0,
-            "workspace": "ws",
-            "current_phase": "p",
-            "assigned_agent": "a",
-            "dependencies": [],
-            "retry_count": 0,
-            "operation_results": {}
-        })
+        ms.Record(
+            "tasks",
+            "task_error",
+            {
+                "id": "task_error",
+                "name": "t_err",
+                "description": "d",
+                "priority": "Low",
+                "status": "pending",
+                "creation_time": time.time(),
+                "update_time": time.time(),
+                "completion_time": 0.0,
+                "workspace": "ws",
+                "current_phase": "p",
+                "assigned_agent": "a",
+                "dependencies": [],
+                "retry_count": 0,
+                "operation_results": {},
+            },
+        )

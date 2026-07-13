@@ -35,7 +35,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -75,7 +75,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
 
         collab_dir = os.path.join(workspace_root, "docs", "collaborations")
         os.makedirs(collab_dir, exist_ok=True)
-        
+
         file_path = os.path.join(collab_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -87,15 +87,13 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
             self._audit_logs[session_id] = []
         return self._audit_logs[session_id]
 
-    def _add_audit_log(self, session_id: str, action: ReviewAction, actor: str, details: str) -> None:
+    def _add_audit_log(
+        self, session_id: str, action: ReviewAction, actor: str, details: str
+    ) -> None:
         log_list = self._get_audit_log_list(session_id)
         log_id = f"log_{session_id}_{len(log_list) + 1}_{int(time.time())}"
         entry = ReviewAuditLog(
-            log_id=log_id,
-            action=action,
-            actor=actor,
-            details=details,
-            timestamp=time.time()
+            log_id=log_id, action=action, actor=actor, details=details, timestamp=time.time()
         )
         log_list.append(entry)
 
@@ -103,31 +101,31 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
         timeline = self.get_timeline("", session_id)
         timeline.events.append(entry)
 
-    def create_thread(self, workspace_id: str, session_id: str, comment: ReviewComment) -> ReviewThread:
+    def create_thread(
+        self, workspace_id: str, session_id: str, comment: ReviewComment
+    ) -> ReviewThread:
         if session_id not in self._threads:
             self._threads[session_id] = []
 
         thread_id = f"thr_{session_id}_{len(self._threads[session_id]) + 1}"
-        thread = ReviewThread(
-            thread_id=thread_id,
-            root_comment=comment,
-            resolution_state="open"
-        )
+        thread = ReviewThread(thread_id=thread_id, root_comment=comment, resolution_state="open")
         self._threads[session_id].append(thread)
 
         self._add_audit_log(
             session_id=session_id,
             action=ReviewAction.CREATE,
             actor=comment.author,
-            details=f"Created thread '{thread_id}' with root comment type '{comment.comment_type}'."
+            details=f"Created thread '{thread_id}' with root comment type '{comment.comment_type}'.",
         )
         return thread
 
-    def reply_to_comment(self, workspace_id: str, thread_id: str, comment_id: str, reply: ReviewComment) -> ReviewComment:
+    def reply_to_comment(
+        self, workspace_id: str, thread_id: str, comment_id: str, reply: ReviewComment
+    ) -> ReviewComment:
         parts = thread_id.split("_")
         session_id = "_".join(parts[1:-1]) if len(parts) > 2 else "default"
         threads = self.get_threads(workspace_id, session_id)
-        
+
         target_thread = None
         for t in threads:
             if t.thread_id == thread_id:
@@ -149,13 +147,15 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
 
         success = add_reply(target_thread.root_comment)
         if not success:
-            raise ValueError(f"Parent comment '{comment_id}' not found inside thread '{thread_id}'.")
+            raise ValueError(
+                f"Parent comment '{comment_id}' not found inside thread '{thread_id}'."
+            )
 
         self._add_audit_log(
             session_id=session_id,
             action=ReviewAction.REPLY,
             actor=reply.author,
-            details=f"Replied to comment '{comment_id}' inside thread '{thread_id}'."
+            details=f"Replied to comment '{comment_id}' inside thread '{thread_id}'.",
         )
         return reply
 
@@ -163,7 +163,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
         parts = thread_id.split("_")
         session_id = "_".join(parts[1:-1]) if len(parts) > 2 else "default"
         threads = self.get_threads(workspace_id, session_id)
-        
+
         for t in threads:
             if t.thread_id == thread_id:
                 t.resolution_state = "resolved"
@@ -176,14 +176,14 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
             session_id=session_id,
             action=ReviewAction.RESOLVE,
             actor=resolver,
-            details=f"Resolved thread '{thread_id}'."
+            details=f"Resolved thread '{thread_id}'.",
         )
 
     def reopen_thread(self, workspace_id: str, thread_id: str, reopener: str) -> None:
         parts = thread_id.split("_")
         session_id = "_".join(parts[1:-1]) if len(parts) > 2 else "default"
         threads = self.get_threads(workspace_id, session_id)
-        
+
         for t in threads:
             if t.thread_id == thread_id:
                 t.resolution_state = "open"
@@ -196,7 +196,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
             session_id=session_id,
             action=ReviewAction.REOPEN,
             actor=reopener,
-            details=f"Reopened thread '{thread_id}'."
+            details=f"Reopened thread '{thread_id}'.",
         )
 
     def cast_vote(self, workspace_id: str, session_id: str, vote: ReviewVote) -> None:
@@ -208,7 +208,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
             session_id=session_id,
             action=ReviewAction.VOTE,
             actor=vote.voter_id,
-            details=f"Cast vote '{vote.vote_value}' with rationale: {vote.rationale}"
+            details=f"Cast vote '{vote.vote_value}' with rationale: {vote.rationale}",
         )
 
     def get_threads(self, workspace_id: str, session_id: str) -> List[ReviewThread]:
@@ -217,8 +217,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
     def get_timeline(self, workspace_id: str, session_id: str) -> ReviewTimeline:
         if session_id not in self._timelines:
             self._timelines[session_id] = ReviewTimeline(
-                timeline_id=f"timeline_{session_id}",
-                events=[]
+                timeline_id=f"timeline_{session_id}", events=[]
             )
         return self._timelines[session_id]
 
@@ -258,17 +257,24 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
                 "workspace_id": workspace_id,
                 "open_threads": open_threads_count,
                 "resolved_threads": resolved_threads_count,
-                "vote_statistics": vote_stats
-            }
+                "vote_statistics": vote_stats,
+            },
         )
 
-    def compile_collaboration_report(self, workspace_id: str, session_id: str) -> ReviewCollaborationReport:
+    def compile_collaboration_report(
+        self, workspace_id: str, session_id: str
+    ) -> ReviewCollaborationReport:
         threads = self.get_threads(workspace_id, session_id)
         votes = self._votes.get(session_id, [])
         timeline = self.get_timeline(workspace_id, session_id)
         audit_log = self.get_audit_log(workspace_id, session_id)
 
-        vote_summary = {"approve": 0, "approve_with_conditions": 0, "request_changes": 0, "reject": 0}
+        vote_summary = {
+            "approve": 0,
+            "approve_with_conditions": 0,
+            "request_changes": 0,
+            "reject": 0,
+        }
         for v in votes:
             val = v.vote_value.lower()
             if val in vote_summary:
@@ -282,14 +288,17 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
             timeline=timeline,
             audit_log=audit_log,
             vote_summary=vote_summary,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # Refine consensus using model if active
         consensus = "No clear consensus recorded."
         if self._model and votes:
             try:
-                votes_desc = "\n".join(f"- Reviewer: {v.voter_id}, Vote: {v.vote_value}, Rationale: {v.rationale}" for v in votes)
+                votes_desc = "\n".join(
+                    f"- Reviewer: {v.voter_id}, Vote: {v.vote_value}, Rationale: {v.rationale}"
+                    for v in votes
+                )
                 prompt = (
                     "You are the Lead Quality Architect responsible for collaborative gates evaluations.\n"
                     f"Reviewer Votes details:\n{votes_desc}\n\n"
@@ -299,7 +308,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined consensus details directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -312,16 +321,24 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
         threads_md = []
         for t in threads:
             status_tag = "[RESOLVED]" if t.resolution_state == "resolved" else "[OPEN]"
-            linked_tag = f" (Artifacts: {', '.join(t.root_comment.linked_artifacts)})" if t.root_comment.linked_artifacts else ""
+            linked_tag = (
+                f" (Artifacts: {', '.join(t.root_comment.linked_artifacts)})"
+                if t.root_comment.linked_artifacts
+                else ""
+            )
             threads_md.append(
                 f"### {status_tag} Thread `{t.thread_id}`{linked_tag}\n"
                 f"- **{t.root_comment.author}**: {t.root_comment.content}\n"
-                + "\n".join(f"  - **{rep.author}**: {rep.content}" for rep in t.root_comment.replies)
+                + "\n".join(
+                    f"  - **{rep.author}**: {rep.content}" for rep in t.root_comment.replies
+                )
             )
 
         events_md = []
         for e in audit_log:
-            events_md.append(f"- **{time.ctime(e.timestamp)}** [{e.action.value.upper()}] ({e.actor}): {e.details}")
+            events_md.append(
+                f"- **{time.ctime(e.timestamp)}** [{e.action.value.upper()}] ({e.actor}): {e.details}"
+            )
 
         report_md = (
             f"# Gate Review Collaboration Report\n\n"
@@ -359,7 +376,7 @@ class LocalReviewCollaborationService(ReviewCollaborationService):
                 unique_id=f"collab_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="review_collaboration_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

@@ -39,7 +39,9 @@ def render_overall_architecture(components: List[ArchitecturalComponent]) -> str
     """Render the overall AI OS architecture diagram."""
     lines = [_banner()]
     lines.append("# AI OS Architecture\n\n")
-    lines.append("> High-level system architecture showing major components and their relationships.\n\n")
+    lines.append(
+        "> High-level system architecture showing major components and their relationships.\n\n"
+    )
 
     lines.append("## Overall Architecture\n\n")
     lines.append("```mermaid\n")
@@ -125,7 +127,9 @@ def render_service_dependency_graph(services: List[ServiceNode]) -> str:
     lines.append("- **Green nodes**: Service implementations\n")
     lines.append("- **Arrows**: Service depends on target\n\n")
 
-    lines.append(f"Note: Showing {min(30, len(services_with_deps))} services with the most dependencies ")
+    lines.append(
+        f"Note: Showing {min(30, len(services_with_deps))} services with the most dependencies "
+    )
     lines.append(f"out of {len(services)} total services.\n")
 
     return "".join(lines)
@@ -252,7 +256,9 @@ def render_semantic_memory_pipeline() -> str:
     """Render the semantic memory pipeline diagram."""
     lines = [_banner()]
     lines.append("# Semantic Memory Pipeline\n\n")
-    lines.append("> Pipeline for storing and retrieving semantic memories with vector embeddings.\n\n")
+    lines.append(
+        "> Pipeline for storing and retrieving semantic memories with vector embeddings.\n\n"
+    )
 
     lines.append("## Memory Pipeline Flow\n\n")
     lines.append("```mermaid\n")
@@ -378,7 +384,9 @@ def render_omniroute_architecture() -> str:
     """Render the OmniRoute model selection architecture."""
     lines = [_banner()]
     lines.append("# OmniRoute Architecture\n\n")
-    lines.append("> Intelligent model selection and routing based on task complexity and capabilities.\n\n")
+    lines.append(
+        "> Intelligent model selection and routing based on task complexity and capabilities.\n\n"
+    )
 
     lines.append("## OmniRoute Decision Flow\n\n")
     lines.append("```mermaid\n")
@@ -501,13 +509,19 @@ def render_diagrams_index(diagram_count: int) -> str:
     lines.append("## Diagram Files\n\n")
     lines.append("| File | Description |\n")
     lines.append("|------|-------------|\n")
-    lines.append("| [architecture.md](architecture.md) | Overall AI OS architecture with component relationships |\n")
+    lines.append(
+        "| [architecture.md](architecture.md) | Overall AI OS architecture with component relationships |\n"
+    )
     lines.append("| [dependency_graph.md](dependency_graph.md) | Service dependency graph |\n")
     lines.append("| [lifecycle.md](lifecycle.md) | Runtime lifecycle phases and transitions |\n")
     lines.append("| [runtime.md](runtime.md) | Bootstrap sequence and initialization flow |\n")
     lines.append("| [persistence.md](persistence.md) | Multi-layer persistence architecture |\n")
-    lines.append("| [semantic_memory.md](semantic_memory.md) | Semantic memory pipeline with vector embeddings |\n")
-    lines.append("| [hybrid_retrieval.md](hybrid_retrieval.md) | Hybrid keyword and semantic retrieval |\n")
+    lines.append(
+        "| [semantic_memory.md](semantic_memory.md) | Semantic memory pipeline with vector embeddings |\n"
+    )
+    lines.append(
+        "| [hybrid_retrieval.md](hybrid_retrieval.md) | Hybrid keyword and semantic retrieval |\n"
+    )
     lines.append("| [omniroute.md](omniroute.md) | OmniRoute model selection and routing |\n")
     lines.append("| [agents.md](agents.md) | Agent interaction and coordination flow |\n\n")
 
@@ -526,7 +540,11 @@ def render_diagrams_index(diagram_count: int) -> str:
 
     lines.append("## Cross-References\n\n")
     lines.append("- [Generated Documentation](../generated/README.md) - Component catalogs\n")
-    lines.append("- [API & Service Reference](../reference/README.md) - Detailed API documentation\n")
-    lines.append("- [Architecture Documentation](../architecture/README.md) - System design documents\n")
+    lines.append(
+        "- [API & Service Reference](../reference/README.md) - Detailed API documentation\n"
+    )
+    lines.append(
+        "- [Architecture Documentation](../architecture/README.md) - System design documents\n"
+    )
 
     return "".join(lines)

@@ -64,7 +64,7 @@ def dummy_package():
         confidence_score=0.85,
         overall_health="degraded",
         evidence=[],
-        metadata={"profile_language": "python"}
+        metadata={"profile_language": "python"},
     )
 
 
@@ -105,14 +105,14 @@ def test_review_validation():
         description="Low severity warning",
         evidence=[ReviewEvidence("source", "type", {}, 0.0)],
         recommendation=ReviewRecommendation("rec_1", "action", ["step"]),
-        blocking=True  # Blocking but low severity!
+        blocking=True,  # Blocking but low severity!
     )
     report = ReviewReport(
         report_id="rep_1",
         session_id="sess_1",
         workspace_id="ws_1",
         summary=ReviewSummary("sum_1", "overview", "healthy", "low", reviewer_confidence=0.9),
-        findings=[finding_bad_severity]
+        findings=[finding_bad_severity],
     )
 
     errors = validator.validate_review(report)
@@ -128,14 +128,14 @@ def test_review_validation():
         description="Low severity warning",
         evidence=[ReviewEvidence("source", "type", {}, 0.0)],
         recommendation=ReviewRecommendation("rec_2", "action", ["step"]),
-        blocking=False
+        blocking=False,
     )
     report_dup = ReviewReport(
         report_id="rep_1",
         session_id="sess_1",
         workspace_id="ws_1",
         summary=ReviewSummary("sum_1", "overview", "healthy", "low", reviewer_confidence=0.9),
-        findings=[finding_bad_severity, finding_dup]
+        findings=[finding_bad_severity, finding_dup],
     )
     # Clear blocking to bypass first check
     finding_bad_severity.blocking = False
@@ -151,20 +151,22 @@ def test_review_validation():
         description="Maintainability check",
         evidence=[],  # empty
         recommendation=ReviewRecommendation("rec_3", "action", ["step"]),
-        blocking=False
+        blocking=False,
     )
     report_no_ev = ReviewReport(
         report_id="rep_1",
         session_id="sess_1",
         workspace_id="ws_1",
         summary=ReviewSummary("sum_1", "overview", "healthy", "low", reviewer_confidence=0.9),
-        findings=[finding_no_evidence]
+        findings=[finding_no_evidence],
     )
     errors_no_ev = validator.validate_review(report_no_ev)
     assert any("lacks supporting telemetry" in e.lower() for e in errors_no_ev)
 
 
-def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_service, dummy_package):
+def test_workspace_integration(
+    tmp_path, mock_memory_service, mock_workspace_service, dummy_package
+):
     ws_id = "ws_test_review"
     ws_root = str(tmp_path / ws_id)
     os.makedirs(ws_root, exist_ok=True)
@@ -175,15 +177,14 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    engine = LocalReviewEngine(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    engine = LocalReviewEngine(memory_service=mock_memory_service, registry=registry)
     engine.initialize()
 
     session = engine.run_review(ws_id, dummy_package)
-    expected_file = os.path.join(ws_root, "docs", "reviews", f"REVIEW_REPORT_{session.session_id}.md")
-    
+    expected_file = os.path.join(
+        ws_root, "docs", "reviews", f"REVIEW_REPORT_{session.session_id}.md"
+    )
+
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
         content = f.read()
@@ -192,9 +193,7 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service, dummy_package):
-    engine = LocalReviewEngine(
-        memory_service=mock_memory_service
-    )
+    engine = LocalReviewEngine(memory_service=mock_memory_service)
     session = engine.run_review("ws_1", dummy_package)
     engine.store_review_summary(session)
 
@@ -210,11 +209,8 @@ def test_memory_integration(mock_memory_service, dummy_package):
 
 def test_knowledge_hub_integration(mock_memory_service, dummy_package):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    engine = LocalReviewEngine(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
-    )
-    
+    engine = LocalReviewEngine(memory_service=mock_memory_service, knowledge_hub=mock_kh)
+
     session = engine.run_review("ws_1", dummy_package)
     engine.publish_review_report(session.report)
 

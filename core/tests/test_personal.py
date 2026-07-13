@@ -26,9 +26,7 @@ def test_profile_crud_and_switching():
 
         # Create new profile
         new_p = PersonalProfile(
-            id="student",
-            name="Alice Student",
-            contact=Contact(email="alice@student.com")
+            id="student", name="Alice Student", contact=Contact(email="alice@student.com")
         )
         service.create_profile(new_p)
         assert "student" in service.list_profiles()
@@ -41,7 +39,7 @@ def test_profile_crud_and_switching():
         active = service.get_active_profile()
         active.name = "Alice Grad Student"
         service.update_profile(active.id, active)
-        
+
         updated = service.get_profile("student")
         assert updated.name == "Alice Grad Student"
         assert updated.version == 2
@@ -57,21 +55,21 @@ def test_resume_and_portfolio_helpers():
         service.initialize()
 
         profile = service.get_active_profile()
-        
+
         # Add Resume
         resume = Resume(
             id="res-1",
             title="Python Dev Resume",
-            versions=[ResumeVersion(version=1, summary="Python Specialist Summary")]
+            versions=[ResumeVersion(version=1, summary="Python Specialist Summary")],
         )
         profile.resumes.append(resume)
-        
+
         # Add Portfolio Project
         project = PortfolioProject(
             id="proj-1",
             name="Personal AI OS",
             description="Agentic OS using Python",
-            technologies=["Python", "pytest"]
+            technologies=["Python", "pytest"],
         )
         profile.portfolio.append(project)
 
@@ -93,7 +91,9 @@ def test_intelligent_context_selection():
         profile = service.get_active_profile()
         profile.resumes.append(Resume(id="r1", title="Job CV"))
         profile.goals.append(Goal(id="g1", title="Learn Go", target_date="2026-12-31"))
-        profile.portfolio.append(PortfolioProject(id="p1", name="Project Alpha", description="Description"))
+        profile.portfolio.append(
+            PortfolioProject(id="p1", name="Project Alpha", description="Description")
+        )
         service.update_profile(profile.id, profile)
 
         # 1. Career query
@@ -125,7 +125,7 @@ def test_context_manager_personal_integration():
         git_repo_path="/tmp/test_workspace/.git",
         git_branch="main",
         project_root="/tmp/test_workspace",
-        project_name="test_proj"
+        project_name="test_proj",
     )
     context_service.get_current_context.return_value = workspace_ctx
     memory_service.search_memory.return_value = []
@@ -138,9 +138,9 @@ def test_context_manager_personal_integration():
         memory_service=memory_service,
         project_intel=None,
         dev_workspace=None,
-        personal_service=personal_service
+        personal_service=personal_service,
     )
-    
+
     assembled = manager.assemble_context("Optimize my CV")
     assert assembled.extra.get("personal_intelligence") == mock_personal_ctx
     personal_service.get_relevant_context.assert_called_once_with("Optimize my CV")

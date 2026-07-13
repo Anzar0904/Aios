@@ -9,6 +9,7 @@ from ..utilities import deserialize_val, serialize_val
 
 logger = logging.getLogger(__name__)
 
+
 class SessionRegistryImpl(SessionRegistry):
     def __init__(self) -> None:
         self.configs: Dict[str, Dict[str, Any]] = {}
@@ -778,5 +779,3 @@ class RedisSessionServiceImpl(RedisSessionService):
 
     def get_store(self) -> SessionStore:
         return self.store
-
-

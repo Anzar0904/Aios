@@ -10,6 +10,7 @@ from aios.services.workspace_intelligence import CodeStructureSummary
 
 class GenerationPolicy(Enum):
     """Policies dictating structural refactoring permissibility levels."""
+
     CONSERVATIVE = "conservative"
     BALANCED = "balanced"
     AGGRESSIVE = "aggressive"
@@ -18,6 +19,7 @@ class GenerationPolicy(Enum):
 @dataclass
 class GeneratedArtifact:
     """Represents a generated code file artifact target."""
+
     artifact_id: str
     file_path: str
     content: str
@@ -28,6 +30,7 @@ class GeneratedArtifact:
 @dataclass
 class GenerationReport:
     """Final code generation execution telemetry report."""
+
     report_id: str
     objective: str
     policy: GenerationPolicy
@@ -42,6 +45,7 @@ class GenerationReport:
 @dataclass
 class GenerationSession:
     """Active code generation session lifecycle tracker."""
+
     session_id: str
     workspace_id: str
     policy: GenerationPolicy
@@ -53,7 +57,9 @@ class CodePlanner(abc.ABC):
     """Formulates multi-step generation execution schedules."""
 
     @abc.abstractmethod
-    def plan_generation_steps(self, objective: str, policy: GenerationPolicy) -> List[Dict[str, Any]]:
+    def plan_generation_steps(
+        self, objective: str, policy: GenerationPolicy
+    ) -> List[Dict[str, Any]]:
         """Determines ordered files target steps and actions."""
         pass
 
@@ -72,11 +78,7 @@ class PromptBuilder(abc.ABC):
 
     @abc.abstractmethod
     def build_prompt(
-        self,
-        objective: str,
-        target_file: str,
-        context: str,
-        policy: GenerationPolicy
+        self, objective: str, target_file: str, context: str, policy: GenerationPolicy
     ) -> LLMRequest:
         """Packages LLMRequest with category, priority, and JSON schemas."""
         pass
@@ -123,10 +125,7 @@ class ImportValidator(abc.ABC):
 
     @abc.abstractmethod
     def validate_imports(
-        self,
-        content: str,
-        file_path: str,
-        code_summary: CodeStructureSummary
+        self, content: str, file_path: str, code_summary: CodeStructureSummary
     ) -> tuple[bool, str]:
         """Verifies that imports align with code summary dependencies."""
         pass
@@ -137,9 +136,7 @@ class GenerationValidator(abc.ABC):
 
     @abc.abstractmethod
     def validate_artifact(
-        self,
-        artifact: GeneratedArtifact,
-        code_summary: CodeStructureSummary
+        self, artifact: GeneratedArtifact, code_summary: CodeStructureSummary
     ) -> tuple[bool, List[str]]:
         """Aggregates syntax, style, and import verifications."""
         pass
@@ -160,7 +157,7 @@ class CodeGenerationService(ServiceLifecycle, abc.ABC):
         target_file: str,
         objective: str,
         workspace_root: str,
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> GenerationReport:
         """Executes Code Generation workflow using the ModelService."""
         pass

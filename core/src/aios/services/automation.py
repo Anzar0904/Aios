@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class WorkflowNode:
     """Graph node representing an operation or decision element."""
+
     node_id: str
     name: str
     node_type: str  # "trigger", "action", "condition", "loop", "branch"
@@ -17,6 +18,7 @@ class WorkflowNode:
 @dataclass
 class WorkflowEdge:
     """Directed graph edge representing execution transitions routes."""
+
     edge_id: str
     source_node_id: str
     target_node_id: str
@@ -26,6 +28,7 @@ class WorkflowEdge:
 @dataclass
 class WorkflowGraph:
     """Directed graph container organizing nodes and edge links."""
+
     nodes: List[WorkflowNode] = field(default_factory=list)
     edges: List[WorkflowEdge] = field(default_factory=list)
 
@@ -33,6 +36,7 @@ class WorkflowGraph:
 @dataclass
 class WorkflowTrigger:
     """Trigger conditions prompting execution flow runs."""
+
     trigger_id: str
     trigger_type: str  # "webhook", "schedule", "event"
     config: Dict[str, Any] = field(default_factory=dict)
@@ -41,6 +45,7 @@ class WorkflowTrigger:
 @dataclass
 class WorkflowAction:
     """Concrete workflow action executing system operations."""
+
     action_id: str
     action_type: str  # "http_request", "script", "notify"
     config: Dict[str, Any] = field(default_factory=dict)
@@ -49,6 +54,7 @@ class WorkflowAction:
 @dataclass
 class WorkflowCondition:
     """Conditional evaluation expression."""
+
     condition_id: str
     expression: str
     config: Dict[str, Any] = field(default_factory=dict)
@@ -57,6 +63,7 @@ class WorkflowCondition:
 @dataclass
 class WorkflowVariable:
     """Variable container declaring schema types and defaults."""
+
     name: str
     value_type: str  # "string", "int", "boolean", "object"
     default_value: Any = None
@@ -65,6 +72,7 @@ class WorkflowVariable:
 @dataclass
 class WorkflowCredentialReference:
     """Credential metadata index referencing system vaults securely."""
+
     reference_id: str
     provider_type: str  # "github", "n8n", "temporal"
     credential_name: str
@@ -73,6 +81,7 @@ class WorkflowCredentialReference:
 @dataclass
 class WorkflowExecutionPolicy:
     """Configurable execution constraints matching runtime policies."""
+
     max_retries: int
     retry_delay_seconds: int
     timeout_seconds: int
@@ -82,6 +91,7 @@ class WorkflowExecutionPolicy:
 @dataclass
 class WorkflowMetadata:
     """Metadata tag indicators detailing descriptions and dependencies."""
+
     tags: List[str] = field(default_factory=list)
     labels: Dict[str, str] = field(default_factory=dict)
     description: str = ""
@@ -91,6 +101,7 @@ class WorkflowMetadata:
 @dataclass
 class WorkflowArtifact:
     """Output artifacts resulting from workflow execution loops."""
+
     artifact_id: str
     name: str
     file_path: str
@@ -100,6 +111,7 @@ class WorkflowArtifact:
 @dataclass
 class WorkflowDefinition:
     """Unified container representing a platform-independent workflow graph."""
+
     workflow_id: str
     name: str
     graph: WorkflowGraph
@@ -115,6 +127,7 @@ class WorkflowDefinition:
 @dataclass
 class AutomationSession:
     """Lifecycle tracking for an active execution flow session."""
+
     session_id: str
     workflow_id: str
     workspace_id: str
@@ -126,6 +139,7 @@ class AutomationSession:
 @dataclass
 class AutomationResult:
     """Consolidated outcome metrics from workflow executions."""
+
     session_id: str
     success: bool
     output_data: Dict[str, Any] = field(default_factory=dict)
@@ -136,6 +150,7 @@ class AutomationResult:
 @dataclass
 class AutomationReport:
     """Report compiled for external Knowledge Hub updates."""
+
     report_id: str
     workspace_id: str
     session_id: str
@@ -160,23 +175,28 @@ class AutomationProvider(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def execute_workflow(self, definition: WorkflowDefinition, session: AutomationSession) -> AutomationResult:
+    def execute_workflow(
+        self, definition: WorkflowDefinition, session: AutomationSession
+    ) -> AutomationResult:
         """Runs the workflow using provider execution engines."""
         pass
 
 
 class N8NProvider(AutomationProvider, abc.ABC):
     """Abstract provider structure for n8n platform integration."""
+
     pass
 
 
 class GitHubActionsProvider(AutomationProvider, abc.ABC):
     """Abstract provider structure for GitHub Actions integration."""
+
     pass
 
 
 class TemporalProvider(AutomationProvider, abc.ABC):
     """Abstract provider structure for Temporal orchestrators integration."""
+
     pass
 
 
@@ -242,7 +262,9 @@ class AutomationService(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def run_automation(self, workflow_id: str, workspace_id: str, provider_id: str) -> AutomationSession:
+    def run_automation(
+        self, workflow_id: str, workspace_id: str, provider_id: str
+    ) -> AutomationSession:
         """Submits task, validation checks, and triggers runner loops."""
         pass
 

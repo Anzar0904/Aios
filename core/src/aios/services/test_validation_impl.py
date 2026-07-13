@@ -40,7 +40,7 @@ class LocalValidationService(ValidationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -61,7 +61,7 @@ class LocalValidationService(ValidationService):
         workspace_id: str,
         execution_summary: ExecutionSummary,
         coverage_report: CoverageReport,
-        failure_report: FailureAnalysisReport
+        failure_report: FailureAnalysisReport,
     ) -> ValidationReport:
         logger.info(f"Synthesizing unified validation report for workspace: '{workspace_id}'")
 
@@ -97,19 +97,19 @@ class LocalValidationService(ValidationService):
 
         # 1. Validation gates evaluation
         gates = []
-        
+
         # Test Execution Gate
         exec_ev = ValidationEvidence(
             evidence_id=f"ev_exec_{int(time.time())}",
             evidence_type="execution_summary",
             summary_text=f"Total run: {total_passed + total_failed}. Failed: {total_failed}.",
-            metrics_pct=100.0 if total_failed == 0 else 0.0
+            metrics_pct=100.0 if total_failed == 0 else 0.0,
         )
         exec_gate = ValidationGate(
             gate_name="Tests Passed",
             status=ValidationStatus.PASS if total_failed == 0 else ValidationStatus.FAIL,
             checked_rule="Failed execution count must equal zero.",
-            evidence=[exec_ev]
+            evidence=[exec_ev],
         )
         gates.append(exec_gate)
 
@@ -118,7 +118,7 @@ class LocalValidationService(ValidationService):
             evidence_id=f"ev_cov_{int(time.time())}",
             evidence_type="coverage_report",
             summary_text=f"Overall coverage: {overall_cov:.1f}%. Target: {min_stmt:.1f}%.",
-            metrics_pct=overall_cov
+            metrics_pct=overall_cov,
         )
         cov_status = ValidationStatus.PASS
         if overall_cov < min_stmt:
@@ -127,7 +127,7 @@ class LocalValidationService(ValidationService):
             gate_name="Coverage Target Met",
             status=cov_status,
             checked_rule=f"Overall statement coverage must exceed {min_stmt:.1f}%.",
-            evidence=[cov_ev]
+            evidence=[cov_ev],
         )
         gates.append(cov_gate)
 
@@ -136,44 +136,50 @@ class LocalValidationService(ValidationService):
             evidence_id=f"ev_fail_{int(time.time())}",
             evidence_type="failure_report",
             summary_text=f"Failure severity diagnosed as: {fail_severity_val.upper()}.",
-            metrics_pct=100.0 if fail_count == 0 else 50.0
+            metrics_pct=100.0 if fail_count == 0 else 50.0,
         )
         fail_status = ValidationStatus.PASS
         if fail_count > 0:
-            fail_status = ValidationStatus.FAIL if fail_severity_val == "critical" else ValidationStatus.WARNING
+            fail_status = (
+                ValidationStatus.FAIL
+                if fail_severity_val == "critical"
+                else ValidationStatus.WARNING
+            )
         fail_gate = ValidationGate(
             gate_name="No Critical Failures",
             status=fail_status,
             checked_rule="Severity classification must not evaluate to Critical.",
-            evidence=[fail_ev]
+            evidence=[fail_ev],
         )
         gates.append(fail_gate)
 
         # 2. Weighted scoring calculations
         raw_score = 100.0
         weights = {"execution": 0.50, "coverage": 0.30, "severity": 0.20}
-        
+
         # Deductions
         exec_deduction = 50.0 * (total_failed / max(1, total_passed + total_failed))
         cov_deduction = max(0.0, min_stmt - overall_cov)
         fail_deduction = 20.0 if fail_count > 0 else 0.0
-        
-        raw_score -= (weights["execution"] * exec_deduction + weights["coverage"] * cov_deduction + weights["severity"] * fail_deduction)
+
+        raw_score -= (
+            weights["execution"] * exec_deduction
+            + weights["coverage"] * cov_deduction
+            + weights["severity"] * fail_deduction
+        )
         raw_score = max(0.0, min(100.0, raw_score))
 
         score_details = ValidationScore(
-            raw_score=raw_score,
-            weight_metrics=weights,
-            confidence_penalty=0.0
+            raw_score=raw_score, weight_metrics=weights, confidence_penalty=0.0
         )
 
         # 3. Decision Selection
         overall_status = ValidationStatus.PASS
         decision = ValidationDecision.APPROVED
-        
+
         failed_count = sum(1 for g in gates if g.status == ValidationStatus.FAIL)
         warning_count = sum(1 for g in gates if g.status == ValidationStatus.WARNING)
-        
+
         if failed_count > 0 or raw_score < 70.0:
             overall_status = ValidationStatus.FAIL
             decision = ValidationDecision.REJECTED
@@ -184,7 +190,7 @@ class LocalValidationService(ValidationService):
         # 4. Findings and Recommendations compiler
         findings = []
         recommendations = []
-        
+
         for idx, g in enumerate(gates):
             if g.status != ValidationStatus.PASS:
                 findings.append(
@@ -192,15 +198,17 @@ class LocalValidationService(ValidationService):
                         finding_id=f"find_{idx}_{int(time.time())}",
                         severity="High" if g.status == ValidationStatus.FAIL else "Medium",
                         description=g.checked_rule,
-                        file_path="workspace"
+                        file_path="workspace",
                     )
                 )
                 recommendations.append(
                     ValidationRecommendation(
                         recommendation_id=f"rec_val_{idx}_{int(time.time())}",
-                        recommendation_type="manual_review" if g.status == ValidationStatus.WARNING else "implementation_change",
+                        recommendation_type="manual_review"
+                        if g.status == ValidationStatus.WARNING
+                        else "implementation_change",
                         description=f"Resolve validation gate failure for: {g.gate_name}.",
-                        actionable_steps=["Trace code path.", "Verify requirements."]
+                        actionable_steps=["Trace code path.", "Verify requirements."],
                     )
                 )
 
@@ -210,7 +218,7 @@ class LocalValidationService(ValidationService):
             failed_gates_count=failed_count,
             total_tests_run=total_passed + total_failed,
             failed_tests_run=total_failed,
-            achieved_coverage_pct=overall_cov
+            achieved_coverage_pct=overall_cov,
         )
 
         summary = ValidationSummary(
@@ -219,7 +227,7 @@ class LocalValidationService(ValidationService):
             overall_status=overall_status,
             decision=decision,
             score=score_details,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         report = ValidationReport(
@@ -231,7 +239,7 @@ class LocalValidationService(ValidationService):
             findings=findings,
             recommendations=recommendations,
             metrics=metrics,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # 5. LLM refinement if model is active
@@ -243,9 +251,9 @@ class LocalValidationService(ValidationService):
                     f"Weighted Score: {raw_score:.1f}\n\n"
                     "Refine validation summary. Return a single pure JSON:\n"
                     "{\n"
-                    "  \"decision\": \"approved\",\n"
-                    "  \"score_adjustment\": 0.0,\n"
-                    "  \"executive_summary\": \"Refined executive summary validation passes.\"\n"
+                    '  "decision": "approved",\n'
+                    '  "score_adjustment": 0.0,\n'
+                    '  "executive_summary": "Refined executive summary validation passes."\n'
                     "}"
                 )
 
@@ -254,7 +262,7 @@ class LocalValidationService(ValidationService):
                         prompt=prompt,
                         system_instruction="Output pure JSON only.",
                         task_category="testing",
-                        preferences={"JSON_output": True}
+                        preferences={"JSON_output": True},
                     )
                 )
 
@@ -266,7 +274,11 @@ class LocalValidationService(ValidationService):
 
                 data = json.loads(content)
                 dec_val = data.get("decision", "manual_review").upper()
-                report.summary.decision = ValidationDecision[dec_val] if dec_val in ValidationDecision.__members__ else report.summary.decision
+                report.summary.decision = (
+                    ValidationDecision[dec_val]
+                    if dec_val in ValidationDecision.__members__
+                    else report.summary.decision
+                )
                 report.executive_summary = data.get("executive_summary", report.executive_summary)
             except Exception as e:
                 logger.debug(f"LLM validation synthesis refinement failed: {e}. Keeping defaults.")
@@ -283,7 +295,7 @@ class LocalValidationService(ValidationService):
             f"Total Tests Run: {report.metrics.total_tests_run}\n"
             f"Achieved Coverage: {report.metrics.achieved_coverage_pct:.1f}%"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -292,8 +304,8 @@ class LocalValidationService(ValidationService):
                 session_id=report.report_id,
                 tags=["validation_report", "quality_release_gates"],
                 importance=2,
-                source_subsystem="validation_service"
-            )
+                source_subsystem="validation_service",
+            ),
         )
 
     def publish_validation_report(self, report: ValidationReport) -> None:
@@ -323,10 +335,14 @@ class LocalValidationService(ValidationService):
             f"**Passed Gates**: {report.metrics.passed_gates_count} / {len(report.gates)}\n\n"
             f"## Executive Summary\n"
             f"{report.executive_summary}\n\n"
-            f"## Gating Outcomes\n"
-            + "\n".join(gates_md) + "\n\n"
+            f"## Gating Outcomes\n" + "\n".join(gates_md) + "\n\n"
             "## Validation Findings\n"
-            + ("\n".join(findings_md) if findings_md else "- *No warnings or errors detected. Gating satisfies release criteria.*") + "\n\n"
+            + (
+                "\n".join(findings_md)
+                if findings_md
+                else "- *No warnings or errors detected. Gating satisfies release criteria.*"
+            )
+            + "\n\n"
             "## Corrective Action Recommendations\n"
             + ("\n".join(recs_md) if recs_md else "- *No actions required.*")
         )
@@ -339,7 +355,7 @@ class LocalValidationService(ValidationService):
                 unique_id=f"val_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="validation_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

@@ -17,7 +17,7 @@ class BrainPlanner:
         self,
         objective: str,
         context: Optional[BrainContext] = None,
-        capability: Optional[str] = None
+        capability: Optional[str] = None,
     ) -> Workflow:
         objective_clean = objective.strip()
 
@@ -32,37 +32,39 @@ class BrainPlanner:
                         matched_cmd = cmd
 
             if matched_cmd:
-                args = objective_clean[len(matched_cmd):].strip()
+                args = objective_clean[len(matched_cmd) :].strip()
                 step = WorkflowStep(
                     step_id=f"step_{int(time.time())}_{uuid.uuid4().hex[:4]}",
                     description=f"Execute deterministic command: {matched_cmd}",
                     skill_id=sel.skill_id,
                     command=matched_cmd,
                     args=args,
-                    status="pending"
+                    status="pending",
                 )
                 return Workflow(
                     workflow_id=f"wf_{uuid.uuid4().hex[:6]}",
                     objective=objective_clean,
                     steps=[step],
                     status="pending",
-                    created_at=time.time()
+                    created_at=time.time(),
                 )
 
         # 2. Multi-skill/Complex flow via LLM
         skills_info = []
         for skill in self.skill_selector.skill_registry.list_skills():
             if skill.enabled:
-                skills_info.append({
-                    "id": skill.metadata.id,
-                    "description": skill.metadata.description,
-                    "commands": skill.metadata.commands
-                })
+                skills_info.append(
+                    {
+                        "id": skill.metadata.id,
+                        "description": skill.metadata.description,
+                        "commands": skill.metadata.commands,
+                    }
+                )
 
         prompt = (
             "You are the Brain Planner for Personal AI OS.\n"
             f"Your task is to decompose the user objective into a sequential list of steps using the available skills.\n\n"
-            f"User Objective: \"{objective_clean}\"\n"
+            f'User Objective: "{objective_clean}"\n'
             f"Available Skills and their commands:\n"
             f"{json.dumps(skills_info, indent=2)}\n\n"
             "Generate a list of steps. For each step, specify:\n"
@@ -88,7 +90,7 @@ class BrainPlanner:
                 LLMRequest(
                     prompt=prompt,
                     system_instruction="You are a strict orchestration planner. Return JSON lists only.",
-                    model_name=model_name
+                    model_name=model_name,
                 )
             )
             text = res.content.strip()
@@ -106,7 +108,7 @@ class BrainPlanner:
                         skill_id=rs.get("skill_id"),
                         command=rs.get("command"),
                         args=rs.get("args", ""),
-                        status="pending"
+                        status="pending",
                     )
                 )
         except Exception:
@@ -119,7 +121,7 @@ class BrainPlanner:
                 cmd = sel.matched_commands[0] if sel.matched_commands else ""
                 args = objective_clean
                 if cmd and objective_clean.lower().startswith(cmd.lower()):
-                    args = objective_clean[len(cmd):].strip()
+                    args = objective_clean[len(cmd) :].strip()
                 steps.append(
                     WorkflowStep(
                         step_id=f"step_fallback_{uuid.uuid4().hex[:4]}",
@@ -127,7 +129,7 @@ class BrainPlanner:
                         skill_id=sel.skill_id,
                         command=cmd,
                         args=args,
-                        status="pending"
+                        status="pending",
                     )
                 )
             else:
@@ -138,7 +140,7 @@ class BrainPlanner:
                         skill_id="system",
                         command="help",
                         args=objective_clean,
-                        status="pending"
+                        status="pending",
                     )
                 )
 
@@ -147,5 +149,5 @@ class BrainPlanner:
             objective=objective_clean,
             steps=steps,
             status="pending",
-            created_at=time.time()
+            created_at=time.time(),
         )

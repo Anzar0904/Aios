@@ -17,7 +17,7 @@ from aios.skills.registry import SkillRegistry
 
 def test_skill_selection():
     registry = SkillRegistry()
-    
+
     meta = SkillMetadata(
         id="test_github",
         name="GitHub Mock",
@@ -93,7 +93,7 @@ def test_context_assembly():
         memory_type=MemoryType.NOTE,
         metadata=memory_meta,
         created_at=0.0,
-        updated_at=0.0
+        updated_at=0.0,
     )
     memory_service.search_memory.return_value = [mock_memory]
 
@@ -126,7 +126,7 @@ def test_workflow_planning():
 
     # Stub ModelService to return a structured JSON workflow for complex/multi-skill goals
     mock_llm_response = LLMResponse(
-        content='''
+        content="""
         [
             {
                 "description": "Log in to GitHub",
@@ -141,9 +141,9 @@ def test_workflow_planning():
                 "args": "Anzar0904/aios"
             }
         ]
-        ''',
+        """,
         model_name="claude-3-5-sonnet",
-        provider_name="claude"
+        provider_name="claude",
     )
     model_service.execute_request.return_value = mock_llm_response
 
@@ -183,7 +183,7 @@ def test_workflow_execution():
         description="Login step",
         skill_id="test_github",
         command="github login",
-        args="my-token"
+        args="my-token",
     )
     wf = Workflow(workflow_id="wf1", objective="test login", steps=[step1])
 
@@ -194,13 +194,15 @@ def test_workflow_execution():
     mock_login_handler.assert_called_once_with("my-token")
 
     # 2. Execute via Action Engine handoff (filesystem write)
-    tool_service.execute_tool.return_value = ToolResult(success=True, output="File written successfully")
+    tool_service.execute_tool.return_value = ToolResult(
+        success=True, output="File written successfully"
+    )
     step2 = WorkflowStep(
         step_id="s2",
         description="Write a settings config",
         skill_id="action",
         command="write file",
-        args="config.txt port=8080"
+        args="config.txt port=8080",
     )
     wf2 = Workflow(workflow_id="wf2", objective="write settings", steps=[step2])
 

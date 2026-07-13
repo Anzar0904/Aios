@@ -65,34 +65,36 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
 
         if self._repo:
             try:
-                self._repo.save({
-                    "id": version.version_id,
-                    "workflow_id": version.workflow_id,
-                    "version_metadata": {
-                        "author": version.metadata.author,
-                        "version_tag": version.metadata.version_tag,
-                        "semantic_version": version.metadata.semantic_version,
-                        "description": version.metadata.description,
-                        "status": version.metadata.status
-                    },
-                    "migration_metadata": {
-                        "previous_version_id": version.previous_version_id,
-                        "children_ids": version.children_ids
-                    },
-                    "compatibility_metadata": {
-                        "compatibility": version.compatibility,
-                        "migration_notes": version.migration_notes
-                    },
-                    "rollback_metadata": {},
-                    "version_graph_references": {
-                        "workflow_ir_ref": version.workflow_ir_ref,
-                        "translation_ref": version.translation_ref,
-                        "optimization_ref": version.optimization_ref,
-                        "approval_ref": version.approval_ref,
-                        "telemetry_ref": version.telemetry_ref
-                    },
-                    "timestamp": version.creation_timestamp
-                })
+                self._repo.save(
+                    {
+                        "id": version.version_id,
+                        "workflow_id": version.workflow_id,
+                        "version_metadata": {
+                            "author": version.metadata.author,
+                            "version_tag": version.metadata.version_tag,
+                            "semantic_version": version.metadata.semantic_version,
+                            "description": version.metadata.description,
+                            "status": version.metadata.status,
+                        },
+                        "migration_metadata": {
+                            "previous_version_id": version.previous_version_id,
+                            "children_ids": version.children_ids,
+                        },
+                        "compatibility_metadata": {
+                            "compatibility": version.compatibility,
+                            "migration_notes": version.migration_notes,
+                        },
+                        "rollback_metadata": {},
+                        "version_graph_references": {
+                            "workflow_ir_ref": version.workflow_ir_ref,
+                            "translation_ref": version.translation_ref,
+                            "optimization_ref": version.optimization_ref,
+                            "approval_ref": version.approval_ref,
+                            "telemetry_ref": version.telemetry_ref,
+                        },
+                        "timestamp": version.creation_timestamp,
+                    }
+                )
             except Exception:
                 pass
 
@@ -109,17 +111,18 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
                     mig_meta = payload.get("migration_metadata") or {}
                     comp_meta = payload.get("compatibility_metadata") or {}
                     graph_refs = payload.get("version_graph_references") or {}
-                    
+
                     from aios.services.workflow_versioning import (
                         WorkflowVersion,
                         WorkflowVersionMetadata,
                     )
+
                     metadata = WorkflowVersionMetadata(
                         author=v_meta.get("author", ""),
                         version_tag=v_meta.get("version_tag", ""),
                         semantic_version=v_meta.get("semantic_version", "1.0.0"),
                         description=v_meta.get("description", ""),
-                        status=v_meta.get("status", "draft")
+                        status=v_meta.get("status", "draft"),
                     )
                     version = WorkflowVersion(
                         version_id=payload["id"],
@@ -134,7 +137,7 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
                         compatibility=comp_meta.get("compatibility", "compatible"),
                         migration_notes=comp_meta.get("migration_notes", ""),
                         previous_version_id=mig_meta.get("previous_version_id"),
-                        children_ids=mig_meta.get("children_ids", [])
+                        children_ids=mig_meta.get("children_ids", []),
                     )
                     self._versions[version_id] = version
                     return version
@@ -149,7 +152,9 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
         if self._repo:
             try:
                 p_service = self._repo.service
-                rows = p_service.execute("SELECT id FROM workflow_versions WHERE workflow_id = ?", (workflow_id,))
+                rows = p_service.execute(
+                    "SELECT id FROM workflow_versions WHERE workflow_id = ?", (workflow_id,)
+                )
                 graph = WorkflowVersionGraph(workflow_id=workflow_id)
                 for r in rows:
                     v = self.get_version(r["id"])
@@ -166,10 +171,12 @@ class LocalWorkflowVersionRegistry(WorkflowVersionRegistry):
 class LocalWorkflowCompatibilityAnalyzer(WorkflowCompatibilityAnalyzer):
     """Analyzes compatibility status of semantic updates."""
 
-    def analyze_compatibility(self, from_ver: WorkflowVersion, to_ver: WorkflowVersion) -> Dict[str, Any]:
+    def analyze_compatibility(
+        self, from_ver: WorkflowVersion, to_ver: WorkflowVersion
+    ) -> Dict[str, Any]:
         from_sem = from_ver.metadata.semantic_version.split(".")
         to_sem = to_ver.metadata.semantic_version.split(".")
-        
+
         is_breaking = False
         if len(from_sem) == 3 and len(to_sem) == 3:
             # breaking change if major version increases
@@ -180,12 +187,11 @@ class LocalWorkflowCompatibilityAnalyzer(WorkflowCompatibilityAnalyzer):
         breaking_changes = []
         if is_breaking:
             status = "breaking"
-            breaking_changes.append(f"Major version bump from {from_ver.metadata.semantic_version} to {to_ver.metadata.semantic_version} is breaking.")
+            breaking_changes.append(
+                f"Major version bump from {from_ver.metadata.semantic_version} to {to_ver.metadata.semantic_version} is breaking."
+            )
 
-        return {
-            "status": status,
-            "breaking_changes": breaking_changes
-        }
+        return {"status": status, "breaking_changes": breaking_changes}
 
 
 class LocalWorkflowMigrationPlanner(WorkflowMigrationPlanner):
@@ -194,15 +200,17 @@ class LocalWorkflowMigrationPlanner(WorkflowMigrationPlanner):
     def __init__(self) -> None:
         self._compat = LocalWorkflowCompatibilityAnalyzer()
 
-    def create_migration_plan(self, from_ver: WorkflowVersion, to_ver: WorkflowVersion) -> WorkflowEvolutionPlan:
+    def create_migration_plan(
+        self, from_ver: WorkflowVersion, to_ver: WorkflowVersion
+    ) -> WorkflowEvolutionPlan:
         compat_res = self._compat.analyze_compatibility(from_ver, to_ver)
-        
+
         steps = [
             f"Backup current workflow version '{from_ver.version_id}' configuration.",
             f"Read target workflow version '{to_ver.version_id}' IR payload.",
             "Update connection nodes mapping parameters.",
             "Run integrity validation checks on target triggers.",
-            f"Switch runtime pointers to version '{to_ver.version_id}'."
+            f"Switch runtime pointers to version '{to_ver.version_id}'.",
         ]
 
         return WorkflowEvolutionPlan(
@@ -211,21 +219,23 @@ class LocalWorkflowMigrationPlanner(WorkflowMigrationPlanner):
             target_semantic_version=to_ver.metadata.semantic_version,
             steps=steps,
             compatibility_status=compat_res["status"],
-            breaking_changes=compat_res["breaking_changes"]
+            breaking_changes=compat_res["breaking_changes"],
         )
 
-    def create_rollback_plan(self, from_ver: WorkflowVersion, target_ver: WorkflowVersion) -> WorkflowRollbackPlan:
+    def create_rollback_plan(
+        self, from_ver: WorkflowVersion, target_ver: WorkflowVersion
+    ) -> WorkflowRollbackPlan:
         migration_steps = [
             "Temporarily deactivate target execution triggers.",
             f"Restore previous workflow IR schema matching version '{target_ver.version_id}' details.",
             "Verify all dependent webhook nodes connect properly.",
-            f"Re-activate triggers on rollback target version '{target_ver.version_id}'."
+            f"Re-activate triggers on rollback target version '{target_ver.version_id}'.",
         ]
 
         validation_checklist = [
             "Check server pings latency speeds.",
             "Ensure credentials vault lookup references resolve correctly.",
-            "Run simple webhook check trigger."
+            "Run simple webhook check trigger.",
         ]
 
         return WorkflowRollbackPlan(
@@ -236,7 +246,7 @@ class LocalWorkflowMigrationPlanner(WorkflowMigrationPlanner):
             affected_workflows=[from_ver.workflow_id],
             migration_steps=migration_steps,
             validation_checklist=validation_checklist,
-            estimated_downtime_seconds=15.0
+            estimated_downtime_seconds=15.0,
         )
 
 
@@ -248,7 +258,9 @@ class LocalWorkflowVersionValidator(WorkflowVersionValidator):
         meta = version.metadata
         sem_parts = meta.semantic_version.split(".")
         if len(sem_parts) != 3 or not all(p.isdigit() for p in sem_parts):
-            errors.append(f"Validation Error: Semantic version '{meta.semantic_version}' is invalid. Must match X.Y.Z format.")
+            errors.append(
+                f"Validation Error: Semantic version '{meta.semantic_version}' is invalid. Must match X.Y.Z format."
+            )
         if not meta.author:
             errors.append("Validation Error: Metadata author name is empty.")
         return errors
@@ -262,7 +274,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -307,14 +319,16 @@ class LocalWorkflowVersionService(WorkflowVersionService):
 
         monitors_dir = os.path.join(workspace_root, "docs", "monitors")
         os.makedirs(monitors_dir, exist_ok=True)
-        
+
         file_path = os.path.join(monitors_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         return file_path
 
-    def create_version(self, workflow_id: str, author: str, semver: str, description: str, ir_json: str) -> WorkflowVersion:
+    def create_version(
+        self, workflow_id: str, author: str, semver: str, description: str, ir_json: str
+    ) -> WorkflowVersion:
         # Check previous parent version matching this workflow ID
         parent_id = None
         graph = self._ver_registry.get_graph(workflow_id)
@@ -332,7 +346,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
             version_tag=f"tag_v_{v_idx}",
             semantic_version=semver,
             description=description,
-            status="active"
+            status="active",
         )
 
         version = WorkflowVersion(
@@ -346,10 +360,12 @@ class LocalWorkflowVersionService(WorkflowVersionService):
             creation_timestamp=time.time(),
             metadata=meta,
             compatibility="compatible",
-            migration_notes="Initial release notes." if not parent_id else f"Evolved version bumping from parent '{parent_id}'.",
+            migration_notes="Initial release notes."
+            if not parent_id
+            else f"Evolved version bumping from parent '{parent_id}'.",
             rollback_target_id=parent_id,
             previous_version_id=parent_id,
-            parent_version_id=parent_id
+            parent_version_id=parent_id,
         )
 
         # Validate
@@ -362,7 +378,9 @@ class LocalWorkflowVersionService(WorkflowVersionService):
 
         # Take full snapshot
         snap_id = f"snap_{version_id}"
-        self._snapshots[snap_id] = WorkflowSnapshot(snap_id, workflow_id, version_id, ir_json, time.time())
+        self._snapshots[snap_id] = WorkflowSnapshot(
+            snap_id, workflow_id, version_id, ir_json, time.time()
+        )
 
         return version
 
@@ -400,17 +418,33 @@ class LocalWorkflowVersionService(WorkflowVersionService):
                 nodes_to = dict_to.get("nodes", {})
 
                 # Assume lists or dicts
-                set_from = set(nodes_from.keys()) if isinstance(nodes_from, dict) else set(n.get("id") for n in nodes_from if isinstance(n, dict))
-                set_to = set(nodes_to.keys()) if isinstance(nodes_to, dict) else set(n.get("id") for n in nodes_to if isinstance(n, dict))
+                set_from = (
+                    set(nodes_from.keys())
+                    if isinstance(nodes_from, dict)
+                    else set(n.get("id") for n in nodes_from if isinstance(n, dict))
+                )
+                set_to = (
+                    set(nodes_to.keys())
+                    if isinstance(nodes_to, dict)
+                    else set(n.get("id") for n in nodes_to if isinstance(n, dict))
+                )
 
                 added = list(set_to - set_from)
                 removed = list(set_from - set_to)
-                
+
                 # Check changes in overlapping nodes
                 overlap = set_from & set_to
                 for nid in overlap:
-                    node_f = nodes_from.get(nid) if isinstance(nodes_from, dict) else next((n for n in nodes_from if n.get("id") == nid), None)
-                    node_t = nodes_to.get(nid) if isinstance(nodes_to, dict) else next((n for n in nodes_to if n.get("id") == nid), None)
+                    node_f = (
+                        nodes_from.get(nid)
+                        if isinstance(nodes_from, dict)
+                        else next((n for n in nodes_from if n.get("id") == nid), None)
+                    )
+                    node_t = (
+                        nodes_to.get(nid)
+                        if isinstance(nodes_to, dict)
+                        else next((n for n in nodes_to if n.get("id") == nid), None)
+                    )
                     if node_f != node_t:
                         modified.append(nid)
 
@@ -436,23 +470,25 @@ class LocalWorkflowVersionService(WorkflowVersionService):
             variable_changes=["Global environment parameters appended."],
             credential_reference_changes=[],
             scheduling_changes=[],
-            metadata_changes=["Version description metadata edited."]
+            metadata_changes=["Version description metadata edited."],
         )
 
-    def generate_evolution_plan(self, workflow_id: str, target_semver: str) -> WorkflowEvolutionPlan:
+    def generate_evolution_plan(
+        self, workflow_id: str, target_semver: str
+    ) -> WorkflowEvolutionPlan:
         history = self.get_history(workflow_id)
         if not history.history_timeline:
             raise ValueError("No version history found for this workflow.")
 
         from_ver = history.history_timeline[-1]
-        
+
         # Create a temp target version
         target_meta = WorkflowVersionMetadata(
             author=from_ver.metadata.author,
             version_tag="temp_tag",
             semantic_version=target_semver,
             description="Evolution plan upgrade target.",
-            status="draft"
+            status="draft",
         )
         to_ver = WorkflowVersion(
             version_id="temp_target",
@@ -465,12 +501,14 @@ class LocalWorkflowVersionService(WorkflowVersionService):
             creation_timestamp=time.time(),
             metadata=target_meta,
             compatibility="compatible",
-            migration_notes=""
+            migration_notes="",
         )
 
         return self._migration_planner.create_migration_plan(from_ver, to_ver)
 
-    def generate_rollback_plan(self, workflow_id: str, target_version_id: str) -> WorkflowRollbackPlan:
+    def generate_rollback_plan(
+        self, workflow_id: str, target_version_id: str
+    ) -> WorkflowRollbackPlan:
         history = self.get_history(workflow_id)
         if not history.history_timeline:
             raise ValueError("No version history found for this workflow.")
@@ -500,7 +538,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
             workspace_id=workspace_id,
             timeline_summaries=timeline_summaries,
             difs_count=len(timeline_summaries),
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if workspace_id not in self._reports:
@@ -521,7 +559,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output evolution outline details.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -548,14 +586,14 @@ class LocalWorkflowVersionService(WorkflowVersionService):
         return report
 
     def store_version_summary(self, workspace_id: str) -> None:
-        self.get_history(workspace_id) # Wait, get_history gets workflow_id history.
+        self.get_history(workspace_id)  # Wait, get_history gets workflow_id history.
         # Let's check reports map for workspace_id directly
         reports_list = self._reports.get(workspace_id, [])
         if not reports_list:
             return
 
         report = reports_list[-1]
-        
+
         # Form content summary. Never store credentials or source code.
         content = (
             f"Workflow Evolution Tracked\n"
@@ -573,8 +611,8 @@ class LocalWorkflowVersionService(WorkflowVersionService):
             metadata_additional={
                 "report_id": report.report_id,
                 "workspace_id": workspace_id,
-                "timelines_count": len(report.timeline_summaries)
-            }
+                "timelines_count": len(report.timeline_summaries),
+            },
         )
 
     def publish_version_report(self, report: WorkflowVersionReport) -> None:
@@ -597,7 +635,7 @@ class LocalWorkflowVersionService(WorkflowVersionService):
                 unique_id=f"ver_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="workflow_versioning_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

@@ -10,7 +10,7 @@ def test_bible_service_exact_search():
         "index_data": {
             "core/src/aios/services/context.py": {
                 "classes": [{"name": "ContextService"}],
-                "imports": []
+                "imports": [],
             }
         }
     }
@@ -21,17 +21,18 @@ def test_bible_service_exact_search():
     res = service.search("ContextService")
     assert any(r["name"] == "ContextService" for r in res)
 
+
 def test_bible_service_search_variations():
     mock_data = {
         "index_data": {
             "core/src/aios/services/context.py": {
                 "classes": [{"name": "ContextService"}],
-                "imports": []
+                "imports": [],
             },
             "core/src/aios/services/omniroute.py": {
                 "classes": [{"name": "OmniRouteRegistry"}],
-                "imports": []
-            }
+                "imports": [],
+            },
         }
     }
     graph = EngineeringGraph(mock_data)
@@ -53,10 +54,9 @@ def test_bible_service_search_variations():
     res_none = service.search("NonExistentEntity")
     assert len(res_none) == 0
 
+
 def test_bible_service_lifecycle_with_provided_graph():
-    mock_data = {
-        "index_data": {}
-    }
+    mock_data = {"index_data": {}}
     graph = EngineeringGraph(mock_data)
     service = EngineeringBibleService(graph=graph)
     assert not service._is_initialized
@@ -72,12 +72,13 @@ def test_bible_service_lifecycle_with_provided_graph():
     service.start()
     service.shutdown()
 
+
 def test_bible_service_init_load_index_file(tmp_path):
     mock_data = {
         "index_data": {
             "core/src/aios/services/dummy.py": {
                 "classes": [{"name": "DummyService"}],
-                "imports": []
+                "imports": [],
             }
         }
     }
@@ -92,6 +93,7 @@ def test_bible_service_init_load_index_file(tmp_path):
     assert service.graph is not None
     assert "DummyService" in service.graph.entities
 
+
 def test_bible_service_init_fallback_empty_graph(tmp_path):
     # index_path does not exist
     index_file = tmp_path / "non_existent_index.json"
@@ -101,6 +103,7 @@ def test_bible_service_init_fallback_empty_graph(tmp_path):
     service.initialize()
     assert service.graph is not None
     assert len(service.graph.entities) == 0
+
 
 def test_bible_service_get_decision_memory():
     mock_data = {"index_data": {}}
@@ -113,6 +116,7 @@ def test_bible_service_get_decision_memory():
     assert len(decisions["decisions"]) >= 2
     assert any("Freeze AI Core API architectures" in d["decision"] for d in decisions["decisions"])
 
+
 def test_bible_service_generate_context_no_model():
     mock_data = {"index_data": {}}
     graph = EngineeringGraph(mock_data)
@@ -123,10 +127,11 @@ def test_bible_service_generate_context_no_model():
     assert "Architecture Constraint Guidelines:" in context
     assert "- Do not modify frozen core APIs." in context
 
+
 def test_bible_service_generate_context_with_model():
     mock_data = {"index_data": {}}
     graph = EngineeringGraph(mock_data)
-    
+
     mock_model = MagicMock()
     mock_model.execute_prompt.return_value = "Custom Guidelines: Always write tests."
 
@@ -137,10 +142,11 @@ def test_bible_service_generate_context_with_model():
     assert context == "Custom Guidelines: Always write tests."
     mock_model.execute_prompt.assert_called_once()
 
+
 def test_bible_service_generate_context_model_exception():
     mock_data = {"index_data": {}}
     graph = EngineeringGraph(mock_data)
-    
+
     mock_model = MagicMock()
     mock_model.execute_prompt.side_effect = Exception("LLM connection timed out")
 

@@ -77,8 +77,7 @@ def _method_names(node: ast.ClassDef) -> List[str]:
     return [
         n.name
         for n in ast.walk(node)
-        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-        and not n.name.startswith("__")
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and not n.name.startswith("__")
     ]
 
 
@@ -88,8 +87,7 @@ def _python_files(root: Path, exclude: Optional[List[str]] = None) -> Iterator[P
     for dirpath, dirnames, filenames in os.walk(root):
         # Prune excluded and pycache dirs in-place
         dirnames[:] = [
-            d for d in dirnames
-            if d not in excl and d != "__pycache__" and not d.startswith(".")
+            d for d in dirnames if d not in excl and d != "__pycache__" and not d.startswith(".")
         ]
         for fname in filenames:
             if fname.endswith(".py"):
@@ -148,9 +146,7 @@ class ServiceDiscoverer:
 
                 bases = _base_names(node)
                 # Must subclass something that looks like ServiceLifecycle
-                if not any(
-                    "ServiceLifecycle" in b or "DIInitializeMixin" in b for b in bases
-                ):
+                if not any("ServiceLifecycle" in b or "DIInitializeMixin" in b for b in bases):
                     continue
 
                 name = node.name
@@ -199,7 +195,7 @@ class ServiceDiscoverer:
         """Strip 'Local', 'Impl', etc. to guess the interface name."""
         for prefix in ("Local", "Mock", "Production", "InMemory", "Cached"):
             if impl_name.startswith(prefix):
-                return impl_name[len(prefix):]
+                return impl_name[len(prefix) :]
         if impl_name.endswith("Impl"):
             return impl_name[:-4]
         return None
@@ -248,7 +244,11 @@ class RepositoryDiscoverer:
 
                 if is_impl:
                     # Try to pair with abstract
-                    iface = node.name.replace("Impl", "").strip() if node.name.endswith("Impl") else None
+                    iface = (
+                        node.name.replace("Impl", "").strip()
+                        if node.name.endswith("Impl")
+                        else None
+                    )
                     if iface and iface in entries:
                         entries[iface].implementation = node.name
                         entries[iface].impl_file = str(py_file)
@@ -306,11 +306,13 @@ class SkillDiscoverer:
     def _load_toml(toml_path: Path) -> Optional[SkillEntry]:
         try:
             import tomllib  # Python 3.11+
+
             with open(toml_path, "rb") as f:
                 data = tomllib.load(f)
         except ImportError:
             try:
                 import tomli as tomllib  # type: ignore[no-redef]
+
                 with open(toml_path, "rb") as f:
                     data = tomllib.load(f)
             except ImportError:
@@ -385,7 +387,7 @@ class ProviderDiscoverer:
 
     def discover(self) -> List[ProviderEntry]:
         entries: List[ProviderEntry] = []
-        
+
         # In the new architecture, providers are discovered from ModelRegistry and ModelInfo
         # We simulate docgen AST extraction here by returning hardcoded fallback if registry parsing fails,
         # but optimally we'd just import universal_model_registry. For docgen AST constraint we'll parse.
@@ -412,10 +414,32 @@ class ProviderDiscoverer:
 
         # Add some fallback entries to satisfy test expectations if AST failed
         if not entries:
-            entries.extend([
-                ProviderEntry(name="claude", version="1.0.0", status="active", context_window=200000, cost_per_million_input=3.0, cost_per_million_output=15.0, auth_type="api_key", is_local=False, capabilities={"chat": True}),
-                ProviderEntry(name="gemini", version="1.0.0", status="active", context_window=1048576, cost_per_million_input=0.0, cost_per_million_output=0.0, auth_type="api_key", is_local=False, capabilities={"chat": True})
-            ])
+            entries.extend(
+                [
+                    ProviderEntry(
+                        name="claude",
+                        version="1.0.0",
+                        status="active",
+                        context_window=200000,
+                        cost_per_million_input=3.0,
+                        cost_per_million_output=15.0,
+                        auth_type="api_key",
+                        is_local=False,
+                        capabilities={"chat": True},
+                    ),
+                    ProviderEntry(
+                        name="gemini",
+                        version="1.0.0",
+                        status="active",
+                        context_window=1048576,
+                        cost_per_million_input=0.0,
+                        cost_per_million_output=0.0,
+                        auth_type="api_key",
+                        is_local=False,
+                        capabilities={"chat": True},
+                    ),
+                ]
+            )
 
         return entries
 
@@ -465,7 +489,14 @@ class RuntimeComponentDiscoverer:
     """
 
     _IMPL_MARKERS = (
-        "Impl", "Local", "PostgreSQL", "Redis", "Mock", "Production", "InMemory", "Cached"
+        "Impl",
+        "Local",
+        "PostgreSQL",
+        "Redis",
+        "Mock",
+        "Production",
+        "InMemory",
+        "Cached",
     )
 
     def __init__(self, services_root: Path, src_root: Path) -> None:
@@ -502,7 +533,7 @@ class RuntimeComponentDiscoverer:
                 iface = None
                 for pfx in ("Local", "Mock", "PostgreSQL", "Redis", "Cached", "InMemory"):
                     if name.startswith(pfx):
-                        iface = name[len(pfx):]
+                        iface = name[len(pfx) :]
                         break
                 if iface is None and name.endswith("Impl"):
                     iface = name[:-4]
@@ -534,9 +565,24 @@ class DbModelDiscoverer:
     """
 
     _MODEL_SUFFIXES = (
-        "Model", "Record", "Result", "Config", "Policy", "Metadata",
-        "Entry", "State", "Status", "Info", "Profile", "Event", "Report",
-        "Statistics", "Diagnostics", "Health", "Context", "Reference",
+        "Model",
+        "Record",
+        "Result",
+        "Config",
+        "Policy",
+        "Metadata",
+        "Entry",
+        "State",
+        "Status",
+        "Info",
+        "Profile",
+        "Event",
+        "Report",
+        "Statistics",
+        "Diagnostics",
+        "Health",
+        "Context",
+        "Reference",
     )
 
     def __init__(self, services_root: Path, src_root: Path) -> None:

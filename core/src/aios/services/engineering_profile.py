@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class ProjectProfile:
     """Project-specific metadata parameters."""
+
     __test__ = False
     project_name: str
     version: str
@@ -17,6 +18,7 @@ class ProjectProfile:
 @dataclass
 class CodingProfile:
     """Language and coding standard definitions."""
+
     __test__ = False
     language: str
     coding_standards: List[str]
@@ -26,6 +28,7 @@ class CodingProfile:
 @dataclass
 class TestingProfile:
     """Testing frameworks configurations and target policies."""
+
     __test__ = False
     framework: str
     min_statement_coverage: float
@@ -35,6 +38,7 @@ class TestingProfile:
 @dataclass
 class ExecutionProfile:
     """Execution sandbox environments preferences."""
+
     __test__ = False
     max_timeout_seconds: int
     sandbox_enabled: bool
@@ -43,6 +47,7 @@ class ExecutionProfile:
 @dataclass
 class DocumentationProfile:
     """Docs formats and generation preferences."""
+
     __test__ = False
     format: str
     generate_api_docs: bool
@@ -53,10 +58,10 @@ class DocumentationProfile:
     versioning_preferences: Dict[str, Any] = field(default_factory=dict)
 
 
-
 @dataclass
 class GitHubProfile:
     """Repository organization details."""
+
     __test__ = False
     org_name: str
     repo_name: str
@@ -66,6 +71,7 @@ class GitHubProfile:
 @dataclass
 class ReleaseProfile:
     """Versioning methods and auto-release policies."""
+
     __test__ = False
     auto_release: bool
     versioning_scheme: str
@@ -74,6 +80,7 @@ class ReleaseProfile:
 @dataclass
 class AutomationProfile:
     """Task automations and retry settings."""
+
     __test__ = False
     cron_expression: str
     max_retries: int
@@ -82,6 +89,7 @@ class AutomationProfile:
 @dataclass
 class WorkspaceProfile:
     """Sandbox workspaces limits and exclusions."""
+
     __test__ = False
     workspace_root: str
     exclude_patterns: List[str]
@@ -90,6 +98,7 @@ class WorkspaceProfile:
 @dataclass
 class EngineeringProfile:
     """Consolidated profile representing engineering configurations."""
+
     __test__ = False
     profile_id: str
     project: ProjectProfile
@@ -106,6 +115,7 @@ class EngineeringProfile:
 
 class ProfileSerializer(abc.ABC):
     """Serializes profile models to/from JSON or dictionaries."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -121,6 +131,7 @@ class ProfileSerializer(abc.ABC):
 
 class ProfileLoader(abc.ABC):
     """Retrieves profile files from disk or environmental configs."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -131,6 +142,7 @@ class ProfileLoader(abc.ABC):
 
 class ProfileManager(abc.ABC):
     """Merges and validates multiple profiles using precedence matrices."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -146,6 +158,7 @@ class ProfileManager(abc.ABC):
 
 class ProfileRegistry:
     """Thread-safe registry cache for loaded engineering profiles."""
+
     __test__ = False
 
     def __init__(self) -> None:
@@ -160,6 +173,7 @@ class ProfileRegistry:
 
 class EngineeringProfileService(ServiceLifecycle, abc.ABC):
     """Coordinating configurations service managing engineering profiles."""
+
     __test__ = False
 
     @abc.abstractmethod

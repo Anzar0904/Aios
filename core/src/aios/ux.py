@@ -45,7 +45,7 @@ class BootExperience:
     def boot() -> float:
         start_time = time.time()
         console.clear()
-        
+
         # OS Logo
         logo = Text()
         logo.append("\n █████╗ ██╗ ██████╗ ███████╗\n", style="bold cyan")
@@ -74,15 +74,15 @@ class BootExperience:
             TextColumn("[bold white]{task.description}"),
             BarColumn(bar_width=30),
             TextColumn("[bold green]{task.percentage:>3.0f}%"),
-            console=console
+            console=console,
         ) as progress:
             task = progress.add_task("Initializing system...", total=100)
-            
+
             percent_step = 100 // len(steps)
             for _, (desc, delay) in enumerate(steps):
                 time.sleep(delay)
                 progress.update(task, advance=percent_step, description=desc)
-            
+
             progress.update(task, completed=100, description="System Boot Complete.")
 
         boot_duration = time.time() - start_time
@@ -136,7 +136,7 @@ class LiveProgressEngine:
         self.progress = Progress(
             SpinnerColumn(spinner_name="dots"),
             TextColumn("[bold cyan]{task.description}"),
-            console=console
+            console=console,
         )
         self.description = description
         self.task_id = None
@@ -158,12 +158,7 @@ class ErrorReporter:
     """Formats and prints structured errors to prevent raw stack dumps."""
 
     @staticmethod
-    def report(
-        error: Exception,
-        cause: str,
-        fix: str,
-        ref: str = "docs/cli/ux.md"
-    ) -> None:
+    def report(error: Exception, cause: str, fix: str, ref: str = "docs/cli/ux.md") -> None:
         error_msg = f"[bold red]✗ Error: {str(error)}[/bold red]"
         details_table = Table.grid(padding=1)
         details_table.add_column(style="bold yellow", justify="right")
@@ -174,11 +169,7 @@ class ErrorReporter:
         details_table.add_row("Documentation:", f"[underline]{ref}[/underline]")
         details_table.add_row("Recovery Steps:", "Run 'aios doctor' to verify connections.")
 
-        panel = Panel(
-            details_table,
-            title=error_msg,
-            border_style="red"
-        )
+        panel = Panel(details_table, title=error_msg, border_style="red")
         console.print(panel)
 
 
@@ -191,7 +182,7 @@ class SessionManager:
             "current_project": "Aios",
             "recent_commands": [],
             "recent_projects": ["Aios"],
-            "last_active": time.time()
+            "last_active": time.time(),
         }
 
     def load_session(self) -> Dict[str, Any]:
@@ -228,7 +219,7 @@ class DiagnosticsEngine:
             "memory_usage": "2.4 MB",
             "cache_size": "156 KB",
             "context_size": "8k tokens",
-            "average_command_latency": "42ms"
+            "average_command_latency": "42ms",
         }
 
 
@@ -237,11 +228,7 @@ class DashboardRenderer:
 
     @staticmethod
     def render() -> None:
-        table = Table(
-            title="AI OS System Dashboard",
-            border_style="cyan",
-            show_header=True
-        )
+        table = Table(title="AI OS System Dashboard", border_style="cyan", show_header=True)
         table.add_column("Subsystem", style="bold cyan")
         table.add_column("Status", style="green")
         table.add_column("Details", style="white")
@@ -267,7 +254,7 @@ class DashboardRenderer:
         table.add_row(
             "Performance Metrics",
             "Healthy",
-            f"Avg latency: {metrics['average_command_latency']} | Boot: {metrics['boot_time']}"
+            f"Avg latency: {metrics['average_command_latency']} | Boot: {metrics['boot_time']}",
         )
 
         console.print(table)
@@ -284,8 +271,7 @@ class SetupWizard:
         console.print("[bold yellow]Step 1: Configure AI LLM Provider[/bold yellow]")
         provider = input("Enter AI Provider name (default: openrouter): ").strip() or "openrouter"
         model = (
-            input("Enter default model (default: qwen/qwen3-coder): ").strip()
-            or "qwen/qwen3-coder"
+            input("Enter default model (default: qwen/qwen3-coder): ").strip() or "qwen/qwen3-coder"
         )
         api_key = input("Enter Provider API Key: ").strip()
 
@@ -346,4 +332,3 @@ default_model = "{model}"
             f.write(toml_str)
 
         console.print("[bold green]✓ Setup completed successfully![/bold green]\n")
-

@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class WorkflowVersionMetadata:
     """Version metadata carrying author, tags, and semantic versions."""
+
     author: str
     version_tag: str
     semantic_version: str
@@ -18,6 +19,7 @@ class WorkflowVersionMetadata:
 @dataclass
 class WorkflowVersion:
     """Immutable workflow version object mapping telemetry, IR, and translations references."""
+
     version_id: str
     workflow_id: str
     workflow_ir_ref: str
@@ -38,6 +40,7 @@ class WorkflowVersion:
 @dataclass
 class WorkflowVersionGraph:
     """DAG graph structure tracking parent-child branches of version histories."""
+
     workflow_id: str
     versions: Dict[str, WorkflowVersion] = field(default_factory=dict)
 
@@ -45,6 +48,7 @@ class WorkflowVersionGraph:
 @dataclass
 class WorkflowVersionHistory:
     """Timeline catalog ordering run versions chronologically."""
+
     workflow_id: str
     history_timeline: List[WorkflowVersion] = field(default_factory=list)
 
@@ -52,6 +56,7 @@ class WorkflowVersionHistory:
 @dataclass
 class WorkflowVersionDiff:
     """Immutable difference payload outlining changes between two version states."""
+
     diff_id: str
     workflow_id: str
     from_version_id: str
@@ -71,6 +76,7 @@ class WorkflowVersionDiff:
 @dataclass
 class WorkflowSnapshot:
     """Immutable full workflow snapshot."""
+
     snapshot_id: str
     workflow_id: str
     version_id: str
@@ -81,6 +87,7 @@ class WorkflowSnapshot:
 @dataclass
 class WorkflowEvolutionPlan:
     """Plan detailing upgrade sequence path recommendations."""
+
     plan_id: str
     workflow_id: str
     target_semantic_version: str
@@ -92,6 +99,7 @@ class WorkflowEvolutionPlan:
 @dataclass
 class WorkflowRollbackPlan:
     """Plan detailing rollback path steps. Never executed by this subsystem."""
+
     plan_id: str
     workflow_id: str
     target_version_id: str
@@ -105,6 +113,7 @@ class WorkflowRollbackPlan:
 @dataclass
 class WorkflowVersionReport:
     """Consolidated summary report describing workspace versioning updates."""
+
     report_id: str
     workspace_id: str
     timeline_summaries: Dict[str, List[str]] = field(default_factory=dict)
@@ -135,7 +144,9 @@ class WorkflowCompatibilityAnalyzer(abc.ABC):
     """Analyzes semver bounds, parameters updates, and breaking changes."""
 
     @abc.abstractmethod
-    def analyze_compatibility(self, from_ver: WorkflowVersion, to_ver: WorkflowVersion) -> Dict[str, Any]:
+    def analyze_compatibility(
+        self, from_ver: WorkflowVersion, to_ver: WorkflowVersion
+    ) -> Dict[str, Any]:
         """Returns upgrade compatibility results."""
         pass
 
@@ -144,12 +155,16 @@ class WorkflowMigrationPlanner(abc.ABC):
     """Assembles migration plans and rollbacks checklists."""
 
     @abc.abstractmethod
-    def create_migration_plan(self, from_ver: WorkflowVersion, to_ver: WorkflowVersion) -> WorkflowEvolutionPlan:
+    def create_migration_plan(
+        self, from_ver: WorkflowVersion, to_ver: WorkflowVersion
+    ) -> WorkflowEvolutionPlan:
         """Returns upgrade migration plan."""
         pass
 
     @abc.abstractmethod
-    def create_rollback_plan(self, from_ver: WorkflowVersion, target_ver: WorkflowVersion) -> WorkflowRollbackPlan:
+    def create_rollback_plan(
+        self, from_ver: WorkflowVersion, target_ver: WorkflowVersion
+    ) -> WorkflowRollbackPlan:
         """Returns target rollback path checklist plan."""
         pass
 
@@ -167,7 +182,9 @@ class WorkflowVersionService(ServiceLifecycle, abc.ABC):
     """Orchestrates workflows version registry, diff executions, and migration plans."""
 
     @abc.abstractmethod
-    def create_version(self, workflow_id: str, author: str, semver: str, description: str, ir_json: str) -> WorkflowVersion:
+    def create_version(
+        self, workflow_id: str, author: str, semver: str, description: str, ir_json: str
+    ) -> WorkflowVersion:
         """Registers a new workflow version node."""
         pass
 
@@ -182,12 +199,16 @@ class WorkflowVersionService(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def generate_evolution_plan(self, workflow_id: str, target_semver: str) -> WorkflowEvolutionPlan:
+    def generate_evolution_plan(
+        self, workflow_id: str, target_semver: str
+    ) -> WorkflowEvolutionPlan:
         """Compiles upgrade migration steps."""
         pass
 
     @abc.abstractmethod
-    def generate_rollback_plan(self, workflow_id: str, target_version_id: str) -> WorkflowRollbackPlan:
+    def generate_rollback_plan(
+        self, workflow_id: str, target_version_id: str
+    ) -> WorkflowRollbackPlan:
         """Compiles target rollback target checklist."""
         pass
 

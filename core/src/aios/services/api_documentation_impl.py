@@ -33,7 +33,7 @@ class LocalAPIAnalyzer(APIAnalyzer):
 
     def analyze_api(self, code_structure: Dict[str, Any], existing_docs: str) -> APIReport:
         routes = code_structure.get("routes", [])
-        
+
         undocumented = []
         missing_params = []
         outdated_schemas = []
@@ -43,19 +43,21 @@ class LocalAPIAnalyzer(APIAnalyzer):
         for route in routes:
             path = route.get("path", "")
             method = route.get("method", "GET")
-            
+
             # Check if mentioned in existing documentation
             if path not in existing_docs:
                 undocumented.append(f"{method} {path}")
                 recommendations.append(f"Add documentation for route: {method} {path}.")
-                
+
             # Check parameters
             params = route.get("parameters", [])
             for p in params:
                 p_name = p.get("name", "")
                 if p_name and p_name not in existing_docs:
                     missing_params.append(p_name)
-                    recommendations.append(f"Add missing parameter mapping: {p_name} for route {path}.")
+                    recommendations.append(
+                        f"Add missing parameter mapping: {p_name} for route {path}."
+                    )
 
         return APIReport(
             report_id=f"api_rep_{int(time.time())}",
@@ -65,7 +67,7 @@ class LocalAPIAnalyzer(APIAnalyzer):
             outdated_schemas=outdated_schemas,
             missing_examples=missing_examples,
             recommendations=recommendations,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -79,16 +81,18 @@ class LocalAPIDocumentationPlanner(APIDocumentationPlanner):
             parts = raw.split(" ")
             method = parts[0]
             path = parts[1] if len(parts) > 1 else "/"
-            
+
             # Create default parameters
             params = [
                 APIParameter("limit", "integer", False, "Number of items to retrieve."),
-                APIParameter("offset", "integer", False, "Cursor offset count.")
+                APIParameter("offset", "integer", False, "Cursor offset count."),
             ]
-            
-            schema = APISchema("SuccessResponse", {"success": "boolean"}, "Standard success envelope.")
+
+            schema = APISchema(
+                "SuccessResponse", {"success": "boolean"}, "Standard success envelope."
+            )
             resp = APIResponse(200, schema, "Success outcome description.")
-            
+
             endpoints.append(
                 APIEndpoint(
                     path=path,
@@ -96,7 +100,7 @@ class LocalAPIDocumentationPlanner(APIDocumentationPlanner):
                     summary=f"Discovered route {method} {path}.",
                     parameters=params,
                     request_body_schema=None,
-                    responses=[resp]
+                    responses=[resp],
                 )
             )
         return endpoints
@@ -108,7 +112,7 @@ class LocalAPIDocumentValidator(APIDocumentValidator):
     def validate_api_document(self, artifact: APIDocumentArtifact) -> List[str]:
         errors = []
         seen = set()
-        
+
         for e in artifact.endpoints:
             key = f"{e.method}:{e.path}"
             if key in seen:
@@ -120,8 +124,10 @@ class LocalAPIDocumentValidator(APIDocumentValidator):
 
             for r in e.responses:
                 if r.schema and not r.schema.fields:
-                    errors.append(f"Empty schema fields for response status {r.status_code} in route '{e.method} {e.path}'.")
-                    
+                    errors.append(
+                        f"Empty schema fields for response status {r.status_code} in route '{e.method} {e.path}'."
+                    )
+
         return errors
 
 
@@ -133,7 +139,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -155,10 +161,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
         pass
 
     def generate_api_documentation(
-        self,
-        workspace_id: str,
-        code_structure: Dict[str, Any],
-        existing_docs: str
+        self, workspace_id: str, code_structure: Dict[str, Any], existing_docs: str
     ) -> APIDocumentArtifact:
         logger.info(f"Generating API documentation for workspace: '{workspace_id}'")
 
@@ -177,7 +180,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
         for e in endpoints:
             lines.append(f"## `{e.method}` {e.path}")
             lines.append(f"**Description**: {e.summary}\n")
-            
+
             lines.append("### Query Parameters")
             lines.append("| Name | Type | Required | Description |")
             lines.append("|---|---|---|---|")
@@ -199,7 +202,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
             workspace_id=workspace_id,
             content=full_content,
             endpoints=endpoints,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # 5. LLM Refinement if active
@@ -215,7 +218,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown syntax directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
 
@@ -234,7 +237,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
             f"Endpoints Cataloged: {len(artifact.endpoints)}\n"
             f"Registered Keys: {[f'{e.method} {e.path}' for e in artifact.endpoints]}"
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -243,8 +246,8 @@ class LocalAPIDocumentationService(APIDocumentationService):
                 session_id=artifact.artifact_id,
                 tags=["api_documentation", "specs_summary"],
                 importance=2,
-                source_subsystem="api_documentation_service"
-            )
+                source_subsystem="api_documentation_service",
+            ),
         )
 
     def publish_api_report(self, report: APIReport) -> None:
@@ -261,9 +264,9 @@ class LocalAPIDocumentationService(APIDocumentationService):
             f"**Workspace ID**: `{report.workspace_id}`\n"
             f"**Undocumented Routes count**: {len(report.undocumented_endpoints)}\n\n"
             f"## Discovered Undocumented Endpoints\n"
-            + (missing_md if missing_md else "- *No undocumented routes discovered.*") + "\n\n"
-            "## Action Recommendations\n"
-            + (recs_md if recs_md else "- *No actions recommended.*")
+            + (missing_md if missing_md else "- *No undocumented routes discovered.*")
+            + "\n\n"
+            "## Action Recommendations\n" + (recs_md if recs_md else "- *No actions recommended.*")
         )
 
         doc = KnowledgeDocument(
@@ -274,7 +277,7 @@ class LocalAPIDocumentationService(APIDocumentationService):
                 unique_id=f"api_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="api_documentation_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

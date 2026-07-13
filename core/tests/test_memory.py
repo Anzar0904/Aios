@@ -134,17 +134,19 @@ def test_memory_intelligence_milestone1(tmp_path):
 
     mock_model = MagicMock(spec=ModelService)
     mock_model.execute_request.return_value = LLMResponse(
-        content=json.dumps({
-            "category": "Daily Review",
-            "importance_score": "High",
-            "tags": ["productivity", "review"],
-            "related_mission": "m_123",
-            "related_project": "p_456",
-            "related_company": "Google",
-            "related_technologies": ["Python", "Rust"],
-            "related_skills": ["Coding", "System Design"],
-            "related_files": ["main.py"]
-        }),
+        content=json.dumps(
+            {
+                "category": "Daily Review",
+                "importance_score": "High",
+                "tags": ["productivity", "review"],
+                "related_mission": "m_123",
+                "related_project": "p_456",
+                "related_company": "Google",
+                "related_technologies": ["Python", "Rust"],
+                "related_skills": ["Coding", "System Design"],
+                "related_files": ["main.py"],
+            }
+        ),
         model_name="mock-model",
         provider_name="mock-provider",
     )
@@ -210,16 +212,16 @@ def test_memory_intelligence_milestone1(tmp_path):
     assert len(results_tech) == 1
 
     # 7. Lookup by date range
-    results_date = indexer.lookup(start_date=mem.metadata.timestamp - 10, end_date=mem.metadata.timestamp + 10)
+    results_date = indexer.lookup(
+        start_date=mem.metadata.timestamp - 10, end_date=mem.metadata.timestamp + 10
+    )
     assert len(results_date) == 1
 
 
 def test_backward_compatibility():
     from aios.services.memory import MemoryMetadata
-    meta = MemoryMetadata(
-        workspace_id="/test/workspace",
-        session_id="session-123"
-    )
+
+    meta = MemoryMetadata(workspace_id="/test/workspace", session_id="session-123")
     assert meta.workspace_id == "/test/workspace"
     assert meta.session_id == "session-123"
     assert meta.category is None
@@ -264,17 +266,23 @@ def test_memory_retrieval_milestone2(tmp_path):
     event_bus.publish(SessionStartedEvent(session_id="session-456", session=session))
 
     # Add various memories
-    mem_mission = service.add_memory(content="Mission: scale databases to 10k QPS", memory_type=MemoryType.NOTE)
+    mem_mission = service.add_memory(
+        content="Mission: scale databases to 10k QPS", memory_type=MemoryType.NOTE
+    )
     mem_mission.metadata.category = MemoryCategory.MISSION
     mem_mission.metadata.importance_score = MemoryImportance.HIGH
     mem_mission.metadata.related_mission = "m_scale"
 
-    mem_career = service.add_memory(content="Resume version for SWE application to Google", memory_type=MemoryType.NOTE)
+    mem_career = service.add_memory(
+        content="Resume version for SWE application to Google", memory_type=MemoryType.NOTE
+    )
     mem_career.metadata.category = MemoryCategory.CAREER
     mem_career.metadata.importance_score = MemoryImportance.LOW
     mem_career.metadata.related_company = "Google"
 
-    mem_project = service.add_memory(content="ADR: use SQLite for local caching in AI OS", memory_type=MemoryType.NOTE)
+    mem_project = service.add_memory(
+        content="ADR: use SQLite for local caching in AI OS", memory_type=MemoryType.NOTE
+    )
     mem_project.metadata.category = MemoryCategory.PROJECT
     mem_project.metadata.importance_score = MemoryImportance.CRITICAL
     mem_project.metadata.related_project = "ai_os_core"
@@ -286,7 +294,7 @@ def test_memory_retrieval_milestone2(tmp_path):
     ctx_mission = RetrievalContext(
         objective="Analyze db scale progress",
         active_mission="m_scale",
-        strategy=RetrievalStrategy.MISSION
+        strategy=RetrievalStrategy.MISSION,
     )
     res_mission = retriever.retrieve(ctx_mission)
     assert len(res_mission) == 1
@@ -294,8 +302,7 @@ def test_memory_retrieval_milestone2(tmp_path):
 
     # 2. Retrieve by Career (Google query)
     ctx_career = RetrievalContext(
-        objective="Prepare Google interview application",
-        strategy=RetrievalStrategy.CAREER
+        objective="Prepare Google interview application", strategy=RetrievalStrategy.CAREER
     )
     res_career = retriever.retrieve(ctx_career)
     assert len(res_career) == 1
@@ -305,7 +312,7 @@ def test_memory_retrieval_milestone2(tmp_path):
     ctx_project = RetrievalContext(
         objective="Review caching architecture",
         active_project="ai_os_core",
-        strategy=RetrievalStrategy.PROJECT
+        strategy=RetrievalStrategy.PROJECT,
     )
     res_project = retriever.retrieve(ctx_project)
     assert len(res_project) == 1
@@ -313,18 +320,14 @@ def test_memory_retrieval_milestone2(tmp_path):
 
     # 4. Relevance Ordering (Critical first)
     ctx_mixed = RetrievalContext(
-        objective="Daily planning overview",
-        strategy=RetrievalStrategy.MIXED,
-        max_results=5
+        objective="Daily planning overview", strategy=RetrievalStrategy.MIXED, max_results=5
     )
     res_mixed = retriever.retrieve(ctx_mixed)
     assert res_mixed[0].metadata.importance_score == MemoryImportance.CRITICAL
 
     # 5. Byte limit constraints (Limit to 50 bytes)
     ctx_limit = RetrievalContext(
-        objective="Planning overview",
-        strategy=RetrievalStrategy.MIXED,
-        limit_bytes=50
+        objective="Planning overview", strategy=RetrievalStrategy.MIXED, limit_bytes=50
     )
     res_limit = retriever.retrieve(ctx_limit)
     assert len(res_limit) == 1

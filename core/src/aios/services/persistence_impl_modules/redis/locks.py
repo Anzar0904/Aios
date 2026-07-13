@@ -9,6 +9,7 @@ from ..utilities import deserialize_val, serialize_val
 
 logger = logging.getLogger(__name__)
 
+
 class LockRegistryImpl(LockRegistry):
     def __init__(self) -> None:
         self.configs: Dict[str, Dict[str, Any]] = {}
@@ -116,7 +117,6 @@ class LockRegistryImpl(LockRegistry):
 
     def get_all_types(self) -> List[str]:
         return list(self.configs.keys())
-
 
 
 class LockLeaseManagerImpl(LockLeaseManager):
@@ -579,5 +579,3 @@ class DistributedLockManagerImpl(DistributedLockManager):
             return self.lease_manager.provider.exists(key)
         except Exception:
             return key in self.lease_manager._local_locks
-
-

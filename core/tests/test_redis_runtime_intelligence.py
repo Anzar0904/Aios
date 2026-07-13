@@ -1,4 +1,3 @@
-
 import pytest
 from aios.registry import ServiceRegistry
 from aios.services.persistence import (
@@ -122,36 +121,19 @@ def intelligence_env():
 
     # Redis Runtime Intelligence instantiations
     redis_aggregator = RedisRuntimeAggregatorImpl(
-        cache_stats,
-        session_stats,
-        coord_stats,
-        queue_stats,
-        rate_limit_stats,
-        redis_conn
+        cache_stats, session_stats, coord_stats, queue_stats, rate_limit_stats, redis_conn
     )
     redis_telem = RedisRuntimeTelemetryImpl(redis_aggregator)
     redis_health_analyzer = RedisRuntimeHealthAnalyzerImpl(
-        cache_health,
-        session_health,
-        coord_health,
-        queue_health,
-        rate_limit_health
+        cache_health, session_health, coord_health, queue_health, rate_limit_health
     )
     redis_capacity_analyzer = RedisCapacityAnalyzerImpl(redis_aggregator)
     redis_perf_analyzer = RedisPerformanceAnalyzerImpl(redis_aggregator)
     redis_recommend_engine = RedisRecommendationEngineImpl(
-        cache_rec,
-        session_rec,
-        coord_rec,
-        queue_rec,
-        rate_limit_rec
+        cache_rec, session_rec, coord_rec, queue_rec, rate_limit_rec
     )
     redis_diagnostics = RedisRuntimeDiagnosticsImpl(
-        cache_diag,
-        session_diag,
-        coord_diag,
-        queue_diag,
-        rate_limit_diag
+        cache_diag, session_diag, coord_diag, queue_diag, rate_limit_diag
     )
     redis_stats_collector = RedisRuntimeStatisticsCollectorImpl(redis_aggregator)
     redis_reporter = RedisRuntimeReporterImpl(redis_aggregator)
@@ -167,7 +149,7 @@ def intelligence_env():
         redis_diagnostics,
         redis_stats_collector,
         redis_reporter,
-        redis_validator
+        redis_validator,
     )
 
     # Initialize all Redis Runtime Intelligence classes
@@ -204,7 +186,7 @@ def intelligence_env():
         RuntimeTelemetryCollector,
         RuntimeTransactionProfiler,
     )
-    
+
     ri_telem = RuntimeTelemetryCollector()
     ri_perf = RuntimePerformanceAnalyzer(ri_telem)
     ri_capacity = RuntimeCapacityAnalyzer(ri_telem)
@@ -214,10 +196,12 @@ def intelligence_env():
     ri_lifecycle = RuntimeLifecycleMonitor()
     ri_stats = RuntimeStatisticsEngine(p_service)
     ri_diag = RuntimeDiagnosticsEngine()
-    ri_recommend = RuntimeRecommendationEngine(ri_telem, ri_perf, ri_capacity, ri_query_prof, ri_tx_prof, ri_repo_prof)
+    ri_recommend = RuntimeRecommendationEngine(
+        ri_telem, ri_perf, ri_capacity, ri_query_prof, ri_tx_prof, ri_repo_prof
+    )
     ri_health = RuntimeHealthMonitor(p_service, ri_telem)
     ri_report = RuntimeReportGenerator(".", None)
-    
+
     global_ri = RuntimeIntelligenceServiceImpl(
         ri_health,
         ri_telem,
@@ -230,7 +214,7 @@ def intelligence_env():
         ri_tx_prof,
         ri_repo_prof,
         ri_lifecycle,
-        ri_report
+        ri_report,
     )
     ri_report.intelligence = global_ri
     p_service.ri_service = global_ri
@@ -309,7 +293,11 @@ def test_diagnostics_and_recommendations(intelligence_env):
     assert "cache" in d_info
     assert "session" in d_info
 
-    diag.log_error("Simulated out-of-memory hazard", severity="CRITICAL", remediation="Increase maxmemory limit")
+    diag.log_error(
+        "Simulated out-of-memory hazard",
+        severity="CRITICAL",
+        remediation="Increase maxmemory limit",
+    )
     d_info_new = diag.get_diagnostics()
     assert len(d_info_new["custom_errors"]) == 1
 

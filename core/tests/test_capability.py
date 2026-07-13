@@ -19,7 +19,7 @@ def test_metadata_capability_serialization():
         description="Version control workflows",
         category="VCS",
         commands=["git checkout", "git commit"],
-        capabilities=["git", "vcs"]
+        capabilities=["git", "vcs"],
     )
     assert meta.id == "test_git"
     assert meta.capabilities == ["git", "vcs"]
@@ -62,7 +62,7 @@ def test_skill_selector_capability_filtering():
         description="Version control workflows",
         category="VCS",
         commands=["git status", "git log"],
-        capabilities=["git", "vcs"]
+        capabilities=["git", "vcs"],
     )
     doc_meta = SkillMetadata(
         id="doc_skill",
@@ -72,7 +72,7 @@ def test_skill_selector_capability_filtering():
         description="Documentation writing workflows",
         category="Docs",
         commands=["write README", "audit index"],
-        capabilities=["documentation"]
+        capabilities=["documentation"],
     )
 
     registry.register(BaseSkill(git_meta, "/tmp/git"))
@@ -106,7 +106,7 @@ def test_planner_capability_propagation():
         description="Git tasks",
         category="VCS",
         commands=["git status"],
-        capabilities=["git"]
+        capabilities=["git"],
     )
     registry.register(BaseSkill(meta, "/tmp/git"))
     selector = SkillSelector(registry)

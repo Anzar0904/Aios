@@ -50,7 +50,7 @@ class PytestAdapter(TestFrameworkAdapter):
                 exit_code=1,
                 metrics=ExecutionMetrics(0, 0, 0, 0, 0.0),
                 raw_output="",
-                errors=[f"Workspace root '{workspace_root}' does not exist."]
+                errors=[f"Workspace root '{workspace_root}' does not exist."],
             )
 
         # Build paths
@@ -61,20 +61,16 @@ class PytestAdapter(TestFrameworkAdapter):
         try:
             # We run the command. Note: in testing environment, we might want to stub/mock this execution.
             result = subprocess.run(
-                cmd,
-                cwd=workspace_root,
-                capture_output=True,
-                text=True,
-                timeout=30.0
+                cmd, cwd=workspace_root, capture_output=True, text=True, timeout=30.0
             )
             duration = time.time() - start_time
-            
+
             # Simple output parser for passed/failed/skipped
             stdout = result.stdout
             passed = 0
             failed = 0
             skipped = 0
-            
+
             # Parse simple pytest output summaries: e.g. "2 passed, 1 failed, 3 warnings in 0.23s"
             for line in stdout.splitlines():
                 if "passed" in line or "failed" in line or "warnings" in line or "skipped" in line:
@@ -97,7 +93,7 @@ class PytestAdapter(TestFrameworkAdapter):
                                     skipped = int(tokens[i - 1])
                                 except ValueError:
                                     pass
-            
+
             total = passed + failed + skipped
             if total == 0 and result.returncode == 0:
                 # No tests collected or simple passing stub
@@ -109,7 +105,7 @@ class PytestAdapter(TestFrameworkAdapter):
                 passed_tests=passed,
                 failed_tests=failed,
                 skipped_tests=skipped,
-                duration=duration
+                duration=duration,
             )
 
             return ExecutionResult(
@@ -117,7 +113,7 @@ class PytestAdapter(TestFrameworkAdapter):
                 success=(result.returncode == 0 and failed == 0),
                 exit_code=result.returncode,
                 metrics=metrics,
-                raw_output=stdout + "\n" + result.stderr
+                raw_output=stdout + "\n" + result.stderr,
             )
         except subprocess.TimeoutExpired:
             duration = time.time() - start_time
@@ -127,7 +123,7 @@ class PytestAdapter(TestFrameworkAdapter):
                 exit_code=-1,
                 metrics=ExecutionMetrics(0, 0, 0, 0, duration),
                 raw_output="Timeout expired.",
-                errors=["Execution timed out after 30 seconds."]
+                errors=["Execution timed out after 30 seconds."],
             )
         except Exception as e:
             duration = time.time() - start_time
@@ -137,7 +133,7 @@ class PytestAdapter(TestFrameworkAdapter):
                 exit_code=-2,
                 metrics=ExecutionMetrics(0, 0, 0, 0, duration),
                 raw_output=str(e),
-                errors=[f"Failed process invocation: {e}"]
+                errors=[f"Failed process invocation: {e}"],
             )
 
 
@@ -145,9 +141,7 @@ class LocalTestRunner(TestRunner):
     """Executes target sessions using registered framework adapters."""
 
     def __init__(self) -> None:
-        self._adapters: Dict[str, TestFrameworkAdapter] = {
-            "pytest": PytestAdapter()
-        }
+        self._adapters: Dict[str, TestFrameworkAdapter] = {"pytest": PytestAdapter()}
 
     def run_session(self, session: ExecutionSession, workspace_root: str) -> ExecutionSummary:
         results = []
@@ -157,25 +151,35 @@ class LocalTestRunner(TestRunner):
         total_failed = 0
         total_skipped = 0
 
-        session.logs.append(ExecutionLog(time.time(), "INFO", f"Starting session {session.session_id}"))
+        session.logs.append(
+            ExecutionLog(time.time(), "INFO", f"Starting session {session.session_id}")
+        )
 
         # Select pytest adapter for python files by default
         adapter = self._adapters["pytest"]
-        
+
         # Group targets or execute individually
         if session.targets:
             res = adapter.execute_tests(workspace_root, session.targets)
             results.append(res)
-            
+
             overall_success = overall_success and res.success
             total_duration += res.metrics.duration
             total_passed += res.metrics.passed_tests
             total_failed += res.metrics.failed_tests
             total_skipped += res.metrics.skipped_tests
-            
-            session.logs.append(ExecutionLog(time.time(), "INFO", f"Executed {len(session.targets)} targets. Success: {res.success}"))
+
+            session.logs.append(
+                ExecutionLog(
+                    time.time(),
+                    "INFO",
+                    f"Executed {len(session.targets)} targets. Success: {res.success}",
+                )
+            )
         else:
-            session.logs.append(ExecutionLog(time.time(), "WARNING", "No execution targets specified."))
+            session.logs.append(
+                ExecutionLog(time.time(), "WARNING", "No execution targets specified.")
+            )
 
         summary = ExecutionSummary(
             summary_id=f"exec_sum_{int(time.time())}",
@@ -186,7 +190,7 @@ class LocalTestRunner(TestRunner):
             total_failed=total_failed,
             total_skipped=total_skipped,
             results=results,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
         session.summary = summary
         return summary
@@ -200,9 +204,7 @@ class LocalTestExecutor(TestExecutor):
 
     def execute(self, workspace_root: str, targets: List[ExecutionTarget]) -> ExecutionSummary:
         session = ExecutionSession(
-            session_id=f"exec_sess_{int(time.time())}",
-            workspace_id="default_ws",
-            targets=targets
+            session_id=f"exec_sess_{int(time.time())}", workspace_id="default_ws", targets=targets
         )
         return self._runner.run_session(session, workspace_root)
 
@@ -215,13 +217,13 @@ class LocalTestExecutionService(TestExecutionService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[Any] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
         self._model = model_service
         self._registry = registry
-        
+
         self._executor = LocalTestExecutor()
         self._session_repo = None
         self._result_repo = None
@@ -239,7 +241,11 @@ class LocalTestExecutionService(TestExecutionService):
             self._result_repo = None
 
     def _get_policy(self) -> PersistencePolicy:
-        if self._session_repo and hasattr(self._session_repo, "service") and self._session_repo.service.config:
+        if (
+            self._session_repo
+            and hasattr(self._session_repo, "service")
+            and self._session_repo.service.config
+        ):
             return self._session_repo.service.config.policy
         return PersistencePolicy.STRICT
 
@@ -250,10 +256,7 @@ class LocalTestExecutionService(TestExecutionService):
         pass
 
     def execute_workspace_tests(
-        self,
-        workspace_id: str,
-        workspace_root: str,
-        targets: List[ExecutionTarget]
+        self, workspace_id: str, workspace_root: str, targets: List[ExecutionTarget]
     ) -> ExecutionSummary:
         logger.info(f"Executing workspace tests for workspace: '{workspace_id}'")
         summary = self._executor.execute(workspace_root, targets)
@@ -274,7 +277,7 @@ class LocalTestExecutionService(TestExecutionService):
                     "failure_categories": json.dumps({}),
                     "environment_metadata": json.dumps({"workspace_root": workspace_root}),
                     "operation_results": json.dumps({}),
-                    "timestamp": summary.timestamp
+                    "timestamp": summary.timestamp,
                 }
                 res = self._session_repo.save(session_mapped)
                 if res.status != PersistenceStatus.SUCCESS:
@@ -294,15 +297,17 @@ class LocalTestExecutionService(TestExecutionService):
                         "passed": 1 if r.success else 0,
                         "execution_time": r.metrics.duration,
                         "error_message": "\n".join(r.errors) if r.errors else "",
-                        "metadata": json.dumps({
-                            "exit_code": r.exit_code,
-                            "metrics": {
-                                "total": r.metrics.total_tests,
-                                "passed": r.metrics.passed_tests,
-                                "failed": r.metrics.failed_tests,
-                                "skipped": r.metrics.skipped_tests
+                        "metadata": json.dumps(
+                            {
+                                "exit_code": r.exit_code,
+                                "metrics": {
+                                    "total": r.metrics.total_tests,
+                                    "passed": r.metrics.passed_tests,
+                                    "failed": r.metrics.failed_tests,
+                                    "skipped": r.metrics.skipped_tests,
+                                },
                             }
-                        })
+                        ),
                     }
                     res_r = self._result_repo.save(result_mapped)
                     if res_r.status != PersistenceStatus.SUCCESS:
@@ -326,7 +331,7 @@ class LocalTestExecutionService(TestExecutionService):
             f"Skipped Count: {summary.total_skipped}\n"
             f"Total Duration: {summary.total_duration:.2f}s"
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -335,8 +340,8 @@ class LocalTestExecutionService(TestExecutionService):
                 session_id=summary.summary_id,
                 tags=["test_execution", "quality_metrics"],
                 importance=2,
-                source_subsystem="test_execution_engine"
-            )
+                source_subsystem="test_execution_engine",
+            ),
         )
 
     def publish_execution_report(self, summary: ExecutionSummary) -> None:
@@ -364,8 +369,7 @@ class LocalTestExecutionService(TestExecutionService):
             f"**Total Passed**: {summary.total_passed}\n"
             f"**Total Failed**: {summary.total_failed}\n"
             f"**Total Duration**: {summary.total_duration:.2f}s\n\n"
-            f"## Individual Suite Results\n"
-            + "\n".join(results_md)
+            f"## Individual Suite Results\n" + "\n".join(results_md)
         )
 
         doc = KnowledgeDocument(
@@ -376,7 +380,7 @@ class LocalTestExecutionService(TestExecutionService):
                 unique_id=f"exec_report_{summary.summary_id}",
                 timestamp=summary.timestamp,
                 source_subsystem="test_execution_engine",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

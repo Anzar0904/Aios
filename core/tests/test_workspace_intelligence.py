@@ -68,11 +68,16 @@ def test_architecture_analyzer():
     model_mock.execute_request.return_value = LLMResponse(
         content='{"high_level_architecture": "Microservices", "components": ["A", "B"], "entry_points": ["main.py"], "execution_paths": [], "design_patterns": [], "architectural_observations": []}',
         model_name="mock-model",
-        provider_name="mock-provider"
+        provider_name="mock-provider",
     )
 
     context_mock = {
-        "context": MagicMock(structure=["main.py"], statistics={"total_folders": 2}, languages={".py": 1}, package_managers=[])
+        "context": MagicMock(
+            structure=["main.py"],
+            statistics={"total_folders": 2},
+            languages={".py": 1},
+            package_managers=[],
+        )
     }
 
     analyzer = LocalArchitectureAnalyzer(model_mock)
@@ -115,7 +120,9 @@ def test_documentation_analyzer(mock_project_context):
     assert res["adr_count"] == 1
 
 
-def test_workspace_intelligence_service(mock_project_intel, mock_memory_service, mock_knowledge_hub):
+def test_workspace_intelligence_service(
+    mock_project_intel, mock_memory_service, mock_knowledge_hub
+):
     service = LocalWorkspaceIntelligenceService(
         mock_project_intel, mock_memory_service, mock_knowledge_hub
     )
@@ -176,33 +183,33 @@ def calculate_distance(p1: Point, p2: Point) -> float:
 """
     parser = PythonASTParser()
     symbols = parser.parse("dummy.py", python_code)
-    
+
     # Assert module symbol
     module_syms = [s for s in symbols if s.symbol_type == "module"]
     assert len(module_syms) == 1
     assert module_syms[0].name == "dummy"
-    
+
     # Assert imports
     imports = [s for s in symbols if s.symbol_type == "import"]
     assert len(imports) == 5
     assert any(imp.name == "os" for imp in imports)
     assert any(imp.name == "math" for imp in imports)
-    
+
     # Assert dataclass
     dataclasses = [s for s in symbols if s.symbol_type == "dataclass"]
     assert len(dataclasses) == 1
     assert dataclasses[0].name == "Point"
-    
+
     # Assert interface ( Shape inherits from ABC )
     interfaces = [s for s in symbols if s.symbol_type == "interface"]
     assert len(interfaces) == 1
     assert interfaces[0].name == "Shape"
-    
+
     # Assert enum
     enums = [s for s in symbols if s.symbol_type == "enum"]
     assert len(enums) == 1
     assert enums[0].name == "Color"
-    
+
     # Assert function and decorators
     functions = [s for s in symbols if s.symbol_type == "function"]
     assert len(functions) == 1
@@ -248,16 +255,16 @@ export const arrowFunc = () => {
 """
     parser = TypeScriptASTParser()
     symbols = parser.parse("app.component.ts", ts_code)
-    
+
     # Assert module symbol
     module_syms = [s for s in symbols if s.symbol_type == "module"]
     assert len(module_syms) == 1
-    
+
     # Assert imports
     imports = [s for s in symbols if s.symbol_type == "import"]
     assert len(imports) == 2
     assert any(imp.name == "./dependency" for imp in imports)
-    
+
     # Assert class, decorator, and inheritance
     classes = [s for s in symbols if s.symbol_type == "class"]
     assert len(classes) == 1
@@ -267,7 +274,7 @@ export const arrowFunc = () => {
     assert "OnInit" in classes[0].meta.get("implements")
     assert "Component" in classes[0].decorators
     assert "Injectable" in classes[0].decorators
-    
+
     # Assert methods
     methods = [s for s in symbols if s.symbol_type == "method"]
     assert len(methods) == 2
@@ -278,18 +285,18 @@ export const arrowFunc = () => {
     run_app = next(m for m in methods if m.name == "AppComponent.runApp")
     assert ng_init.is_public is True
     assert run_app.is_public is False
-    
+
     # Assert interface
     interfaces = [s for s in symbols if s.symbol_type == "interface"]
     assert len(interfaces) == 1
     assert interfaces[0].name == "MyInterface"
     assert interfaces[0].is_public is True
-    
+
     # Assert enum
     enums = [s for s in symbols if s.symbol_type == "enum"]
     assert len(enums) == 1
     assert enums[0].name == "Status"
-    
+
     # Assert functions
     functions = [s for s in symbols if s.symbol_type == "function"]
     assert len(functions) == 2
@@ -304,7 +311,7 @@ def test_dependency_graph_builder():
     ]
     builder = LocalDependencyGraphBuilder()
     graph = builder.build_graph(["f1", "f2", "f3"], symbols)
-    
+
     assert graph["f1"] == ["f2"]
     assert graph["f2"] == ["f3"]
     assert graph["f3"] == []
@@ -313,37 +320,39 @@ def test_dependency_graph_builder():
 def test_call_graph_builder(tmp_path):
     f1 = tmp_path / "f1.py"
     f1.write_text("def first():\n    second()\n")
-    
+
     symbols = [
         SymbolReference("f1::first", "first", "function", str(f1), 1, 2),
         SymbolReference("f1::second", "second", "function", str(f1), 4, 5),
     ]
-    
+
     builder = LocalCallGraphBuilder()
     graph = builder.build_call_graph(symbols)
-    
+
     assert graph["first"] == ["second"]
 
 
-def test_code_intelligence_service_integration(mock_project_intel, mock_memory_service, mock_knowledge_hub, tmp_path):
+def test_code_intelligence_service_integration(
+    mock_project_intel, mock_memory_service, mock_knowledge_hub, tmp_path
+):
     python_file = tmp_path / "main.py"
     python_file.write_text("def hello():\n    pass\n")
-    
+
     mock_project_intel.analyze_workspace.return_value.structure = ["main.py"]
-    
+
     service = LocalCodeIntelligenceService(
         mock_project_intel, mock_memory_service, mock_knowledge_hub
     )
     service.initialize()
-    
+
     # Run codebase analysis
     summary = service.analyze_codebase(str(tmp_path))
     assert f"{str(python_file)}::hello" in summary.symbols
-    
+
     # Test memory integration
     service.store_code_summary(summary)
     mock_memory_service.add_memory.assert_called_once()
-    
+
     # Test knowledge hub integration
     service.publish_code_report(summary)
     mock_knowledge_hub.sync_document.assert_called_once()
@@ -355,16 +364,11 @@ def test_backward_compatibility_and_future_languages():
             return file_extension.lower() == ".go"
 
         def parse(self, file_path: str, content: str) -> List[SymbolReference]:
-            return [
-                SymbolReference(f"{file_path}::GoFunc", "GoFunc", "function", file_path, 1, 5)
-            ]
-            
-    service = LocalCodeIntelligenceService(
-        MagicMock(), MagicMock()
-    )
+            return [SymbolReference(f"{file_path}::GoFunc", "GoFunc", "function", file_path, 1, 5)]
+
+    service = LocalCodeIntelligenceService(MagicMock(), MagicMock())
     service._analyzer.register_parser(GoASTParser())
-    
+
     symbols = service._analyzer.parse_file("main.go", "package main")
     assert len(symbols) == 1
     assert symbols[0].name == "GoFunc"
-

@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class APIParameter:
     """A query or path parameter detail."""
+
     __test__ = False
     name: str
     param_type: str
@@ -18,6 +19,7 @@ class APIParameter:
 @dataclass
 class APISchema:
     """Data object definition for requests and responses."""
+
     __test__ = False
     schema_name: str
     fields: Dict[str, str]
@@ -27,6 +29,7 @@ class APISchema:
 @dataclass
 class APIExample:
     """Mock example request and response payload JSONs."""
+
     __test__ = False
     example_id: str
     request_body: str
@@ -36,6 +39,7 @@ class APIExample:
 @dataclass
 class APIResponse:
     """An HTTP response specification."""
+
     __test__ = False
     status_code: int
     schema: Optional[APISchema]
@@ -46,6 +50,7 @@ class APIResponse:
 @dataclass
 class APIEndpoint:
     """A single REST/GraphQL/RPC API endpoint."""
+
     __test__ = False
     path: str
     method: str
@@ -59,6 +64,7 @@ class APIEndpoint:
 @dataclass
 class APIDocumentArtifact:
     """Constructed API documentation output."""
+
     __test__ = False
     artifact_id: str
     workspace_id: str
@@ -70,6 +76,7 @@ class APIDocumentArtifact:
 @dataclass
 class APIReport:
     """Discrepancy report detailing gaps in current API docs."""
+
     __test__ = False
     report_id: str
     workspace_id: str
@@ -83,6 +90,7 @@ class APIReport:
 
 class APIAnalyzer(abc.ABC):
     """Parses AST structures to discover endpoints and compare current documentation."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -93,6 +101,7 @@ class APIAnalyzer(abc.ABC):
 
 class APIDocumentationPlanner(abc.ABC):
     """Plans layout structure matching target formatting style rules."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -103,6 +112,7 @@ class APIDocumentationPlanner(abc.ABC):
 
 class APIDocumentValidator(abc.ABC):
     """Validates markdown formatting and OpenAPI compatibility of generated specs."""
+
     __test__ = False
 
     @abc.abstractmethod
@@ -113,6 +123,7 @@ class APIDocumentValidator(abc.ABC):
 
 class APIRegistry:
     """Thread-safe registry caching discovered endpoint specifications."""
+
     __test__ = False
 
     def __init__(self) -> None:
@@ -132,14 +143,12 @@ class APIRegistry:
 
 class APIDocumentationService(ServiceLifecycle, abc.ABC):
     """Coordinating service executing discovers, validates, and syncs summaries."""
+
     __test__ = False
 
     @abc.abstractmethod
     def generate_api_documentation(
-        self,
-        workspace_id: str,
-        code_structure: Dict[str, Any],
-        existing_docs: str
+        self, workspace_id: str, code_structure: Dict[str, Any], existing_docs: str
     ) -> APIDocumentArtifact:
         """Runs discovery and formats API schemas."""
         pass

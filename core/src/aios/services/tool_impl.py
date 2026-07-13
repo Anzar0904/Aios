@@ -82,9 +82,7 @@ class FilesystemTool(Tool):
 
         if action == "read":
             if not path.is_file():
-                return ToolResult(
-                    success=False, output="", error="Path is not a file."
-                )
+                return ToolResult(success=False, output="", error="Path is not a file.")
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -110,13 +108,9 @@ class FilesystemTool(Tool):
 
         elif action == "list":
             if not path.exists():
-                return ToolResult(
-                    success=False, output="", error="Path does not exist."
-                )
+                return ToolResult(success=False, output="", error="Path does not exist.")
             if not path.is_dir():
-                return ToolResult(
-                    success=False, output="", error="Path is not a directory."
-                )
+                return ToolResult(success=False, output="", error="Path is not a directory.")
             try:
                 items = sorted(os.listdir(path))
                 output = "\n".join(items)
@@ -124,7 +118,6 @@ class FilesystemTool(Tool):
             except Exception:
                 return ToolResult(success=False, output="", error="Failed to list directory.")
         return ToolResult(success=False, output="", error=f"Unknown filesystem action: {action}")
-
 
 
 class GitTool(Tool):
@@ -213,7 +206,27 @@ class TerminalTool(Tool):
             return ToolResult(success=False, output="", error="Empty command.")
 
         # Reject chained commands, pipes, redirects, command substitution, and shell metacharacters.
-        forbidden_metachars = [";", "&", "|", "<", ">", "$", "(", ")", "`", "\\", "*", "?", "[", "]", "!", "{", "}", "\n", "\r"]
+        forbidden_metachars = [
+            ";",
+            "&",
+            "|",
+            "<",
+            ">",
+            "$",
+            "(",
+            ")",
+            "`",
+            "\\",
+            "*",
+            "?",
+            "[",
+            "]",
+            "!",
+            "{",
+            "}",
+            "\n",
+            "\r",
+        ]
         for char in forbidden_metachars:
             if char in command:
                 return ToolResult(
@@ -250,14 +263,27 @@ class TerminalTool(Tool):
 
         if executable == "pwd":
             if len(cmd_parts) > 1:
-                return ToolResult(success=False, output="", error="pwd command does not accept arguments.")
+                return ToolResult(
+                    success=False, output="", error="pwd command does not accept arguments."
+                )
         elif executable == "whoami":
             if len(cmd_parts) > 1:
-                return ToolResult(success=False, output="", error="whoami command does not accept arguments.")
+                return ToolResult(
+                    success=False, output="", error="whoami command does not accept arguments."
+                )
         elif executable == "git":
             if len(cmd_parts) > 1:
                 subcommand = cmd_parts[1]
-                allowed_git_subcommands = {"status", "branch", "log", "diff", "show", "rev-parse", "version", "help"}
+                allowed_git_subcommands = {
+                    "status",
+                    "branch",
+                    "log",
+                    "diff",
+                    "show",
+                    "rev-parse",
+                    "version",
+                    "help",
+                }
                 if subcommand not in allowed_git_subcommands:
                     return ToolResult(
                         success=False,
@@ -288,7 +314,6 @@ class TerminalTool(Tool):
             return ToolResult(success=False, output="", error=f"Failed to run command: {e}")
 
 
-
 class LocalToolManager(ToolService):
     """Concrete implementation of ToolService.
 
@@ -309,6 +334,7 @@ class LocalToolManager(ToolService):
 
         from aios.services.context import ContextLoadedEvent
         from aios.services.session import SessionStartedEvent
+
         self._event_bus.register_event_type(ContextLoadedEvent)
         self._event_bus.register_event_type(SessionStartedEvent)
         self._event_bus.subscribe(ContextLoadedEvent, self._on_context_loaded)
@@ -323,7 +349,6 @@ class LocalToolManager(ToolService):
 
     def _on_session_started(self, event) -> None:
         self._workspace_root = event.session.workspace_id
-
 
     def register_tool(self, tool: Tool) -> None:
         """Registers a tool with the engine."""

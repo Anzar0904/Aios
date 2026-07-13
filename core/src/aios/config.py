@@ -82,6 +82,7 @@ class PersistenceConfig:
     user: Optional[str] = None
     password: Optional[str] = None
 
+
 @dataclass(frozen=True)
 class OSConfig:
     runtime: RuntimeConfig
@@ -116,15 +117,11 @@ def load_config(config_path: Path) -> OSConfig:
 
     # Load api_key from environment variables if not present in config
     api_key = omniroute_data.get("api_key") or os.environ.get("OMNIROUTE_API_KEY")
-    ninerouter_api_key = ninerouter_data.get("api_key") or os.environ.get(
-        "NINEROUTER_API_KEY"
-    )
+    ninerouter_api_key = ninerouter_data.get("api_key") or os.environ.get("NINEROUTER_API_KEY")
 
     # Load github token from environment variables if not present in config
     github_token = (
-        github_data.get("token")
-        or os.environ.get("GITHUB_TOKEN")
-        or os.environ.get("GITHUB_PAT")
+        github_data.get("token") or os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_PAT")
     )
 
     # Load notion token from environment variables if not present in config

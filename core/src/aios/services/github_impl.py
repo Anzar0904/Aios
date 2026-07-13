@@ -94,15 +94,20 @@ class LocalGitHubService(GitHubService):
         if hasattr(self, "_registry") and self._registry:
             try:
                 from aios.source_control import SourceControlService
+
                 sc_service = self._registry.get(SourceControlService)
                 gh_provider = sc_service.registry.get_provider("github")
-                res = gh_provider._request(method, f"/{path.lstrip('/')}", params=params, json=json_data)
+                res = gh_provider._request(
+                    method, f"/{path.lstrip('/')}", params=params, json=json_data
+                )
                 content_type = res.headers.get("Content-Type", "")
                 if "application/json" in content_type:
                     return res.json()
                 return res.text
             except Exception as e:
-                logger.warning(f"SourceControlService delegation failed, falling back to legacy request: {e}")
+                logger.warning(
+                    f"SourceControlService delegation failed, falling back to legacy request: {e}"
+                )
 
         cache_key = f"{method}:{path}:{json.dumps(params or {})}:{json.dumps(json_data or {})}"
 
@@ -135,7 +140,9 @@ class LocalGitHubService(GitHubService):
         last_exception = None
         for attempt in range(self._max_retries):
             try:
-                logger.info(f"GitHub API call attempt {attempt + 1}/{self._max_retries}: {method} {path}")
+                logger.info(
+                    f"GitHub API call attempt {attempt + 1}/{self._max_retries}: {method} {path}"
+                )
                 with httpx.Client(timeout=float(self._timeout)) as client:
                     if method == "GET":
                         res = client.get(url, headers=headers, params=params)
@@ -146,7 +153,9 @@ class LocalGitHubService(GitHubService):
 
                 # Handle transient errors
                 if res.status_code in (429, 500, 502, 503, 504):
-                    logger.warning(f"Transient HTTP error {res.status_code} received on attempt {attempt + 1}")
+                    logger.warning(
+                        f"Transient HTTP error {res.status_code} received on attempt {attempt + 1}"
+                    )
                     time.sleep(2**attempt)
                     continue
 
@@ -178,7 +187,7 @@ class LocalGitHubService(GitHubService):
     def inspect_repository(self, repo_name: str) -> GitHubRepository:
         owner, repo = self._parse_repo_name(repo_name)
         data = self._request("GET", f"repos/{owner}/{repo}")
-        
+
         # Optionally try to get languages
         languages_list = []
         try:
@@ -203,10 +212,7 @@ class LocalGitHubService(GitHubService):
     def list_branches(self, repo_name: str) -> List[GitHubBranch]:
         owner, repo = self._parse_repo_name(repo_name)
         data = self._request("GET", f"repos/{owner}/{repo}/branches")
-        return [
-            GitHubBranch(name=b["name"], sha=b["commit"]["sha"])
-            for b in data
-        ]
+        return [GitHubBranch(name=b["name"], sha=b["commit"]["sha"]) for b in data]
 
     def create_branch(self, repo_name: str, branch_name: str, target_sha: str) -> GitHubBranch:
         owner, repo = self._parse_repo_name(repo_name)
@@ -234,11 +240,11 @@ class LocalGitHubService(GitHubService):
     def inspect_issue(self, repo_name: str, issue_number: int) -> GitHubIssue:
         owner, repo = self._parse_repo_name(repo_name)
         data = self._request("GET", f"repos/{owner}/{repo}/issues/{issue_number}")
-        
+
         labels_list = []
         if "labels" in data:
             labels_list = [label["name"] for label in data["labels"]]
-            
+
         milestone_title = None
         if data.get("milestone"):
             milestone_title = data["milestone"]["title"]
@@ -254,13 +260,15 @@ class LocalGitHubService(GitHubService):
             created_at=data.get("created_at", ""),
         )
 
-    def get_commit_history(self, repo_name: str, branch: Optional[str] = None) -> List[GitHubCommit]:
+    def get_commit_history(
+        self, repo_name: str, branch: Optional[str] = None
+    ) -> List[GitHubCommit]:
         owner, repo = self._parse_repo_name(repo_name)
         params = {}
         if branch:
             params["sha"] = branch
         data = self._request("GET", f"repos/{owner}/{repo}/commits", params=params)
-        
+
         commits = []
         for c in data:
             commit_info = c["commit"]
@@ -340,7 +348,7 @@ class LocalGitHubService(GitHubService):
         # Using Compare branch API for diff output format
         headers = self._auth.get_headers()
         headers["Accept"] = "application/vnd.github.diff"
-        
+
         # Note: self._request wraps headers differently, so we manually call it or custom implement
         url = f"{self._base_url}/repos/{owner}/{repo}/compare/{base}...{head}"
         if self._offline_mode:
@@ -358,7 +366,7 @@ class LocalGitHubService(GitHubService):
         if ref:
             params["ref"] = ref
         data = self._request("GET", f"repos/{owner}/{repo}/contents/{path}", params=params)
-        
+
         if isinstance(data, dict) and data.get("encoding") == "base64":
             content_bytes = base64.b64decode(data["content"])
             return content_bytes.decode("utf-8", errors="ignore")
@@ -367,7 +375,7 @@ class LocalGitHubService(GitHubService):
     def get_readme(self, repo_name: str) -> str:
         owner, repo = self._parse_repo_name(repo_name)
         data = self._request("GET", f"repos/{owner}/{repo}/readme")
-        
+
         if isinstance(data, dict) and data.get("encoding") == "base64":
             content_bytes = base64.b64decode(data["content"])
             return content_bytes.decode("utf-8", errors="ignore")
@@ -376,10 +384,7 @@ class LocalGitHubService(GitHubService):
     def get_contributors(self, repo_name: str) -> List[Dict[str, Any]]:
         owner, repo = self._parse_repo_name(repo_name)
         data = self._request("GET", f"repos/{owner}/{repo}/contributors")
-        return [
-            {"login": c["login"], "contributions": c["contributions"]}
-            for c in data
-        ]
+        return [{"login": c["login"], "contributions": c["contributions"]} for c in data]
 
     def get_labels(self, repo_name: str) -> List[str]:
         owner, repo = self._parse_repo_name(repo_name)
@@ -398,7 +403,6 @@ class LocalGitHubService(GitHubService):
             }
             for m in data
         ]
-
 
     # AI OS Intelligence methods
     def review_repository(self, repo_name: str) -> str:
@@ -467,14 +471,16 @@ class LocalGitHubService(GitHubService):
 
     def review_pr(self, repo_name: str, pr_number: int) -> str:
         pr = self.inspect_pull_request(repo_name, pr_number)
-        
+
         diff = ""
         try:
             diff = self.get_diff(repo_name, f"pull/{pr_number}/merge", f"pull/{pr_number}/head")
         except Exception:
             try:
                 # Fallback to get_diff using the PR diff url or comparable logic
-                diff = self.get_diff(repo_name, "main", "dev") # generic fallback if base/head unknown
+                diff = self.get_diff(
+                    repo_name, "main", "dev"
+                )  # generic fallback if base/head unknown
             except Exception:
                 diff = "No diff available."
 
@@ -501,12 +507,14 @@ class LocalGitHubService(GitHubService):
         return res.content
 
     def explain_commit_history(self, repo_name: str, branch: Optional[str] = None) -> str:
-        commits = self.get_commit_history(repo_name, branch)[:30] # analyze top 30 commits
-        
-        commits_str = "\n".join([
-            f"- sha: {c.sha[:7]} | message: {c.message} | author: {c.author} | date: {c.date}"
-            for c in commits
-        ])
+        commits = self.get_commit_history(repo_name, branch)[:30]  # analyze top 30 commits
+
+        commits_str = "\n".join(
+            [
+                f"- sha: {c.sha[:7]} | message: {c.message} | author: {c.author} | date: {c.date}"
+                for c in commits
+            ]
+        )
 
         prompt = (
             f"You are a release coordinator analyzing the commit history for: {repo_name} (branch: {branch or 'default'}).\n\n"

@@ -9,6 +9,7 @@ from aios.services.workspace_intelligence import CodeStructureSummary
 @dataclass
 class AffectedFile:
     """Represents a source file likely to be affected by the engineering change."""
+
     file_path: str
     change_type: str  # "modify", "create", "delete", "refactor"
     reason: str
@@ -18,6 +19,7 @@ class AffectedFile:
 @dataclass
 class AffectedComponent:
     """Represents an architectural component/symbol affected by the change."""
+
     name: str
     component_type: str  # "class", "method", "function", "interface", "enum", "module"
     impact_level: str  # "Low", "Medium", "High", "Critical"
@@ -28,6 +30,7 @@ class AffectedComponent:
 @dataclass
 class ChangeRecommendation:
     """A recommended structural modification for a specific target."""
+
     target: str
     recommendation: str
     rationale: str
@@ -37,6 +40,7 @@ class ChangeRecommendation:
 @dataclass
 class EngineeringPlan:
     """Structured implementation plan generated for a software change objective."""
+
     plan_id: str
     objective: str
     timestamp: float
@@ -54,6 +58,7 @@ class EngineeringPlan:
 @dataclass
 class EngineeringReport:
     """Full engineering analysis report including impact, complexity, risks, and plans."""
+
     report_id: str
     objective: str
     timestamp: float
@@ -69,10 +74,7 @@ class ChangeImpactAnalyzer(abc.ABC):
 
     @abc.abstractmethod
     def analyze_impact(
-        self,
-        workspace_root: str,
-        objective: str,
-        code_summary: CodeStructureSummary
+        self, workspace_root: str, objective: str, code_summary: CodeStructureSummary
     ) -> tuple[List[AffectedFile], List[AffectedComponent]]:
         """Identifies files, classes, methods, and interfaces affected by the change objective."""
         pass
@@ -86,7 +88,7 @@ class ComplexityEstimator(abc.ABC):
         self,
         affected_files: List[AffectedFile],
         affected_components: List[AffectedComponent],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> tuple[str, float]:
         """Returns complexity classification (Low/Medium/High/Very High) and estimated effort in hours."""
         pass
@@ -101,7 +103,7 @@ class RiskAnalyzer(abc.ABC):
         objective: str,
         affected_files: List[AffectedFile],
         affected_components: List[AffectedComponent],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> List[str]:
         """Identifies risk indicators like high coupling, circular dependencies, and API breakages."""
         pass
@@ -118,7 +120,7 @@ class ImplementationPlanner(abc.ABC):
         affected_components: List[AffectedComponent],
         complexity: str,
         risks: List[str],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> EngineeringPlan:
         """Constructs an ordered implementation plan with validation strategies and dependencies."""
         pass

@@ -11,10 +11,12 @@ class ActionType(Enum):
     DELETE = "DELETE"
     NETWORK = "NETWORK"
 
+
 class RiskLevel(Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
+
 
 class ActionStep:
     def __init__(
@@ -25,7 +27,7 @@ class ActionStep:
         tool_name: str,
         tool_args: Dict[str, Any],
         is_reversible: bool = True,
-        undo_args: Optional[Dict[str, Any]] = None
+        undo_args: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.id = str(uuid.uuid4())
         self.description = description
@@ -54,7 +56,7 @@ class ActionStep:
             "status": self.status,
             "output": self.output,
             "error": self.error,
-            "backup_content": self.backup_content
+            "backup_content": self.backup_content,
         }
 
     @classmethod
@@ -66,7 +68,7 @@ class ActionStep:
             tool_name=data["tool_name"],
             tool_args=data["tool_args"],
             is_reversible=data.get("is_reversible", True),
-            undo_args=data.get("undo_args")
+            undo_args=data.get("undo_args"),
         )
         step.id = data["id"]
         step.status = data.get("status", "pending")
@@ -74,6 +76,7 @@ class ActionStep:
         step.error = data.get("error", "")
         step.backup_content = data.get("backup_content", "")
         return step
+
 
 class ActionPlan:
     def __init__(
@@ -83,7 +86,7 @@ class ActionPlan:
         id: Optional[str] = None,
         status: str = "pending",
         created_at: Optional[float] = None,
-        updated_at: Optional[float] = None
+        updated_at: Optional[float] = None,
     ) -> None:
         self.id = id if id is not None else str(uuid.uuid4())
         self.objective = objective
@@ -99,7 +102,7 @@ class ActionPlan:
             "steps": [s.to_dict() for s in self.steps],
             "status": self.status,
             "created_at": self.created_at,
-            "updated_at": self.updated_at
+            "updated_at": self.updated_at,
         }
 
     @classmethod
@@ -111,5 +114,5 @@ class ActionPlan:
             id=data["id"],
             status=data.get("status", "pending"),
             created_at=data.get("created_at"),
-            updated_at=data.get("updated_at")
+            updated_at=data.get("updated_at"),
         )

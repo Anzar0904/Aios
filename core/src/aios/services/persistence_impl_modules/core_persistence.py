@@ -54,6 +54,7 @@ class PersistenceServiceImpl(PersistenceService):
 
         # Dynamically register SQLiteProvider
         from .sqlite import SQLiteProvider
+
         self.registry.register_provider("sqlite", SQLiteProvider)
 
         provider_cls = self.registry.get_provider_class("sqlite")
@@ -71,7 +72,9 @@ class PersistenceServiceImpl(PersistenceService):
                 self.active_provider.connect()
                 # Run a query to verify psycopg2 connection doesn't lazily fail
                 self.active_provider.execute("SELECT 1")
-                logger.info(f"Database provider {self.config.provider_name.upper()} connected successfully.")
+                logger.info(
+                    f"Database provider {self.config.provider_name.upper()} connected successfully."
+                )
             except Exception as e:
                 if self.config.policy == PersistencePolicy.STRICT:
                     logger.error(

@@ -32,12 +32,21 @@ logger = logging.getLogger(__name__)
 class LocalREADMEAnalyzer(READMEAnalyzer):
     """Concrete analyzer identifying missing standard README sections."""
 
-    def analyze_readme(self, existing_content: str, workspace_metadata: Dict[str, Any]) -> READMEReport:
+    def analyze_readme(
+        self, existing_content: str, workspace_metadata: Dict[str, Any]
+    ) -> READMEReport:
         missing = []
         outdated = []
         improvements = []
 
-        standard_headers = ["Overview", "Installation", "Usage", "Configuration", "Testing", "License"]
+        standard_headers = [
+            "Overview",
+            "Installation",
+            "Usage",
+            "Configuration",
+            "Testing",
+            "License",
+        ]
         for header in standard_headers:
             if not re.search(rf"^#+\s+{header}", existing_content, re.IGNORECASE | re.MULTILINE):
                 missing.append(header)
@@ -55,7 +64,7 @@ class LocalREADMEAnalyzer(READMEAnalyzer):
             missing_sections=missing,
             outdated_sections=outdated,
             recommended_improvements=improvements,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -64,7 +73,7 @@ class LocalREADMEPlanner(READMEPlanner):
 
     def plan_sections(self, report: READMEReport, template: READMETemplate) -> List[READMESection]:
         sections = []
-        
+
         # Determine priority index
         for idx, heading in enumerate(template.sections_order):
             content = f"Placeholder content for {heading}."
@@ -72,14 +81,8 @@ class LocalREADMEPlanner(READMEPlanner):
                 content = "```bash\npip install -r requirements.txt\n```"
             elif heading == "License":
                 content = "MIT License"
-                
-            sections.append(
-                READMESection(
-                    heading=heading,
-                    content=content,
-                    importance=idx
-                )
-            )
+
+            sections.append(READMESection(heading=heading, content=content, importance=idx))
         return sections
 
 
@@ -88,7 +91,7 @@ class LocalREADMEValidator(READMEValidator):
 
     def validate_readme(self, content: str) -> List[str]:
         errors = []
-        
+
         # 1. Duplicate headings
         headings = re.findall(r"^#+\s+(.*)$", content, re.MULTILINE)
         seen = set()
@@ -112,45 +115,47 @@ class LocalREADMEGenerator(READMEGenerator):
     def generate_readme(self, workspace_id: str, sections: List[READMESection]) -> READMEArtifact:
         # Sort by importance
         sorted_sections = sorted(sections, key=lambda s: s.importance)
-        
+
         lines = []
         for s in sorted_sections:
             lines.append(f"# {s.heading}\n{s.content}\n")
-            
+
         full_content = "\n".join(lines)
         return READMEArtifact(
             artifact_id=f"readme_{int(time.time())}",
             workspace_id=workspace_id,
             content=full_content,
             sections=sorted_sections,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
 class LocalREADMEUpdater(READMEUpdater):
     """Updates targeted sections in existing files by heading keys."""
 
-    def update_readme(self, existing: READMEArtifact, changes: List[READMESection]) -> READMEArtifact:
+    def update_readme(
+        self, existing: READMEArtifact, changes: List[READMESection]
+    ) -> READMEArtifact:
         sections_map = {s.heading: s for s in existing.sections}
-        
+
         for c in changes:
             sections_map[c.heading] = c
-            
+
         new_sections = list(sections_map.values())
         # Sort by importance
         new_sections = sorted(new_sections, key=lambda s: s.importance)
-        
+
         lines = []
         for s in new_sections:
             lines.append(f"# {s.heading}\n{s.content}\n")
-            
+
         full_content = "\n".join(lines)
         return READMEArtifact(
             artifact_id=existing.artifact_id,
             workspace_id=existing.workspace_id,
             content=full_content,
             sections=new_sections,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -162,7 +167,7 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -189,7 +194,7 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
         workspace_id: str,
         existing_content: str,
         workspace_metadata: Dict[str, Any],
-        template: READMETemplate
+        template: READMETemplate,
     ) -> READMEArtifact:
         logger.info(f"Executing analyze & generate pipeline for workspace README: '{workspace_id}'")
 
@@ -215,7 +220,7 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined markdown syntax directly.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
 
@@ -234,7 +239,7 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
             f"Sections Count: {summary.sections_count}\n"
             f"Last Generated: {time.ctime(summary.last_generated)}"
         )
-        
+
         self._memory.add_memory(
             content=content,
             memory_type=MemoryType.PROJECT,
@@ -243,8 +248,8 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
                 session_id=summary.summary_id,
                 tags=["readme_intelligence", "generation_telemetry"],
                 importance=2,
-                source_subsystem="readme_service"
-            )
+                source_subsystem="readme_service",
+            ),
         )
 
     def publish_readme_report(self, report: READMEReport) -> None:
@@ -261,7 +266,8 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
             f"**Workspace ID**: `{report.workspace_id}`\n"
             f"**Analysis Summary**: {report.analysis_summary}\n\n"
             f"## Missing Standard Headers\n"
-            + (missing_md if missing_md else "- *All standard headers present.*") + "\n\n"
+            + (missing_md if missing_md else "- *All standard headers present.*")
+            + "\n\n"
             "## Recommended Action Adjustments\n"
             + (recs_md if recs_md else "- *No recommendations.*")
         )
@@ -274,7 +280,7 @@ class LocalREADMEIntelligenceService(READMEIntelligenceService):
                 unique_id=f"readme_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="readme_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

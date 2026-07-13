@@ -27,7 +27,7 @@ class SourceControlTelemetry(DIInitializeMixin):
             "total_calls": self.call_count,
             "success_rate": rate,
             "failure_rate": 1.0 - rate,
-            "average_api_time_sec": avg
+            "average_api_time_sec": avg,
         }
 
 
@@ -49,5 +49,5 @@ class SourceControlStatistics(DIInitializeMixin):
             "pr_count": self.pr_count,
             "issue_count": self.issue_count,
             "release_count": self.release_count,
-            "workflow_count": self.workflow_count
+            "workflow_count": self.workflow_count,
         }

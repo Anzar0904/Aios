@@ -27,7 +27,9 @@ def group_steps_into_levels(steps: List[WorkflowStep]) -> List[List[WorkflowStep
                 raise ValueError(f"Step '{step.step_id}' depends on non-existent step '{dep_id}'")
 
     # 2. Cycle detection via DFS
-    visited: Dict[str, int] = {step.step_id: 0 for step in steps}  # 0: unvisited, 1: visiting, 2: visited
+    visited: Dict[str, int] = {
+        step.step_id: 0 for step in steps
+    }  # 0: unvisited, 1: visiting, 2: visited
 
     def has_cycle(sid: str) -> bool:
         visited[sid] = 1
@@ -113,12 +115,15 @@ class WorkflowExecutor:
         for level in grouped_levels:
             for step in level:
                 step.status = "running"
-                
+
                 # Determine if we should hand off to Action Engine
                 is_action_engine_needed = (
                     step.skill_id == "action"
                     or step.command in ("write file", "delete file", "modify file")
-                    or (step.skill_id == "filesystem" and step.command in ("write", "delete", "modify"))
+                    or (
+                        step.skill_id == "filesystem"
+                        and step.command in ("write", "delete", "modify")
+                    )
                 )
 
                 if is_action_engine_needed:
@@ -174,7 +179,7 @@ class WorkflowExecutor:
                 tool_name="filesystem",
                 tool_args=tool_args,
                 is_reversible=is_reversible,
-                undo_args=undo_args
+                undo_args=undo_args,
             )
             act_step.status = "approved"
 
@@ -216,7 +221,7 @@ class WorkflowExecutor:
         try:
             with contextlib.redirect_stdout(f):
                 result = handler(step.args)
-            
+
             output = f.getvalue()
             if result is not None:
                 output += f"\n{result}"
@@ -226,6 +231,7 @@ class WorkflowExecutor:
             return True
         except Exception as e:
             step.status = "failed"
-            step.error = f"Command execution failed: {str(e)}\nOutput so far: {f.getvalue().strip()}"
+            step.error = (
+                f"Command execution failed: {str(e)}\nOutput so far: {f.getvalue().strip()}"
+            )
             return False
-

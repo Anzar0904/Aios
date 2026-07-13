@@ -110,7 +110,7 @@ def ai_setup():
         telemetry,
         stats_compiler,
         health_monitor,
-        report_generator
+        report_generator,
     )
 
     # Initialize all
@@ -160,7 +160,7 @@ def test_ai_provider_repo_crud(ai_setup):
         "cost_per_million_output": 3.0,
         "auth_type": "api_key",
         "supported_models": ["gpt-test"],
-        "is_local": False
+        "is_local": False,
     }
 
     # Save
@@ -193,7 +193,7 @@ def test_ai_memory_repo_crud(ai_setup):
         "id": "mem_123",
         "key": "user_preference",
         "value": "prefers_dark_mode",
-        "metadata": {"tags": ["ui"]}
+        "metadata": {"tags": ["ui"]},
     }
 
     # Save
@@ -227,7 +227,7 @@ def test_validation_policies(ai_setup):
         "cost_per_million_output": 0.0,
         "auth_type": "none",
         "supported_models": [],
-        "is_local": True
+        "is_local": True,
     }
 
     # STRICT policy should raise error
@@ -247,25 +247,29 @@ def test_checkpoint_and_failover(ai_setup):
 
     # Test saving checkpoints
     chk_id = "chk_test_123"
-    res_chk = chk_repo.save({
-        "id": chk_id,
-        "task_id": "task_1",
-        "provider_name": "openai",
-        "context": "Prompt test context",
-        "retry_count": 1,
-        "timestamp": time.time()
-    })
+    res_chk = chk_repo.save(
+        {
+            "id": chk_id,
+            "task_id": "task_1",
+            "provider_name": "openai",
+            "context": "Prompt test context",
+            "retry_count": 1,
+            "timestamp": time.time(),
+        }
+    )
     assert res_chk.status == PersistenceStatus.SUCCESS
 
     # Test failover log
-    res_fail = failover_repo.save({
-        "id": "fail_1",
-        "failed_provider": "openai",
-        "target_provider": "claude_code",
-        "checkpoint_id": chk_id,
-        "error_message": "Rate limit exceeded",
-        "timestamp": time.time()
-    })
+    res_fail = failover_repo.save(
+        {
+            "id": "fail_1",
+            "failed_provider": "openai",
+            "target_provider": "claude_code",
+            "checkpoint_id": chk_id,
+            "error_message": "Rate limit exceeded",
+            "timestamp": time.time(),
+        }
+    )
     assert res_fail.status == PersistenceStatus.SUCCESS
 
     # Retrieve and check

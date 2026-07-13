@@ -48,6 +48,7 @@ from aios.services.persistence_impl import (
 @pytest.fixture
 def validation_env():
     from aios.registry import ServiceRegistry
+
     ServiceRegistry._global_registry = None
 
     # Enforce strict psycopg2 dependency check
@@ -69,6 +70,7 @@ def validation_env():
 
     # Use actual PostgreSQL database transport instead of SQLite mock
     from aios.services.persistence_impl_modules.postgresql import PostgreSQLTransport
+
     transport = PostgreSQLTransport(config)
 
     # Attempt to connect to PostgreSQL; fail if unreachable
@@ -123,14 +125,10 @@ def validation_env():
         "provider_checkpoints": ProviderCheckpointRepositoryImpl(service),
         "provider_failovers": ProviderFailoverRepositoryImpl(service),
         "ai_usage_statistics": AIUsageStatisticsRepositoryImpl(service),
-        "ai_memory": AIMemoryRepositoryImpl(service)
+        "ai_memory": AIMemoryRepositoryImpl(service),
     }
 
-    return {
-        "service": service,
-        "repos": r_map,
-        "transport": transport
-    }
+    return {"service": service, "repos": r_map, "transport": transport}
 
 
 def test_production_live_validation(validation_env):
@@ -147,7 +145,13 @@ def test_production_live_validation(validation_env):
     for name, repo in repos.items():
         try:
             # Create
-            payload = {"id": "val_1", "key": "test_key", "value": "test_val", "name": "val_1", "version": 1 if name == "documentation_metadata" else "1.0"}
+            payload = {
+                "id": "val_1",
+                "key": "test_key",
+                "value": "test_val",
+                "name": "val_1",
+                "version": 1 if name == "documentation_metadata" else "1.0",
+            }
             c_res = repo.save(payload)
             assert c_res.status == PersistenceStatus.SUCCESS
 
@@ -176,7 +180,9 @@ def test_production_live_validation(validation_env):
     os.makedirs(r_dir, exist_ok=True)
 
     # 3.1 POSTGRESQL_PRODUCTION_VALIDATION_REPORT.md
-    with open(os.path.join(r_dir, "POSTGRESQL_PRODUCTION_VALIDATION_REPORT.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(r_dir, "POSTGRESQL_PRODUCTION_VALIDATION_REPORT.md"), "w", encoding="utf-8"
+    ) as f:
         f.write(
             "# PostgreSQL Production Live Validation Report\n\n"
             "## 1. Validation Verdict\n"
@@ -200,7 +206,9 @@ def test_production_live_validation(validation_env):
         )
 
     # 3.3 POSTGRESQL_PERFORMANCE_BASELINE.md
-    with open(os.path.join(r_dir, "POSTGRESQL_PERFORMANCE_BASELINE.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(r_dir, "POSTGRESQL_PERFORMANCE_BASELINE.md"), "w", encoding="utf-8"
+    ) as f:
         f.write(
             "# PostgreSQL Performance Baseline\n\n"
             "- **Connection Latency**: 1.24ms\n"
@@ -230,7 +238,9 @@ def test_production_live_validation(validation_env):
         )
 
     # 3.6 POSTGRESQL_REPOSITORY_VALIDATION.md
-    with open(os.path.join(r_dir, "POSTGRESQL_REPOSITORY_VALIDATION.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(r_dir, "POSTGRESQL_REPOSITORY_VALIDATION.md"), "w", encoding="utf-8"
+    ) as f:
         f.write("# PostgreSQL Repository Validation Results\n\n")
         for name, status in results.items():
             f.write(f"- **{name}**: {status}\n")
@@ -246,7 +256,9 @@ def test_production_live_validation(validation_env):
         )
 
     # 3.8 POSTGRESQL_MIGRATION_VALIDATION.md
-    with open(os.path.join(r_dir, "POSTGRESQL_MIGRATION_VALIDATION.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(r_dir, "POSTGRESQL_MIGRATION_VALIDATION.md"), "w", encoding="utf-8"
+    ) as f:
         f.write(
             "# PostgreSQL Migration Validation\n\n"
             "- **Total Schema Migrations**: 35\n"

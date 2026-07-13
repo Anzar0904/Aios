@@ -9,6 +9,7 @@ from ..utilities import deserialize_val, serialize_val
 
 logger = logging.getLogger(__name__)
 
+
 class QueueRegistryImpl(QueueRegistry):
     def __init__(self) -> None:
         self.configs: Dict[str, Dict[str, Any]] = {}
@@ -848,5 +849,3 @@ class JobStateMachineImpl(JobStateMachine):
         except Exception:
             pass
         return None
-
-

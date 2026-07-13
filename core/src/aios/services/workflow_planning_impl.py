@@ -72,7 +72,9 @@ class LocalWorkflowIntentAnalyzer(WorkflowIntentAnalyzer):
 class LocalWorkflowDependencyResolver(WorkflowDependencyResolver):
     """Topological resolver ordering workflow nodes matching DAG dependencies."""
 
-    def resolve_dependencies(self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]) -> List[str]:
+    def resolve_dependencies(
+        self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]
+    ) -> List[str]:
         # Simple topological sort
         visited = set()
         stack = []
@@ -101,7 +103,9 @@ class LocalWorkflowDependencyResolver(WorkflowDependencyResolver):
 class LocalWorkflowOptimizer(WorkflowOptimizer):
     """Topological graph optimizer removing redundant or duplicate nodes."""
 
-    def optimize_graph(self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]) -> tuple[List[WorkflowNode], List[WorkflowEdge], List[str]]:
+    def optimize_graph(
+        self, nodes: List[WorkflowNode], edges: List[WorkflowEdge]
+    ) -> tuple[List[WorkflowNode], List[WorkflowEdge], List[str]]:
         optimizations = []
         optimized_nodes = []
         optimized_edges = list(edges)
@@ -115,7 +119,9 @@ class LocalWorkflowOptimizer(WorkflowOptimizer):
             if fingerprint in seen_actions:
                 primary_id = seen_actions[fingerprint]
                 merged_ids[node.node_id] = primary_id
-                optimizations.append(f"Merged duplicate node '{node.node_id}' into primary '{primary_id}'.")
+                optimizations.append(
+                    f"Merged duplicate node '{node.node_id}' into primary '{primary_id}'."
+                )
             else:
                 seen_actions[fingerprint] = node.node_id
                 optimized_nodes.append(node)
@@ -125,16 +131,18 @@ class LocalWorkflowOptimizer(WorkflowOptimizer):
         for edge in optimized_edges:
             src = merged_ids.get(edge.source_node_id, edge.source_node_id)
             tgt = merged_ids.get(edge.target_node_id, edge.target_node_id)
-            
+
             # Avoid self loop after merging duplicates
             if src == tgt:
                 optimizations.append("Removed self-loop edge resulting from duplicate nodes merge.")
                 continue
-            
+
             # Avoid duplicate edges
             dup_edge = any(e.source_node_id == src and e.target_node_id == tgt for e in final_edges)
             if dup_edge:
-                optimizations.append(f"Removed redundant parallel edge '{edge.edge_id}' between '{src}' and '{tgt}'.")
+                optimizations.append(
+                    f"Removed redundant parallel edge '{edge.edge_id}' between '{src}' and '{tgt}'."
+                )
                 continue
 
             final_edges.append(
@@ -142,7 +150,7 @@ class LocalWorkflowOptimizer(WorkflowOptimizer):
                     edge_id=edge.edge_id,
                     source_node_id=src,
                     target_node_id=tgt,
-                    condition=edge.condition
+                    condition=edge.condition,
                 )
             )
 
@@ -155,7 +163,9 @@ class LocalWorkflowOptimizer(WorkflowOptimizer):
 
         for n in optimized_nodes:
             if n.node_type != "trigger" and incoming_counts.get(n.node_id, 0) == 0:
-                optimizations.append(f"Discarded unreachable node '{n.node_id}' with zero incoming dependencies.")
+                optimizations.append(
+                    f"Discarded unreachable node '{n.node_id}' with zero incoming dependencies."
+                )
                 # also discard its outgoing edges
                 final_edges = [edge for edge in final_edges if edge.source_node_id != n.node_id]
             else:
@@ -170,25 +180,27 @@ class LocalWorkflowSuggestionEngine(WorkflowSuggestionEngine):
     def suggest_templates(self, intent: str, registry: WorkflowTemplateRegistry) -> List[str]:
         suggestions = []
         intent_lower = intent.lower()
-        
+
         for t_id in registry.list_templates():
             t = registry.get_template(t_id)
             if t:
                 # Match tags or descriptions keyword
                 if t_id in intent_lower or t.name.lower() in intent_lower:
                     suggestions.append(t_id)
-                    
+
         if not suggestions:
             # Fallback to general notification
             suggestions.append("notification")
-            
+
         return suggestions
 
 
 class LocalWorkflowComposer(WorkflowComposer):
     """Instantiates template parameters into parameterised WorkflowDefinitions."""
 
-    def compose_workflow(self, template: WorkflowTemplate, params: Dict[str, Any]) -> WorkflowDefinition:
+    def compose_workflow(
+        self, template: WorkflowTemplate, params: Dict[str, Any]
+    ) -> WorkflowDefinition:
         # Clone graph structures
         nodes = []
         for n in template.default_nodes:
@@ -206,8 +218,10 @@ class LocalWorkflowComposer(WorkflowComposer):
             workflow_id=f"wf_{template.template_id}_{int(time.time())}",
             name=template.name,
             graph=graph,
-            policy=WorkflowExecutionPolicy(max_retries=3, retry_delay_seconds=10, timeout_seconds=600, concurrency_limit=1),
-            metadata=WFMetadata(tags=[template.template_id])
+            policy=WorkflowExecutionPolicy(
+                max_retries=3, retry_delay_seconds=10, timeout_seconds=600, concurrency_limit=1
+            ),
+            metadata=WFMetadata(tags=[template.template_id]),
         )
 
 
@@ -219,7 +233,7 @@ class LocalWorkflowPlanner(WorkflowPlanner):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -249,12 +263,14 @@ class LocalWorkflowPlanner(WorkflowPlanner):
                 WorkflowNode("trig_1", "Code Commit webhook", "trigger"),
                 WorkflowNode("act_lint", "Lint script", "action", {"command": "flake8"}),
                 WorkflowNode("act_test", "Pytest suite run", "action", {"command": "pytest"}),
-                WorkflowNode("act_test", "Pytest duplicate suite run", "action", {"command": "pytest"}), # intentionally duplicated to verify optimization
+                WorkflowNode(
+                    "act_test", "Pytest duplicate suite run", "action", {"command": "pytest"}
+                ),  # intentionally duplicated to verify optimization
             ],
             default_edges=[
                 WorkflowEdge("e1", "trig_1", "act_lint"),
-                WorkflowEdge("e2", "act_lint", "act_test")
-            ]
+                WorkflowEdge("e2", "act_lint", "act_test"),
+            ],
         )
         self._template_registry.register_template(t_ci)
 
@@ -266,12 +282,12 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             default_nodes=[
                 WorkflowNode("trig_cd", "Release Schedule", "trigger"),
                 WorkflowNode("act_build", "Build Bundle", "action"),
-                WorkflowNode("act_deploy", "Docker Deploy", "action")
+                WorkflowNode("act_deploy", "Docker Deploy", "action"),
             ],
             default_edges=[
                 WorkflowEdge("e1", "trig_cd", "act_build"),
-                WorkflowEdge("e2", "act_build", "act_deploy")
-            ]
+                WorkflowEdge("e2", "act_build", "act_deploy"),
+            ],
         )
         self._template_registry.register_template(t_cd)
 
@@ -283,12 +299,12 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             default_nodes=[
                 WorkflowNode("trig_doc", "Doc change event", "trigger"),
                 WorkflowNode("act_gen_api", "Compile API Specs", "action"),
-                WorkflowNode("act_notion", "Sync database", "action")
+                WorkflowNode("act_notion", "Sync database", "action"),
             ],
             default_edges=[
                 WorkflowEdge("e1", "trig_doc", "act_gen_api"),
-                WorkflowEdge("e2", "act_gen_api", "act_notion")
-            ]
+                WorkflowEdge("e2", "act_gen_api", "act_notion"),
+            ],
         )
         self._template_registry.register_template(t_doc)
 
@@ -300,12 +316,12 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             default_nodes=[
                 WorkflowNode("trig_rev", "Review webhook", "trigger"),
                 WorkflowNode("act_val", "Validation metrics parsing", "action"),
-                WorkflowNode("act_gate", "Policy rule checks", "action")
+                WorkflowNode("act_gate", "Policy rule checks", "action"),
             ],
             default_edges=[
                 WorkflowEdge("e1", "trig_rev", "act_val"),
-                WorkflowEdge("e2", "act_val", "act_gate")
-            ]
+                WorkflowEdge("e2", "act_val", "act_gate"),
+            ],
         )
         self._template_registry.register_template(t_rev)
 
@@ -317,12 +333,12 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             default_nodes=[
                 WorkflowNode("trig_bak", "Daily Scheduler", "trigger"),
                 WorkflowNode("act_db", "Snapshot SQLite database", "action"),
-                WorkflowNode("act_arch", "Archive snapshots", "action")
+                WorkflowNode("act_arch", "Archive snapshots", "action"),
             ],
             default_edges=[
                 WorkflowEdge("e1", "trig_bak", "act_db"),
-                WorkflowEdge("e2", "act_db", "act_arch")
-            ]
+                WorkflowEdge("e2", "act_db", "act_arch"),
+            ],
         )
         self._template_registry.register_template(t_bak)
 
@@ -333,11 +349,9 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             description="Broadcasts general status alerts to Slack.",
             default_nodes=[
                 WorkflowNode("trig_not", "Gating update event", "trigger"),
-                WorkflowNode("act_slack", "Notify Slack channel", "action")
+                WorkflowNode("act_slack", "Notify Slack channel", "action"),
             ],
-            default_edges=[
-                WorkflowEdge("e1", "trig_not", "act_slack")
-            ]
+            default_edges=[WorkflowEdge("e1", "trig_not", "act_slack")],
         )
         self._template_registry.register_template(t_not)
 
@@ -369,7 +383,7 @@ class LocalWorkflowPlanner(WorkflowPlanner):
 
         planners_dir = os.path.join(workspace_root, "docs", "planners")
         os.makedirs(planners_dir, exist_ok=True)
-        
+
         file_path = os.path.join(planners_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -382,13 +396,15 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             workspace_id=workspace_id,
             intent=intent,
             status="open",
-            created_at=time.time()
+            created_at=time.time(),
         )
         self._sessions[session.session_id] = session
         return session
 
     def generate_plan(self, session: WorkflowPlanningSession) -> WorkflowPlanningReport:
-        logger.info(f"Generating workflow planning for session '{session.session_id}' (intent: '{session.intent}')")
+        logger.info(
+            f"Generating workflow planning for session '{session.session_id}' (intent: '{session.intent}')"
+        )
 
         # 1. Analyze Intent
         analysis = self._intent_analyzer.analyze_intent(session.intent)
@@ -401,7 +417,9 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             template = self._template_registry.get_template("notification")
 
         # 3. Suggest related templates
-        suggested = self._suggestion_engine.suggest_templates(session.intent, self._template_registry)
+        suggested = self._suggestion_engine.suggest_templates(
+            session.intent, self._template_registry
+        )
 
         # 4. Compose parameterised Graph
         wf = self._composer.compose_workflow(template, {})
@@ -410,7 +428,9 @@ class LocalWorkflowPlanner(WorkflowPlanner):
         ordered_ids = self._dependency_resolver.resolve_dependencies(wf.graph.nodes, wf.graph.edges)
 
         # 6. Optimize graph (duplicate merges, unreachable discards)
-        opt_nodes, opt_edges, optimizations = self._optimizer.optimize_graph(wf.graph.nodes, wf.graph.edges)
+        opt_nodes, opt_edges, optimizations = self._optimizer.optimize_graph(
+            wf.graph.nodes, wf.graph.edges
+        )
         wf.graph.nodes = opt_nodes
         wf.graph.edges = opt_edges
 
@@ -428,7 +448,7 @@ class LocalWorkflowPlanner(WorkflowPlanner):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output workflow outline summaries.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -447,7 +467,7 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             optimization_recommendations=optimizations,
             suggested_templates=suggested,
             planned_workflow_id=wf.workflow_id,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if session.workspace_id not in self._reports:
@@ -455,7 +475,9 @@ class LocalWorkflowPlanner(WorkflowPlanner):
         self._reports[session.workspace_id].append(report)
 
         # Save Report Markdown inside AI Workspace ONLY
-        nodes_md = "\n".join(f"- `{n.node_id}` ({n.name} of type `{n.node_type}`)" for n in opt_nodes)
+        nodes_md = "\n".join(
+            f"- `{n.node_id}` ({n.name} of type `{n.node_type}`)" for n in opt_nodes
+        )
         opts_md = "\n".join(f"- {opt}" for opt in optimizations)
 
         report_md = (
@@ -467,7 +489,9 @@ class LocalWorkflowPlanner(WorkflowPlanner):
             f"## Execution Topological Nodes\n" + (nodes_md if nodes_md else "- *None.*") + "\n\n"
             "## Applied Optimization Recommendations\n" + (opts_md if opts_md else "- *None.*")
         )
-        self._write_to_workspace(session.workspace_id, f"PLANNING_REPORT_{session.session_id}.md", report_md)
+        self._write_to_workspace(
+            session.workspace_id, f"PLANNING_REPORT_{session.session_id}.md", report_md
+        )
 
         session.status = "closed"
         session.closed_at = time.time()
@@ -507,8 +531,8 @@ class LocalWorkflowPlanner(WorkflowPlanner):
                 "session_id": session_id,
                 "workspace_id": session.workspace_id,
                 "optimizations_count": opts_count,
-                "workflow_id": target_report.planned_workflow_id if target_report else ""
-            }
+                "workflow_id": target_report.planned_workflow_id if target_report else "",
+            },
         )
 
     def publish_planning_report(self, report: WorkflowPlanningReport) -> None:
@@ -533,7 +557,7 @@ class LocalWorkflowPlanner(WorkflowPlanner):
                 unique_id=f"plan_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="workflow_planning_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

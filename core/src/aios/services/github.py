@@ -138,7 +138,9 @@ class GitHubService(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_commit_history(self, repo_name: str, branch: Optional[str] = None) -> List[GitHubCommit]:
+    def get_commit_history(
+        self, repo_name: str, branch: Optional[str] = None
+    ) -> List[GitHubCommit]:
         """Fetch commit history for a repository."""
         pass
 

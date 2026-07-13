@@ -310,12 +310,6 @@ def test_cli_and_report_generation(tmp_path: Path) -> None:
     assert Path("docs/providers/benchmark_report.md").is_file()
 
     # Verify CLI execution (doesn't exit)
-    assert (
-        execute_builtin_cli_command(["providers", "list"], exit_on_complete=False) is True
-    )
-    assert (
-        execute_builtin_cli_command(["providers", "status"], exit_on_complete=False) is True
-    )
-    assert (
-        execute_builtin_cli_command(["providers", "analytics"], exit_on_complete=False) is True
-    )
+    assert execute_builtin_cli_command(["providers", "list"], exit_on_complete=False) is True
+    assert execute_builtin_cli_command(["providers", "status"], exit_on_complete=False) is True
+    assert execute_builtin_cli_command(["providers", "analytics"], exit_on_complete=False) is True

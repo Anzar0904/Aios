@@ -104,7 +104,9 @@ class TaskPrioritizer(abc.ABC):
 
 class ProgressTracker(abc.ABC):
     @abc.abstractmethod
-    def update_task_status(self, task_id: str, status: str, completion_percentage: float = 0.0) -> DailyTask:
+    def update_task_status(
+        self, task_id: str, status: str, completion_percentage: float = 0.0
+    ) -> DailyTask:
         """Updates task execution status and start/finish timestamps."""
         pass
 
@@ -121,7 +123,9 @@ class ProgressTracker(abc.ABC):
 
 class SessionRecorder(abc.ABC):
     @abc.abstractmethod
-    def start_session(self, task_id: str, mission_id: str, category: str, notes: str) -> WorkSession:
+    def start_session(
+        self, task_id: str, mission_id: str, category: str, notes: str
+    ) -> WorkSession:
         """Logs start of a work session associated with a task/mission."""
         pass
 

@@ -82,10 +82,7 @@ def execute_session_cmd(args: str) -> None:
     table.add_column("Property", style="bold cyan")
     table.add_column("Value", style="white")
     table.add_row("Current Project", data.get("current_project"))
-    table.add_row(
-        "Recent Projects",
-        ", ".join(data.get("recent_projects", []))
-    )
+    table.add_row("Recent Projects", ", ".join(data.get("recent_projects", [])))
     table.add_row("Last Active", time.ctime(data.get("last_active", 0)))
     console.print(table)
 

@@ -46,14 +46,14 @@ def test_session_manager():
     try:
         session_file = temp_dir / "session.json"
         mgr = SessionManager(path=session_file)
-        
+
         # Load empty session
         data = mgr.load_session()
         assert data["current_project"] == "Aios"
-        
+
         # Save session updates
         mgr.save_session({"current_project": "UpdatedProject"})
-        
+
         # Load again
         updated_data = mgr.load_session()
         assert updated_data["current_project"] == "UpdatedProject"

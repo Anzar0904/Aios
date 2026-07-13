@@ -97,7 +97,7 @@ def automation_setup():
         telemetry,
         stats_compiler,
         health_monitor,
-        report_generator
+        report_generator,
     )
 
     yield {
@@ -115,7 +115,7 @@ def automation_setup():
         "health_monitor": health_monitor,
         "telemetry": telemetry,
         "report_generator": report_generator,
-        "config": config
+        "config": config,
     }
 
 
@@ -131,7 +131,12 @@ def test_workflow_repository_crud(automation_setup):
         "actions": [{"action_id": "act_1", "action_type": "script", "config": {}}],
         "conditions": [],
         "variables": [],
-        "policy": {"max_retries": 3, "retry_delay_seconds": 10, "timeout_seconds": 600, "concurrency_limit": 1}
+        "policy": {
+            "max_retries": 3,
+            "retry_delay_seconds": 10,
+            "timeout_seconds": 600,
+            "concurrency_limit": 1,
+        },
     }
 
     # Create / Save
@@ -166,7 +171,7 @@ def test_workflow_execution_repository_crud(automation_setup):
         "execution_time": 4.5,
         "created_at": time.time(),
         "closed_at": time.time(),
-        "metadata": {"provider": "n8n"}
+        "metadata": {"provider": "n8n"},
     }
 
     res = repo.save(execution)
@@ -191,7 +196,7 @@ def test_automation_persistence_service_coordinator(automation_setup):
         "actions": [],
         "conditions": [],
         "variables": [],
-        "policy": {}
+        "policy": {},
     }
 
     # Record

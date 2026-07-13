@@ -37,15 +37,7 @@ def redis_env():
     report_gen = RedisReportGenerator(os.getcwd(), None)
 
     service = RedisRuntimeServiceImpl(
-        config,
-        transport,
-        provider,
-        health,
-        diag,
-        telemetry,
-        stats,
-        validator,
-        report_gen
+        config, transport, provider, health, diag, telemetry, stats, validator, report_gen
     )
     report_gen.runtime_service = service
 
@@ -122,7 +114,7 @@ def test_redis_transport_and_provider(redis_env):
 
 def test_keyspace_validator(redis_env):
     validator = redis_env["validator"]
-    
+
     # Valid key
     assert len(validator.validate_key("aios:v1:ws:proj:subsystem:entity:purpose")) == 0
 

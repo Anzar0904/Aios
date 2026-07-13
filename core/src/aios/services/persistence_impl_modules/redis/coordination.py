@@ -7,6 +7,7 @@ from aios.services.persistence import *
 
 logger = logging.getLogger(__name__)
 
+
 class DeadlockDetectorImpl(DeadlockDetector):
     def __init__(self) -> None:
         # Maps waiting owner_id -> owner_id they are waiting for
@@ -280,7 +281,6 @@ class CoordinationRecommendationEngineImpl(CoordinationRecommendationEngine):
         return recs
 
 
-
 class RedisCoordinationServiceImpl(RedisCoordinationService):
     def __init__(
         self,
@@ -311,5 +311,3 @@ class RedisCoordinationServiceImpl(RedisCoordinationService):
 
     def get_lease_manager(self) -> LockLeaseManager:
         return self.lease_manager
-
-

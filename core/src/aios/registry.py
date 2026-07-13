@@ -7,6 +7,7 @@ T = TypeVar("T", bound=ServiceLifecycle)
 
 class ServiceRegistry:
     """Manages core service registration and lookup."""
+
     _global_registry = None
 
     def __init__(self) -> None:

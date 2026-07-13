@@ -345,8 +345,7 @@ class DeveloperAgent(Agent):
 
             # 3. Memory Ranker
             ranked_memories = MemoryRanker(agent_context.memories).rank(
-                raw_query,
-                context.project_root if context else "default"
+                raw_query, context.project_root if context else "default"
             )
 
             # Retrieve relevant semantic memories before reasoning
@@ -354,6 +353,7 @@ class DeveloperAgent(Agent):
                 class MockType:
                     def __init__(self, val: str) -> None:
                         self.value = val
+
                 def __init__(self, content: str, mtype: str) -> None:
                     self.content = content
                     self.memory_type = self.MockType(mtype)
@@ -361,11 +361,16 @@ class DeveloperAgent(Agent):
             try:
                 from aios.registry import ServiceRegistry
                 from aios.services.persistence import SemanticMemoryManager
+
                 registry = ServiceRegistry._global_registry
                 if registry:
                     sem_mgr = registry.get(SemanticMemoryManager)
                     if sem_mgr:
-                        for repo in ["engineering_memory", "workspace_memory", "documentation_memory"]:
+                        for repo in [
+                            "engineering_memory",
+                            "workspace_memory",
+                            "documentation_memory",
+                        ]:
                             mems = sem_mgr.retrieve_memories(repo, raw_query, limit=3)
                             for m in mems:
                                 payload = m.get("payload", {})
@@ -392,13 +397,11 @@ class DeveloperAgent(Agent):
                 memories=ranked_memories,
                 workspace={"project_name": project_name},
                 selected_tools=selected_tools,
-                expanded_query=expanded_query
+                expanded_query=expanded_query,
             )
 
             # 7. Prompt Builder consumes only ReasoningContext
-            prompt = builder.build_prompt_from_reasoning_context(
-                template_name, reasoning_context
-            )
+            prompt = builder.build_prompt_from_reasoning_context(template_name, reasoning_context)
 
             # Execute Request to LLM
             llm_res = self._model_service.execute_request(
@@ -415,6 +418,7 @@ class DeveloperAgent(Agent):
 
                 from aios.registry import ServiceRegistry
                 from aios.services.persistence import SemanticMemoryManager
+
                 registry = ServiceRegistry._global_registry
                 if registry:
                     sem_mgr = registry.get(SemanticMemoryManager)
@@ -428,16 +432,21 @@ class DeveloperAgent(Agent):
                             "action": action,
                             "query": raw_query,
                             "timestamp": time.time(),
-                            "type": "developer_agent_reasoning"
+                            "type": "developer_agent_reasoning",
                         }
                         import uuid
-                        know_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"dev_agent_{time.time()}_{raw_query[:10]}"))
+
+                        know_uuid = str(
+                            uuid.uuid5(
+                                uuid.NAMESPACE_DNS, f"dev_agent_{time.time()}_{raw_query[:10]}"
+                            )
+                        )
                         sem_mgr.index_memory(
                             repository_name="knowledge_memory",
                             entity_id=know_uuid,
                             text=summary_text,
                             metadata=metadata,
-                            tags=["developer_agent", "reasoning_knowledge", action]
+                            tags=["developer_agent", "reasoning_knowledge", action],
                         )
             except Exception as e:
                 logger.warning(f"DeveloperAgent: Failed to store reasoning knowledge: {e}")
@@ -451,7 +460,7 @@ class DeveloperAgent(Agent):
             return AgentResult(
                 success=True,
                 response=llm_res.content,
-                data={"llm_response": llm_res, "workspace_summary": workspace_summary}
+                data={"llm_response": llm_res, "workspace_summary": workspace_summary},
             )
 
         except Exception as e:
@@ -482,8 +491,6 @@ class CareerAgent(Agent):
         self._github_service = github_service
         self._career_os = career_os
         self._daily_os = daily_os
-
-
 
     @property
     def name(self) -> str:
@@ -538,7 +545,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Job analysis complete:\n{json.dumps(analysis, indent=2)}",
-                        data={"analysis": analysis}
+                        data={"analysis": analysis},
                     )
                 extra_replacements["job_path"] = job_path
                 extra_replacements["job_content"] = job_content
@@ -570,13 +577,15 @@ class CareerAgent(Agent):
                     dummy_resume = Resume(
                         id="resume_tailored",
                         title="Tailored Resume",
-                        versions=[ResumeVersion(version=1, summary=resume_content)]
+                        versions=[ResumeVersion(version=1, summary=resume_content)],
                     )
-                    optimized = self._career_os.resume_optimizer.tailor_resume(dummy_resume, job_content)
+                    optimized = self._career_os.resume_optimizer.tailor_resume(
+                        dummy_resume, job_content
+                    )
                     return AgentResult(
                         success=True,
                         response=f"Resume tailoring complete:\nSummary: {optimized.summary}\nProjects count: {len(optimized.projects)}",
-                        data={"optimized_version": optimized}
+                        data={"optimized_version": optimized},
                     )
                 extra_replacements["resume_path"] = resume_path
                 extra_replacements["resume_content"] = resume_content
@@ -607,11 +616,13 @@ class CareerAgent(Agent):
                 )
                 if self._career_os:
                     dummy_version = ResumeVersion(version=1, summary=resume_content)
-                    analysis = self._career_os.ats_analyzer.score_resume_against_job(dummy_version, job_content)
+                    analysis = self._career_os.ats_analyzer.score_resume_against_job(
+                        dummy_version, job_content
+                    )
                     return AgentResult(
                         success=True,
                         response=f"ATS scoring complete:\n{json.dumps(analysis, indent=2)}",
-                        data={"ats_analysis": analysis}
+                        data={"ats_analysis": analysis},
                     )
                 extra_replacements["resume_content"] = resume_content
                 extra_replacements["job_content"] = job_content
@@ -634,7 +645,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Interview prep materials generated:\n{json.dumps(prep, indent=2)}",
-                        data={"prep": prep}
+                        data={"prep": prep},
                     )
                 extra_replacements["job_content"] = job_content
 
@@ -662,11 +673,13 @@ class CareerAgent(Agent):
                 )
                 if self._career_os:
                     dummy_version = ResumeVersion(version=1, summary=resume_content)
-                    letter = self._career_os.cover_letter_generator.generate_cover_letter(dummy_version, job_content)
+                    letter = self._career_os.cover_letter_generator.generate_cover_letter(
+                        dummy_version, job_content
+                    )
                     return AgentResult(
                         success=True,
                         response=f"Cover letter complete:\n{letter}",
-                        data={"cover_letter": letter}
+                        data={"cover_letter": letter},
                     )
                 extra_replacements["resume_content"] = resume_content
                 extra_replacements["job_content"] = job_content
@@ -678,34 +691,34 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"GitHub Portfolio analysis complete:\n{json.dumps(analysis, indent=2)}",
-                        data={"analysis": analysis}
+                        data={"analysis": analysis},
                     )
 
                 if not self._github_service:
                     return AgentResult(
-                        success=False,
-                        response="GitHubService is not configured for CareerAgent."
+                        success=False, response="GitHubService is not configured for CareerAgent."
                     )
 
                 try:
                     repos = self._github_service.search_repositories(f"user:{username}")
                 except Exception as e:
                     return AgentResult(
-                        success=False,
-                        response=f"Failed to fetch repositories for {username}: {e}"
+                        success=False, response=f"Failed to fetch repositories for {username}: {e}"
                     )
 
                 repos_details = []
                 for r in repos[:5]:
                     try:
                         stats = self._github_service.get_repository_stats(f"{r.owner}/{r.name}")
-                        repos_details.append({
-                            "name": r.name,
-                            "description": r.description,
-                            "stars": stats.get("stars", 0),
-                            "forks": stats.get("forks", 0),
-                            "open_issues": stats.get("open_issues", 0),
-                        })
+                        repos_details.append(
+                            {
+                                "name": r.name,
+                                "description": r.description,
+                                "stars": stats.get("stars", 0),
+                                "forks": stats.get("forks", 0),
+                                "open_issues": stats.get("open_issues", 0),
+                            }
+                        )
                     except Exception:
                         pass
 
@@ -729,9 +742,7 @@ class CareerAgent(Agent):
                     )
                 )
                 return AgentResult(
-                    success=True,
-                    response=llm_res.content,
-                    data={"llm_response": llm_res}
+                    success=True, response=llm_res.content, data={"llm_response": llm_res}
                 )
 
             elif action == "ListApplications":
@@ -740,7 +751,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Applications tracked count: {len(apps)}",
-                        data={"applications": apps}
+                        data={"applications": apps},
                     )
 
             elif action == "AddApplication":
@@ -757,7 +768,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Successfully added application for {app.role} at {app.company}.",
-                        data={"application": app}
+                        data={"application": app},
                     )
 
             elif action == "GenerateCareerPlan":
@@ -766,7 +777,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Career growth plan generated:\n{json.dumps(plan, indent=2)}",
-                        data={"plan": plan}
+                        data={"plan": plan},
                     )
 
             elif action == "MatchJobs":
@@ -776,18 +787,22 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Matches summary count: {len(matches)}",
-                        data={"matches": matches}
+                        data={"matches": matches},
                     )
 
             elif action == "PlanDay":
                 if self._daily_os:
                     plan = self._daily_os.planner.plan_day()
-                    tasks_str = "\n".join([f"- [{t.priority}] {t.title} ({t.effort_hours}h)" for t in plan.tasks])
-                    sched_str = "\n".join([f"- {item.time_slot}: {item.task_title}" for item in plan.schedule.items])
+                    tasks_str = "\n".join(
+                        [f"- [{t.priority}] {t.title} ({t.effort_hours}h)" for t in plan.tasks]
+                    )
+                    sched_str = "\n".join(
+                        [f"- {item.time_slot}: {item.task_title}" for item in plan.schedule.items]
+                    )
                     return AgentResult(
                         success=True,
                         response=f"Daily Plan generated for {plan.date}:\n\nTasks:\n{tasks_str}\n\nSchedule:\n{sched_str}",
-                        data={"plan": plan}
+                        data={"plan": plan},
                     )
 
             elif action == "UpdateTaskStatus":
@@ -799,7 +814,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Task {tid} status updated to {status} ({pct}%).",
-                        data={"task": task}
+                        data={"task": task},
                     )
 
             elif action == "StartWorkSession":
@@ -812,7 +827,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Work session started: {session.session_id}.",
-                        data={"session": session}
+                        data={"session": session},
                     )
 
             elif action == "EndWorkSession":
@@ -823,7 +838,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Work session {sid} ended. Duration: {session.duration_mins:.2f} mins.",
-                        data={"session": session}
+                        data={"session": session},
                     )
 
             elif action == "GenerateDailyReview":
@@ -832,7 +847,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Daily Review:\nProductivity Rating/Summary: {review.productivity_summary}\nCompleted: {review.completed_tasks}\nIncomplete: {review.incomplete_tasks}",
-                        data={"review": review}
+                        data={"review": review},
                     )
 
             elif action == "AnalyzeProductivity":
@@ -841,7 +856,7 @@ class CareerAgent(Agent):
                     return AgentResult(
                         success=True,
                         response=f"Productivity Metrics:\nCompletion Rate: {metrics['completion_rate']}%\nFocus Time: {metrics['focus_time_mins']} mins\nPlanning Accuracy: {metrics['planning_accuracy_percentage']}%",
-                        data={"metrics": metrics}
+                        data={"metrics": metrics},
                     )
 
             else:
@@ -850,9 +865,6 @@ class CareerAgent(Agent):
                     response=f"CareerAgent action '{action}' is not supported.",
                 )
 
-
-
-
             # Build prompt
             prompt = builder.build_prompt(
                 template_name=template_name,
@@ -860,7 +872,7 @@ class CareerAgent(Agent):
                 intent_action=action,
                 intent_parameters=intent.parameters,
                 memories=agent_context.memories,
-                extra_replacements=extra_replacements
+                extra_replacements=extra_replacements,
             )
 
             # Query LLM
@@ -872,9 +884,7 @@ class CareerAgent(Agent):
             )
 
             return AgentResult(
-                success=True,
-                response=llm_res.content,
-                data={"llm_response": llm_res}
+                success=True, response=llm_res.content, data={"llm_response": llm_res}
             )
 
         except Exception as e:
@@ -886,6 +896,7 @@ class LocalAgentRuntime(AgentRuntimeService):
 
     and agent execution.
     """
+
     def __init__(
         self,
         event_bus: EventBusService,

@@ -136,19 +136,23 @@ def _extract_parameters(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> Li
 
     # *args
     if args.vararg:
-        params.append(ParameterInfo(
-            name=f"*{args.vararg.arg}",
-            type_annotation=_extract_type_annotation(args.vararg.annotation),
-            is_required=False,
-        ))
+        params.append(
+            ParameterInfo(
+                name=f"*{args.vararg.arg}",
+                type_annotation=_extract_type_annotation(args.vararg.annotation),
+                is_required=False,
+            )
+        )
 
     # **kwargs
     if args.kwarg:
-        params.append(ParameterInfo(
-            name=f"**{args.kwarg.arg}",
-            type_annotation=_extract_type_annotation(args.kwarg.annotation),
-            is_required=False,
-        ))
+        params.append(
+            ParameterInfo(
+                name=f"**{args.kwarg.arg}",
+                type_annotation=_extract_type_annotation(args.kwarg.annotation),
+                is_required=False,
+            )
+        )
 
     return params
 
@@ -178,9 +182,7 @@ def _extract_exceptions(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> Li
     return sorted(exceptions)
 
 
-def _extract_method_signature(
-    func_node: ast.FunctionDef | ast.AsyncFunctionDef
-) -> MethodSignature:
+def _extract_method_signature(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> MethodSignature:
     """Extract detailed method signature from a function node."""
     params = _extract_parameters(func_node)
     return_type = _extract_type_annotation(func_node.returns)
@@ -188,16 +190,13 @@ def _extract_method_signature(
 
     # Check for decorators
     is_property = any(
-        isinstance(d, ast.Name) and d.id == "property"
-        for d in func_node.decorator_list
+        isinstance(d, ast.Name) and d.id == "property" for d in func_node.decorator_list
     )
     is_classmethod = any(
-        isinstance(d, ast.Name) and d.id == "classmethod"
-        for d in func_node.decorator_list
+        isinstance(d, ast.Name) and d.id == "classmethod" for d in func_node.decorator_list
     )
     is_staticmethod = any(
-        isinstance(d, ast.Name) and d.id == "staticmethod"
-        for d in func_node.decorator_list
+        isinstance(d, ast.Name) and d.id == "staticmethod" for d in func_node.decorator_list
     )
 
     return MethodSignature(

@@ -44,7 +44,7 @@ class TaskExecutor:
         task.status = "running"
         task.updated_at = time.time()
         self.progress_tracker.start_task(task)
-        
+
         for idx, step in enumerate(task.steps):
             self.progress_tracker.start_step(idx, step)
             success = self.execute_step(step)

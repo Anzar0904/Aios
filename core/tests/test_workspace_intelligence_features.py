@@ -32,18 +32,22 @@ def temp_project_dir():
         tmp_path = Path(tmpdir)
         # Create a mock project structure
         (tmp_path / ".git").mkdir()
-        (tmp_path / "pyproject.toml").write_text("[tool.poetry]\nname='test_project'\ndependencies={fastapi='*'}", encoding="utf-8")
-        
+        (tmp_path / "pyproject.toml").write_text(
+            "[tool.poetry]\nname='test_project'\ndependencies={fastapi='*'}", encoding="utf-8"
+        )
+
         # Sub-workspace 1
         sub1 = tmp_path / "packages" / "sub1"
         sub1.mkdir(parents=True)
-        (sub1 / "package.json").write_text('{"name": "sub1", "dependencies": {"react": "*"}}', encoding="utf-8")
-        
+        (sub1 / "package.json").write_text(
+            '{"name": "sub1", "dependencies": {"react": "*"}}', encoding="utf-8"
+        )
+
         # Sub-workspace 2
         sub2 = tmp_path / "packages" / "sub2"
         sub2.mkdir(parents=True)
         (sub2 / "Cargo.toml").write_text("[package]\nname = 'sub2'", encoding="utf-8")
-        
+
         # Ignored venv
         (tmp_path / ".venv").mkdir()
         (tmp_path / ".venv" / "pyproject.toml").write_text("[tool.poetry]", encoding="utf-8")
@@ -54,7 +58,7 @@ def temp_project_dir():
         (src / "service.py").write_text("class MyService:\n    pass\n", encoding="utf-8")
         (src / "controller.py").write_text("class MyController:\n    pass\n", encoding="utf-8")
         (src / "db.py").write_text("import sqlite3\n", encoding="utf-8")
-        
+
         # Test file
         tests_dir = tmp_path / "tests"
         tests_dir.mkdir()
@@ -84,12 +88,7 @@ def test_load_aiosignore_rules(temp_project_dir):
 
 
 def test_classify_architecture(temp_project_dir):
-    structure = [
-        "src/service.py",
-        "src/controller.py",
-        "src/db.py",
-        "pyproject.toml"
-    ]
+    structure = ["src/service.py", "src/controller.py", "src/db.py", "pyproject.toml"]
     arch_map = classify_architecture(str(temp_project_dir), structure)
     assert "src/service.py" in arch_map["services"]
     assert "src/controller.py" in arch_map["controllers"]
@@ -100,7 +99,7 @@ def test_classify_architecture(temp_project_dir):
 def test_detect_coding_conventions():
     symbols = [
         SymbolReference("f::MyClass", "MyClass", "class", "f.py", 1, 5),
-        SymbolReference("f::helper_func", "helper_func", "function", "f.py", 7, 10)
+        SymbolReference("f::helper_func", "helper_func", "function", "f.py", 7, 10),
     ]
     convs = detect_coding_conventions(symbols)
     assert convs["class_naming"] == "PascalCase"
@@ -115,7 +114,7 @@ def test_technology_analyzer():
             frameworks=["fastapi"],
             package_managers=["poetry/pip"],
             dependencies=["fastapi", "pytest"],
-            structure=["pyproject.toml", "package.json", "Dockerfile"]
+            structure=["pyproject.toml", "package.json", "Dockerfile"],
         )
     }
     res = analyzer.analyze(".", proj_context)
@@ -127,17 +126,12 @@ def test_technology_analyzer():
 
 
 def test_circular_dependency_detection():
-    dep_graph = {
-        "f1.py": ["f2.py"],
-        "f2.py": ["f3.py"],
-        "f3.py": ["f1.py"],
-        "f4.py": []
-    }
-    
+    dep_graph = {"f1.py": ["f2.py"], "f2.py": ["f3.py"], "f3.py": ["f1.py"], "f4.py": []}
+
     visited = {}
     path = []
     circular_deps = []
-    
+
     def detect_cycle(node):
         visited[node] = 1
         path.append(node)
@@ -154,7 +148,7 @@ def test_circular_dependency_detection():
     for node in dep_graph:
         if node not in visited:
             detect_cycle(node)
-            
+
     assert len(circular_deps) == 1
 
 
@@ -167,12 +161,12 @@ def test_workspace_context_generation(temp_project_dir):
         package_managers=["poetry/pip"],
         dependencies=["fastapi"],
         statistics={"total_files": 4, "total_folders": 2},
-        structure=["src/service.py", "pyproject.toml"]
+        structure=["src/service.py", "pyproject.toml"],
     )
 
     memory_service = MagicMock(spec=MemoryService)
     registry = MagicMock()
-    
+
     code_intel = MagicMock(spec=LocalCodeIntelligenceService)
     code_intel.analyze_codebase.return_value = MagicMock()
     code_intel._indexer = MagicMock()
@@ -183,16 +177,14 @@ def test_workspace_context_generation(temp_project_dir):
         module="src.service",
         extension=".py",
         size=100,
-        purpose="source"
+        purpose="source",
     )
     code_intel.list_all_files_metadata.return_value = []
-    
+
     registry.get.return_value = code_intel
 
-    service = LocalWorkspaceIntelligenceService(
-        project_intel, memory_service, registry=registry
-    )
-    
+    service = LocalWorkspaceIntelligenceService(project_intel, memory_service, registry=registry)
+
     ctx = service.get_workspace_context(str(temp_project_dir))
     assert isinstance(ctx, WorkspaceContext)
     assert ctx.project_type == "monorepo"
@@ -201,7 +193,7 @@ def test_workspace_context_generation(temp_project_dir):
 @patch("sys.exit")
 def test_cli_workspace_subcommands(mock_exit, temp_project_dir):
     from aios.registry import ServiceRegistry
-    
+
     project_intel = MagicMock()
     project_intel.analyze_workspace.return_value = ProjectContext(
         project_root=str(temp_project_dir),
@@ -210,12 +202,12 @@ def test_cli_workspace_subcommands(mock_exit, temp_project_dir):
         package_managers=["poetry/pip"],
         dependencies=["fastapi"],
         statistics={"total_files": 4, "total_folders": 2},
-        structure=["src/service.py", "pyproject.toml"]
+        structure=["src/service.py", "pyproject.toml"],
     )
-    
+
     memory_service = MagicMock(spec=MemoryService)
     registry = ServiceRegistry()
-    
+
     dev_ws = MagicMock(spec=DeveloperWorkspaceService)
     dev_ws.get_workspace_info.return_value = DeveloperWorkspaceInfo(
         git_status="",
@@ -226,32 +218,30 @@ def test_cli_workspace_subcommands(mock_exit, temp_project_dir):
         detected_tests=[],
         build_systems=["poetry"],
         linters=["ruff"],
-        diagnostics={}
+        diagnostics={},
     )
-    
+
     code_intel = MagicMock(spec=CodeIntelligenceService)
     code_intel.analyze_codebase.return_value = MagicMock(dependency_graph={})
     code_intel.list_all_files_metadata.return_value = []
-    
-    service = LocalWorkspaceIntelligenceService(
-        project_intel, memory_service, registry=registry
-    )
-    
+
+    service = LocalWorkspaceIntelligenceService(project_intel, memory_service, registry=registry)
+
     registry.register(WorkspaceIntelligenceService, service)
     registry.register(DeveloperWorkspaceService, dev_ws)
     registry.register(CodeIntelligenceService, code_intel)
-    
+
     # Temporarily set global registry
     ServiceRegistry._global_registry = registry
-    
+
     res = execute_builtin_cli_command(["workspace", "scan"], exit_on_complete=False)
     assert res is True
-    
+
     res = execute_builtin_cli_command(["workspace", "summary"], exit_on_complete=False)
     assert res is True
-    
+
     res = execute_builtin_cli_command(["workspace", "status"], exit_on_complete=False)
     assert res is True
-    
+
     res = execute_builtin_cli_command(["workspace", "refresh"], exit_on_complete=False)
     assert res is True

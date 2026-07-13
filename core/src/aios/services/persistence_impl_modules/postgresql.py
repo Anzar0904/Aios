@@ -247,8 +247,6 @@ class PostgreSQLTransport(DatabaseTransport):
         return TransportCapabilities(support_savepoints=True, support_json=True)
 
 
-
-
 class PostgreSQLProvider(PersistenceProvider):
     """PostgreSQL database engine provider wrapping a DatabaseTransport."""
 

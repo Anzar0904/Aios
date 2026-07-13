@@ -10,6 +10,7 @@ from aios.services.base import ServiceLifecycle
 @dataclass
 class RepositoryHealth:
     """Represents health metrics of the repository."""
+
     file_count: int
     folder_count: int
     test_count: int
@@ -23,6 +24,7 @@ class RepositoryHealth:
 @dataclass
 class RepositorySummary:
     """Contains full high-level and detailed analysis of a code repository."""
+
     summary_id: str
     timestamp: float
     high_level_architecture: str
@@ -43,6 +45,7 @@ class RepositorySummary:
 @dataclass
 class FileMetadata:
     """Represents indexed metadata for a project file."""
+
     file_path: str
     language: str
     module: str
@@ -51,13 +54,16 @@ class FileMetadata:
     purpose: str  # source, test, documentation, config, build, asset, other
     imports: List[str] = field(default_factory=list)
     exports: List[str] = field(default_factory=list)
-    relationships: Dict[str, List[str]] = field(default_factory=dict)  # {"imports": [...], "imported_by": [...]}
+    relationships: Dict[str, List[str]] = field(
+        default_factory=dict
+    )  # {"imports": [...], "imported_by": [...]}
     meta: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class WorkspaceContext:
     """Unified context object describing the technology stack and architecture of the workspace."""
+
     workspace_root: str
     technology_stack: Dict[str, Any]
     architecture: Dict[str, Any]
@@ -138,15 +144,17 @@ class WorkspaceIntelligenceService(ServiceLifecycle, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def generate_markdown_reports(self, workspace_root: str, summary: RepositorySummary, code_summary: CodeStructureSummary) -> None:
+    def generate_markdown_reports(
+        self, workspace_root: str, summary: RepositorySummary, code_summary: CodeStructureSummary
+    ) -> None:
         """Generates complete markdown reports under workspace docs directory."""
         pass
-
 
 
 @dataclass
 class SymbolReference:
     """Represents a code symbol (class, function, method, interface, enum) extracted via AST."""
+
     symbol_id: str
     name: str
     symbol_type: str  # class, function, method, interface, enum, module
@@ -162,6 +170,7 @@ class SymbolReference:
 @dataclass
 class CodeStructureSummary:
     """Unified code structure representation containing symbol indexes and call/dependency graphs."""
+
     summary_id: str
     timestamp: float
     symbols: Dict[str, SymbolReference]
@@ -194,7 +203,6 @@ class ASTAnalyzer(abc.ABC):
         pass
 
 
-
 class SymbolIndexer(abc.ABC):
     """Component maintaining code symbols lookup maps."""
 
@@ -218,7 +226,9 @@ class DependencyGraphBuilder(abc.ABC):
     """Component constructing module import and inheritance graphs."""
 
     @abc.abstractmethod
-    def build_graph(self, file_paths: List[str], symbols: List[SymbolReference]) -> Dict[str, List[str]]:
+    def build_graph(
+        self, file_paths: List[str], symbols: List[SymbolReference]
+    ) -> Dict[str, List[str]]:
         """Maps imports and module-level dependency relationships."""
         pass
 
@@ -259,5 +269,3 @@ class CodeIntelligenceService(ServiceLifecycle, abc.ABC):
     def list_all_files_metadata(self) -> List[FileMetadata]:
         """Lists metadata for all indexed files in the workspace."""
         pass
-
-

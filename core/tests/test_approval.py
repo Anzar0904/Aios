@@ -68,7 +68,7 @@ def test_rules_evaluation():
         reviewer_notes=[],
         approval_history=[],
         confidence_score=0.9,
-        overall_health="healthy"
+        overall_health="healthy",
     )
 
     # 1. Validation Score Rule
@@ -105,10 +105,27 @@ def test_rules_evaluation():
 def test_package_construction():
     manager = LocalApprovalManager()
     evidence = [
-        ApprovalEvidence("validation_report", "test_run", {"overall_score": 92.5, "total_tests_run": 345, "coverage_pct": 85.0, "critical_count": 0}, 0.0),
-        ApprovalEvidence("engineering_intelligence", "analysis", {"objective": "Upgrade Kernel", "risk_level": "medium", "affected_files": ["f1.py"]}, 0.0),
-        ApprovalEvidence("readme_intelligence", "report", {"missing_sections": ["Installation"]}, 0.0),
-        ApprovalEvidence("engineering_profile", "config", {"language": "typescript"}, 0.0)
+        ApprovalEvidence(
+            "validation_report",
+            "test_run",
+            {
+                "overall_score": 92.5,
+                "total_tests_run": 345,
+                "coverage_pct": 85.0,
+                "critical_count": 0,
+            },
+            0.0,
+        ),
+        ApprovalEvidence(
+            "engineering_intelligence",
+            "analysis",
+            {"objective": "Upgrade Kernel", "risk_level": "medium", "affected_files": ["f1.py"]},
+            0.0,
+        ),
+        ApprovalEvidence(
+            "readme_intelligence", "report", {"missing_sections": ["Installation"]}, 0.0
+        ),
+        ApprovalEvidence("engineering_profile", "config", {"language": "typescript"}, 0.0),
     ]
     request = ApprovalRequest("req_1", "ws_1", "1.0.0", "standard", evidence, 0.0)
     session = manager.create_session(request)
@@ -127,9 +144,19 @@ def test_package_construction():
 def test_decision_generation_approved():
     manager = LocalApprovalManager()
     evidence = [
-        ApprovalEvidence("validation_report", "test_run", {"overall_score": 90.0, "coverage_pct": 80.0, "critical_count": 0}, 0.0),
-        ApprovalEvidence("engineering_intelligence", "analysis", {"objective": "Clean objective", "risk_level": "low"}, 0.0),
-        ApprovalEvidence("engineering_profile", "config", {"language": "python"}, 0.0)
+        ApprovalEvidence(
+            "validation_report",
+            "test_run",
+            {"overall_score": 90.0, "coverage_pct": 80.0, "critical_count": 0},
+            0.0,
+        ),
+        ApprovalEvidence(
+            "engineering_intelligence",
+            "analysis",
+            {"objective": "Clean objective", "risk_level": "low"},
+            0.0,
+        ),
+        ApprovalEvidence("engineering_profile", "config", {"language": "python"}, 0.0),
     ]
     request = ApprovalRequest("req_1", "ws_1", "1.0.0", "standard", evidence, 0.0)
     session = manager.create_session(request)
@@ -143,8 +170,18 @@ def test_decision_generation_approved():
 def test_decision_generation_rejected():
     manager = LocalApprovalManager()
     evidence = [
-        ApprovalEvidence("validation_report", "test_run", {"overall_score": 50.0, "coverage_pct": 40.0, "critical_count": 2}, 0.0),
-        ApprovalEvidence("engineering_intelligence", "analysis", {"objective": "Dangerous objective", "risk_level": "critical"}, 0.0)
+        ApprovalEvidence(
+            "validation_report",
+            "test_run",
+            {"overall_score": 50.0, "coverage_pct": 40.0, "critical_count": 2},
+            0.0,
+        ),
+        ApprovalEvidence(
+            "engineering_intelligence",
+            "analysis",
+            {"objective": "Dangerous objective", "risk_level": "critical"},
+            0.0,
+        ),
     ]
     request = ApprovalRequest("req_1", "ws_1", "1.0.0", "standard", evidence, 0.0)
     session = manager.create_session(request)
@@ -157,7 +194,7 @@ def test_decision_generation_rejected():
 
 def test_validator():
     validator = LocalApprovalValidator()
-    
+
     # Incomplete package
     package = ApprovalPackage(
         package_id="pkg_1",
@@ -175,7 +212,7 @@ def test_validator():
         reviewer_notes=[],
         approval_history=[],
         confidence_score=2.0,  # invalid
-        overall_health=""
+        overall_health="",
     )
     errors = validator.validate_package(package)
     assert len(errors) > 0
@@ -197,23 +234,22 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     ws_id = "ws_test_approval"
     ws_root = str(tmp_path / ws_id)
     os.makedirs(ws_root, exist_ok=True)
-    
+
     meta = WorkspaceMetadata(ws_id, 0.0, "/src", ws_root, "active")
     mock_workspace_service._workspaces = {ws_id: meta}
-    
+
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalApprovalEngineService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalApprovalEngineService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
     request = ApprovalRequest("req_1", ws_id, "1.0.0", "standard", [], 0.0)
     session = service.request_approval(request)
 
-    expected_file = os.path.join(ws_root, "docs", "approvals", f"APPROVAL_REPORT_{session.session_id}.md")
+    expected_file = os.path.join(
+        ws_root, "docs", "approvals", f"APPROVAL_REPORT_{session.session_id}.md"
+    )
     assert os.path.exists(expected_file)
     with open(expected_file, "r") as f:
         report_content = f.read()
@@ -222,23 +258,21 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalApprovalEngineService(
-        memory_service=mock_memory_service
-    )
-    
+    service = LocalApprovalEngineService(memory_service=mock_memory_service)
+
     request = ApprovalRequest("req_1", "ws_1", "1.0.0", "standard", [], 0.0)
     session = service._manager.create_session(request)
     package = service._manager.compile_package(session)
     session.package = package
     session.decision = ApprovalDecision(ApprovalStatus.APPROVED, "reason", [], 100.0)
-    
+
     service.store_approval_summary(session)
-    
+
     mock_memory_service.add_memory.assert_called_once()
     args, kwargs = mock_memory_service.add_memory.call_args
     content = kwargs.get("content", args[0] if args else "")
     tags = kwargs.get("tags", [])
-    
+
     # Ensure source code not stored and metadata summaries only
     assert "source code" not in content.lower()
     assert "Approval Decision Logged" in content
@@ -247,14 +281,18 @@ def test_memory_integration(mock_memory_service):
 
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    service = LocalApprovalEngineService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
+    service = LocalApprovalEngineService(memory_service=mock_memory_service, knowledge_hub=mock_kh)
+
+    report = ApprovalReport(
+        "rep_1",
+        "ws_1",
+        "sess_1",
+        ApprovalDecision(ApprovalStatus.APPROVED, "reason", []),
+        {},
+        time.time(),
     )
-    
-    report = ApprovalReport("rep_1", "ws_1", "sess_1", ApprovalDecision(ApprovalStatus.APPROVED, "reason", []), {}, time.time())
     service.publish_approval_report(report)
-    
+
     mock_kh.sync_document.assert_called_once()
     args, kwargs = mock_kh.sync_document.call_args
     doc = args[0]
@@ -266,7 +304,7 @@ def test_backward_compatibility():
     class CustomRule(ApprovalRule):
         def evaluate(self, package):
             return True, "Custom passes always."
-            
+
     rule = CustomRule("CustomRule", "Ensures custom logic passes.")
     ok, reason = rule.evaluate(None)
     assert ok is True

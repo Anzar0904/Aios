@@ -26,7 +26,7 @@ def temp_workspace_and_repo(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "file1.py").write_text("def run():\n    print('new')\n    print('added line')\n")
-    (workspace / "file2.py").write_text("def test():\n    pass\n") # Unchanged
+    (workspace / "file2.py").write_text("def test():\n    pass\n")  # Unchanged
 
     return str(workspace), str(repo)
 
@@ -35,7 +35,7 @@ def test_diff_generator():
     diff_gen = LocalDiffGenerator()
     orig = "line1\nline2\n"
     mod = "line1\nline3\n"
-    
+
     diff = diff_gen.generate_diff(orig, mod, "test.txt")
     assert "--- a/test.txt" in diff
     assert "+++ b/test.txt" in diff
@@ -47,15 +47,15 @@ def test_patch_generator_bundle(temp_workspace_and_repo):
     ws_root, repo_root = temp_workspace_and_repo
     diff_gen = LocalDiffGenerator()
     generator = LocalPatchGenerator(diff_gen)
-    
+
     bundle = generator.generate_patch_bundle(ws_root, repo_root, ["file1.py", "file2.py"])
-    
-    assert bundle.statistics.files_modified == 1 # Only file1 changed
+
+    assert bundle.statistics.files_modified == 1  # Only file1 changed
     assert bundle.statistics.lines_added == 2
     assert bundle.statistics.lines_removed == 1
     assert "file1.py" in bundle.patches
     assert "file2.py" not in bundle.patches
-    
+
     meta = bundle.metadata["file1.py"]
     assert meta.checksum is not None
     assert meta.size_bytes > 0
@@ -66,11 +66,11 @@ def test_patch_validator(temp_workspace_and_repo):
     diff_gen = LocalDiffGenerator()
     generator = LocalPatchGenerator(diff_gen)
     validator = LocalPatchValidator()
-    
+
     bundle = generator.generate_patch_bundle(ws_root, repo_root, ["file1.py"])
     valid, msg = validator.validate_patch_bundle(bundle, ws_root)
     assert valid
-    
+
     # Intentionally corrupt checksum to test validation rejection
     bundle.metadata["file1.py"].checksum = "corrupted_checksum"
     valid_invalid, msg_invalid = validator.validate_patch_bundle(bundle, ws_root)
@@ -82,7 +82,7 @@ def test_conflict_detector():
     detector = LocalConflictDetector()
     bundle = MagicMock(spec=PatchBundle)
     bundle.patches = {"file1.py": "diff"}
-    
+
     conflicts, inconsistencies = detector.detect_conflicts(bundle, ".")
     assert len(conflicts) == 0
     assert len(inconsistencies) == 0
@@ -93,11 +93,11 @@ def test_serializer(temp_workspace_and_repo):
     diff_gen = LocalDiffGenerator()
     generator = LocalPatchGenerator(diff_gen)
     serializer = LocalPatchSerializer()
-    
+
     bundle = generator.generate_patch_bundle(ws_root, repo_root, ["file1.py"])
     serialized = serializer.serialize_bundle(bundle)
     assert "bundle_id" in serialized
-    
+
     deserialized = serializer.deserialize_bundle(serialized)
     assert deserialized.bundle_id == bundle.bundle_id
     assert deserialized.statistics.lines_added == bundle.statistics.lines_added
@@ -108,24 +108,21 @@ def test_patch_service_integration(temp_workspace_and_repo):
     ws_root, repo_root = temp_workspace_and_repo
     mock_memory = MagicMock(spec=MemoryService)
     mock_kh = MagicMock(spec=KnowledgeHubService)
-    
-    service = LocalPatchGenerationService(
-        memory_service=mock_memory,
-        knowledge_hub=mock_kh
-    )
+
+    service = LocalPatchGenerationService(memory_service=mock_memory, knowledge_hub=mock_kh)
     service.initialize()
-    
+
     package = service.create_review_package("ws_1", repo_root, ws_root, ["file1.py"])
-    
+
     assert package.workspace_id == "ws_1"
     assert package.validation_status == "passed"
     assert len(package.previews) == 1
     assert "file1.py" in package.previews[0].file_path
-    
+
     # Store
     service.store_patch_summary(package)
     mock_memory.add_memory.assert_called_once()
-    
+
     # Publish
     service.publish_patch_report(package)
     mock_kh.sync_document.assert_called_once()
@@ -138,6 +135,6 @@ def test_backward_compatibility():
             if not valid:
                 return False, reason
             return True, "Custom validation checks passed."
-            
+
     validator = CustomPatchValidator()
     assert validator is not None

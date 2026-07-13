@@ -43,28 +43,40 @@ def mock_model_service():
 
 def test_performance_analytics():
     analyzer = LocalWorkflowPerformanceAnalyzer()
-    
+
     # 3 mock runs
     r1 = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
     )
     r2 = WorkflowExecutionRecord(
-        "ex_2", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(20.0, 1.0, 1, 5.0, 50.0), time.time()
+        "ex_2",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(20.0, 1.0, 1, 5.0, 50.0),
+        time.time(),
     )
     r3 = WorkflowExecutionRecord(
-        "ex_3", "wf_test", "ws_1", WorkflowExecutionState.FAILED,
-        WorkflowExecutionMetrics(30.0, 1.0, 0, 5.0, 50.0), time.time(),
-        error_message="Connection timed out"
+        "ex_3",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.FAILED,
+        WorkflowExecutionMetrics(30.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
+        error_message="Connection timed out",
     )
 
     stats = analyzer.analyze_performance([r1, r2, r3])
-    
+
     assert stats.total_runs == 3
-    assert stats.success_rate == pytest.approx(2/3)
-    assert stats.failure_rate == pytest.approx(1/3)
-    assert stats.retry_rate == pytest.approx(1/3)
+    assert stats.success_rate == pytest.approx(2 / 3)
+    assert stats.failure_rate == pytest.approx(1 / 3)
+    assert stats.retry_rate == pytest.approx(1 / 3)
     assert stats.average_duration == pytest.approx(20.0)
     assert stats.median_duration == pytest.approx(20.0)
     assert stats.p95_duration == pytest.approx(30.0)
@@ -75,15 +87,25 @@ def test_telemetry_validation():
 
     # Valid record
     r_valid = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0), 100.0, 110.0
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0),
+        100.0,
+        110.0,
     )
     assert len(validator.validate_telemetry([r_valid])) == 0
 
     # Invalid record (end_time before start_time)
     r_invalid = WorkflowExecutionRecord(
-        "ex_2", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0), 120.0, 110.0
+        "ex_2",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0),
+        120.0,
+        110.0,
     )
     errors = validator.validate_telemetry([r_invalid])
     assert len(errors) > 0
@@ -96,14 +118,22 @@ def test_monitoring_alerts_and_health_scoring(mock_memory_service):
 
     # Log 2 consecutive failures
     r1 = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.FAILED,
-        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0), time.time(),
-        error_message="Compilation Error"
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.FAILED,
+        WorkflowExecutionMetrics(10.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
+        error_message="Compilation Error",
     )
     r2 = WorkflowExecutionRecord(
-        "ex_2", "wf_test", "ws_1", WorkflowExecutionState.FAILED,
-        WorkflowExecutionMetrics(400.0, 1.0, 3, 5.0, 50.0), time.time(), # triggers high retry and long duration alert too
-        error_message="Compilation Error"
+        "ex_2",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.FAILED,
+        WorkflowExecutionMetrics(400.0, 1.0, 3, 5.0, 50.0),
+        time.time(),  # triggers high retry and long duration alert too
+        error_message="Compilation Error",
     )
 
     service.record_execution(r1)
@@ -137,15 +167,16 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
     registry = MagicMock()
     registry.get.side_effect = lambda t: mock_workspace_service if t == AIWorkspaceService else None
 
-    service = LocalWorkflowMonitoringService(
-        memory_service=mock_memory_service,
-        registry=registry
-    )
+    service = LocalWorkflowMonitoringService(memory_service=mock_memory_service, registry=registry)
     service.initialize()
 
     r = WorkflowExecutionRecord(
-        "ex_1", "wf_test", ws_id, WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(15.0, 1.0, 0, 5.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        ws_id,
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(15.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
     )
     service.record_execution(r)
 
@@ -159,14 +190,16 @@ def test_workspace_integration(tmp_path, mock_memory_service, mock_workspace_ser
 
 
 def test_memory_integration(mock_memory_service):
-    service = LocalWorkflowMonitoringService(
-        memory_service=mock_memory_service
-    )
+    service = LocalWorkflowMonitoringService(memory_service=mock_memory_service)
     service.initialize()
 
     r = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(15.0, 1.0, 0, 5.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(15.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
     )
     service.record_execution(r)
     service.get_telemetry_report("ws_1")
@@ -185,8 +218,7 @@ def test_memory_integration(mock_memory_service):
 def test_knowledge_hub_integration(mock_memory_service):
     mock_kh = MagicMock(spec=KnowledgeHubService)
     service = LocalWorkflowMonitoringService(
-        memory_service=mock_memory_service,
-        knowledge_hub=mock_kh
+        memory_service=mock_memory_service, knowledge_hub=mock_kh
     )
     service.initialize()
 
@@ -196,7 +228,7 @@ def test_knowledge_hub_integration(mock_memory_service):
         statistics={},
         health_scores={},
         alerts=[],
-        timestamp=time.time()
+        timestamp=time.time(),
     )
     service.publish_monitoring_report(report)
 
@@ -216,8 +248,12 @@ def test_backward_compatibility():
 
     analyzer = CustomPerformanceAnalyzer()
     r = WorkflowExecutionRecord(
-        "ex_1", "wf_test", "ws_1", WorkflowExecutionState.SUCCESS,
-        WorkflowExecutionMetrics(15.0, 1.0, 0, 5.0, 50.0), time.time()
+        "ex_1",
+        "wf_test",
+        "ws_1",
+        WorkflowExecutionState.SUCCESS,
+        WorkflowExecutionMetrics(15.0, 1.0, 0, 5.0, 50.0),
+        time.time(),
     )
     stats = analyzer.analyze_performance([r])
     assert stats.average_duration == 999.0

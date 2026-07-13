@@ -110,8 +110,7 @@ class WorkflowTemplates:
                         "toEmail": "{{ $json.email }}",
                         "subject": "Quick Question",
                         "htmlBody": (
-                            "<p>Hello {{ $json.name }}, "
-                            "would you be open to a quick call?</p>"
+                            "<p>Hello {{ $json.name }}, would you be open to a quick call?</p>"
                         ),
                     },
                     "id": "node-email-1",
@@ -454,11 +453,11 @@ class WorkflowOptimizer:
     def optimize(self, workflow_json: Dict[str, Any]) -> Dict[str, Any]:
         nodes = workflow_json.get("nodes", [])
         connections = workflow_json.get("connections", {})
-        
+
         # Incremental optimizations: Remove duplicated consecutive no-ops
         optimized_nodes = []
         seen_types = set()
-        
+
         for node in nodes:
             # Drop identical duplicate nodes
             key = (node.get("type"), json.dumps(node.get("parameters", {})))
@@ -535,8 +534,7 @@ class WorkflowAnalyzer:
 
         return {
             "summary": (
-                f"Workflow containing {len(nodes)} nodes "
-                f"with {len(triggers)} entry triggers."
+                f"Workflow containing {len(nodes)} nodes with {len(triggers)} entry triggers."
             ),
             "trigger_chain": triggers,
             "external_services": list(set(external_services)),
@@ -563,12 +561,14 @@ class WorkflowMemory:
             self.workflows = []
 
     def save_workflow(self, name: str, workflow_json: Dict[str, Any]) -> None:
-        self.workflows.append({
-            "name": name,
-            "timestamp": time.time(),
-            "version": len(self.workflows) + 1,
-            "workflow": workflow_json,
-        })
+        self.workflows.append(
+            {
+                "name": name,
+                "timestamp": time.time(),
+                "version": len(self.workflows) + 1,
+                "workflow": workflow_json,
+            }
+        )
         try:
             self.memory_file.write_text(json.dumps(self.workflows, indent=2), encoding="utf-8")
         except Exception as e:
@@ -716,11 +716,7 @@ class WorkflowIntelligenceEngine:
 
         # 5. architecture_diagram.md
         with open(f"{output_dir}/architecture_diagram.md", "w") as f:
-            f.write(
-                "# Workflow Architecture Diagram\n\n"
-                "```mermaid\n"
-                "graph TD\n"
-            )
+            f.write("# Workflow Architecture Diagram\n\n```mermaid\ngraph TD\n")
             node_names = {n["name"] for n in workflow_json.get("nodes", [])}
             for src, targets in workflow_json.get("connections", {}).items():
                 if src in node_names:

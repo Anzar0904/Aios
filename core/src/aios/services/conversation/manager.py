@@ -13,19 +13,20 @@ from aios.services.model import LLMRequest, ModelService
 
 logger = logging.getLogger(__name__)
 
+
 def parse_summary_response(text: str) -> Dict[str, Any]:
     lines = text.strip().split("\n")
     summary = ""
     decisions = []
     action_items = []
     unresolved_questions = []
-    
+
     current_section = None
     for line in lines:
         line_stripped = line.strip()
         if not line_stripped:
             continue
-        
+
         # Check for section headers
         if line_stripped.lower().startswith("summary:"):
             summary = line_stripped[8:].strip()
@@ -40,7 +41,7 @@ def parse_summary_response(text: str) -> Dict[str, Any]:
         elif line_stripped.lower().startswith("unresolved questions:"):
             current_section = "unresolved_questions"
             continue
-            
+
         # Parse bullet points or continue text
         if current_section == "summary":
             summary += " " + line_stripped
@@ -50,7 +51,7 @@ def parse_summary_response(text: str) -> Dict[str, Any]:
                 item = line_stripped[1:].strip()
             else:
                 item = line_stripped
-            
+
             if item:
                 if current_section == "decisions":
                     decisions.append(item)
@@ -58,13 +59,14 @@ def parse_summary_response(text: str) -> Dict[str, Any]:
                     action_items.append(item)
                 elif current_section == "unresolved_questions":
                     unresolved_questions.append(item)
-                    
+
     return {
         "summary": summary.strip(),
         "decisions": decisions,
         "action_items": action_items,
-        "unresolved_questions": unresolved_questions
+        "unresolved_questions": unresolved_questions,
     }
+
 
 class ConversationManager:
     def __init__(self, store: ConversationStore) -> None:
@@ -158,6 +160,7 @@ class ConversationManager:
             try:
                 from aios.registry import ServiceRegistry
                 from aios.services.persistence import SemanticMemoryManager
+
                 registry = ServiceRegistry._global_registry
                 if registry:
                     sem_mgr = registry.get(SemanticMemoryManager)
@@ -169,21 +172,29 @@ class ConversationManager:
                                 f"Action Items: {', '.join(conv.summary.action_items)}\n"
                                 f"Summary: {conv.summary.summary}"
                             )
-                        text_summary = f"Conversation [{conv.title}] Msg: {role.upper()}: {content}{facts_str}"
+                        text_summary = (
+                            f"Conversation [{conv.title}] Msg: {role.upper()}: {content}{facts_str}"
+                        )
                         metadata = {
                             "conversation_id": conversation_id,
                             "role": role,
                             "timestamp": time.time(),
-                            "type": "conversation_message"
+                            "type": "conversation_message",
                         }
                         import uuid
-                        msg_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{conversation_id}_{time.time()}_{content[:20]}"))
+
+                        msg_uuid = str(
+                            uuid.uuid5(
+                                uuid.NAMESPACE_DNS,
+                                f"{conversation_id}_{time.time()}_{content[:20]}",
+                            )
+                        )
                         sem_mgr.index_memory(
                             repository_name="conversation_memory",
                             entity_id=msg_uuid,
                             text=text_summary,
                             metadata=metadata,
-                            tags=["conversation", role]
+                            tags=["conversation", role],
                         )
             except Exception:
                 pass
@@ -218,12 +229,13 @@ class ConversationManager:
                 f"Summary: {s.summary}\n"
                 f"Decisions:\n" + "\n".join([f"- {d}" for d in s.decisions]) + "\n"
                 "Action Items:\n" + "\n".join([f"- {a}" for a in s.action_items]) + "\n"
-                "Unresolved Questions:\n"
-                + "\n".join([f"- {q}" for q in s.unresolved_questions])
+                "Unresolved Questions:\n" + "\n".join([f"- {q}" for q in s.unresolved_questions])
             )
 
         project_root = Path.cwd().resolve()
-        template_path = project_root / "skills" / "conversation" / "prompts" / "summarize_history.md"
+        template_path = (
+            project_root / "skills" / "conversation" / "prompts" / "summarize_history.md"
+        )
 
         if template_path.is_file():
             template_content = template_path.read_text(encoding="utf-8")
@@ -235,9 +247,8 @@ class ConversationManager:
                 "## Messages to Summarize\n{messages_to_summarize}\n"
             )
 
-        prompt = (
-            template_content.replace("{previous_summary}", prev_summary)
-            .replace("{messages_to_summarize}", messages_to_summarize)
+        prompt = template_content.replace("{previous_summary}", prev_summary).replace(
+            "{messages_to_summarize}", messages_to_summarize
         )
 
         try:
@@ -251,16 +262,16 @@ class ConversationManager:
                     model_name="claude-3-5-sonnet",
                 )
             )
-            
+
             parsed = parse_summary_response(llm_res.content)
-            
+
             conversation.summary = ConversationSummary(
                 summary=parsed["summary"],
                 decisions=parsed["decisions"],
                 action_items=parsed["action_items"],
-                unresolved_questions=parsed["unresolved_questions"]
+                unresolved_questions=parsed["unresolved_questions"],
             )
-            
+
             conversation.messages = keep_messages
             conversation.updated_time = time.time()
             self.store.save(conversation.to_dict())
@@ -268,6 +279,7 @@ class ConversationManager:
             try:
                 from aios.registry import ServiceRegistry
                 from aios.services.persistence import SemanticMemoryManager
+
                 registry = ServiceRegistry._global_registry
                 if registry:
                     sem_mgr = registry.get(SemanticMemoryManager)
@@ -275,23 +287,26 @@ class ConversationManager:
                         text_summary = (
                             f"Conversation Summary [{conversation.title}]\n"
                             f"Summary: {parsed['summary']}\n"
-                            f"Decisions:\n" + "\n".join([f"- {d}" for d in parsed["decisions"]]) + "\n"
-                            "Action Items:\n" + "\n".join([f"- {a}" for a in parsed["action_items"]])
+                            f"Decisions:\n"
+                            + "\n".join([f"- {d}" for d in parsed["decisions"]])
+                            + "\n"
+                            "Action Items:\n"
+                            + "\n".join([f"- {a}" for a in parsed["action_items"]])
                         )
                         metadata = {
                             "conversation_id": conversation.id,
                             "timestamp": time.time(),
-                            "type": "conversation_summary"
+                            "type": "conversation_summary",
                         }
                         sem_mgr.index_memory(
                             repository_name="conversation_memory",
                             entity_id=f"summary_{conversation.id}",
                             text=text_summary,
                             metadata=metadata,
-                            tags=["conversation_summary", "decisions", "action_items"]
+                            tags=["conversation_summary", "decisions", "action_items"],
                         )
             except Exception:
                 pass
-            
+
         except Exception as e:
             logger.error(f"Failed to summarize conversation {conversation.id}: {e}", exc_info=True)

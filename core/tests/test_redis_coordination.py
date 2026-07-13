@@ -83,24 +83,13 @@ def coordination_env():
     coord_health = CoordinationHealthMonitorImpl(redis_provider)
     coord_recommend = CoordinationRecommendationEngineImpl(coord_stats, coord_diag)
     lock_lease_mgr = LockLeaseManagerImpl(
-        redis_provider,
-        lock_registry,
-        deadlock_detector,
-        coord_stats,
-        coord_diag
+        redis_provider, lock_registry, deadlock_detector, coord_stats, coord_diag
     )
     lock_recovery_mgr = LockRecoveryManagerImpl(coord_stats)
     mutex_mgr = MutexManagerImpl(lock_lease_mgr, coord_stats)
-    dist_lock_mgr = DistributedLockManagerImpl(
-        lock_lease_mgr,
-        deadlock_detector,
-        coord_stats
-    )
+    dist_lock_mgr = DistributedLockManagerImpl(lock_lease_mgr, deadlock_detector, coord_stats)
     redis_coordination_service = RedisCoordinationServiceImpl(
-        redis_provider,
-        lock_registry,
-        lock_lease_mgr,
-        dist_lock_mgr
+        redis_provider, lock_registry, lock_lease_mgr, dist_lock_mgr
     )
 
     lock_registry.initialize()
@@ -151,7 +140,7 @@ def coordination_env():
 
 def test_lock_ownership_registry(coordination_env):
     reg = coordination_env["lock_registry"]
-    
+
     all_types = reg.get_all_types()
     assert "workspace" in all_types
     assert "workflow" in all_types
@@ -200,7 +189,7 @@ def test_lock_acquisition_exclusive_shared_reentrant(coordination_env):
     assert reentrant1 is True
 
     reentrant2 = mgr.acquire("engineering", "lock-reentrant", "owner-a", LockPolicy.REENTRANT)
-    assert reentrant2 is True # same owner succeeds
+    assert reentrant2 is True  # same owner succeeds
 
     mgr.release("engineering", "lock-reentrant", "owner-a")
     mgr.release("engineering", "lock-reentrant", "owner-a")
@@ -258,7 +247,9 @@ def test_redis_outage_fallback(coordination_env):
     lease_mgr = coordination_env["lock_lease_mgr"]
 
     # Simulate connection outage on low-level client
-    provider.transport.execute_command = MagicMock(side_effect=RuntimeError("Redis connection lost"))
+    provider.transport.execute_command = MagicMock(
+        side_effect=RuntimeError("Redis connection lost")
+    )
 
     # Operations should fallback gracefully to local locks
     acquired = mgr.acquire("workspace", "lock-outage", "owner-a", LockPolicy.EXCLUSIVE)

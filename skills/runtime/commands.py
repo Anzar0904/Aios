@@ -89,7 +89,9 @@ def execute_runtime_tasks(args: str, kernel, conv_manager) -> None:
             print(" No background tasks registered.")
             return
         for t in runtime.task_manager._tasks:
-            print(f" - Task: {t.name} (ID: {t.task_id}) | Interval: {t.interval}s | Next run: {time.ctime(t.next_run)} | Status: {t.status}")
+            print(
+                f" - Task: {t.name} (ID: {t.task_id}) | Interval: {t.interval}s | Next run: {time.ctime(t.next_run)} | Status: {t.status}"
+            )
     except Exception as e:
         print(f"Failed: {str(e)}")
 

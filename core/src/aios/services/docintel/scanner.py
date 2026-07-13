@@ -62,9 +62,7 @@ class RepositoryScanner:
 
                 # 1. Config files
                 if file.endswith((".toml", ".yaml", ".yml", ".json", ".ini", ".conf")):
-                    results["configuration_files"].append(
-                        {"name": file, "path": rel_file_path}
-                    )
+                    results["configuration_files"].append({"name": file, "path": rel_file_path})
 
                 # 2. Documentation files
                 elif file.endswith((".md", ".rst", ".txt")):

@@ -51,19 +51,27 @@ class LocalN8NProvider(N8NProvider):
         errors = []
         for cred in definition.credentials:
             if cred.provider_type != "n8n":
-                errors.append(f"Provider Compatibility: n8n provider cannot resolve credential reference '{cred.reference_id}' of type '{cred.provider_type}'.")
+                errors.append(
+                    f"Provider Compatibility: n8n provider cannot resolve credential reference '{cred.reference_id}' of type '{cred.provider_type}'."
+                )
         return errors
 
-    def execute_workflow(self, definition: WorkflowDefinition, session: AutomationSession) -> AutomationResult:
+    def execute_workflow(
+        self, definition: WorkflowDefinition, session: AutomationSession
+    ) -> AutomationResult:
         start_time = time.time()
         # Mock execution logic (interface only, no actual communication)
-        output_data = {"workflow_executed": definition.name, "provider": "n8n", "status": "completed"}
+        output_data = {
+            "workflow_executed": definition.name,
+            "provider": "n8n",
+            "status": "completed",
+        }
         return AutomationResult(
             session_id=session.session_id,
             success=True,
             output_data=output_data,
             errors=[],
-            execution_time=time.time() - start_time
+            execution_time=time.time() - start_time,
         )
 
 
@@ -78,19 +86,27 @@ class LocalGitHubActionsProvider(GitHubActionsProvider):
         errors = []
         for cred in definition.credentials:
             if cred.provider_type != "github":
-                errors.append(f"Provider Compatibility: GitHub actions provider cannot resolve credential reference '{cred.reference_id}' of type '{cred.provider_type}'.")
+                errors.append(
+                    f"Provider Compatibility: GitHub actions provider cannot resolve credential reference '{cred.reference_id}' of type '{cred.provider_type}'."
+                )
         return errors
 
-    def execute_workflow(self, definition: WorkflowDefinition, session: AutomationSession) -> AutomationResult:
+    def execute_workflow(
+        self, definition: WorkflowDefinition, session: AutomationSession
+    ) -> AutomationResult:
         start_time = time.time()
         # Mock execution logic
-        output_data = {"workflow_executed": definition.name, "provider": "github_actions", "status": "run_success"}
+        output_data = {
+            "workflow_executed": definition.name,
+            "provider": "github_actions",
+            "status": "run_success",
+        }
         return AutomationResult(
             session_id=session.session_id,
             success=True,
             output_data=output_data,
             errors=[],
-            execution_time=time.time() - start_time
+            execution_time=time.time() - start_time,
         )
 
 
@@ -105,19 +121,27 @@ class LocalTemporalProvider(TemporalProvider):
         errors = []
         for cred in definition.credentials:
             if cred.provider_type != "temporal":
-                errors.append(f"Provider Compatibility: Temporal provider cannot resolve credential reference '{cred.reference_id}' of type '{cred.provider_type}'.")
+                errors.append(
+                    f"Provider Compatibility: Temporal provider cannot resolve credential reference '{cred.reference_id}' of type '{cred.provider_type}'."
+                )
         return errors
 
-    def execute_workflow(self, definition: WorkflowDefinition, session: AutomationSession) -> AutomationResult:
+    def execute_workflow(
+        self, definition: WorkflowDefinition, session: AutomationSession
+    ) -> AutomationResult:
         start_time = time.time()
         # Mock execution logic
-        output_data = {"workflow_executed": definition.name, "provider": "temporal", "status": "workflow_completed"}
+        output_data = {
+            "workflow_executed": definition.name,
+            "provider": "temporal",
+            "status": "workflow_completed",
+        }
         return AutomationResult(
             session_id=session.session_id,
             success=True,
             output_data=output_data,
             errors=[],
-            execution_time=time.time() - start_time
+            execution_time=time.time() - start_time,
         )
 
 
@@ -143,10 +167,14 @@ class LocalAutomationRegistry(AutomationRegistry):
                     "description": definition.metadata.description if definition.metadata else "",
                     "metadata": {
                         "tags": definition.metadata.tags if definition.metadata else [],
-                        "labels": definition.metadata.labels if definition.metadata else {}
+                        "labels": definition.metadata.labels if definition.metadata else {},
                     },
                     "triggers": [
-                        {"trigger_id": t.trigger_id, "trigger_type": t.trigger_type, "config": t.config}
+                        {
+                            "trigger_id": t.trigger_id,
+                            "trigger_type": t.trigger_type,
+                            "config": t.config,
+                        }
                         for t in definition.triggers
                     ],
                     "actions": [
@@ -154,19 +182,35 @@ class LocalAutomationRegistry(AutomationRegistry):
                         for a in definition.actions
                     ],
                     "conditions": [
-                        {"condition_id": c.condition_id, "expression": c.expression, "config": c.config}
+                        {
+                            "condition_id": c.condition_id,
+                            "expression": c.expression,
+                            "config": c.config,
+                        }
                         for c in definition.conditions
                     ],
                     "variables": [
-                        {"name": v.name, "value_type": v.value_type, "default_value": v.default_value}
+                        {
+                            "name": v.name,
+                            "value_type": v.value_type,
+                            "default_value": v.default_value,
+                        }
                         for v in definition.variables
                     ],
                     "policy": {
                         "max_retries": definition.policy.max_retries if definition.policy else 3,
-                        "retry_delay_seconds": definition.policy.retry_delay_seconds if definition.policy else 10,
-                        "timeout_seconds": definition.policy.timeout_seconds if definition.policy else 600,
-                        "concurrency_limit": definition.policy.concurrency_limit if definition.policy else 1
-                    } if definition.policy else {}
+                        "retry_delay_seconds": definition.policy.retry_delay_seconds
+                        if definition.policy
+                        else 10,
+                        "timeout_seconds": definition.policy.timeout_seconds
+                        if definition.policy
+                        else 600,
+                        "concurrency_limit": definition.policy.concurrency_limit
+                        if definition.policy
+                        else 1,
+                    }
+                    if definition.policy
+                    else {},
                 }
                 self._repo.save(wf_data)
             except Exception:
@@ -191,10 +235,11 @@ class LocalAutomationRegistry(AutomationRegistry):
                         WorkflowTrigger,
                         WorkflowVariable,
                     )
+
                     metadata = WorkflowMetadata(
                         tags=payload.get("metadata", {}).get("tags", []),
                         labels=payload.get("metadata", {}).get("labels", {}),
-                        description=payload.get("description", "")
+                        description=payload.get("description", ""),
                     )
                     triggers = [
                         WorkflowTrigger(t["trigger_id"], t["trigger_type"], t.get("config", {}))
@@ -219,7 +264,7 @@ class LocalAutomationRegistry(AutomationRegistry):
                             max_retries=p_data.get("max_retries", 3),
                             retry_delay_seconds=p_data.get("retry_delay_seconds", 10),
                             timeout_seconds=p_data.get("timeout_seconds", 600),
-                            concurrency_limit=p_data.get("concurrency_limit", 1)
+                            concurrency_limit=p_data.get("concurrency_limit", 1),
                         )
                     definition = WorkflowDefinition(
                         workflow_id=payload["id"],
@@ -230,7 +275,7 @@ class LocalAutomationRegistry(AutomationRegistry):
                         conditions=conditions,
                         variables=variables,
                         policy=policy,
-                        metadata=metadata
+                        metadata=metadata,
                     )
                     self._definitions[workflow_id] = definition
                     return definition
@@ -250,11 +295,15 @@ class LocalAutomationValidator(AutomationValidator):
         node_ids = set()
         for node in graph.nodes:
             if node.node_id in node_ids:
-                errors.append(f"Duplicate Identifier: Node ID '{node.node_id}' is declared multiple times.")
+                errors.append(
+                    f"Duplicate Identifier: Node ID '{node.node_id}' is declared multiple times."
+                )
             node_ids.add(node.node_id)
 
         # 2. Check missing triggers or actions
-        has_trigger = any(n.node_type == "trigger" for n in graph.nodes) or bool(definition.triggers)
+        has_trigger = any(n.node_type == "trigger" for n in graph.nodes) or bool(
+            definition.triggers
+        )
         has_action = any(n.node_type == "action" for n in graph.nodes) or bool(definition.actions)
 
         if not has_trigger:
@@ -268,10 +317,14 @@ class LocalAutomationValidator(AutomationValidator):
 
         for edge in graph.edges:
             if edge.source_node_id not in incoming_counts:
-                errors.append(f"Integrity Error: Edge source '{edge.source_node_id}' does not exist in graph nodes list.")
+                errors.append(
+                    f"Integrity Error: Edge source '{edge.source_node_id}' does not exist in graph nodes list."
+                )
                 continue
             if edge.target_node_id not in incoming_counts:
-                errors.append(f"Integrity Error: Edge target '{edge.target_node_id}' does not exist in graph nodes list.")
+                errors.append(
+                    f"Integrity Error: Edge target '{edge.target_node_id}' does not exist in graph nodes list."
+                )
                 continue
 
             outgoing_counts[edge.source_node_id] += 1
@@ -280,7 +333,9 @@ class LocalAutomationValidator(AutomationValidator):
         for node in graph.nodes:
             # Non-trigger nodes should have incoming links
             if node.node_type != "trigger" and incoming_counts.get(node.node_id, 0) == 0:
-                errors.append(f"Disconnected Node: Action node '{node.node_id}' lacks incoming execution edges.")
+                errors.append(
+                    f"Disconnected Node: Action node '{node.node_id}' lacks incoming execution edges."
+                )
 
         # 4. Cycle detection using simple DFS
         visited = {}
@@ -291,7 +346,9 @@ class LocalAutomationValidator(AutomationValidator):
             rec_stack[node_id] = True
 
             # find neighbors
-            neighbors = [edge.target_node_id for edge in graph.edges if edge.source_node_id == node_id]
+            neighbors = [
+                edge.target_node_id for edge in graph.edges if edge.source_node_id == node_id
+            ]
             for n in neighbors:
                 if not visited.get(n, False):
                     if has_cycle(n):
@@ -311,16 +368,22 @@ class LocalAutomationValidator(AutomationValidator):
         # 5. Credential reference completeness
         for cred in definition.credentials:
             if not cred.credential_name:
-                errors.append(f"Credential Error: Credential reference '{cred.reference_id}' is missing a vault name.")
+                errors.append(
+                    f"Credential Error: Credential reference '{cred.reference_id}' is missing a vault name."
+                )
 
         # 6. Policy consistency
         if definition.policy:
             if definition.policy.max_retries < 0:
                 errors.append("Execution Policy Error: max_retries count cannot be negative.")
             if definition.policy.retry_delay_seconds <= 0:
-                errors.append("Execution Policy Error: retry_delay_seconds delay must be greater than zero.")
+                errors.append(
+                    "Execution Policy Error: retry_delay_seconds delay must be greater than zero."
+                )
             if definition.policy.timeout_seconds <= 0:
-                errors.append("Execution Policy Error: timeout_seconds threshold must be greater than zero.")
+                errors.append(
+                    "Execution Policy Error: timeout_seconds threshold must be greater than zero."
+                )
 
         return errors
 
@@ -328,7 +391,9 @@ class LocalAutomationValidator(AutomationValidator):
 class LocalAutomationManager(AutomationManager):
     """Instantiates automation sessions and delegates executions to provider stubs."""
 
-    def __init__(self, providers: AutomationProviderRegistry, registry: LocalAutomationRegistry) -> None:
+    def __init__(
+        self, providers: AutomationProviderRegistry, registry: LocalAutomationRegistry
+    ) -> None:
         self._providers = providers
         self._registry = registry
 
@@ -338,7 +403,7 @@ class LocalAutomationManager(AutomationManager):
             workflow_id=workflow_id,
             workspace_id=workspace_id,
             status="pending",
-            created_at=time.time()
+            created_at=time.time(),
         )
 
     def execute_session(self, session: AutomationSession, provider_id: str) -> AutomationResult:
@@ -347,7 +412,7 @@ class LocalAutomationManager(AutomationManager):
             return AutomationResult(
                 session_id=session.session_id,
                 success=False,
-                errors=[f"Workflow definition '{session.workflow_id}' not found in registry."]
+                errors=[f"Workflow definition '{session.workflow_id}' not found in registry."],
             )
 
         provider = self._providers.get(provider_id)
@@ -355,16 +420,14 @@ class LocalAutomationManager(AutomationManager):
             return AutomationResult(
                 session_id=session.session_id,
                 success=False,
-                errors=[f"Execution provider '{provider_id}' is not registered."]
+                errors=[f"Execution provider '{provider_id}' is not registered."],
             )
 
         # Provider compatibility validation
         comp_errors = provider.validate_definition(workflow)
         if comp_errors:
             return AutomationResult(
-                session_id=session.session_id,
-                success=False,
-                errors=comp_errors
+                session_id=session.session_id, success=False, errors=comp_errors
             )
 
         session.status = "running"
@@ -382,7 +445,7 @@ class LocalAutomationService(AutomationService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -436,7 +499,7 @@ class LocalAutomationService(AutomationService):
 
         automations_dir = os.path.join(workspace_root, "docs", "automations")
         os.makedirs(automations_dir, exist_ok=True)
-        
+
         file_path = os.path.join(automations_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -446,8 +509,12 @@ class LocalAutomationService(AutomationService):
     def register_provider(self, provider: AutomationProvider) -> None:
         self._providers.register(provider)
 
-    def run_automation(self, workflow_id: str, workspace_id: str, provider_id: str) -> AutomationSession:
-        logger.info(f"Submitting execution request for workflow '{workflow_id}' under workspace '{workspace_id}'")
+    def run_automation(
+        self, workflow_id: str, workspace_id: str, provider_id: str
+    ) -> AutomationSession:
+        logger.info(
+            f"Submitting execution request for workflow '{workflow_id}' under workspace '{workspace_id}'"
+        )
 
         workflow = self._workflow_registry.get_workflow(workflow_id)
         if not workflow:
@@ -478,7 +545,7 @@ class LocalAutomationService(AutomationService):
                 max_retries=retries,
                 retry_delay_seconds=10,
                 timeout_seconds=timeout,
-                concurrency_limit=1
+                concurrency_limit=1,
             )
 
         # 2. Instantiates session
@@ -486,13 +553,15 @@ class LocalAutomationService(AutomationService):
         self._sessions[session.session_id] = session
         if self._exec_repo:
             try:
-                self._exec_repo.save({
-                    "id": session.session_id,
-                    "workflow_id": session.workflow_id,
-                    "workspace_id": session.workspace_id,
-                    "status": session.status,
-                    "created_at": session.created_at
-                })
+                self._exec_repo.save(
+                    {
+                        "id": session.session_id,
+                        "workflow_id": session.workflow_id,
+                        "workspace_id": session.workspace_id,
+                        "status": session.status,
+                        "created_at": session.created_at,
+                    }
+                )
             except Exception:
                 pass
 
@@ -500,21 +569,20 @@ class LocalAutomationService(AutomationService):
         result = self._manager.execute_session(session, provider_id)
         if self._exec_repo:
             try:
-                self._exec_repo.save({
-                    "id": session.session_id,
-                    "workflow_id": session.workflow_id,
-                    "workspace_id": session.workspace_id,
-                    "status": session.status,
-                    "success": 1 if result.success else 0,
-                    "error_summary": ", ".join(result.errors) if result.errors else None,
-                    "execution_time": result.execution_time,
-                    "created_at": session.created_at,
-                    "closed_at": session.closed_at,
-                    "metadata": {
-                        "provider": provider_id,
-                        "output_data": result.output_data
+                self._exec_repo.save(
+                    {
+                        "id": session.session_id,
+                        "workflow_id": session.workflow_id,
+                        "workspace_id": session.workspace_id,
+                        "status": session.status,
+                        "success": 1 if result.success else 0,
+                        "error_summary": ", ".join(result.errors) if result.errors else None,
+                        "execution_time": result.execution_time,
+                        "created_at": session.created_at,
+                        "closed_at": session.closed_at,
+                        "metadata": {"provider": provider_id, "output_data": result.output_data},
                     }
-                })
+                )
             except Exception:
                 pass
 
@@ -532,7 +600,7 @@ class LocalAutomationService(AutomationService):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output refined execution details.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -549,7 +617,7 @@ class LocalAutomationService(AutomationService):
             workflow_name=workflow.name,
             status=session.status,
             error_summary=", ".join(result.errors) if result.errors else None,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if workspace_id not in self._reports:
@@ -568,10 +636,13 @@ class LocalAutomationService(AutomationService):
             f"## Output Diagnostics\n"
             f"```json\n{result.output_data}\n```\n"
         )
-        self._write_to_workspace(workspace_id, f"AUTOMATION_REPORT_{session.session_id}.md", report_md)
+        self._write_to_workspace(
+            workspace_id, f"AUTOMATION_REPORT_{session.session_id}.md", report_md
+        )
 
         try:
             from aios.services.persistence import SemanticMemoryManager
+
             sem_mgr = self._registry.get(SemanticMemoryManager) if self._registry else None
             if sem_mgr:
                 metadata = {
@@ -579,14 +650,14 @@ class LocalAutomationService(AutomationService):
                     "session_id": session.session_id,
                     "workflow_name": workflow.name,
                     "timestamp": time.time(),
-                    "type": "automation_execution"
+                    "type": "automation_execution",
                 }
                 sem_mgr.index_memory(
                     repository_name="automation_memory",
                     entity_id=session.session_id,
                     text=report_md,
                     metadata=metadata,
-                    tags=["automation", "run_report", workflow.name]
+                    tags=["automation", "run_report", workflow.name],
                 )
         except Exception:
             pass
@@ -607,7 +678,7 @@ class LocalAutomationService(AutomationService):
                         workspace_id=payload.get("workspace_id", ""),
                         status=payload.get("status", ""),
                         created_at=payload.get("created_at", time.time()),
-                        closed_at=payload.get("closed_at")
+                        closed_at=payload.get("closed_at"),
                     )
                     self._sessions[session_id] = session
                     return session
@@ -621,7 +692,7 @@ class LocalAutomationService(AutomationService):
                 p_service = self._registry.get(PersistenceService)
                 res = p_service.execute(
                     "SELECT * FROM workflow_executions WHERE workspace_id = ? AND status != 'telemetry'",
-                    (workspace_id,)
+                    (workspace_id,),
                 )
                 reports = []
                 for row in res:
@@ -634,7 +705,7 @@ class LocalAutomationService(AutomationService):
                             workflow_name=row.get("workflow_id", ""),
                             status=row.get("status", ""),
                             error_summary=row.get("error_summary"),
-                            timestamp=row.get("closed_at") or row.get("created_at") or time.time()
+                            timestamp=row.get("closed_at") or row.get("created_at") or time.time(),
                         )
                     )
                 self._reports[workspace_id] = reports
@@ -651,7 +722,7 @@ class LocalAutomationService(AutomationService):
         # Fetch report details
         reports = self.get_history(session.workspace_id)
         next((r for r in reports if r.session_id == session_id), None)
-        
+
         # Form summary string. Never store credentials or source code.
         content = (
             f"Automation Execution Logged\n"
@@ -671,8 +742,8 @@ class LocalAutomationService(AutomationService):
                 "session_id": session_id,
                 "workspace_id": session.workspace_id,
                 "workflow_id": session.workflow_id,
-                "status": session.status
-            }
+                "status": session.status,
+            },
         )
 
     def publish_automation_report(self, report: AutomationReport) -> None:
@@ -696,7 +767,7 @@ class LocalAutomationService(AutomationService):
                 unique_id=f"aut_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="automation_intelligence_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

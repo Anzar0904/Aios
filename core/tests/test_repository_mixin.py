@@ -11,6 +11,7 @@ Verifies that:
 7. Duplicate bootstrap (calling register twice) does NOT break the repository.
 8. STRICT policy propagates RuntimeError from all mixin helpers.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,6 +27,7 @@ from aios.services.persistence import (
 from aios.services.persistence_impl_modules.repo_base import _RepositoryMixin
 
 # ─── Minimal concrete repo used only in these tests ───────────────────────────
+
 
 class _FailingError(Exception):
     pass
@@ -65,8 +67,8 @@ def _make_service(*, status: str = "ok", policy: PersistencePolicy = Persistence
     return svc
 
 
-
 # ─── 1. Inheritance presence ──────────────────────────────────────────────────
+
 
 def test_mixin_in_group2_classes():
     """All Group-2 repository classes must inherit _RepositoryMixin."""
@@ -104,9 +106,7 @@ def test_mixin_in_group2_classes():
     for class_name in group2_names:
         cls = getattr(R, class_name, None)
         assert cls is not None, f"{class_name} not found in repositories module"
-        assert issubclass(cls, _RepositoryMixin), (
-            f"{class_name} does not inherit _RepositoryMixin"
-        )
+        assert issubclass(cls, _RepositoryMixin), f"{class_name} does not inherit _RepositoryMixin"
 
 
 def test_group1_classes_unmodified():
@@ -130,6 +130,7 @@ def test_group1_classes_unmodified():
 
 # ─── 2. Lifecycle no-ops inherited correctly ──────────────────────────────────
 
+
 def test_lifecycle_methods_are_noop():
     """initialize/start/stop inherited from mixin must be callable and return None."""
     repo = _ConcreteRepo(_make_service())
@@ -141,6 +142,7 @@ def test_lifecycle_methods_are_noop():
 def test_group2_lifecycle_noop():
     """Spot-check a Group-2 repo: initialize/start/stop must still be no-ops."""
     from aios.services.persistence_impl_modules.repositories import EngineeringTaskRepositoryImpl
+
     svc = _make_service()
     repo = EngineeringTaskRepositoryImpl(svc)
     assert repo.initialize() is None
@@ -149,6 +151,7 @@ def test_group2_lifecycle_noop():
 
 
 # ─── 3. _guard_status ─────────────────────────────────────────────────────────
+
 
 def test_guard_status_returns_none_on_success():
     svc = _make_service(status="ok")
@@ -173,6 +176,7 @@ def test_guard_status_raises_on_strict_failure():
 
 
 # ─── 4. _write ────────────────────────────────────────────────────────────────
+
 
 def test_write_success():
     svc = _make_service()
@@ -204,6 +208,7 @@ def test_write_failure_strict_raises():
 
 # ─── 5. _fetch_one ────────────────────────────────────────────────────────────
 
+
 def _row(data: Dict) -> MagicMock:
     """Make a mock row that behaves like a sqlite3.Row."""
     mock = MagicMock()
@@ -233,7 +238,9 @@ def test_fetch_one_not_found_best_effort():
     svc = _make_service()
     svc.execute.return_value = []
     repo = _ConcreteRepo(svc)
-    result = repo._fetch_one("t", "SELECT * FROM t WHERE id=?", ("abc",), "abc", lambda r: r, "Got.")
+    result = repo._fetch_one(
+        "t", "SELECT * FROM t WHERE id=?", ("abc",), "abc", lambda r: r, "Got."
+    )
     assert result.status == PersistenceStatus.UNKNOWN_FAILURE
     assert "not found" in result.message
 
@@ -255,6 +262,7 @@ def test_fetch_one_db_error_strict_raises():
 
 
 # ─── 6. _fetch_all ────────────────────────────────────────────────────────────
+
 
 def test_fetch_all_empty():
     svc = _make_service()
@@ -292,9 +300,11 @@ def test_fetch_all_db_error_best_effort():
 
 # ─── 7. Duplicate bootstrap safety ───────────────────────────────────────────
 
+
 def test_duplicate_instantiation_is_safe():
     """Instantiating a Group-2 repo twice must not raise or corrupt state."""
     from aios.services.persistence_impl_modules.repositories import PlanningRepositoryImpl
+
     svc = _make_service()
     repo1 = PlanningRepositoryImpl(svc)
     repo2 = PlanningRepositoryImpl(svc)
@@ -305,6 +315,7 @@ def test_duplicate_instantiation_is_safe():
 
 
 # ─── 8. End-to-end save + get + delete round-trip (in-memory mock) ───────────
+
 
 def test_engineering_task_roundtrip():
     """EngineeringTaskRepositoryImpl save→get→delete using mocked service."""
@@ -371,6 +382,7 @@ def test_engineering_task_roundtrip():
 
 # ─── 9. _write_with_cache ─────────────────────────────────────────────────────
 
+
 def test_write_with_cache_no_cache_service():
     """_write_with_cache succeeds even when no cache service is available."""
     svc = _make_service()
@@ -393,8 +405,12 @@ def test_write_with_cache_failure_best_effort():
     svc.execute.side_effect = Exception("DB error")
     repo = _ConcreteRepo(svc)
     result = repo._write_with_cache(
-        "my_table", "INSERT INTO my_table VALUES (?)", ("val",), "Saved.",
-        cache_namespace="my_ns", entity_id="e1",
+        "my_table",
+        "INSERT INTO my_table VALUES (?)",
+        ("val",),
+        "Saved.",
+        cache_namespace="my_ns",
+        entity_id="e1",
     )
     assert result.status == PersistenceStatus.UNKNOWN_FAILURE
 
@@ -406,8 +422,12 @@ def test_write_with_cache_failure_strict_raises():
     repo = _ConcreteRepo(svc)
     with pytest.raises(RuntimeError, match="Strict DB error"):
         repo._write_with_cache(
-            "my_table", "INSERT INTO my_table VALUES (?)", ("v",), "Saved.",
-            cache_namespace="my_ns", entity_id="e1",
+            "my_table",
+            "INSERT INTO my_table VALUES (?)",
+            ("v",),
+            "Saved.",
+            cache_namespace="my_ns",
+            entity_id="e1",
         )
 
 
@@ -422,11 +442,16 @@ def test_write_with_cache_write_through(monkeypatch):
     mock_policy_mgr = MagicMock()
 
     # Patch _resolve_cache_services to return our fakes
-    monkeypatch.setattr(rb._RepositoryMixin, "_resolve_cache_services", staticmethod(lambda: (mock_cache, mock_policy_mgr)))
+    monkeypatch.setattr(
+        rb._RepositoryMixin,
+        "_resolve_cache_services",
+        staticmethod(lambda: (mock_cache, mock_policy_mgr)),
+    )
 
     # Make get_policy return WRITE_THROUGH
     try:
         from aios.services.persistence import CachePolicy
+
         mock_policy_mgr.get_policy.return_value = CachePolicy.WRITE_THROUGH
     except Exception:
         # CachePolicy not importable in this test context — skip the assertion
@@ -442,9 +467,14 @@ def test_write_with_cache_write_through(monkeypatch):
         return {"x": 1}
 
     result = repo._write_with_cache(
-        "t", "INSERT INTO t VALUES (?)", ("v",), "Saved.",
-        cache_namespace="ns", entity_id="eid",
-        cache_payload_fn=_payload, retrieve_msg="Got it.",
+        "t",
+        "INSERT INTO t VALUES (?)",
+        ("v",),
+        "Saved.",
+        cache_namespace="ns",
+        entity_id="eid",
+        cache_payload_fn=_payload,
+        retrieve_msg="Got it.",
     )
     assert result.status == PersistenceStatus.SUCCESS
     assert payload_called  # _cache_payload_fn was invoked
@@ -452,6 +482,7 @@ def test_write_with_cache_write_through(monkeypatch):
 
 
 # ─── 10. _delete_with_cache ───────────────────────────────────────────────────
+
 
 def test_delete_with_cache_no_cache_service():
     """_delete_with_cache succeeds when no cache service is available."""
@@ -498,11 +529,17 @@ def test_delete_with_cache_failure_strict_raises():
     repo = _ConcreteRepo(svc)
     with pytest.raises(RuntimeError, match="DB fail"):
         repo._delete_with_cache(
-            "t", "DELETE FROM t WHERE id = ?", ("e1",), "Deleted.", "ns", "e1",
+            "t",
+            "DELETE FROM t WHERE id = ?",
+            ("e1",),
+            "Deleted.",
+            "ns",
+            "e1",
         )
 
 
 # ─── 11. _fetch_one_with_cache ────────────────────────────────────────────────
+
 
 def test_fetch_one_with_cache_found_no_cache():
     """_fetch_one_with_cache returns SUCCESS when row found and no cache available."""
@@ -549,8 +586,14 @@ def test_fetch_one_with_cache_strict_not_found_raises():
     repo = _ConcreteRepo(svc)
     with pytest.raises(RuntimeError, match="Not found"):
         repo._fetch_one_with_cache(
-            "t", "SELECT * FROM t WHERE id = ?", ("abc",),
-            "abc", lambda r: r, "Got.", "Not found.", "ns",
+            "t",
+            "SELECT * FROM t WHERE id = ?",
+            ("abc",),
+            "abc",
+            lambda r: r,
+            "Got.",
+            "Not found.",
+            "ns",
         )
 
 
@@ -573,14 +616,21 @@ def test_fetch_one_with_cache_uses_cache_service(monkeypatch):
     svc = _make_service()
     repo = _ConcreteRepo(svc)
     result = repo._fetch_one_with_cache(
-        "t", "SELECT * FROM t WHERE id = ?", ("abc",),
-        "abc", lambda r: r, "Got.", "Not found.", "ns",
+        "t",
+        "SELECT * FROM t WHERE id = ?",
+        ("abc",),
+        "abc",
+        lambda r: r,
+        "Got.",
+        "Not found.",
+        "ns",
     )
     mock_cache.get.assert_called_once()
     assert result is cached_result
 
 
 # ─── 12. Provider repos fully use mixin helpers ───────────────────────────────
+
 
 def test_provider_capability_uses_mixin():
     """ProviderCapabilityRepositoryImpl.save/get/delete use mixin helpers."""
@@ -603,7 +653,12 @@ def test_provider_capability_uses_mixin():
     assert result.status == PersistenceStatus.UNKNOWN_FAILURE
 
     # get — found
-    db_row = {"id": "cap-1", "provider_name": "openai", "capabilities": '{"text": true}', "timestamp": 0}
+    db_row = {
+        "id": "cap-1",
+        "provider_name": "openai",
+        "capabilities": '{"text": true}',
+        "timestamp": 0,
+    }
     svc.execute.return_value = [db_row]
     result = repo.get("cap-1")
     assert result.status == PersistenceStatus.SUCCESS
@@ -622,10 +677,17 @@ def test_provider_health_uses_mixin():
     svc = _make_service()
     repo = ProviderHealthRepositoryImpl(svc)
 
-    health = {"id": "h-1", "provider_name": "openai", "is_healthy": True,
-              "availability_pct": 99.9, "success_rate": 0.99,
-              "rate_limited_until": None, "circuit_breaker_state": "closed",
-              "cooldown_until": None, "timestamp": 0}
+    health = {
+        "id": "h-1",
+        "provider_name": "openai",
+        "is_healthy": True,
+        "availability_pct": 99.9,
+        "success_rate": 0.99,
+        "rate_limited_until": None,
+        "circuit_breaker_state": "closed",
+        "cooldown_until": None,
+        "timestamp": 0,
+    }
 
     svc.execute.return_value = []
     result = repo.save(health)
@@ -649,9 +711,16 @@ def test_provider_routing_uses_mixin():
     svc = _make_service()
     repo = ProviderRoutingRepositoryImpl(svc)
 
-    routing = {"id": "r-1", "request_model": "gpt-4", "selected_provider": "openai",
-               "selected_model": "gpt-4", "strategy": "cost",
-               "routing_candidates": ["openai"], "operation_result_ref": None, "timestamp": 0}
+    routing = {
+        "id": "r-1",
+        "request_model": "gpt-4",
+        "selected_provider": "openai",
+        "selected_model": "gpt-4",
+        "strategy": "cost",
+        "routing_candidates": ["openai"],
+        "operation_result_ref": None,
+        "timestamp": 0,
+    }
 
     svc.execute.return_value = []
     result = repo.save(routing)

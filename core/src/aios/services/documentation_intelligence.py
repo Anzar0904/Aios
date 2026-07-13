@@ -9,6 +9,7 @@ from aios.services.engineering_profile import DocumentationProfile
 
 class DocumentCategory(Enum):
     """Enumerate documentation category classifications."""
+
     __test__ = False
     README = "readme"
     CHANGELOG = "changelog"
@@ -25,6 +26,7 @@ class DocumentCategory(Enum):
 
 class DocumentSource(Enum):
     """Enumerate artifact inputs source components."""
+
     __test__ = False
     ENGINEERING_INTEL = "engineering_intel"
     SOFTWARE_ENG = "software_eng"
@@ -38,6 +40,7 @@ class DocumentSource(Enum):
 @dataclass
 class DocumentMetadata:
     """Consolidated metadata tagging a single document."""
+
     __test__ = False
     doc_id: str
     category: DocumentCategory
@@ -51,6 +54,7 @@ class DocumentMetadata:
 @dataclass
 class DocumentTemplate:
     """Document template settings outlining target headings structure."""
+
     __test__ = False
     template_id: str
     name: str
@@ -60,6 +64,7 @@ class DocumentTemplate:
 @dataclass
 class DocumentArtifact:
     """Represents a generated/registered documentation artifact."""
+
     __test__ = False
     artifact_id: str
     metadata: DocumentMetadata
@@ -70,6 +75,7 @@ class DocumentArtifact:
 @dataclass
 class DocumentationWorkspace:
     """Active repository directory mapping configuration settings."""
+
     __test__ = False
     workspace_id: str
     path: str
@@ -79,6 +85,7 @@ class DocumentationWorkspace:
 @dataclass
 class DocumentationSession:
     """Telemetry record tracking documentation generation sessions lifecycle."""
+
     __test__ = False
     session_id: str
     workspace: DocumentationWorkspace
@@ -89,6 +96,7 @@ class DocumentationSession:
 @dataclass
 class DocumentationResult:
     """Aggregates documentation generation results."""
+
     __test__ = False
     result_id: str
     session_id: str
@@ -99,6 +107,7 @@ class DocumentationResult:
 
 class DocumentationProfileAdapter:
     """Adapts engineering configurations to documentation-specific parameters."""
+
     __test__ = False
 
     def __init__(self, profile: DocumentationProfile) -> None:
@@ -116,13 +125,12 @@ class DocumentationProfileAdapter:
 
 class DocumentationPlanner(abc.ABC):
     """Plans template layouts based on target project profiles."""
+
     __test__ = False
 
     @abc.abstractmethod
     def plan_documentation(
-        self,
-        session: DocumentationSession,
-        profile_adapter: DocumentationProfileAdapter
+        self, session: DocumentationSession, profile_adapter: DocumentationProfileAdapter
     ) -> List[DocumentTemplate]:
         """Assembles recommended lists of doc templates."""
         pass
@@ -130,6 +138,7 @@ class DocumentationPlanner(abc.ABC):
 
 class DocumentationRegistry:
     """Thread-safe registry caching documents and layout templates."""
+
     __test__ = False
 
     def __init__(self) -> None:
@@ -151,6 +160,7 @@ class DocumentationRegistry:
 
 class DocumentationService(ServiceLifecycle, abc.ABC):
     """Coordinating service organizing document plans and registers."""
+
     __test__ = False
 
     @abc.abstractmethod

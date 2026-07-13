@@ -29,7 +29,7 @@ def mock_memory_service():
             memory_type=MemoryType.USER_PREFERENCE,
             metadata=mock_meta,
             created_at=0.0,
-            updated_at=0.0
+            updated_at=0.0,
         )
     ]
     retriever.retrieve.return_value = memories
@@ -43,7 +43,7 @@ def mock_reasoning_service():
     res = ReasoningResult(
         success=True,
         plan={"plan_id": "rplan_123", "tasks": []},
-        self_critique={"safety_status": "safe"}
+        self_critique={"safety_status": "safe"},
     )
     service.reason.return_value = res
     return service
@@ -70,7 +70,7 @@ def test_intent_classification_llm():
     model_mock.execute_request.return_value = LLMResponse(
         content=json.dumps(["Career", "Research", "GitHub"]),
         model_name="mock-model",
-        provider_name="mock-provider"
+        provider_name="mock-provider",
     )
 
     classifier = LocalIntentClassifier(model_mock)
@@ -128,9 +128,7 @@ def test_intent_engine_process_objective(mock_memory_service, mock_reasoning_ser
 def test_intent_engine_reasoning_rejection(mock_memory_service, mock_reasoning_service):
     # Mock reasoning rejection
     mock_reasoning_service.reason.return_value = ReasoningResult(
-        success=False,
-        plan={},
-        self_critique={"safety_status": "unsafe"}
+        success=False, plan={}, self_critique={"safety_status": "unsafe"}
     )
 
     engine = LocalIntentEngine(mock_memory_service, mock_reasoning_service)

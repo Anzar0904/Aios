@@ -12,8 +12,22 @@ from aios.brain.workflow import (
 def test_linear_workflow_grouping():
     # Linear: s1 -> s2 -> s3
     s1 = WorkflowStep(step_id="s1", description="Step 1", skill_id="sys", command="cmd", args="")
-    s2 = WorkflowStep(step_id="s2", description="Step 2", skill_id="sys", command="cmd", args="", depends_on=["s1"])
-    s3 = WorkflowStep(step_id="s3", description="Step 3", skill_id="sys", command="cmd", args="", depends_on=["s2"])
+    s2 = WorkflowStep(
+        step_id="s2",
+        description="Step 2",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["s1"],
+    )
+    s3 = WorkflowStep(
+        step_id="s3",
+        description="Step 3",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["s2"],
+    )
 
     grouped = group_steps_into_levels([s1, s2, s3])
     assert len(grouped) == 3
@@ -27,9 +41,23 @@ def test_parallel_workflow_grouping():
     # s1 -> s2
     # s3 -> s4
     s1 = WorkflowStep(step_id="s1", description="Step 1", skill_id="sys", command="cmd", args="")
-    s2 = WorkflowStep(step_id="s2", description="Step 2", skill_id="sys", command="cmd", args="", depends_on=["s1"])
+    s2 = WorkflowStep(
+        step_id="s2",
+        description="Step 2",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["s1"],
+    )
     s3 = WorkflowStep(step_id="s3", description="Step 3", skill_id="sys", command="cmd", args="")
-    s4 = WorkflowStep(step_id="s4", description="Step 4", skill_id="sys", command="cmd", args="", depends_on=["s3"])
+    s4 = WorkflowStep(
+        step_id="s4",
+        description="Step 4",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["s3"],
+    )
 
     grouped = group_steps_into_levels([s1, s2, s3, s4])
     assert len(grouped) == 2
@@ -43,9 +71,15 @@ def test_parallel_workflow_grouping():
     assert s4 in grouped[1]
 
 
-
 def test_invalid_dependency_error():
-    s1 = WorkflowStep(step_id="s1", description="Step 1", skill_id="sys", command="cmd", args="", depends_on=["nonexistent"])
+    s1 = WorkflowStep(
+        step_id="s1",
+        description="Step 1",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["nonexistent"],
+    )
     with pytest.raises(ValueError) as exc:
         group_steps_into_levels([s1])
     assert "depends on non-existent step" in str(exc.value)
@@ -54,7 +88,14 @@ def test_invalid_dependency_error():
 def test_circular_dependency_error():
     # s1 -> s2 -> s1
     s1 = WorkflowStep(step_id="s1", description="Step 1", skill_id="sys", command="cmd", args="")
-    s2 = WorkflowStep(step_id="s2", description="Step 2", skill_id="sys", command="cmd", args="", depends_on=["s1"])
+    s2 = WorkflowStep(
+        step_id="s2",
+        description="Step 2",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["s1"],
+    )
     s1.depends_on = ["s2"]
 
     with pytest.raises(ValueError) as exc:
@@ -64,8 +105,15 @@ def test_circular_dependency_error():
 
 def test_visualization_output():
     s1 = WorkflowStep(step_id="s1", description="Step 1", skill_id="sys", command="cmd", args="")
-    s2 = WorkflowStep(step_id="s2", description="Step 2", skill_id="sys", command="cmd", args="", depends_on=["s1"])
-    
+    s2 = WorkflowStep(
+        step_id="s2",
+        description="Step 2",
+        skill_id="sys",
+        command="cmd",
+        args="",
+        depends_on=["s1"],
+    )
+
     viz = visualize_workflow_graph([s1, s2])
     assert "Level 0" in viz
     assert "Level 1" in viz
@@ -85,6 +133,7 @@ def test_executor_executes_by_levels():
         def handler(args):
             execution_order.append(name)
             return f"{name} done"
+
         return handler
 
     command_registry.get_handler.side_effect = lambda cmd: {
@@ -95,7 +144,9 @@ def test_executor_executes_by_levels():
 
     s1 = WorkflowStep(step_id="s1", description="Step 1", skill_id="sys", command="c1", args="")
     # s2 depends on s1
-    s2 = WorkflowStep(step_id="s2", description="Step 2", skill_id="sys", command="c2", args="", depends_on=["s1"])
+    s2 = WorkflowStep(
+        step_id="s2", description="Step 2", skill_id="sys", command="c2", args="", depends_on=["s1"]
+    )
     # s3 is independent (Level 0)
     s3 = WorkflowStep(step_id="s3", description="Step 3", skill_id="sys", command="c3", args="")
 

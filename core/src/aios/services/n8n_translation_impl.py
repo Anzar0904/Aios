@@ -54,7 +54,10 @@ class LocalN8NNodeMapper(N8NNodeMapper):
             trig_type = config.get("trigger_type", "manual")
             if trig_type == "webhook":
                 n8n_type = "n8n-nodes-base.webhook"
-                parameters = {"path": config.get("path", f"webhook-{node_id}"), "httpMethod": "POST"}
+                parameters = {
+                    "path": config.get("path", f"webhook-{node_id}"),
+                    "httpMethod": "POST",
+                }
             elif trig_type == "schedule":
                 n8n_type = "n8n-nodes-base.cron"
                 parameters = {"triggerTimes": {"item": [{"mode": "everyMinute"}]}}
@@ -79,12 +82,7 @@ class LocalN8NNodeMapper(N8NNodeMapper):
             n8n_type = "n8n-nodes-base.if"
             parameters = {
                 "conditions": {
-                    "string": [
-                        {
-                            "value1": config.get("expression", ""),
-                            "value2": "true"
-                        }
-                    ]
+                    "string": [{"value1": config.get("expression", ""), "value2": "true"}]
                 }
             }
 
@@ -94,7 +92,7 @@ class LocalN8NNodeMapper(N8NNodeMapper):
             "type": n8n_type,
             "typeVersion": 1,
             "position": [250, 250],
-            "parameters": parameters
+            "parameters": parameters,
         }
 
 
@@ -124,13 +122,17 @@ class LocalTranslationValidator(TranslationValidator):
         connections = n8n_json["connections"]
         for src_name, targets in connections.items():
             if src_name not in node_names:
-                errors.append(f"Broken Connection: Source node name '{src_name}' does not match any node.")
+                errors.append(
+                    f"Broken Connection: Source node name '{src_name}' does not match any node."
+                )
             for _conn_type, links in targets.items():
                 for link_list in links:
                     for link in link_list:
                         tgt_name = link.get("node")
                         if tgt_name not in node_names:
-                            errors.append(f"Broken Connection: Target node name '{tgt_name}' does not match any node.")
+                            errors.append(
+                                f"Broken Connection: Target node name '{tgt_name}' does not match any node."
+                            )
 
         return errors
 
@@ -141,37 +143,33 @@ class LocalWorkflowCompiler(WorkflowCompiler):
     def compile_definition_to_ir(self, definition: WorkflowDefinition) -> WorkflowIR:
         nodes = []
         for n in definition.graph.nodes:
-            nodes.append({
-                "node_id": n.node_id,
-                "name": n.name,
-                "node_type": n.node_type,
-                "config": n.config
-            })
+            nodes.append(
+                {"node_id": n.node_id, "name": n.name, "node_type": n.node_type, "config": n.config}
+            )
 
         edges = []
         for e in definition.graph.edges:
-            edges.append({
-                "edge_id": e.edge_id,
-                "source_node_id": e.source_node_id,
-                "target_node_id": e.target_node_id,
-                "condition": e.condition
-            })
+            edges.append(
+                {
+                    "edge_id": e.edge_id,
+                    "source_node_id": e.source_node_id,
+                    "target_node_id": e.target_node_id,
+                    "condition": e.condition,
+                }
+            )
 
         variables = {}
         for var in definition.variables:
-            variables[var.name] = {
-                "value_type": var.value_type,
-                "default_value": var.default_value
-            }
+            variables[var.name] = {"value_type": var.value_type, "default_value": var.default_value}
 
         metadata = {
             "tags": definition.metadata.tags if definition.metadata else [],
-            "description": definition.metadata.description if definition.metadata else ""
+            "description": definition.metadata.description if definition.metadata else "",
         }
 
         policy = {
             "max_retries": definition.policy.max_retries if definition.policy else 3,
-            "timeout_seconds": definition.policy.timeout_seconds if definition.policy else 600
+            "timeout_seconds": definition.policy.timeout_seconds if definition.policy else 600,
         }
 
         return WorkflowIR(
@@ -182,7 +180,7 @@ class LocalWorkflowCompiler(WorkflowCompiler):
             edges=edges,
             variables=variables,
             metadata=metadata,
-            policy=policy
+            policy=policy,
         )
 
 
@@ -224,11 +222,13 @@ class LocalN8NTranslationEngine(N8NTranslationEngine):
             src_name = node_id_to_name.get(edge["source_node_id"])
             tgt_name = node_id_to_name.get(edge["target_node_id"])
             if src_name and tgt_name:
-                edges_named.append({
-                    "edge_id": edge["edge_id"],
-                    "source_node_id": src_name,
-                    "target_node_id": tgt_name
-                })
+                edges_named.append(
+                    {
+                        "edge_id": edge["edge_id"],
+                        "source_node_id": src_name,
+                        "target_node_id": tgt_name,
+                    }
+                )
 
         connections = self.connection_mapper.map_connections(edges_named, context)
 
@@ -244,7 +244,7 @@ class LocalWorkflowTranslator(WorkflowTranslator):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -293,15 +293,19 @@ class LocalWorkflowTranslator(WorkflowTranslator):
 
         automations_dir = os.path.join(workspace_root, "docs", "automations")
         os.makedirs(automations_dir, exist_ok=True)
-        
+
         file_path = os.path.join(automations_dir, filename)
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         return file_path
 
-    def translate_workflow(self, definition: WorkflowDefinition, workspace_id: str) -> TranslationReport:
-        logger.info(f"Submitting translation for workflow '{definition.workflow_id}' under workspace '{workspace_id}'")
+    def translate_workflow(
+        self, definition: WorkflowDefinition, workspace_id: str
+    ) -> TranslationReport:
+        logger.info(
+            f"Submitting translation for workflow '{definition.workflow_id}' under workspace '{workspace_id}'"
+        )
 
         # 1. Compile Definition to IR canonical representation
         ir = self._compiler.compile_definition_to_ir(definition)
@@ -323,7 +327,9 @@ class LocalWorkflowTranslator(WorkflowTranslator):
         json_path = self._write_to_workspace(workspace_id, json_file, json_str)
 
         # 6. LLM overview refinement if active
-        overview = f"Workflow '{definition.name}' compiled to intermediate representation successfully."
+        overview = (
+            f"Workflow '{definition.name}' compiled to intermediate representation successfully."
+        )
         if self._model:
             try:
                 prompt = (
@@ -336,7 +342,7 @@ class LocalWorkflowTranslator(WorkflowTranslator):
                     LLMRequest(
                         prompt=prompt,
                         system_instruction="Output translation outline details.",
-                        task_category="testing"
+                        task_category="testing",
                     )
                 )
                 refined = res.content.strip()
@@ -354,35 +360,39 @@ class LocalWorkflowTranslator(WorkflowTranslator):
             connection_count=len(ir.edges),
             warnings=context.errors,
             n8n_json_file_path=json_path,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         if self._trans_repo:
             try:
-                self._trans_repo.save({
-                    "id": report.report_id,
-                    "workflow_id": definition.workflow_id,
-                    "workflow_metadata": {
-                        "name": definition.name,
-                        "description": definition.metadata.description if definition.metadata else ""
-                    },
-                    "translation_metadata": {
-                        "workspace_id": workspace_id,
-                        "session_id": session_id,
-                        "n8n_json_file_path": json_path
-                    },
-                    "ir_version": "v1",
-                    "translation_statistics": {
-                        "node_count": report.node_count,
-                        "connection_count": report.connection_count,
-                        "warnings_count": len(report.warnings)
-                    },
-                    "compilation_summaries": {
-                        "overview": overview,
-                        "warnings": report.warnings
-                    },
-                    "timestamp": report.timestamp
-                })
+                self._trans_repo.save(
+                    {
+                        "id": report.report_id,
+                        "workflow_id": definition.workflow_id,
+                        "workflow_metadata": {
+                            "name": definition.name,
+                            "description": definition.metadata.description
+                            if definition.metadata
+                            else "",
+                        },
+                        "translation_metadata": {
+                            "workspace_id": workspace_id,
+                            "session_id": session_id,
+                            "n8n_json_file_path": json_path,
+                        },
+                        "ir_version": "v1",
+                        "translation_statistics": {
+                            "node_count": report.node_count,
+                            "connection_count": report.connection_count,
+                            "warnings_count": len(report.warnings),
+                        },
+                        "compilation_summaries": {
+                            "overview": overview,
+                            "warnings": report.warnings,
+                        },
+                        "timestamp": report.timestamp,
+                    }
+                )
             except Exception:
                 pass
 
@@ -404,7 +414,9 @@ class LocalWorkflowTranslator(WorkflowTranslator):
             f"- **Connection Count**: {report.connection_count}\n\n"
             f"## Compilation Warnings/Errors\n" + (warns_md if warns_md else "- *None.*")
         )
-        self._write_to_workspace(workspace_id, f"TRANSLATION_REPORT_{definition.workflow_id}.md", report_md)
+        self._write_to_workspace(
+            workspace_id, f"TRANSLATION_REPORT_{definition.workflow_id}.md", report_md
+        )
 
         return report
 
@@ -428,7 +440,7 @@ class LocalWorkflowTranslator(WorkflowTranslator):
                                 connection_count=stats.get("connection_count", 0),
                                 warnings=comp.get("warnings", []),
                                 n8n_json_file_path=t_meta.get("n8n_json_file_path", ""),
-                                timestamp=row.get("timestamp") or time.time()
+                                timestamp=row.get("timestamp") or time.time(),
                             )
                         )
                 self._reports[workspace_id] = reports
@@ -455,7 +467,7 @@ class LocalWorkflowTranslator(WorkflowTranslator):
                         connection_count=stats.get("connection_count", 0),
                         warnings=comp.get("warnings", []),
                         n8n_json_file_path=t_meta.get("n8n_json_file_path", ""),
-                        timestamp=payload.get("timestamp") or time.time()
+                        timestamp=payload.get("timestamp") or time.time(),
                     )
             except Exception:
                 pass
@@ -482,8 +494,8 @@ class LocalWorkflowTranslator(WorkflowTranslator):
                 "report_id": report_id,
                 "workspace_id": report.workspace_id,
                 "node_count": report.node_count,
-                "connection_count": report.connection_count
-            }
+                "connection_count": report.connection_count,
+            },
         )
 
     def publish_translation_report(self, report: TranslationReport) -> None:
@@ -508,7 +520,7 @@ class LocalWorkflowTranslator(WorkflowTranslator):
                 unique_id=f"trans_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="n8n_translation_service",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

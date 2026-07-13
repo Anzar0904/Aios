@@ -159,9 +159,7 @@ class CertificationEngine:
 
         # --- 6. Completeness Analysis ----------------------------------------
         try:
-            completeness_findings = CompletenessAnalyzer().analyze(
-                self._docs_root, self._root
-            )
+            completeness_findings = CompletenessAnalyzer().analyze(self._docs_root, self._root)
             result.findings.extend(completeness_findings)
             completeness_errors = sum(
                 1 for f in completeness_findings if f.severity == Severity.ERROR
@@ -207,9 +205,7 @@ class CertificationEngine:
         }
 
         # --- Write Report Files ----------------------------------------------
-        logger.info(
-            "CertificationEngine: writing reports to %s ...", self._output_dir
-        )
+        logger.info("CertificationEngine: writing reports to %s ...", self._output_dir)
         try:
             self._output_dir.mkdir(parents=True, exist_ok=True)
         except OSError as exc:

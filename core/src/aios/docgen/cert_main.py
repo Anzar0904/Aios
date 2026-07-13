@@ -34,9 +34,7 @@ def main() -> int:
         default=None,
         help="Path to the AIOS project root (default: auto-detect from cwd)",
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable debug logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -57,7 +55,9 @@ def main() -> int:
         print("AIOS Documentation Certification — Sprint 7 Milestone 6")
         print("=" * 62)
         print(f"Status:          {result.status.value.upper()}")
-        print(f"Health Score:    {result.quality.health_score:.1f}/100  (Grade: {result.quality.grade})")
+        print(
+            f"Health Score:    {result.quality.health_score:.1f}/100  (Grade: {result.quality.grade})"
+        )
         print(f"Elapsed:         {result.elapsed_seconds:.2f}s")
         print(f"Output:          {engine.output_dir}")
         print()
@@ -101,6 +101,7 @@ def main() -> int:
         print(f"ERROR: {e}", file=sys.stderr)
         if "--verbose" in sys.argv or "-v" in sys.argv:
             import traceback
+
             traceback.print_exc()
         return 1
 

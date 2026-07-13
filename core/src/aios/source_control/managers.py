@@ -20,7 +20,9 @@ class RepositoryManager(DIInitializeMixin):
     def get_metadata(self, repo_name: str) -> RepositoryMetadata:
         return self.service.get_active_provider().get_repository_metadata(repo_name)
 
-    def create(self, name: str, is_private: bool = False, description: Optional[str] = None) -> RepositoryMetadata:
+    def create(
+        self, name: str, is_private: bool = False, description: Optional[str] = None
+    ) -> RepositoryMetadata:
         return self.service.get_active_provider().create_repository(name, is_private, description)
 
     def fork(self, repo_name: str) -> RepositoryMetadata:
@@ -56,7 +58,9 @@ class TagManager(DIInitializeMixin):
     def __init__(self, git_executor: LocalGitExecutor) -> None:
         self.git_executor = git_executor
 
-    def create_tag(self, name: str, message: Optional[str] = None, cwd: Optional[str] = None) -> str:
+    def create_tag(
+        self, name: str, message: Optional[str] = None, cwd: Optional[str] = None
+    ) -> str:
         return self.git_executor.tag(name, message, cwd)
 
 
@@ -78,7 +82,9 @@ class DiffManager(DIInitializeMixin):
     def __init__(self, git_executor: LocalGitExecutor) -> None:
         self.git_executor = git_executor
 
-    def diff(self, base: Optional[str] = None, head: Optional[str] = None, cwd: Optional[str] = None) -> str:
+    def diff(
+        self, base: Optional[str] = None, head: Optional[str] = None, cwd: Optional[str] = None
+    ) -> str:
         return self.git_executor.diff(base, head, cwd)
 
 
@@ -101,10 +107,14 @@ class WorkspaceRepositoryManager(DIInitializeMixin):
     def fetch_repo(self, remote: str = "origin", cwd: Optional[str] = None) -> str:
         return self.git_executor.fetch(remote, cwd)
 
-    def pull_repo(self, remote: str = "origin", branch: str = "main", cwd: Optional[str] = None) -> str:
+    def pull_repo(
+        self, remote: str = "origin", branch: str = "main", cwd: Optional[str] = None
+    ) -> str:
         return self.git_executor.pull(remote, branch, cwd)
 
-    def push_repo(self, remote: str = "origin", branch: str = "main", cwd: Optional[str] = None) -> str:
+    def push_repo(
+        self, remote: str = "origin", branch: str = "main", cwd: Optional[str] = None
+    ) -> str:
         return self.git_executor.push(remote, branch, cwd)
 
     def reset_repo(self, target: str, mode: str = "--hard", cwd: Optional[str] = None) -> str:
@@ -118,8 +128,18 @@ class PullRequestManager(DIInitializeMixin):
     def __init__(self, service: SourceControlService) -> None:
         self.service = service
 
-    def create(self, repo_name: str, title: str, head: str, base: str, body: Optional[str] = None, is_draft: bool = False) -> PullRequestInfo:
-        return self.service.get_active_provider().create_pull_request(repo_name, title, head, base, body, is_draft)
+    def create(
+        self,
+        repo_name: str,
+        title: str,
+        head: str,
+        base: str,
+        body: Optional[str] = None,
+        is_draft: bool = False,
+    ) -> PullRequestInfo:
+        return self.service.get_active_provider().create_pull_request(
+            repo_name, title, head, base, body, is_draft
+        )
 
     def inspect(self, repo_name: str, pr_number: int) -> PullRequestInfo:
         return self.service.get_active_provider().inspect_pull_request(repo_name, pr_number)
@@ -128,15 +148,26 @@ class PullRequestManager(DIInitializeMixin):
         return self.service.get_active_provider().update_pull_request(repo_name, pr_number, payload)
 
     def merge(self, repo_name: str, pr_number: int, commit_message: Optional[str] = None) -> bool:
-        return self.service.get_active_provider().merge_pull_request(repo_name, pr_number, commit_message)
+        return self.service.get_active_provider().merge_pull_request(
+            repo_name, pr_number, commit_message
+        )
 
 
 class IssueManager(DIInitializeMixin):
     def __init__(self, service: SourceControlService) -> None:
         self.service = service
 
-    def create(self, repo_name: str, title: str, body: Optional[str] = None, assignees: List[str] = None, labels: List[str] = None) -> IssueInfo:
-        return self.service.get_active_provider().create_issue(repo_name, title, body, assignees, labels)
+    def create(
+        self,
+        repo_name: str,
+        title: str,
+        body: Optional[str] = None,
+        assignees: List[str] = None,
+        labels: List[str] = None,
+    ) -> IssueInfo:
+        return self.service.get_active_provider().create_issue(
+            repo_name, title, body, assignees, labels
+        )
 
     def inspect(self, repo_name: str, issue_number: int) -> IssueInfo:
         return self.service.get_active_provider().inspect_issue(repo_name, issue_number)
@@ -146,8 +177,18 @@ class ReleaseManager(DIInitializeMixin):
     def __init__(self, service: SourceControlService) -> None:
         self.service = service
 
-    def create(self, repo_name: str, tag_name: str, name: str, body: Optional[str] = None, draft: bool = False, prerelease: bool = False) -> ReleaseInfo:
-        return self.service.get_active_provider().create_release(repo_name, tag_name, name, body, draft, prerelease)
+    def create(
+        self,
+        repo_name: str,
+        tag_name: str,
+        name: str,
+        body: Optional[str] = None,
+        draft: bool = False,
+        prerelease: bool = False,
+    ) -> ReleaseInfo:
+        return self.service.get_active_provider().create_release(
+            repo_name, tag_name, name, body, draft, prerelease
+        )
 
 
 class WorkflowManager(DIInitializeMixin):

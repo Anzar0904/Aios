@@ -119,7 +119,9 @@ class BootstrapSequenceAnalyzer:
 
         return sorted(steps, key=lambda s: s.order)
 
-    def _extract_init_calls(self, func_node: ast.FunctionDef, base_order: int) -> List[BootstrapStep]:
+    def _extract_init_calls(
+        self, func_node: ast.FunctionDef, base_order: int
+    ) -> List[BootstrapStep]:
         """Extract initialization calls from a function."""
         steps = []
         order = base_order * 100  # Leave room for sub-steps

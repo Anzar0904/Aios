@@ -9,6 +9,7 @@ from aios.services.workspace_intelligence import CodeStructureSummary
 
 class ModificationType(Enum):
     """File modification categories."""
+
     CREATE = "create"
     MODIFY = "modify"
     DELETE = "delete"
@@ -21,6 +22,7 @@ class ModificationType(Enum):
 @dataclass
 class AffectedFile:
     """Represents a file impacted by the plan."""
+
     file_path: str
     modification_type: ModificationType
     reason: str
@@ -31,6 +33,7 @@ class AffectedFile:
 @dataclass
 class AffectedDirectory:
     """Represents a directory containing impacted files."""
+
     dir_path: str
     reason: str
     affected_files_count: int
@@ -39,6 +42,7 @@ class AffectedDirectory:
 @dataclass
 class ImplementationScope:
     """Consolidates files and directories within implementation bounds."""
+
     workspace_id: str
     affected_files: List[AffectedFile]
     affected_directories: List[AffectedDirectory]
@@ -48,6 +52,7 @@ class ImplementationScope:
 @dataclass
 class PlanningResult:
     """Result of intelligent file planning containing dependencies, order, and risks."""
+
     planning_id: str
     objective: str
     scope: ImplementationScope
@@ -74,9 +79,7 @@ class FileImpactAnalyzer(abc.ABC):
 
     @abc.abstractmethod
     def analyze_impact(
-        self,
-        objective: str,
-        code_summary: CodeStructureSummary
+        self, objective: str, code_summary: CodeStructureSummary
     ) -> tuple[List[AffectedFile], List[AffectedDirectory]]:
         """Identifies modification files, target directories, and reasons."""
         pass
@@ -87,9 +90,7 @@ class FileDependencyResolver(abc.ABC):
 
     @abc.abstractmethod
     def resolve_dependencies(
-        self,
-        affected_files: List[AffectedFile],
-        code_summary: CodeStructureSummary
+        self, affected_files: List[AffectedFile], code_summary: CodeStructureSummary
     ) -> tuple[Dict[str, List[str]], Dict[str, List[str]], List[str]]:
         """Resolves direct/indirect imports and flags high-risk paths."""
         pass
@@ -104,7 +105,7 @@ class ChangePlanner(abc.ABC):
         objective: str,
         scope: ImplementationScope,
         direct_deps: Dict[str, List[str]],
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> PlanningResult:
         """Determines ordered sequence, classification risks, and checkpoints."""
         pass
@@ -115,10 +116,7 @@ class FilePlanner(ServiceLifecycle, abc.ABC):
 
     @abc.abstractmethod
     def generate_planning_result(
-        self,
-        workspace_id: str,
-        objective: str,
-        code_summary: CodeStructureSummary
+        self, workspace_id: str, objective: str, code_summary: CodeStructureSummary
     ) -> PlanningResult:
         """Analyzes a development objective and returns a structured planning result."""
         pass

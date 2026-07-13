@@ -51,7 +51,9 @@ class ResumeOptimizer(abc.ABC):
 
 class ATSAnalyzer(abc.ABC):
     @abc.abstractmethod
-    def score_resume_against_job(self, resume_version: ResumeVersion, job_description: str) -> Dict[str, Any]:
+    def score_resume_against_job(
+        self, resume_version: ResumeVersion, job_description: str
+    ) -> Dict[str, Any]:
         """Evaluate match score, list found/missing keywords, and suggest improvements."""
         pass
 

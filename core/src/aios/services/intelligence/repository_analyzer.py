@@ -19,6 +19,7 @@ class RepositoryAnalysis:
         self.test_framework: str = data.get("test_framework", "")
         self.config_files: List[str] = data.get("config_files", [])
 
+
 class RepositoryAnalyzer:
     def __init__(self, scanner_results: Dict[str, Any], index_results: Dict[str, Any]) -> None:
         self.scanner_results = scanner_results

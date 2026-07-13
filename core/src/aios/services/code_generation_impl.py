@@ -38,19 +38,19 @@ logger = logging.getLogger(__name__)
 class LocalCodePlanner(CodePlanner):
     """Generates sequential change tasks based on targeted policies."""
 
-    def plan_generation_steps(self, objective: str, policy: GenerationPolicy) -> List[Dict[str, Any]]:
+    def plan_generation_steps(
+        self, objective: str, policy: GenerationPolicy
+    ) -> List[Dict[str, Any]]:
         steps = []
         # Basic parsing to plan creation or modification steps
         if "create" in objective.lower():
-            steps.append({
-                "action": "create",
-                "reason": "Plan calls for creating a new file layout."
-            })
+            steps.append(
+                {"action": "create", "reason": "Plan calls for creating a new file layout."}
+            )
         else:
-            steps.append({
-                "action": "modify",
-                "reason": "Plan calls for editing existing file segments."
-            })
+            steps.append(
+                {"action": "modify", "reason": "Plan calls for editing existing file segments."}
+            )
         return steps
 
 
@@ -61,11 +61,11 @@ class LocalContextAssembler(ContextAssembler):
         # Get imports for file if available
         imports = code_summary.dependency_graph.get(file_path, [])
         apis = code_summary.public_apis[:5]
-        
+
         context_lines = [
             f"Target file: {file_path}",
             f"Dependencies / imports: {imports}",
-            f"Available core project APIs: {apis}"
+            f"Available core project APIs: {apis}",
         ]
         return "\n".join(context_lines)
 
@@ -74,11 +74,7 @@ class LocalPromptBuilder(PromptBuilder):
     """Builds clean, structured instruction templates incorporating policy constraints."""
 
     def build_prompt(
-        self,
-        objective: str,
-        target_file: str,
-        context: str,
-        policy: GenerationPolicy
+        self, objective: str, target_file: str, context: str, policy: GenerationPolicy
     ) -> LLMRequest:
         policy_instr = ""
         if policy == GenerationPolicy.CONSERVATIVE:
@@ -100,7 +96,7 @@ class LocalPromptBuilder(PromptBuilder):
             prompt=prompt_content,
             system_instruction="You are a senior systems engineer. Respond with pure code content only.",
             task_category="coding",
-            preferences={"JSON_output": False}
+            preferences={"JSON_output": False},
         )
 
 
@@ -110,18 +106,18 @@ class LocalFileGenerator(FileGenerator):
     def create_file(self, workspace_root: str, file_path: str, content: str) -> GeneratedArtifact:
         target = os.path.join(workspace_root, file_path)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        
+
         with open(target, "w") as fh:
             fh.write(content)
-            
+
         sha = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        
+
         return GeneratedArtifact(
             artifact_id=f"art_{sha[:10]}",
             file_path=file_path,
             content=content,
             checksum=sha,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -131,19 +127,19 @@ class LocalFileEditor(FileEditor):
     def edit_file(self, workspace_root: str, file_path: str, edits: str) -> GeneratedArtifact:
         target = os.path.join(workspace_root, file_path)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        
+
         # In a simulated/minimal edit, we overwrite the file with the replacement edits
         with open(target, "w") as fh:
             fh.write(edits)
-            
+
         sha = hashlib.sha256(edits.encode("utf-8")).hexdigest()
-        
+
         return GeneratedArtifact(
             artifact_id=f"art_{sha[:10]}",
             file_path=file_path,
             content=edits,
             checksum=sha,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
 
@@ -175,10 +171,7 @@ class LocalImportValidator(ImportValidator):
     """Parses AST to verify imported dependencies are registered."""
 
     def validate_imports(
-        self,
-        content: str,
-        file_path: str,
-        code_summary: CodeStructureSummary
+        self, content: str, file_path: str, code_summary: CodeStructureSummary
     ) -> tuple[bool, str]:
         if file_path.endswith(".py"):
             try:
@@ -205,24 +198,24 @@ class LocalGenerationValidator(GenerationValidator):
         self._imports = LocalImportValidator()
 
     def validate_artifact(
-        self,
-        artifact: GeneratedArtifact,
-        code_summary: CodeStructureSummary
+        self, artifact: GeneratedArtifact, code_summary: CodeStructureSummary
     ) -> tuple[bool, List[str]]:
         warnings = []
-        
+
         # Syntax check
         syn_ok, syn_err = self._syntax.validate_syntax(artifact.content, artifact.file_path)
         if not syn_ok:
             warnings.append(syn_err)
-            
+
         # Style check
         sty_ok, sty_err = self._style.validate_style(artifact.content, artifact.file_path)
         if not sty_ok:
             warnings.append(sty_err)
 
         # Imports check
-        imp_ok, imp_err = self._imports.validate_imports(artifact.content, artifact.file_path, code_summary)
+        imp_ok, imp_err = self._imports.validate_imports(
+            artifact.content, artifact.file_path, code_summary
+        )
         if not imp_ok:
             warnings.append(imp_err)
 
@@ -238,7 +231,7 @@ class LocalCodeGenerationService(CodeGenerationService):
         memory_service: MemoryService,
         model_service: ModelService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._model = model_service
@@ -268,7 +261,7 @@ class LocalCodeGenerationService(CodeGenerationService):
             workspace_id=workspace_id,
             policy=policy,
             status="active",
-            created_at=time.time()
+            created_at=time.time(),
         )
 
     def generate_code(
@@ -277,16 +270,16 @@ class LocalCodeGenerationService(CodeGenerationService):
         target_file: str,
         objective: str,
         workspace_root: str,
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> GenerationReport:
         logger.info(f"Generating code inside session '{session.session_id}' for '{target_file}'")
-        
+
         # 1. Assemble minimalist context
         context = self._context_assembler.assemble_context(target_file, code_summary)
-        
+
         # 2. Build prompt LLM request
         request = self._prompt_builder.build_prompt(objective, target_file, context, session.policy)
-        
+
         # 3. Call ModelService (OmniRoute decides FREE model)
         content_code = "# Injected placeholder due to validation fallback."
         try:
@@ -318,7 +311,7 @@ class LocalCodeGenerationService(CodeGenerationService):
         # Mock stats
         stats = {
             "token_count": len(content_code.split()),
-            "lines_count": len(content_code.splitlines())
+            "lines_count": len(content_code.splitlines()),
         }
 
         report = GenerationReport(
@@ -330,7 +323,7 @@ class LocalCodeGenerationService(CodeGenerationService):
             confidence_estimate=0.95 if valid else 0.45,
             execution_statistics=stats,
             validation_status=val_status,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         return report
@@ -345,7 +338,7 @@ class LocalCodeGenerationService(CodeGenerationService):
             f"Warnings Detail: {report.warnings}\n"
             f"Confidence Estimate: {report.confidence_estimate}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -354,8 +347,8 @@ class LocalCodeGenerationService(CodeGenerationService):
                 session_id=report.report_id,
                 tags=["code_generation", "validation"],
                 importance=2,
-                source_subsystem="code_generator"
-            )
+                source_subsystem="code_generator",
+            ),
         )
 
     def publish_generation_report(self, report: GenerationReport) -> None:
@@ -375,7 +368,12 @@ class LocalCodeGenerationService(CodeGenerationService):
             f"**Validation Status**: `{report.validation_status.upper()}`\n"
             f"**Confidence Estimate**: {report.confidence_estimate}\n\n"
             f"## Verification Warnings Logs\n"
-            + ("\n".join(warnings_md) if warnings_md else "- *No warnings, syntax compiles cleanly.*") + "\n\n"
+            + (
+                "\n".join(warnings_md)
+                if warnings_md
+                else "- *No warnings, syntax compiles cleanly.*"
+            )
+            + "\n\n"
             f"## File Telemetry Stats\n"
             f"- **Lines Count**: {report.execution_statistics.get('lines_count', 0)}\n"
             f"- **Tokens Count**: {report.execution_statistics.get('token_count', 0)}\n"
@@ -389,7 +387,7 @@ class LocalCodeGenerationService(CodeGenerationService):
                 unique_id=f"gen_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="code_generator",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

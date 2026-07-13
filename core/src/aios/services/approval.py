@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 
 class ApprovalStatus(Enum):
     """Enumerate approval outcomes matching gating criteria."""
+
     PENDING = "pending"
     APPROVED = "approved"
     APPROVED_WITH_CONDITIONS = "approved_with_conditions"
@@ -20,6 +21,7 @@ class ApprovalStatus(Enum):
 @dataclass
 class ApprovalDecision:
     """Approval decision outcome featuring reasoning and reviewer details."""
+
     status: ApprovalStatus
     reasoning: str
     reviewer_notes: List[str] = field(default_factory=list)
@@ -29,6 +31,7 @@ class ApprovalDecision:
 @dataclass
 class ApprovalEvidence:
     """Aggregated engineering evidence from systems components."""
+
     source: str  # e.g., "validation_report", "engineering_intelligence"
     evidence_type: str
     data: Dict[str, Any]
@@ -38,6 +41,7 @@ class ApprovalEvidence:
 @dataclass
 class ApprovalRule(abc.ABC):
     """Abstract rule interface evaluating approval package inputs."""
+
     rule_name: str
     description: str
 
@@ -50,6 +54,7 @@ class ApprovalRule(abc.ABC):
 @dataclass
 class ApprovalPolicy:
     """Configurable collection of validation and risk rules."""
+
     policy_id: str
     name: str
     rules: List[ApprovalRule] = field(default_factory=list)
@@ -59,6 +64,7 @@ class ApprovalPolicy:
 @dataclass
 class ApprovalPackage:
     """Unified container encapsulating all aggregated evidence and summaries."""
+
     package_id: str
     workspace_id: str
     engineering_summary: str
@@ -82,6 +88,7 @@ class ApprovalPackage:
 @dataclass
 class ApprovalRequest:
     """Client request initiating a validation gate review process."""
+
     request_id: str
     workspace_id: str
     target_version: str
@@ -93,6 +100,7 @@ class ApprovalRequest:
 @dataclass
 class ApprovalSession:
     """Lifecycle tracking for an active approval evaluation session."""
+
     session_id: str
     request: ApprovalRequest
     package: Optional[ApprovalPackage]
@@ -105,6 +113,7 @@ class ApprovalSession:
 @dataclass
 class ApprovalSummary:
     """Aggregated approval summary details stored inside Memory."""
+
     summary_id: str
     session_id: str
     workspace_id: str
@@ -117,6 +126,7 @@ class ApprovalSummary:
 @dataclass
 class ApprovalHistory:
     """Chronological execution logs trace tracking approval decisions."""
+
     history_id: str
     workspace_id: str
     records: List[ApprovalSummary] = field(default_factory=list)
@@ -125,6 +135,7 @@ class ApprovalHistory:
 @dataclass
 class ApprovalReport:
     """Report compiled for external Knowledge Hub syncs."""
+
     report_id: str
     workspace_id: str
     session_id: str
@@ -142,7 +153,9 @@ class ApprovalValidator(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def check_duplicate_request(self, request: ApprovalRequest, history: List[ApprovalSummary]) -> bool:
+    def check_duplicate_request(
+        self, request: ApprovalRequest, history: List[ApprovalSummary]
+    ) -> bool:
         """Returns True if the request is a duplicate."""
         pass
 
@@ -278,4 +291,3 @@ class ApprovalEngineService(ServiceLifecycle, abc.ABC):
     def queue_request_item(self, request_item: Dict[str, Any]) -> None:
         """Persist a new action request item in queue."""
         pass
-

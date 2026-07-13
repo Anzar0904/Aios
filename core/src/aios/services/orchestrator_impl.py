@@ -33,8 +33,10 @@ class LocalOrchestratorService(OrchestratorService):
         pass
 
     def execute_plan(self, plan: ExecutionPlan, initial_ctx: ExecutionContext) -> Dict[str, Any]:
-        logger.info(f"Orchestrating execution plan '{plan.plan_id}' with {len(plan.invocations)} invocations...")
-        
+        logger.info(
+            f"Orchestrating execution plan '{plan.plan_id}' with {len(plan.invocations)} invocations..."
+        )
+
         # 1. Topological Sort / Level grouping of skill invocations
         try:
             levels = self._group_invocations_into_levels(plan.invocations)
@@ -46,21 +48,23 @@ class LocalOrchestratorService(OrchestratorService):
         for level in levels:
             for inv in level:
                 # 2. Variable substitution / Context parameter passing
-                substituted_command = self._substitute_parameters(inv.command, initial_ctx.variables)
-                
+                substituted_command = self._substitute_parameters(
+                    inv.command, initial_ctx.variables
+                )
+
                 logger.info(f"Running invocation step '{inv.step_id}': {substituted_command}")
                 try:
                     # 3. Resolve command handler
                     handler, args = self._resolve_handler_and_args(substituted_command)
-                    
+
                     # 4. Execute with stdout capture redirection
                     output = self._run_handler_capture(handler, args)
-                    
+
                     # 5. Save results to context variables
                     results[inv.step_id] = output
                     initial_ctx.variables[inv.step_id] = output
                     initial_ctx.variables[f"{inv.step_id}.result"] = output
-                    
+
                 except Exception as e:
                     logger.error(f"Step '{inv.step_id}' failed: {str(e)}")
                     results[inv.step_id] = f"ERROR: {str(e)}"
@@ -68,20 +72,18 @@ class LocalOrchestratorService(OrchestratorService):
                         "success": False,
                         "error": f"Step '{inv.step_id}' failed: {str(e)}",
                         "partial_results": results,
-                        "report": self._aggregator.aggregate(results)
+                        "report": self._aggregator.aggregate(results),
                     }
 
-        return {
-            "success": True,
-            "results": results,
-            "report": self._aggregator.aggregate(results)
-        }
+        return {"success": True, "results": results, "report": self._aggregator.aggregate(results)}
 
-    def _group_invocations_into_levels(self, invocations: List[SkillInvocation]) -> List[List[SkillInvocation]]:
+    def _group_invocations_into_levels(
+        self, invocations: List[SkillInvocation]
+    ) -> List[List[SkillInvocation]]:
         # DFS coloring loop checks
         adj = {inv.step_id: [] for inv in invocations}
         lookup = {inv.step_id: inv for inv in invocations}
-        
+
         for inv in invocations:
             for dep in inv.depends_on:
                 if dep not in adj:
@@ -90,6 +92,7 @@ class LocalOrchestratorService(OrchestratorService):
 
         # Detect cycles
         visited = {}
+
         def dfs(node: str) -> bool:
             visited[node] = 1
             for neighbor in adj[node]:
@@ -109,10 +112,11 @@ class LocalOrchestratorService(OrchestratorService):
 
         # Compute level grouping (longest dependency path length)
         memo = {}
+
         def get_max_depth(node: str) -> int:
             if node in memo:
                 return memo[node]
-            
+
             inv = lookup[node]
             if not inv.depends_on:
                 depth = 0
@@ -140,12 +144,12 @@ class LocalOrchestratorService(OrchestratorService):
         command_str_lower = command_str.lower()
         matched_cmd = None
         matched_args = ""
-        
+
         # Sort by length descending to match longest prefix
         for cmd_name in sorted(self._registry._commands.keys(), key=len, reverse=True):
             if command_str_lower.startswith(cmd_name):
                 matched_cmd = cmd_name
-                matched_args = command_str[len(cmd_name):].strip()
+                matched_args = command_str[len(cmd_name) :].strip()
                 break
 
         if not matched_cmd:

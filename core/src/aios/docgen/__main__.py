@@ -24,9 +24,7 @@ def main() -> int:
         default=None,
         help="Path to the AIOS project root (default: auto-detect)",
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable debug logging"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -40,9 +38,9 @@ def main() -> int:
     result = engine.run()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("AIOS Documentation Generator — Sprint 7 Milestone 2")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Status:       {result.status.value.upper()}")
     print(f"Elapsed:      {result.elapsed_seconds:.2f}s")
     print(f"Output:       {engine.output_dir}")
@@ -70,7 +68,7 @@ def main() -> int:
         for e in result.errors:
             print(f"  ✗  {e}")
 
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return 0 if result.success else 1
 

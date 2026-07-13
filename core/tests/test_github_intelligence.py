@@ -28,7 +28,7 @@ def test_github_authentication():
 def test_repository_retrieval(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     # Mock Repository metadata and languages
     mock_response_repo = MagicMock()
     mock_response_repo.status_code = 200
@@ -43,17 +43,17 @@ def test_repository_retrieval(mock_client_class):
         "private": True,
         "open_issues_count": 3,
     }
-    
+
     mock_response_langs = MagicMock()
     mock_response_langs.status_code = 200
     mock_response_langs.headers = {"Content-Type": "application/json"}
     mock_response_langs.json.return_value = {"Python": 12345, "Shell": 500}
-    
+
     mock_client.get.side_effect = [mock_response_repo, mock_response_langs]
 
     model_service = MagicMock()
     service = LocalGitHubService(model_service=model_service)
-    
+
     repo = service.inspect_repository("Anzar0904/aios")
     assert repo.owner == "Anzar0904"
     assert repo.name == "aios"
@@ -66,7 +66,7 @@ def test_repository_retrieval(mock_client_class):
 def test_pull_requests(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.headers = {"Content-Type": "application/json"}
@@ -94,7 +94,7 @@ def test_pull_requests(mock_client_class):
 def test_issues(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.headers = {"Content-Type": "application/json"}
@@ -122,14 +122,12 @@ def test_issues(mock_client_class):
 def test_commits_and_branches(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     # Mock branches response
     mock_response_branches = MagicMock()
     mock_response_branches.status_code = 200
     mock_response_branches.headers = {"Content-Type": "application/json"}
-    mock_response_branches.json.return_value = [
-        {"name": "main", "commit": {"sha": "sha123"}}
-    ]
+    mock_response_branches.json.return_value = [{"name": "main", "commit": {"sha": "sha123"}}]
     mock_client.get.return_value = mock_response_branches
 
     model_service = MagicMock()
@@ -144,7 +142,7 @@ def test_commits_and_branches(mock_client_class):
 def test_caching(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.headers = {"Content-Type": "application/json"}
@@ -153,12 +151,12 @@ def test_caching(mock_client_class):
 
     model_service = MagicMock()
     service = LocalGitHubService(model_service=model_service, cache_enabled=True)
-    
+
     # First call: cache miss, makes request
     service.inspect_repository("Anzar0904/aios")
     # Second call: cache hit, uses cache
     service.inspect_repository("Anzar0904/aios")
-    
+
     assert mock_client.get.call_count == 2  # 1 for repo and 1 for languages (cached on second run)
 
 
@@ -166,11 +164,11 @@ def test_caching(mock_client_class):
 def test_retries_transient_failures(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     # Return 500 first, then 200
     mock_response_500 = MagicMock()
     mock_response_500.status_code = 500
-    
+
     mock_response_200 = MagicMock()
     mock_response_200.status_code = 200
     mock_response_200.headers = {"Content-Type": "application/json"}
@@ -180,7 +178,7 @@ def test_retries_transient_failures(mock_client_class):
 
     model_service = MagicMock()
     service = LocalGitHubService(model_service=model_service, max_retries=3, rate_limit_per_min=0)
-    
+
     with patch("time.sleep") as mock_sleep:
         repo = service.inspect_repository("Anzar0904/aios")
         assert repo.name == "aios"
@@ -190,7 +188,7 @@ def test_retries_transient_failures(mock_client_class):
 def test_offline_mode():
     model_service = MagicMock()
     service = LocalGitHubService(model_service=model_service, offline_mode=True)
-    
+
     with pytest.raises(httpx.ConnectError):
         service.inspect_repository("Anzar0904/aios")
 
@@ -212,11 +210,11 @@ def test_brain_integration():
     mock_metadata.commands = ["list repositories"]
     mock_skill.metadata = mock_metadata
     mock_skill.enabled = True
-    
+
     skill_registry.list_skills.return_value = [mock_skill]
-    
+
     selector = SkillSelector(skill_registry)
-    
+
     # Query containing 'repository' keyword
     selections = selector.select_skills("list my GitHub repositories please")
     assert len(selections) == 1
@@ -224,12 +222,11 @@ def test_brain_integration():
     assert selections[0].confidence == 0.99
 
 
-
 @patch("httpx.Client")
 def test_career_agent_integration(mock_client_class):
     mock_client = MagicMock()
     mock_client_class.return_value.__enter__.return_value = mock_client
-    
+
     # Mock search repositories return
     mock_response_search = MagicMock()
     mock_response_search.status_code = 200
@@ -247,7 +244,7 @@ def test_career_agent_integration(mock_client_class):
             }
         ]
     }
-    
+
     # Mock repository stats return
     mock_response_stats = MagicMock()
     mock_response_stats.status_code = 200
@@ -257,14 +254,14 @@ def test_career_agent_integration(mock_client_class):
         "forks_count": 2,
         "open_issues_count": 0,
     }
-    
+
     mock_client.get.side_effect = [mock_response_search, mock_response_stats]
 
     memory_service = MagicMock()
     context_service = MagicMock()
     tool_service = MagicMock()
     model_service = MagicMock()
-    
+
     model_service.execute_request.return_value = LLMResponse(
         content="Analyzed GitHub profile.",
         model_name="claude-3-5-sonnet",
@@ -272,7 +269,7 @@ def test_career_agent_integration(mock_client_class):
     )
 
     github_service = LocalGitHubService(model_service=model_service)
-    
+
     agent = CareerAgent(
         memory_service=memory_service,
         context_service=context_service,
@@ -280,7 +277,7 @@ def test_career_agent_integration(mock_client_class):
         model_service=model_service,
         github_service=github_service,
     )
-    
+
     intent = Intent(
         intent_type=IntentType.CAREER,
         target_service="AgentRuntimeService",
@@ -288,11 +285,11 @@ def test_career_agent_integration(mock_client_class):
         parameters={"username": "Anzar0904"},
         confidence=1.0,
     )
-    
+
     agent_context = AgentContext(intent=intent, context=None, memories=[], tools=[])
 
     res = agent.execute(agent_context)
-    
+
     assert res.success is True
     assert "Analyzed GitHub profile." in res.response
     model_service.execute_request.assert_called_once()

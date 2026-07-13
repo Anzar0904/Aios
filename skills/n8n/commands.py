@@ -14,7 +14,7 @@ def execute_workflow_create(args: str, kernel, conv_manager) -> None:
         n8n_svc = kernel.registry.get(N8NService)
         print("Planning and building workflow graph from natural language...")
         wf = n8n_svc.generate_workflow_from_natural_language(desc)
-        
+
         val_res = n8n_svc.validate_workflow(wf)
         if not val_res["valid"]:
             print(f"Validation Errors during graph compilation: {val_res['errors']}")
@@ -115,7 +115,9 @@ def execute_workflow_list(args: str, kernel, conv_manager) -> None:
             return
         for wf in workflows:
             status_str = "Active" if wf.active else "Inactive"
-            print(f"- {wf.name} (ID: {wf.id}) | Nodes: {len(wf.nodes)} | Connections: {len(wf.connections)} | {status_str}")
+            print(
+                f"- {wf.name} (ID: {wf.id}) | Nodes: {len(wf.nodes)} | Connections: {len(wf.connections)} | {status_str}"
+            )
     except Exception as e:
         print(f"List failed: {str(e)}")
 
@@ -210,7 +212,7 @@ def execute_workflow_clone(args: str, kernel, conv_manager) -> None:
             name=f"{wf.name} (Copy)",
             nodes=wf.nodes,
             connections=wf.connections,
-            active=wf.active
+            active=wf.active,
         )
         deployed = n8n_svc.create_workflow(cloned_wf)
         print(f"Workflow successfully cloned! New ID: {deployed.id}")
@@ -258,7 +260,9 @@ def execute_workflow_optimize(args: str, kernel, conv_manager) -> None:
         res = n8n_svc.validate_workflow(wf)
         print(f"Optimizing workflow '{wf.name}'...")
         if res["valid"]:
-            print("Graph analysis: no cycles or unreachable nodes detected. Optimization completed.")
+            print(
+                "Graph analysis: no cycles or unreachable nodes detected. Optimization completed."
+            )
         else:
             print(f"Optimization warnings: {res['errors']}")
     except Exception as e:

@@ -49,35 +49,32 @@ def test_runtime_startup_and_shutdown():
 
 def test_event_propagation():
     dispatcher = LocalEventDispatcher()
-    
+
     received_payload = {}
+
     def callback(payload):
         nonlocal received_payload
         received_payload = payload
 
     dispatcher.subscribe("GitChanged", callback)
-    
+
     payload = {"branch": "feature-ats", "changed_files": 2}
     dispatcher.dispatch("GitChanged", payload)
-    
+
     assert received_payload == payload
 
 
 def test_background_task_scheduling():
     kernel = MagicMock()
     runtime = LocalRuntime(kernel)
-    
+
     task_run_count = 0
+
     def dummy_func():
         nonlocal task_run_count
         task_run_count += 1
 
-    task = BackgroundTask(
-        task_id="task-1",
-        name="Study Alert Cron",
-        func=dummy_func,
-        interval=0.5
-    )
+    task = BackgroundTask(task_id="task-1", name="Study Alert Cron", func=dummy_func, interval=0.5)
 
     runtime.submit_task(task)
     assert task.status == "pending"
@@ -101,10 +98,7 @@ def test_background_task_scheduling():
 def test_health_monitor():
     kernel = MagicMock()
     kernel.uptime = 120.0
-    kernel.registry._services = {
-        RuntimeState: MagicMock(),
-        LocalEventDispatcher: MagicMock()
-    }
+    kernel.registry._services = {RuntimeState: MagicMock(), LocalEventDispatcher: MagicMock()}
 
     runtime = MagicMock()
     runtime._kernel = kernel

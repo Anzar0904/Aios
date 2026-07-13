@@ -65,11 +65,14 @@ def _mock_repo():
 
 def test_connection_login_success(tmp_path):
     mgr = GitHubConnectionManager(token="ghp_test_token")
-    with patch.object(
-        mgr,
-        "_get",
-        return_value={"login": "Anzar0904", "name": "Anzar"},
-    ), patch.object(mgr, "_save_state"):
+    with (
+        patch.object(
+            mgr,
+            "_get",
+            return_value={"login": "Anzar0904", "name": "Anzar"},
+        ),
+        patch.object(mgr, "_save_state"),
+    ):
         result = mgr.login()
 
     assert result["success"] is True
@@ -572,9 +575,7 @@ def test_cli_github_pr_inspect(tmp_path, mock_engine_factory):
         patch("sys.exit") as mock_exit,
     ):
         mock_eng.return_value = mock_engine_factory()
-        execute_builtin_cli_command(
-            ["github", "pr", "Anzar0904/aios", "12"], exit_on_complete=True
-        )
+        execute_builtin_cli_command(["github", "pr", "Anzar0904/aios", "12"], exit_on_complete=True)
         mock_exit.assert_called_with(0)
 
 

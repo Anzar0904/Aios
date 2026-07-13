@@ -10,6 +10,7 @@ from aios.providers.models import ProviderCapabilities
 
 CACHE_FILE = Path(".aios_9router_cache.json")
 
+
 class NineRouterProvider(AIProvider):
     """OpenAI-compatible adapter to interact with the local 9Router gateway."""
 
@@ -130,6 +131,7 @@ class NineRouterProvider(AIProvider):
             coding=True,
         )
 
+
 def discover_9router(
     provider: NineRouterProvider,
     force: bool = False,
@@ -189,9 +191,7 @@ def discover_9router(
             or "code" in model_id.lower()
         )
         is_reasoner = (
-            "o1" in model_id.lower()
-            or "reasoning" in model_id.lower()
-            or "r1" in model_id.lower()
+            "o1" in model_id.lower() or "reasoning" in model_id.lower() or "r1" in model_id.lower()
         )
         is_vision = (
             "vision" in model_id.lower()
@@ -250,9 +250,7 @@ def generate_9router_reports() -> None:
         f"- **Base URL**: {nr_provider.base_url if nr_provider else 'N/A'}",
         f"- **Latency**: {latency_val:.1f}ms",
     ]
-    (docs_dir / "local_gateway_status.md").write_text(
-        "\n".join(gateway_status), encoding="utf-8"
-    )
+    (docs_dir / "local_gateway_status.md").write_text("\n".join(gateway_status), encoding="utf-8")
 
     # 2. Installed Providers
     installed = [
@@ -267,9 +265,7 @@ def generate_9router_reports() -> None:
         status = "Healthy" if p_inst and p_inst.health() else "Unavailable"
         t_name = p_inst.__class__.__name__ if p_inst else "Unknown"
         installed.append(f"| {p_name} | {t_name} | {status} |")
-    (docs_dir / "installed_providers.md").write_text(
-        "\n".join(installed), encoding="utf-8"
-    )
+    (docs_dir / "installed_providers.md").write_text("\n".join(installed), encoding="utf-8")
 
     # 3. Connected Models
     connected = [
@@ -286,12 +282,9 @@ def generate_9router_reports() -> None:
         vision = "✓" if m.supports_vision else ""
         emb = "✓" if m.supports_embeddings else ""
         connected.append(
-            f"| {m.model_id} | {m.provider} | {chat} | {coding} | "
-            f"{vision} | {reasoning} | {emb} |"
+            f"| {m.model_id} | {m.provider} | {chat} | {coding} | {vision} | {reasoning} | {emb} |"
         )
-    (docs_dir / "connected_models.md").write_text(
-        "\n".join(connected), encoding="utf-8"
-    )
+    (docs_dir / "connected_models.md").write_text("\n".join(connected), encoding="utf-8")
 
     # 4. Configuration Summary
     conf_summary = [
@@ -313,6 +306,4 @@ def generate_9router_reports() -> None:
     else:
         conf_summary.append("# No 9Router configuration section found.")
     conf_summary.append("```")
-    (docs_dir / "configuration_summary.md").write_text(
-        "\n".join(conf_summary), encoding="utf-8"
-    )
+    (docs_dir / "configuration_summary.md").write_text("\n".join(conf_summary), encoding="utf-8")

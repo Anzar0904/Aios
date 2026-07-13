@@ -55,9 +55,7 @@ class LocalFailureAnalyzer(FailureAnalyzer):
             pattern = self.classify_failure("".join(s.error_message for s in sigs))
             clusters.append(
                 FailureCluster(
-                    cluster_id=f"cluster_{idx}_{int(time.time())}",
-                    pattern=pattern,
-                    signatures=sigs
+                    cluster_id=f"cluster_{idx}_{int(time.time())}", pattern=pattern, signatures=sigs
                 )
             )
         return clusters
@@ -67,9 +65,7 @@ class LocalRootCauseAnalyzer(RootCauseAnalyzer):
     """Correlates call structures and execution timelines to isolate origin failure components."""
 
     def analyze_root_cause(
-        self,
-        execution_summary: ExecutionSummary,
-        code_summary: CodeStructureSummary
+        self, execution_summary: ExecutionSummary, code_summary: CodeStructureSummary
     ) -> Dict[str, Any]:
         origins = []
         for r in execution_summary.results:
@@ -79,7 +75,7 @@ class LocalRootCauseAnalyzer(RootCauseAnalyzer):
 
         return {
             "origin_components": origins,
-            "propagation_chain": [f"{o} -> dependencies" for o in origins]
+            "propagation_chain": [f"{o} -> dependencies" for o in origins],
         }
 
 
@@ -91,7 +87,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
         model_service: Optional[ModelService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
@@ -114,7 +110,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
         self,
         workspace_id: str,
         execution_summary: ExecutionSummary,
-        code_summary: CodeStructureSummary
+        code_summary: CodeStructureSummary,
     ) -> FailureAnalysisReport:
         logger.info(f"Diagnosing test execution failures for workspace: '{workspace_id}'")
 
@@ -128,13 +124,13 @@ class LocalFailureAnalysisService(FailureAnalysisService):
                     if "Error:" in line or "Exception:" in line:
                         ex_class = line.split(":")[0].strip()
                         break
-                        
+
                 signatures.append(
                     FailureSignature(
                         signature_id=f"sig_{idx}_{int(time.time())}",
                         error_message=r.raw_output,
                         stack_trace=r.raw_output,
-                        exception_class=ex_class
+                        exception_class=ex_class,
                     )
                 )
 
@@ -154,8 +150,8 @@ class LocalFailureAnalysisService(FailureAnalysisService):
                     description=f"Inspect logic errors inside module: {orig}.",
                     actionable_steps=[
                         f"Check lines changed inside {orig}.",
-                        "Verify mocked return values for dependent calls."
-                    ]
+                        "Verify mocked return values for dependent calls.",
+                    ],
                 )
             )
 
@@ -166,7 +162,11 @@ class LocalFailureAnalysisService(FailureAnalysisService):
             if any("kernel" in c for c in rc["origin_components"]):
                 severity = FailureSeverity.CRITICAL
 
-        confidence = FailureConfidence.CERTAIN if execution_summary.total_failed > 0 else FailureConfidence.LOW
+        confidence = (
+            FailureConfidence.CERTAIN
+            if execution_summary.total_failed > 0
+            else FailureConfidence.LOW
+        )
 
         report = FailureAnalysisReport(
             report_id=f"fail_rep_{int(time.time())}",
@@ -176,7 +176,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
             recommendations=recommendations,
             severity=severity,
             confidence=confidence,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
 
         # 5. LLM refinement if model is active
@@ -188,9 +188,9 @@ class LocalFailureAnalysisService(FailureAnalysisService):
                     f"Diagnosed severity: {severity.value}\n\n"
                     "Refine severity classification and recommendations. Return a single pure JSON:\n"
                     "{\n"
-                    "  \"severity\": \"Critical\",\n"
-                    "  \"confidence\": \"Certain\",\n"
-                    "  \"refined_recommendation\": \"Add missing boundary mocks for memory service.\"\n"
+                    '  "severity": "Critical",\n'
+                    '  "confidence": "Certain",\n'
+                    '  "refined_recommendation": "Add missing boundary mocks for memory service."\n'
                     "}"
                 )
 
@@ -199,7 +199,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
                         prompt=prompt,
                         system_instruction="Output pure JSON only.",
                         task_category="testing",
-                        preferences={"JSON_output": True}
+                        preferences={"JSON_output": True},
                     )
                 )
 
@@ -211,17 +211,25 @@ class LocalFailureAnalysisService(FailureAnalysisService):
 
                 data = json.loads(content)
                 sev_val = data.get("severity", "high").upper()
-                report.severity = FailureSeverity[sev_val] if sev_val in FailureSeverity.__members__ else report.severity
+                report.severity = (
+                    FailureSeverity[sev_val]
+                    if sev_val in FailureSeverity.__members__
+                    else report.severity
+                )
                 conf_val = data.get("confidence", "high").upper()
-                report.confidence = FailureConfidence[conf_val] if conf_val in FailureConfidence.__members__ else report.confidence
-                
+                report.confidence = (
+                    FailureConfidence[conf_val]
+                    if conf_val in FailureConfidence.__members__
+                    else report.confidence
+                )
+
                 if "refined_recommendation" in data:
                     report.recommendations.append(
                         FailureRecommendation(
                             recommendation_id=f"rec_llm_{int(time.time())}",
                             recommendation_type="manual_review",
                             description=data["refined_recommendation"],
-                            actionable_steps=["Execute manual tracing on the LLM diagnostic tip."]
+                            actionable_steps=["Execute manual tracing on the LLM diagnostic tip."],
                         )
                     )
             except Exception as e:
@@ -239,7 +247,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
             f"Clusters Identified: {len(report.clusters)}\n"
             f"Recommendations Count: {len(report.recommendations)}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -248,8 +256,8 @@ class LocalFailureAnalysisService(FailureAnalysisService):
                 session_id=report.report_id,
                 tags=["failure_analysis", "diagnostics"],
                 importance=2,
-                source_subsystem="failure_analyzer"
-            )
+                source_subsystem="failure_analyzer",
+            ),
         )
 
     def publish_failure_report(self, report: FailureAnalysisReport) -> None:
@@ -264,7 +272,9 @@ class LocalFailureAnalysisService(FailureAnalysisService):
 
         clusters_md = []
         for c in report.clusters:
-            sigs = "\n".join(f"  - Sig: `{s.signature_id}` ({s.exception_class})" for s in c.signatures)
+            sigs = "\n".join(
+                f"  - Sig: `{s.signature_id}` ({s.exception_class})" for s in c.signatures
+            )
             clusters_md.append(f"- **Cluster**: Pattern `{c.pattern.pattern_name}`\n{sigs}")
 
         report_md = (
@@ -275,7 +285,8 @@ class LocalFailureAnalysisService(FailureAnalysisService):
             f"**Severity**: `{report.severity.value.upper()}`\n"
             f"**Confidence**: `{report.confidence.value.upper()}`\n\n"
             f"## Identified Failure Clusters\n"
-            + ("\n".join(clusters_md) if clusters_md else "- *No failure clusters identified.*") + "\n\n"
+            + ("\n".join(clusters_md) if clusters_md else "- *No failure clusters identified.*")
+            + "\n\n"
             "## Corrective Action Recommendations\n"
             + ("\n".join(recs_md) if recs_md else "- *No failures, no recommendations required.*")
         )
@@ -288,7 +299,7 @@ class LocalFailureAnalysisService(FailureAnalysisService):
                 unique_id=f"fail_report_{report.report_id}",
                 timestamp=report.timestamp,
                 source_subsystem="failure_analyzer",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")

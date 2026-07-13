@@ -16,20 +16,20 @@ def test_dependency_analyzer_exports_all_dot_graphs():
                                 "arguments": [
                                     {"name": "self", "type": None},
                                     {"name": "memory_service", "type": "MemoryService"},
-                                    {"name": "llm_provider", "type": "Optional[LLMProvider]"}
-                                ]
+                                    {"name": "llm_provider", "type": "Optional[LLMProvider]"},
+                                ],
                             },
                             {
                                 "name": "handle_task",
                                 "arguments": [
                                     {"name": "self", "type": None},
-                                    {"name": "event", "type": "TaskEvent"}
-                                ]
-                            }
-                        ]
+                                    {"name": "event", "type": "TaskEvent"},
+                                ],
+                            },
+                        ],
                     }
                 ],
-                "imports": ["aios.services.memory", "aios.providers.llm"]
+                "imports": ["aios.services.memory", "aios.providers.llm"],
             },
             "core/src/aios/services/memory.py": {
                 "classes": [
@@ -37,16 +37,11 @@ def test_dependency_analyzer_exports_all_dot_graphs():
                         "name": "MemoryService",
                         "bases": ["ServiceLifecycle"],
                         "methods": [
-                            {
-                                "name": "__init__",
-                                "arguments": [
-                                    {"name": "self", "type": None}
-                                ]
-                            }
-                        ]
+                            {"name": "__init__", "arguments": [{"name": "self", "type": None}]}
+                        ],
                     }
                 ],
-                "imports": []
+                "imports": [],
             },
             "core/src/aios/providers/llm.py": {
                 "classes": [
@@ -54,32 +49,19 @@ def test_dependency_analyzer_exports_all_dot_graphs():
                         "name": "LLMProvider",
                         "bases": ["BaseProvider"],
                         "methods": [
-                            {
-                                "name": "__init__",
-                                "arguments": [
-                                    {"name": "self", "type": None}
-                                ]
-                            }
-                        ]
+                            {"name": "__init__", "arguments": [{"name": "self", "type": None}]}
+                        ],
                     }
                 ],
-                "imports": []
+                "imports": [],
             },
             "core/src/aios/events/task.py": {
                 "classes": [
-                    {
-                        "name": "TaskEvent",
-                        "bases": ["BaseEvent"],
-                        "methods": []
-                    },
-                    {
-                        "name": "BaseEvent",
-                        "bases": [],
-                        "methods": []
-                    }
+                    {"name": "TaskEvent", "bases": ["BaseEvent"], "methods": []},
+                    {"name": "BaseEvent", "bases": [], "methods": []},
                 ],
-                "imports": []
-            }
+                "imports": [],
+            },
         }
     }
     graph = EngineeringGraph(mock_data)

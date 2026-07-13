@@ -19,6 +19,7 @@ repositories perform after every write or read.  They delegate to the plain
 Redis-backed cache logic through the ServiceRegistry without introducing
 any additional imports at module load time.
 """
+
 from __future__ import annotations
 
 import time
@@ -229,6 +230,7 @@ class _RepositoryMixin:
                 CachePolicyManager,
                 RedisCacheService,
             )
+
             cache_svc = ServiceRegistry._global_registry.get(RedisCacheService)
             policy_mgr = ServiceRegistry._global_registry.get(CachePolicyManager)
             return cache_svc, policy_mgr
@@ -244,6 +246,7 @@ class _RepositoryMixin:
         try:
             from aios.registry import ServiceRegistry
             from aios.services.persistence import RedisCacheService  # type: ignore[attr-defined]
+
             return ServiceRegistry._global_registry.get(RedisCacheService)
         except Exception:
             return None
@@ -297,6 +300,7 @@ class _RepositoryMixin:
             # ── Optional cache integration ─────────────────────────────────
             try:
                 from aios.services.persistence import CachePolicy  # type: ignore[attr-defined]
+
                 cache_svc, policy_mgr = self._resolve_cache_services()
                 if cache_svc and policy_mgr:
                     policy = policy_mgr.get_policy(cache_namespace)

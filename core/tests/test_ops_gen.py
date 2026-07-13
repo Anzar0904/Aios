@@ -65,7 +65,9 @@ def run_generator_once(project_root: Path) -> OperationsGenerationResult:
 
 
 @pytest.fixture(scope="module")
-def all_guide_contents(operations_dir: Path, run_generator_once: OperationsGenerationResult) -> dict:
+def all_guide_contents(
+    operations_dir: Path, run_generator_once: OperationsGenerationResult
+) -> dict:
     """Load all guide file contents after generation."""
     guides = [
         "README.md",
@@ -294,15 +296,18 @@ class TestConfigurationGuide:
         content = all_guide_contents["configuration.md"]
         assert "## PostgreSQL Configuration" in content
 
-    @pytest.mark.parametrize("param", [
-        "POSTGRES_HOST",
-        "POSTGRES_PORT",
-        "POSTGRES_DATABASE",
-        "POSTGRES_USER",
-        "POSTGRES_PASSWORD",
-        "POSTGRES_SSLMODE",
-        "POSTGRES_CONNECT_TIMEOUT",
-    ])
+    @pytest.mark.parametrize(
+        "param",
+        [
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "POSTGRES_DATABASE",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_SSLMODE",
+            "POSTGRES_CONNECT_TIMEOUT",
+        ],
+    )
     def test_postgres_param_documented(self, all_guide_contents, param):
         """Each PostgreSQL env var found in persistence.py must be documented."""
         content = all_guide_contents["configuration.md"]
@@ -322,15 +327,18 @@ class TestConfigurationGuide:
         content = all_guide_contents["configuration.md"]
         assert "## Redis Configuration" in content
 
-    @pytest.mark.parametrize("param", [
-        "REDIS_HOST",
-        "REDIS_PORT",
-        "REDIS_USERNAME",
-        "REDIS_PASSWORD",
-        "REDIS_DATABASE",
-        "REDIS_TLS",
-        "REDIS_TIMEOUT",
-    ])
+    @pytest.mark.parametrize(
+        "param",
+        [
+            "REDIS_HOST",
+            "REDIS_PORT",
+            "REDIS_USERNAME",
+            "REDIS_PASSWORD",
+            "REDIS_DATABASE",
+            "REDIS_TLS",
+            "REDIS_TIMEOUT",
+        ],
+    )
     def test_redis_param_documented(self, all_guide_contents, param):
         """Each Redis env var found in redis.py must be documented."""
         content = all_guide_contents["configuration.md"]
@@ -347,17 +355,20 @@ class TestConfigurationGuide:
         content = all_guide_contents["configuration.md"]
         assert "## Qdrant Configuration" in content
 
-    @pytest.mark.parametrize("param", [
-        "QDRANT_HOST",
-        "QDRANT_PORT",
-        "QDRANT_GRPC_PORT",
-        "QDRANT_API_KEY",
-        "QDRANT_HTTPS",
-        "QDRANT_TIMEOUT",
-        "QDRANT_RETRY_COUNT",
-        "QDRANT_DEFAULT_DIMENSIONS",
-        "QDRANT_DEFAULT_DISTANCE",
-    ])
+    @pytest.mark.parametrize(
+        "param",
+        [
+            "QDRANT_HOST",
+            "QDRANT_PORT",
+            "QDRANT_GRPC_PORT",
+            "QDRANT_API_KEY",
+            "QDRANT_HTTPS",
+            "QDRANT_TIMEOUT",
+            "QDRANT_RETRY_COUNT",
+            "QDRANT_DEFAULT_DIMENSIONS",
+            "QDRANT_DEFAULT_DISTANCE",
+        ],
+    )
     def test_qdrant_param_documented(self, all_guide_contents, param):
         """Each Qdrant env var found in qdrant.py must be documented."""
         content = all_guide_contents["configuration.md"]
@@ -373,13 +384,16 @@ class TestConfigurationGuide:
         content = all_guide_contents["configuration.md"]
         assert "n8n" in content.lower()
 
-    @pytest.mark.parametrize("param", [
-        "N8N_SERVER_URL",
-        "N8N_API_KEY",
-        "N8N_EMAIL",
-        "N8N_PASSWORD",
-        "N8N_BEARER_TOKEN",
-    ])
+    @pytest.mark.parametrize(
+        "param",
+        [
+            "N8N_SERVER_URL",
+            "N8N_API_KEY",
+            "N8N_EMAIL",
+            "N8N_PASSWORD",
+            "N8N_BEARER_TOKEN",
+        ],
+    )
     def test_n8n_param_documented(self, all_guide_contents, param):
         """Each n8n env var from service.py must be documented."""
         content = all_guide_contents["configuration.md"]
@@ -397,11 +411,14 @@ class TestConfigurationGuide:
         content = all_guide_contents["configuration.md"]
         assert "OmniRoute" in content
 
-    @pytest.mark.parametrize("param", [
-        "OPENROUTER_API_KEY",
-        "ANTHROPIC_API_KEY",
-        "GEMINI_API_KEY",
-    ])
+    @pytest.mark.parametrize(
+        "param",
+        [
+            "OPENROUTER_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "GEMINI_API_KEY",
+        ],
+    )
     def test_omniroute_param_documented(self, all_guide_contents, param):
         """Each OmniRoute provider API key must be documented."""
         content = all_guide_contents["configuration.md"]
@@ -885,26 +902,27 @@ class TestProductionChecklist:
 class TestCrossReferences:
     """Test that cross-references between guides are valid."""
 
-    @pytest.mark.parametrize("source_file,target_file", [
-        ("local_setup.md", "configuration.md"),
-        ("local_setup.md", "troubleshooting.md"),
-        ("deployment.md", "configuration.md"),
-        ("deployment.md", "monitoring.md"),
-        ("deployment.md", "backup_restore.md"),
-        ("deployment.md", "production_checklist.md"),
-        ("startup.md", "troubleshooting.md"),
-        ("troubleshooting.md", "configuration.md"),
-        ("troubleshooting.md", "startup.md"),
-        ("backup_restore.md", "startup.md"),
-        ("production_checklist.md", "configuration.md"),
-        ("production_checklist.md", "monitoring.md"),
-    ])
+    @pytest.mark.parametrize(
+        "source_file,target_file",
+        [
+            ("local_setup.md", "configuration.md"),
+            ("local_setup.md", "troubleshooting.md"),
+            ("deployment.md", "configuration.md"),
+            ("deployment.md", "monitoring.md"),
+            ("deployment.md", "backup_restore.md"),
+            ("deployment.md", "production_checklist.md"),
+            ("startup.md", "troubleshooting.md"),
+            ("troubleshooting.md", "configuration.md"),
+            ("troubleshooting.md", "startup.md"),
+            ("backup_restore.md", "startup.md"),
+            ("production_checklist.md", "configuration.md"),
+            ("production_checklist.md", "monitoring.md"),
+        ],
+    )
     def test_internal_cross_reference(self, all_guide_contents, source_file, target_file):
         """Source guide should reference target guide."""
         content = all_guide_contents[source_file]
-        assert target_file in content, (
-            f"{source_file} should cross-reference {target_file}"
-        )
+        assert target_file in content, f"{source_file} should cross-reference {target_file}"
 
     @pytest.mark.parametrize("source_file", _EXPECTED_FILES)
     def test_generated_dir_reference_in_readme(self, all_guide_contents, source_file):
@@ -970,6 +988,7 @@ class TestIdempotency:
 def _strip_timestamps(content: str) -> str:
     """Strip timestamp values so idempotency check ignores generation time."""
     import re
+
     # Remove ISO 8601 timestamps from banners and **Generated**: lines
     return re.sub(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", "TIMESTAMP", content)
 
@@ -1370,9 +1389,7 @@ class TestMonitoringAnalyzer:
 
     def test_all_metrics_have_thresholds(self, metrics):
         for m in metrics:
-            assert m.alert_threshold is not None, (
-                f"Metric {m.name} should have an alert threshold"
-            )
+            assert m.alert_threshold is not None, f"Metric {m.name} should have an alert threshold"
 
 
 class TestTroubleshootingAnalyzer:
@@ -1393,8 +1410,7 @@ class TestTroubleshootingAnalyzer:
             assert isinstance(e, TroubleshootingEntry)
 
     def test_postgres_entry_present(self, entries):
-        assert any("PostgreSQL" in e.symptom or "database" in e.symptom.lower()
-                   for e in entries)
+        assert any("PostgreSQL" in e.symptom or "database" in e.symptom.lower() for e in entries)
 
     def test_redis_entry_present(self, entries):
         assert any("Redis" in e.symptom for e in entries)
@@ -1407,8 +1423,7 @@ class TestTroubleshootingAnalyzer:
 
     def test_omniroute_entry_present(self, entries):
         """OmniRoute/provider timeout issues must be documented."""
-        assert any("timeout" in e.symptom.lower() or "model" in e.symptom.lower()
-                   for e in entries)
+        assert any("timeout" in e.symptom.lower() or "model" in e.symptom.lower() for e in entries)
 
     def test_migration_entry_present(self, entries):
         assert any("migration" in e.symptom.lower() for e in entries)

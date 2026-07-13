@@ -129,9 +129,13 @@ class SQLiteTransport(DatabaseTransport):
                     rows = [dict(zip(colnames, row, strict=False)) for row in cursor.fetchall()]
                 else:
                     rows = []
-                return TransportResult(rows=rows, last_inserted_id=cursor.lastrowid, rows_affected=cursor.rowcount)
+                return TransportResult(
+                    rows=rows, last_inserted_id=cursor.lastrowid, rows_affected=cursor.rowcount
+                )
             except Exception as e:
-                logger.error(f"SQLite query execution error inside transaction: {e}. Query: {query}")
+                logger.error(
+                    f"SQLite query execution error inside transaction: {e}. Query: {query}"
+                )
                 raise
             finally:
                 cursor.close()
@@ -147,7 +151,9 @@ class SQLiteTransport(DatabaseTransport):
                     rows = [dict(zip(colnames, row, strict=False)) for row in cursor.fetchall()]
                 else:
                     rows = []
-                return TransportResult(rows=rows, last_inserted_id=cursor.lastrowid, rows_affected=cursor.rowcount)
+                return TransportResult(
+                    rows=rows, last_inserted_id=cursor.lastrowid, rows_affected=cursor.rowcount
+                )
             except Exception as e:
                 logger.error(f"SQLite query execution error: {e}. Query: {query}")
                 raise

@@ -8,6 +8,7 @@ from aios.services.base import ServiceLifecycle
 
 class WorkflowExecutionState(str, Enum):
     """Workflow execution outcome/running state."""
+
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
@@ -20,6 +21,7 @@ class WorkflowExecutionState(str, Enum):
 @dataclass
 class WorkflowExecutionMetrics:
     """Execution timing and metadata telemetries."""
+
     duration_seconds: float
     latency_seconds: float
     retry_count: int
@@ -30,6 +32,7 @@ class WorkflowExecutionMetrics:
 @dataclass
 class WorkflowExecutionRecord:
     """Consolidated telemetry trace describing a single run session."""
+
     execution_id: str
     workflow_id: str
     workspace_id: str
@@ -43,6 +46,7 @@ class WorkflowExecutionRecord:
 @dataclass
 class WorkflowTelemetry:
     """Container grouping execution trace lists by workflow ID."""
+
     workflow_id: str
     workspace_id: str
     records: List[WorkflowExecutionRecord] = field(default_factory=list)
@@ -51,9 +55,12 @@ class WorkflowTelemetry:
 @dataclass
 class WorkflowAlert:
     """Configure-triggered runtime anomaly warning alert."""
+
     alert_id: str
     workflow_id: str
-    alert_type: str  # "repeated_failure", "long_duration", "high_retry", "health_degradation", "timeout"
+    alert_type: (
+        str  # "repeated_failure", "long_duration", "high_retry", "health_degradation", "timeout"
+    )
     severity: str  # "info", "warning", "critical"
     message: str
     timestamp: float
@@ -62,6 +69,7 @@ class WorkflowAlert:
 @dataclass
 class WorkflowHealthScore:
     """Workflow structural health evaluation metric."""
+
     workflow_id: str
     score: float  # 0.0 to 100.0
     reliability: float  # 0.0 to 1.0
@@ -71,6 +79,7 @@ class WorkflowHealthScore:
 @dataclass
 class WorkflowStatistics:
     """Compiled timing and rate metrics detailing workflow run aggregates."""
+
     total_runs: int
     success_rate: float
     failure_rate: float
@@ -86,6 +95,7 @@ class WorkflowStatistics:
 @dataclass
 class WorkflowMonitoringReport:
     """Consolidated telemetry summaries payload for syncing or writing."""
+
     report_id: str
     workspace_id: str
     statistics: Dict[str, WorkflowStatistics] = field(default_factory=dict)

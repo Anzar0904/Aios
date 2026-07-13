@@ -16,9 +16,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
             required_tools=["filesystem"],
             example_usage="analyze repository",
         ),
-        lambda args: execute_agent_intent(
-            kernel, IntentType.DEVELOPER, "AnalyzeRepository", {}
-        ),
+        lambda args: execute_agent_intent(kernel, IntentType.DEVELOPER, "AnalyzeRepository", {}),
     )
 
     registry.register_command(
@@ -106,9 +104,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
             required_tools=["filesystem"],
             example_usage="analyze dependencies",
         ),
-        lambda args: execute_agent_intent(
-            kernel, IntentType.DEVELOPER, "AnalyzeDependencies", {}
-        ),
+        lambda args: execute_agent_intent(kernel, IntentType.DEVELOPER, "AnalyzeDependencies", {}),
     )
 
     registry.register_command(
@@ -171,9 +167,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
             required_tools=["git"],
             example_usage="generate release notes",
         ),
-        lambda args: execute_agent_intent(
-            kernel, IntentType.DEVELOPER, "GenerateReleaseNotes", {}
-        ),
+        lambda args: execute_agent_intent(kernel, IntentType.DEVELOPER, "GenerateReleaseNotes", {}),
     )
 
     registry.register_command(
@@ -252,9 +246,7 @@ def register_commands(registry, kernel, conv_manager) -> None:
             required_tools=["filesystem"],
             example_usage="detect duplicate code",
         ),
-        lambda args: execute_agent_intent(
-            kernel, IntentType.DEVELOPER, "DetectDuplicateCode", {}
-        ),
+        lambda args: execute_agent_intent(kernel, IntentType.DEVELOPER, "DetectDuplicateCode", {}),
     )
 
     registry.register_command(

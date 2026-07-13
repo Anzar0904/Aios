@@ -39,7 +39,7 @@ class LocalWorkspaceValidator(WorkspaceValidator):
     def validate_workspace(self, workspace_root: str) -> tuple[bool, str]:
         if not os.path.exists(workspace_root):
             return False, f"Workspace root directory does not exist: {workspace_root}"
-        
+
         meta_file = os.path.join(workspace_root, "workspace.json")
         if not os.path.isfile(meta_file):
             return False, f"Workspace metadata file missing: {meta_file}"
@@ -68,7 +68,11 @@ class LocalWorkspaceCleaner(WorkspaceCleaner):
         temp_extensions = (".tmp", ".temp", ".log")
         for root, _dirs, files in os.walk(workspace_root):
             for file in files:
-                if file.endswith(temp_extensions) or "workspace.json" not in file and file.startswith("."):
+                if (
+                    file.endswith(temp_extensions)
+                    or "workspace.json" not in file
+                    and file.startswith(".")
+                ):
                     file_path = os.path.join(root, file)
                     try:
                         os.remove(file_path)
@@ -89,15 +93,15 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         self,
         memory_service: MemoryService,
         knowledge_hub: Optional[KnowledgeHubService] = None,
-        registry: Optional[Any] = None
+        registry: Optional[Any] = None,
     ) -> None:
         self._memory = memory_service
         self._knowledge_hub = knowledge_hub
         self._registry = registry
-        
+
         self._validator = LocalWorkspaceValidator()
         self._cleaner = LocalWorkspaceCleaner()
-        
+
         self._workspaces: Dict[str, WorkspaceMetadata] = {}
         self._sessions: Dict[str, WorkspaceSession] = {}
         self._snapshots: Dict[str, List[WorkspaceSnapshot]] = {}
@@ -118,7 +122,11 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             self._session_repo = None
 
     def _get_policy(self) -> PersistencePolicy:
-        if self._workspace_repo and hasattr(self._workspace_repo, "service") and self._workspace_repo.service.config:
+        if (
+            self._workspace_repo
+            and hasattr(self._workspace_repo, "service")
+            and self._workspace_repo.service.config
+        ):
             return self._workspace_repo.service.config.policy
         return PersistencePolicy.STRICT
 
@@ -135,7 +143,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                         created_at=row.get("created_at", time.time()),
                         original_repo_root=meta_details.get("original_repo_root", ""),
                         workspace_root=meta_details.get("workspace_root", ""),
-                        status=row.get("status", "active")
+                        status=row.get("status", "active"),
                     )
                     self._workspaces[workspace_id] = meta
                     return meta
@@ -158,7 +166,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                         workspace_id=row.get("workspace_id"),
                         status=row.get("state", "closed"),
                         created_at=row.get("start_time", time.time()),
-                        closed_at=row.get("end_time")
+                        closed_at=row.get("end_time"),
                     )
                     self._sessions[workspace_id] = session
                     return session
@@ -177,18 +185,23 @@ class LocalAIWorkspaceService(AIWorkspaceService):
 
     def create_workspace(self, original_repo_root: str) -> WorkspaceSession:
         workspace_id = f"ws_{int(time.time())}_{id(self) % 1000}"
-        
+
         # Ensure workspaces folder is inside user workspace root (original_repo_root)
         workspaces_dir = os.path.join(original_repo_root, "temp", "workspaces")
         workspace_root = os.path.join(workspaces_dir, workspace_id)
-        
+
         os.makedirs(workspace_root, exist_ok=True)
-        
+
         # Copy repository files (excluding git, venv, caches)
         def ignore_patterns(src, names):
             return {
-                ".git", ".venv", "node_modules", "__pycache__", 
-                ".pytest_cache", ".gemini", "temp"
+                ".git",
+                ".venv",
+                "node_modules",
+                "__pycache__",
+                ".pytest_cache",
+                ".gemini",
+                "temp",
             }
 
         try:
@@ -211,28 +224,31 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             created_at=time.time(),
             original_repo_root=original_repo_root,
             workspace_root=workspace_root,
-            status="active"
+            status="active",
         )
         self._workspaces[workspace_id] = meta
         self._snapshots[workspace_id] = []
         self._changes[workspace_id] = []
-        
+
         # Write metadata file inside workspace
         meta_file = os.path.join(workspace_root, "workspace.json")
         with open(meta_file, "w") as f:
-            json.dump({
-                "workspace_id": workspace_id,
-                "created_at": meta.created_at,
-                "original_repo_root": meta.original_repo_root,
-                "status": meta.status
-            }, f)
+            json.dump(
+                {
+                    "workspace_id": workspace_id,
+                    "created_at": meta.created_at,
+                    "original_repo_root": meta.original_repo_root,
+                    "status": meta.status,
+                },
+                f,
+            )
 
         # Create session
         session = WorkspaceSession(
             session_id=f"sess_{workspace_id}",
             workspace_id=workspace_id,
             status="open",
-            created_at=time.time()
+            created_at=time.time(),
         )
         self._sessions[workspace_id] = session
 
@@ -243,22 +259,21 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 workspace_mapped = {
                     "id": workspace_id,
                     "name": workspace_id,
-                    "metadata": json.dumps({
-                        "original_repo_root": original_repo_root,
-                        "workspace_root": workspace_root
-                    }),
+                    "metadata": json.dumps(
+                        {"original_repo_root": original_repo_root, "workspace_root": workspace_root}
+                    ),
                     "state": "active",
                     "created_at": meta.created_at,
                     "last_accessed": time.time(),
                     "version": "1.0",
                     "status": "active",
-                    "health": "healthy"
+                    "health": "healthy",
                 }
                 res_ws = self._workspace_repo.save(workspace_mapped)
                 if res_ws.status != PersistenceStatus.SUCCESS:
                     if policy == PersistencePolicy.STRICT:
                         raise RuntimeError(f"Strict persistence save failure: {res_ws.message}")
-                
+
                 session_mapped = {
                     "id": session.session_id,
                     "workspace_id": session.workspace_id,
@@ -272,7 +287,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                     "metrics": json.dumps({}),
                     "health": "healthy",
                     "checkpoints": json.dumps([]),
-                    "resume_metadata": json.dumps({})
+                    "resume_metadata": json.dumps({}),
                 }
                 res_sess = self._session_repo.save(session_mapped)
                 if res_sess.status != PersistenceStatus.SUCCESS:
@@ -282,7 +297,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 if policy == PersistencePolicy.STRICT:
                     raise RuntimeError(f"Strict persistence save failure: {e}") from e
                 logger.warning(f"Database error saving workspace/session: {e}.")
-        
+
         logger.info(f"Created workspace {workspace_id} in {workspace_root}")
         return session
 
@@ -298,12 +313,12 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             raise ValueError(f"Workspace {workspace_id} not found.")
 
         meta.status = "active"
-        
+
         session = WorkspaceSession(
             session_id=f"sess_{workspace_id}",
             workspace_id=workspace_id,
             status="open",
-            created_at=time.time()
+            created_at=time.time(),
         )
         self._sessions[workspace_id] = session
 
@@ -314,16 +329,18 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 workspace_mapped = {
                     "id": workspace_id,
                     "name": workspace_id,
-                    "metadata": json.dumps({
-                        "original_repo_root": meta.original_repo_root,
-                        "workspace_root": meta.workspace_root
-                    }),
+                    "metadata": json.dumps(
+                        {
+                            "original_repo_root": meta.original_repo_root,
+                            "workspace_root": meta.workspace_root,
+                        }
+                    ),
                     "state": "active",
                     "created_at": meta.created_at,
                     "last_accessed": time.time(),
                     "version": "1.0",
                     "status": "active",
-                    "health": "healthy"
+                    "health": "healthy",
                 }
                 self._workspace_repo.save(workspace_mapped)
 
@@ -340,7 +357,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                     "metrics": json.dumps({}),
                     "health": "healthy",
                     "checkpoints": json.dumps([]),
-                    "resume_metadata": json.dumps({})
+                    "resume_metadata": json.dumps({}),
                 }
                 self._session_repo.save(session_mapped)
             except Exception as e:
@@ -355,7 +372,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         if session:
             session.status = "closed"
             session.closed_at = time.time()
-            
+
         meta = self._get_workspace_meta(workspace_id)
         if meta:
             meta.status = "closed"
@@ -367,16 +384,18 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 workspace_mapped = {
                     "id": workspace_id,
                     "name": workspace_id,
-                    "metadata": json.dumps({
-                        "original_repo_root": meta.original_repo_root,
-                        "workspace_root": meta.workspace_root
-                    }),
+                    "metadata": json.dumps(
+                        {
+                            "original_repo_root": meta.original_repo_root,
+                            "workspace_root": meta.workspace_root,
+                        }
+                    ),
                     "state": "closed",
                     "created_at": meta.created_at,
                     "last_accessed": time.time(),
                     "version": "1.0",
                     "status": "closed",
-                    "health": "healthy"
+                    "health": "healthy",
                 }
                 self._workspace_repo.save(workspace_mapped)
 
@@ -393,7 +412,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                     "metrics": json.dumps({}),
                     "health": "healthy",
                     "checkpoints": json.dumps([]),
-                    "resume_metadata": json.dumps({})
+                    "resume_metadata": json.dumps({}),
                 }
                 self._session_repo.save(session_mapped)
             except Exception as e:
@@ -414,10 +433,10 @@ class LocalAIWorkspaceService(AIWorkspaceService):
 
         archive_dir = os.path.join(os.path.dirname(meta.workspace_root), "archives")
         os.makedirs(archive_dir, exist_ok=True)
-        
+
         archive_base = os.path.join(archive_dir, workspace_id)
         archive_path = shutil.make_archive(archive_base, "zip", meta.workspace_root)
-        
+
         meta.status = "archived"
         self.close_workspace(workspace_id)
 
@@ -428,23 +447,25 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 workspace_mapped = {
                     "id": workspace_id,
                     "name": workspace_id,
-                    "metadata": json.dumps({
-                        "original_repo_root": meta.original_repo_root,
-                        "workspace_root": meta.workspace_root
-                    }),
+                    "metadata": json.dumps(
+                        {
+                            "original_repo_root": meta.original_repo_root,
+                            "workspace_root": meta.workspace_root,
+                        }
+                    ),
                     "state": "archived",
                     "created_at": meta.created_at,
                     "last_accessed": time.time(),
                     "version": "1.0",
                     "status": "archived",
-                    "health": "healthy"
+                    "health": "healthy",
                 }
                 self._workspace_repo.save(workspace_mapped)
             except Exception as e:
                 if policy == PersistencePolicy.STRICT:
                     raise RuntimeError(f"Strict persistence save failure: {e}") from e
                 logger.warning(f"Database error saving archived workspace: {e}.")
-        
+
         return archive_path
 
     def restore_workspace(self, archive_path: str) -> WorkspaceSession:
@@ -454,24 +475,24 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         workspace_id = os.path.splitext(os.path.basename(archive_path))[0]
         workspaces_dir = os.path.dirname(os.path.dirname(archive_path))
         workspace_root = os.path.join(workspaces_dir, workspace_id)
-        
+
         os.makedirs(workspace_root, exist_ok=True)
         shutil.unpack_archive(archive_path, workspace_root, "zip")
-        
+
         meta = WorkspaceMetadata(
             workspace_id=workspace_id,
             created_at=time.time(),
             original_repo_root=os.path.dirname(workspaces_dir),
             workspace_root=workspace_root,
-            status="active"
+            status="active",
         )
         self._workspaces[workspace_id] = meta
-        
+
         session = WorkspaceSession(
             session_id=f"sess_{workspace_id}",
             workspace_id=workspace_id,
             status="open",
-            created_at=time.time()
+            created_at=time.time(),
         )
         self._sessions[workspace_id] = session
 
@@ -482,16 +503,18 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 workspace_mapped = {
                     "id": workspace_id,
                     "name": workspace_id,
-                    "metadata": json.dumps({
-                        "original_repo_root": meta.original_repo_root,
-                        "workspace_root": meta.workspace_root
-                    }),
+                    "metadata": json.dumps(
+                        {
+                            "original_repo_root": meta.original_repo_root,
+                            "workspace_root": meta.workspace_root,
+                        }
+                    ),
                     "state": "active",
                     "created_at": meta.created_at,
                     "last_accessed": time.time(),
                     "version": "1.0",
                     "status": "active",
-                    "health": "healthy"
+                    "health": "healthy",
                 }
                 self._workspace_repo.save(workspace_mapped)
 
@@ -508,7 +531,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                     "metrics": json.dumps({}),
                     "health": "healthy",
                     "checkpoints": json.dumps([]),
-                    "resume_metadata": json.dumps({})
+                    "resume_metadata": json.dumps({}),
                 }
                 self._session_repo.save(session_mapped)
             except Exception as e:
@@ -523,7 +546,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         if meta:
             self._cleaner.purge_workspace(meta.workspace_root)
             meta.status = "destroyed"
-            
+
         self.close_workspace(workspace_id)
 
         # Update status to destroyed in DB
@@ -533,16 +556,18 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 workspace_mapped = {
                     "id": workspace_id,
                     "name": workspace_id,
-                    "metadata": json.dumps({
-                        "original_repo_root": meta.original_repo_root,
-                        "workspace_root": meta.workspace_root
-                    }),
+                    "metadata": json.dumps(
+                        {
+                            "original_repo_root": meta.original_repo_root,
+                            "workspace_root": meta.workspace_root,
+                        }
+                    ),
                     "state": "destroyed",
                     "created_at": meta.created_at,
                     "last_accessed": time.time(),
                     "version": "1.0",
                     "status": "destroyed",
-                    "health": "healthy"
+                    "health": "healthy",
                 }
                 self._workspace_repo.save(workspace_mapped)
             except Exception as e:
@@ -559,7 +584,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
         created_files = []
         modified_files = []
         deleted_files = []
-        
+
         for c in self._changes.get(workspace_id, []):
             if c.change_type == "create":
                 created_files.append(c.relative_path)
@@ -575,9 +600,9 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             created_files=created_files,
             modified_files=modified_files,
             deleted_files=deleted_files,
-            metadata={"description": description}
+            metadata={"description": description},
         )
-        
+
         if workspace_id not in self._snapshots:
             self._snapshots[workspace_id] = []
         self._snapshots[workspace_id].append(snapshot)
@@ -602,7 +627,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 timestamp=time.time(),
                 target_snapshot_id=snapshot_id,
                 status="failed",
-                recovered_items=[]
+                recovered_items=[],
             )
 
         # Restore workspace state (Metadata recovery details)
@@ -611,14 +636,14 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             recovered_items.append(f"Restored created file entry: {cf}")
         for mf in target_snap.modified_files:
             recovered_items.append(f"Restored modified file state: {mf}")
-            
+
         return WorkspaceRecovery(
             recovery_id=f"rec_{int(time.time())}",
             workspace_id=workspace_id,
             timestamp=time.time(),
             target_snapshot_id=snapshot_id,
             status="success",
-            recovered_items=recovered_items
+            recovered_items=recovered_items,
         )
 
     def track_change(self, workspace_id: str, change: WorkspaceChange) -> None:
@@ -636,7 +661,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
 
         snaps = self._snapshots.get(workspace_id, [])
         changes = self._changes.get(workspace_id, [])
-        
+
         summary = (
             f"Workspace ID: {workspace_id}\n"
             f"Original Repo: {meta.original_repo_root}\n"
@@ -645,7 +670,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             f"Snapshots Count: {len(snaps)}\n"
             f"Registered File Changes: {len(changes)}"
         )
-        
+
         self._memory.add_memory(
             content=summary,
             memory_type=MemoryType.PROJECT,
@@ -654,8 +679,8 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 session_id=f"sess_{workspace_id}",
                 tags=["workspace_foundation", "sandbox_metadata"],
                 importance=2,
-                source_subsystem="ai_workspace"
-            )
+                source_subsystem="ai_workspace",
+            ),
         )
 
     def publish_workspace_report(self, workspace_id: str) -> None:
@@ -680,7 +705,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
             f"- **File Changes Tracked**: {len(changes)}\n"
             f"- **Workspace Snapshots Captured**: {len(snaps)}\n"
         )
-        
+
         doc = KnowledgeDocument(
             document_id=f"ws_report_{workspace_id}",
             title=f"AI Workspace Report - {workspace_id}",
@@ -689,7 +714,7 @@ class LocalAIWorkspaceService(AIWorkspaceService):
                 unique_id=f"ws_report_{workspace_id}",
                 timestamp=time.time(),
                 source_subsystem="ai_workspace",
-                category="Project"
-            )
+                category="Project",
+            ),
         )
         self._knowledge_hub.sync_document(doc, "notion")
