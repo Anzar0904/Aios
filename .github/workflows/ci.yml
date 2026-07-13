@@ -62,6 +62,11 @@ jobs:
       - name: Run Ruff format check
         run: ruff format --check ./core
 
+      - name: Configure Git User
+        run: |
+          git config --global user.name "CI Bot"
+          git config --global user.email "ci-bot@aios.local"
+
       - name: Run pytest
         env:
           POSTGRES_HOST: localhost

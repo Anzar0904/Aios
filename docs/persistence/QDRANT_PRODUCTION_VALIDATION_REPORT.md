@@ -24,6 +24,6 @@ The complete Qdrant vector database memory orchestration platform, including nat
 - **Quantization**: Enabled (scalar quantization)
 
 ## 3. Connectivity Verification
-- **HTTP Endpoint**: 11.63ms
+- **HTTP Endpoint**: 8.49ms
 - **Qdrant Version**: unknown
 - **Connection Pool**: Reconnect and timeout pooling checks passed.

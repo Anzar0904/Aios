@@ -9,11 +9,32 @@ class PoolError(Exception):
     pass
 
 
-mock_psycopg = MagicMock()
-mock_psycopg.pool = MagicMock()
-mock_psycopg.pool.PoolError = PoolError
-sys.modules["psycopg2"] = mock_psycopg
-sys.modules["psycopg2.pool"] = mock_psycopg.pool
+mock_psycopg = None
+
+
+@pytest.fixture(autouse=True)
+def setup_mock_psycopg():
+    global mock_psycopg
+    old_psycopg = sys.modules.get("psycopg2")
+    old_pool = sys.modules.get("psycopg2.pool")
+
+    mock_psycopg = MagicMock()
+    mock_psycopg.pool = MagicMock()
+    mock_psycopg.pool.PoolError = PoolError
+    sys.modules["psycopg2"] = mock_psycopg
+    sys.modules["psycopg2.pool"] = mock_psycopg.pool
+
+    yield mock_psycopg
+
+    if old_psycopg:
+        sys.modules["psycopg2"] = old_psycopg
+    else:
+        sys.modules.pop("psycopg2", None)
+    if old_pool:
+        sys.modules["psycopg2.pool"] = old_pool
+    else:
+        sys.modules.pop("psycopg2.pool", None)
+    mock_psycopg = None
 
 
 # Mock ThreadedConnectionPool behavior

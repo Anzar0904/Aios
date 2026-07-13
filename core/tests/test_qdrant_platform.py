@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from aios.bootstrap import bootstrap_kernel
@@ -28,18 +27,18 @@ from aios.services.persistence_impl import (
 )
 
 
-def test_qdrant_configuration():
-    os.environ["QDRANT_HOST"] = "127.0.0.1"
-    os.environ["QDRANT_PORT"] = "6333"
-    os.environ["QDRANT_GRPC_PORT"] = "6334"
-    os.environ["QDRANT_API_KEY"] = "test-api-key"
-    os.environ["QDRANT_HTTPS"] = "true"
-    os.environ["QDRANT_TIMEOUT"] = "10.0"
-    os.environ["QDRANT_RETRY_COUNT"] = "5"
-    os.environ["QDRANT_DEFAULT_DIMENSIONS"] = "384"
-    os.environ["QDRANT_DEFAULT_DISTANCE"] = "cosine"
-    os.environ["QDRANT_ON_DISK_PAYLOAD"] = "false"
-    os.environ["QDRANT_QUANTIZATION"] = "true"
+def test_qdrant_configuration(monkeypatch):
+    monkeypatch.setenv("QDRANT_HOST", "127.0.0.1")
+    monkeypatch.setenv("QDRANT_PORT", "6333")
+    monkeypatch.setenv("QDRANT_GRPC_PORT", "6334")
+    monkeypatch.setenv("QDRANT_API_KEY", "test-api-key")
+    monkeypatch.setenv("QDRANT_HTTPS", "true")
+    monkeypatch.setenv("QDRANT_TIMEOUT", "10.0")
+    monkeypatch.setenv("QDRANT_RETRY_COUNT", "5")
+    monkeypatch.setenv("QDRANT_DEFAULT_DIMENSIONS", "384")
+    monkeypatch.setenv("QDRANT_DEFAULT_DISTANCE", "cosine")
+    monkeypatch.setenv("QDRANT_ON_DISK_PAYLOAD", "false")
+    monkeypatch.setenv("QDRANT_QUANTIZATION", "true")
 
     config = QdrantConfigurationService()
     assert config.host == "127.0.0.1"
@@ -53,22 +52,6 @@ def test_qdrant_configuration():
     assert config.default_distance_metric == "COSINE"
     assert config.on_disk_payload is False
     assert config.quantization is True
-
-    # Cleanup environment variables
-    for key in [
-        "QDRANT_HOST",
-        "QDRANT_PORT",
-        "QDRANT_GRPC_PORT",
-        "QDRANT_API_KEY",
-        "QDRANT_HTTPS",
-        "QDRANT_TIMEOUT",
-        "QDRANT_RETRY_COUNT",
-        "QDRANT_DEFAULT_DIMENSIONS",
-        "QDRANT_DEFAULT_DISTANCE",
-        "QDRANT_ON_DISK_PAYLOAD",
-        "QDRANT_QUANTIZATION",
-    ]:
-        os.environ.pop(key, None)
 
 
 def test_qdrant_connection_manager_and_transport():
@@ -252,6 +235,14 @@ def test_dependency_injection_and_runtime_intelligence():
     assert registry.get(ContextBuilder) is not None
 
     # Check Runtime Intelligence integration
+    qdrant_conn = registry.get(QdrantConnectionManager)
+    import time
+
+    for _ in range(50):
+        if qdrant_conn.is_connected():
+            break
+        time.sleep(0.1)
+
     ri_service = registry.get(RuntimeIntelligenceService)
     assert ri_service is not None
 
