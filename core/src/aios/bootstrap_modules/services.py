@@ -756,6 +756,51 @@ def bootstrap_services(
     registry.register(WorkflowOptimizationService, workflow_optimization_service)
     registry.register(WorkflowVersionService, workflow_version_service)
 
+    # ── 9. CORE INTELLIGENCE SERVICES (Phase 4) ──
+    from aios.local.core_intelligence import (
+        ActionEngine,
+        AIPlanner,
+        AISupervisor,
+        ContextEngine,
+        DecisionEngine,
+        GoalEngine,
+        MemoryIndex,
+        NotificationCenter,
+        PluginRegistry,
+        PriorityEngine,
+        Scheduler,
+        SkillRegistry,
+        TaskEngine,
+    )
+
+    task_engine = TaskEngine()
+    decision_engine = DecisionEngine()
+    context_engine = ContextEngine()
+    notification_center = NotificationCenter()
+    goal_engine = GoalEngine()
+    priority_engine = PriorityEngine()
+    scheduler = Scheduler()
+    plugin_registry = PluginRegistry()
+    skill_registry = SkillRegistry()
+    action_engine = ActionEngine()
+    memory_index = MemoryIndex()
+    ai_planner = AIPlanner()
+    ai_supervisor = AISupervisor()
+
+    registry.register(TaskEngine, task_engine)
+    registry.register(DecisionEngine, decision_engine)
+    registry.register(ContextEngine, context_engine)
+    registry.register(NotificationCenter, notification_center)
+    registry.register(GoalEngine, goal_engine)
+    registry.register(PriorityEngine, priority_engine)
+    registry.register(Scheduler, scheduler)
+    registry.register(PluginRegistry, plugin_registry)
+    registry.register(SkillRegistry, skill_registry)
+    registry.register(ActionEngine, action_engine)
+    registry.register(MemoryIndex, memory_index)
+    registry.register(AIPlanner, ai_planner)
+    registry.register(AISupervisor, ai_supervisor)
+
     return {
         "session_service": session_service,
         "context_service": context_service,

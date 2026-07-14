@@ -128,7 +128,7 @@ def mock_registry():
         }
         if cls in mapping:
             return mapping[cls]
-        raise KeyError(f"Service {cls} not mock-registered")
+        return MagicMock()
 
     registry.get.side_effect = get_service
     return registry

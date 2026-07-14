@@ -3961,6 +3961,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         "github",
         "notion",
         "resume",
+        "tasks",
+        "goals",
+        "planner",
+        "plugins",
+        "skills",
+        "notifications",
+        "events",
+        "context",
+        "scheduler",
     ):
         from aios.local.cli_workspace_commands import cmd_workspace_main
         from aios.registry import ServiceRegistry
@@ -4113,6 +4122,15 @@ def main() -> None:
                     or user_input.startswith("github")
                     or user_input.startswith("notion")
                     or user_input.startswith("resume")
+                    or user_input.startswith("tasks")
+                    or user_input.startswith("goals")
+                    or user_input.startswith("planner")
+                    or user_input.startswith("plugins")
+                    or user_input.startswith("skills")
+                    or user_input.startswith("notifications")
+                    or user_input.startswith("events")
+                    or user_input.startswith("context")
+                    or user_input.startswith("scheduler")
                 ):
                     cmd_str = user_input
 

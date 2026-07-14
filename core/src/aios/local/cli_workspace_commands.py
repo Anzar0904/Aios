@@ -1,7 +1,7 @@
 """
 aios/local/cli_workspace_commands.py
 
-CLI Command handlers for Daily Intelligence & Autonomous Workspace (Phase 3).
+CLI Command handlers for Daily Intelligence, Workspace, and Core Intelligence Layer (Phases 2-4).
 Implements:
 - Morning Briefing & Startup Automation
 - Daily Planner & Priorities Sorting
@@ -11,7 +11,8 @@ Implements:
 - CRM Agency & Hackathons dashboards
 - Notifications alerting engine
 - Storing/Retrieving session memory
-- CLI command routers
+- Core Intelligence subcommands (tasks, goals, planner, plugins, skills, notifications, events, context, scheduler)
+- Unified Systems Dashboard
 """
 
 from __future__ import annotations
@@ -58,7 +59,7 @@ def load_workspace_session() -> Dict[str, Any]:
     default_data = {
         "current_project": "Aios",
         "active_sprint": "Sprint 31",
-        "current_phase": "Phase 3: Daily Intelligence & Autonomous Workspace",
+        "current_phase": "Phase 4: Core Intelligence Layer",
         "previous_workspace_root": str(Path.cwd().resolve()),
         "recent_commands": [],
         "last_opened_files": [
@@ -71,16 +72,19 @@ def load_workspace_session() -> Dict[str, Any]:
             "RuntimeService",
             "NotionService",
             "GitHubService",
+            "TaskEngine",
+            "DecisionEngine",
+            "ContextEngine",
         ],
         "previous_conversation": [
             {"role": "user", "content": "Restored previous workspace session context."},
             {
                 "role": "assistant",
-                "content": "I have successfully restored your workspace context. You are on Sprint 31, working on Phase 3: Daily Intelligence & Autonomous Workspace. Ready for instructions!",
+                "content": "I have successfully restored your workspace context. You are on Sprint 31, working on Phase 4: Core Intelligence Layer. Ready for instructions!",
             },
         ],
         "yesterday_achievements": [
-            "Completed Phase 2: AI Workspace & Unified CLI implementation",
+            "Completed Phase 3: Daily Intelligence & Autonomous Workspace",
             "Added unit tests for workspace session persistence and CLI command routers",
             "Configured background ticking daemon in LocalRuntime and verified green CI",
         ],
@@ -168,17 +172,17 @@ def seed_data_files() -> None:
     if not NOTIFICATIONS_PATH.is_file():
         notifications_data = [
             {
-                "id": "notif_1",
+                "notification_id": "notif_1",
                 "title": "GitHub Workflow Status",
                 "message": "Workflow 'CI' on main branch passed successfully.",
-                "severity": "info",
+                "severity": "Info",
                 "timestamp": time.time(),
             },
             {
-                "id": "notif_2",
+                "notification_id": "notif_2",
                 "title": "External HDD Status",
                 "message": "External HDD 'AI_MODELS' is successfully mounted at /Volumes/AI_MODELS.",
-                "severity": "info",
+                "severity": "Info",
                 "timestamp": time.time(),
             },
         ]
@@ -188,7 +192,7 @@ def seed_data_files() -> None:
     # 5. Seed roadmap.json
     if not ROADMAP_PATH.is_file():
         roadmap_data = {
-            "current_phase": "Phase 3: Daily Intelligence & Autonomous Workspace",
+            "current_phase": "Phase 4: Core Intelligence Layer",
             "current_sprint": "Sprint 31",
             "modules_completed": [
                 "LocalModelService",
@@ -196,16 +200,19 @@ def seed_data_files() -> None:
                 "OllamaDiscovery",
                 "WorkspaceLifecycleManager",
                 "DiagnosticsEngine",
+                "TaskEngine",
+                "DecisionEngine",
+                "ContextEngine",
             ],
             "modules_pending": [
-                "AutonomousAgentRouting",
-                "RealtimeNotificationWatchers",
-                "AutomatedBriefingEngine",
+                "AgencyIntelligence",
+                "ProjectIntelligence",
+                "GitHubIntelligence",
             ],
-            "total_tests": 1591,
+            "total_tests": 1599,
             "test_coverage": "85%",
             "ci_status": "Success",
-            "roadmap_progress": "85%",
+            "roadmap_progress": "100%",
         }
         with open(ROADMAP_PATH, "w", encoding="utf-8") as f:
             json.dump(roadmap_data, f, indent=4)
@@ -376,7 +383,6 @@ def sync_agency_info(registry: Any) -> Dict[str, Any]:
         "Update proposal pipeline for Sprint 31 review.",
     ]
 
-    # Try loading from Business service
     try:
         from aios.services.business import BusinessIntelligenceService
 
@@ -606,7 +612,7 @@ def generate_daily_planner(
         planner_tasks = [
             {
                 "source": "AI OS Roadmap",
-                "title": "Complete Phase 3: Daily Intelligence & Autonomous Workspace",
+                "title": "Complete Phase 4: Core Intelligence Layer",
                 "priority": "Critical",
                 "status": "In Progress",
             },
@@ -813,9 +819,11 @@ def run_diagnostics(registry: Any = None) -> Dict[str, Dict[str, Any]]:
 
     results["n8n"] = {
         "status": "Healthy" if n8n_online else "Disconnected",
-        "details": "Service active on http://localhost:5678"
-        if n8n_online
-        else "Service unreachable on http://localhost:5678",
+        "details": (
+            "Service active on http://localhost:5678"
+            if n8n_online
+            else "Service unreachable on http://localhost:5678"
+        ),
     }
 
     # 9. External HDD Check
@@ -976,8 +984,34 @@ def cmd_dashboard(args: List[str], registry: Any = None) -> None:
     # Retrieve info
     gh_info = sync_github_info(registry)
     agency_info = sync_agency_info(registry)
-    planner_tasks = generate_daily_planner(registry, gh_info, agency_info)
     diagnostics = run_diagnostics(registry)
+
+    # Core Intelligence Registries
+    from aios.local.core_intelligence import (
+        GoalEngine,
+        NotificationCenter,
+        PluginRegistry,
+        Scheduler,
+        SkillRegistry,
+        TaskEngine,
+    )
+
+    task_engine = registry.get(TaskEngine) if registry else TaskEngine()
+    goal_engine = registry.get(GoalEngine) if registry else GoalEngine()
+    plugin_reg = registry.get(PluginRegistry) if registry else PluginRegistry()
+    skill_reg = registry.get(SkillRegistry) if registry else SkillRegistry()
+    scheduler = registry.get(Scheduler) if registry else Scheduler()
+    notif_center = registry.get(NotificationCenter) if registry else NotificationCenter()
+
+    # Sync alerts to NotificationCenter
+    try:
+        alerts = check_notifications(registry, gh_info, agency_info)
+        for alert in alerts:
+            notif_center.create_notification(
+                alert["title"], alert["message"], alert["type"].capitalize()
+            )
+    except Exception:
+        pass
 
     # Status summary
     uptime_str = "N/A"
@@ -1002,8 +1036,8 @@ def cmd_dashboard(args: List[str], registry: Any = None) -> None:
     info_table.add_column(style="bold cyan", justify="right")
     info_table.add_column(style="white")
     info_table.add_row("Version:", "1.0.0")
-    info_table.add_row("Active Session:", session_id)
-    info_table.add_row("Uptime:", uptime_str)
+    info_table.add_row("Active Session:", str(session_id))
+    info_table.add_row("Uptime:", str(uptime_str))
     info_table.add_row("Current Sprint:", sess_data["active_sprint"])
     info_table.add_row("Running Services:", ", ".join(sess_data["running_services"]))
 
@@ -1044,23 +1078,74 @@ def cmd_dashboard(args: List[str], registry: Any = None) -> None:
     model_table.add_row("gemma3:4b", "[cyan]Helper[/cyan]", "[dim]idle[/dim]")
     console.print(model_table)
 
-    # 3. Today's Consolidated Plan
-    task_table = Table(
-        title="[bold yellow]Today's Productivity Agenda[/bold yellow]", show_header=True
-    )
-    task_table.add_column("Source", style="bold cyan")
-    task_table.add_column("Task Title", style="bold white")
+    # 3. Tasks Engine Panel
+    tasks = task_engine.list_tasks()
+    task_table = Table(title="[bold yellow]Core Task Engine Queue[/bold yellow]", show_header=True)
+    task_table.add_column("Task ID", style="bold cyan")
+    task_table.add_column("Title", style="bold white")
     task_table.add_column("Priority", justify="center")
     task_table.add_column("Status", justify="center")
 
-    for task in planner_tasks[:6]:
-        color = "green" if task["status"] in ("Completed", "done", "Done") else "yellow"
-        task_table.add_row(
-            task["source"], task["title"], task["priority"], f"[{color}]{task['status']}[/{color}]"
-        )
+    for t in tasks[:5]:
+        color = "green" if t.status == "Completed" else "yellow"
+        task_table.add_row(t.task_id, t.title, t.priority, f"[{color}]{t.status}[/{color}]")
+    if not tasks:
+        task_table.add_row("None", "No active tasks in queue", "—", "[dim]idle[/dim]")
     console.print(task_table)
 
-    # 4. CRM Agency & Hackathons panels
+    # 4. Goals Panel
+    goals = goal_engine.list_goals()
+    goals_table = Table(title="[bold green]Goal Engine Targets[/bold green]", show_header=True)
+    goals_table.add_column("Category", style="bold cyan")
+    goals_table.add_column("Goal Target", style="bold white")
+    goals_table.add_column("Status", justify="center")
+
+    for g in goals[:4]:
+        color = "green" if g.status == "Achieved" else "yellow"
+        goals_table.add_row(g.category, g.title, f"[{color}]{g.status}[/{color}]")
+    if not goals:
+        goals_table.add_row(
+            "Sprint", "Complete AI OS Core Architecture Integration", "[yellow]Pending[/yellow]"
+        )
+    console.print(goals_table)
+
+    # 5. Plugins & Skills Panel
+    plugins = plugin_reg.list_plugins()
+    skills = skill_reg.list_skills()
+    plugins_summary = (
+        f"[bold cyan]Active Plugins:[/bold cyan] {', '.join(p.name for p in plugins[:4])}"
+    )
+    skills_summary = (
+        f"[bold magenta]Available Skills:[/bold magenta] {', '.join(s.name for s in skills[:4])}"
+    )
+
+    # 6. Scheduler & Notifications Panel
+    jobs = scheduler.list_jobs()
+    active_jobs = ", ".join(jobs.keys()) if jobs else "daily_sync, benchmark_runs, health_checks"
+    notifications = notif_center.list_notifications()
+    notif_count = len(notifications)
+
+    sched_summary = f"[bold yellow]Registered Jobs:[/bold yellow] {active_jobs}"
+    notif_summary = f"[bold red]Alert Logs count:[/bold red] {notif_count} alerts logged"
+
+    grid_panels = Table.grid(padding=2)
+    grid_panels.add_column(width=40)
+    grid_panels.add_column(width=40)
+    grid_panels.add_row(
+        Panel(
+            plugins_summary + "\n\n" + skills_summary,
+            title="[bold white]Plugin & Skill Registry[/bold white]",
+            border_style="cyan",
+        ),
+        Panel(
+            sched_summary + "\n\n" + notif_summary,
+            title="[bold white]Scheduler & Alerts[/bold white]",
+            border_style="yellow",
+        ),
+    )
+    console.print(grid_panels)
+
+    # 7. CRM Agency & Hackathons panels
     crm_summary = (
         f"[bold cyan]Leads count:[/bold cyan] {len(agency_info['leads'])}\n"
         f"[bold cyan]Follow-ups pending:[/bold cyan] {len(agency_info['follow_ups'])}\n"
@@ -1174,7 +1259,10 @@ def cmd_today(args: List[str], registry: Any = None) -> None:
     for task in planner_tasks:
         color = "green" if task["status"] in ("Completed", "done", "Done") else "yellow"
         task_table.add_row(
-            task["priority"], task["source"], task["title"], f"[{color}]{task['status']}[/{color}]"
+            task["priority"],
+            task["source"],
+            task["title"],
+            f"[{color}]{task['status']}[/{color}]",
         )
     console.print(task_table)
     console.print()
@@ -1409,7 +1497,8 @@ def cmd_notion(args: List[str], registry: Any = None) -> None:
     table.add_column("Value / Status", style="white")
     table.add_row("Connection Status", details["status"])
     table.add_row(
-        "Connected Workspaces", ", ".join(details["workspaces"]) or "Default Developer Workspace"
+        "Connected Workspaces",
+        ", ".join(details["workspaces"]) or "Default Developer Workspace",
     )
     table.add_row("Daily Log Page created", "Yes" if details["created_today_page"] else "No")
     table.add_row(
@@ -1454,6 +1543,336 @@ def cmd_resume(args: List[str], registry: Any = None) -> None:
                 f"  [{role_color}]{msg['role'].capitalize()}:[/{role_color}] {msg['content']}"
             )
     console.print()
+
+
+# --- Phase 4 Core Intelligence Subcommands ---
+def cmd_tasks(args: List[str], registry: Any = None) -> None:
+    """Manages system tasks (creation, completion, lists)."""
+    from aios.local.core_intelligence import Task, TaskEngine
+
+    engine = registry.get(TaskEngine) if registry else TaskEngine()
+
+    if args and args[0] == "create":
+        if len(args) < 4:
+            console.print("[yellow]Usage: aios tasks create <title> <desc> <priority>[/yellow]")
+            return
+        title = args[1]
+        desc = args[2]
+        priority = args[3]
+        task_id = f"task_{int(time.time())}"
+        task = Task(task_id, title, desc, priority, "Aios", "AI OS", "Pending")
+        engine.create_task(task)
+        console.print(f"[green]✓ Created task: {task_id} - '{title}'[/green]")
+    elif args and args[0] == "complete":
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios tasks complete <task_id>[/yellow]")
+            return
+        task_id = args[1]
+        t = engine.update_task(task_id, {"status": "Completed"})
+        if t:
+            console.print(f"[green]✓ Marked task {task_id} as Completed.[/green]")
+        else:
+            console.print(f"[red]✗ Task {task_id} not found.[/red]")
+    else:
+        tasks = engine.list_tasks()
+        if not tasks:
+            console.print(
+                "[yellow]No tasks recorded. Run 'aios tasks create' to add a task.[/yellow]"
+            )
+            return
+        table = Table(title="AI OS Tasks Engine", show_header=True)
+        table.add_column("Task ID", style="bold cyan")
+        table.add_column("Title", style="bold white")
+        table.add_column("Priority", justify="center")
+        table.add_column("Status", justify="center")
+        table.add_column("Assigned Model", style="magenta")
+        for t in tasks:
+            status_color = "green" if t.status == "Completed" else "yellow"
+            table.add_row(
+                t.task_id,
+                t.title,
+                t.priority,
+                f"[{status_color}]{t.status}[/{status_color}]",
+                t.assigned_model,
+            )
+        console.print(table)
+
+
+def cmd_goals(args: List[str], registry: Any = None) -> None:
+    """Manages personal and roadmap targets/goals."""
+    from aios.local.core_intelligence import Goal, GoalEngine
+
+    engine = registry.get(GoalEngine) if registry else GoalEngine()
+
+    if args and args[0] == "create":
+        if len(args) < 4:
+            console.print(
+                "[yellow]Usage: aios goals create <title> <category> <target_date>[/yellow]"
+            )
+            return
+        title = args[1]
+        category = args[2]
+        target_date = args[3]
+        goal_id = f"goal_{int(time.time())}"
+        goal = Goal(goal_id, title, category, target_date, "Pending")
+        engine.create_goal(goal)
+        console.print(f"[green]✓ Created goal: {goal_id} - '{title}'[/green]")
+    elif args and args[0] == "achieve":
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios goals achieve <goal_id>[/yellow]")
+            return
+        goal_id = args[1]
+        g = engine.update_goal(goal_id, {"status": "Achieved", "progress": 100.0})
+        if g:
+            console.print(f"[green]✓ Goal {goal_id} achieved![/green]")
+        else:
+            console.print(f"[red]✗ Goal {goal_id} not found.[/red]")
+    else:
+        goals = engine.list_goals()
+        if not goals:
+            console.print("[yellow]No goals recorded. Run 'aios goals create' to set one.[/yellow]")
+            return
+        table = Table(title="AI OS Goal Engine", show_header=True)
+        table.add_column("Goal ID", style="bold cyan")
+        table.add_column("Category", style="bold magenta")
+        table.add_column("Title", style="bold white")
+        table.add_column("Deadline", style="cyan")
+        table.add_column("Status", justify="center")
+        for g in goals:
+            status_color = "green" if g.status == "Achieved" else "yellow"
+            table.add_row(
+                g.goal_id,
+                g.category,
+                g.title,
+                g.target_date,
+                f"[{status_color}]{g.status}[/{status_color}]",
+            )
+        console.print(table)
+
+
+def cmd_planner(args: List[str], registry: Any = None) -> None:
+    """Breaks complex objectives into executable plans."""
+    from aios.local.core_intelligence import AIPlanner, TaskEngine
+
+    planner = registry.get(AIPlanner) if registry else AIPlanner()
+    task_engine = registry.get(TaskEngine) if registry else TaskEngine()
+
+    if not args:
+        console.print("[yellow]Usage: aios planner <objective>[/yellow]")
+        return
+    objective = " ".join(args)
+    console.print(f"[cyan]AI OS Planner breakdown for objective: '{objective}'[/cyan]")
+    tasks = planner.plan_objective(objective)
+    table = Table(title="Generated Project Plan", show_header=True)
+    table.add_column("Task ID", style="bold cyan")
+    table.add_column("Title", style="bold white")
+    table.add_column("Dependencies", style="dim")
+    table.add_column("Priority", justify="center")
+
+    for t in tasks:
+        task_engine.create_task(t)
+        deps = ", ".join(t.dependencies) if t.dependencies else "None"
+        table.add_row(t.task_id, t.title, deps, t.priority)
+
+    console.print(table)
+    console.print("[green]✓ Plan generated. Added all tasks to the Task Engine queue.[/green]")
+
+
+def cmd_plugins(args: List[str], registry: Any = None) -> None:
+    """Lists registered system plugins."""
+    from aios.local.core_intelligence import PluginRegistry
+
+    reg = registry.get(PluginRegistry) if registry else PluginRegistry()
+    plugins = reg.list_plugins()
+    table = Table(title="AI OS Plugin Registry", show_header=True)
+    table.add_column("Plugin Name", style="bold white")
+    table.add_column("Version", style="dim")
+    table.add_column("Capabilities", style="cyan")
+    table.add_column("Health Status", justify="center")
+    table.add_column("Status", justify="center")
+
+    for p in plugins:
+        health_color = "green" if p.health == "Healthy" else "yellow"
+        status_color = "green" if p.status == "Active" else "red"
+        table.add_row(
+            p.name,
+            p.version,
+            ", ".join(p.capabilities),
+            f"[{health_color}]{p.health}[/{health_color}]",
+            f"[{status_color}]{p.status}[/{status_color}]",
+        )
+    console.print(table)
+
+
+def cmd_skills(args: List[str], registry: Any = None) -> None:
+    """Lists registered AI capabilities/skills."""
+    from aios.local.core_intelligence import SkillRegistry
+
+    reg = registry.get(SkillRegistry) if registry else SkillRegistry()
+    skills = reg.list_skills()
+    table = Table(title="AI OS Skill Registry", show_header=True)
+    table.add_column("Skill Name", style="bold white")
+    table.add_column("Capability Type", style="cyan")
+    table.add_column("Complexity", justify="center")
+    table.add_column("Description", style="dim")
+
+    for s in skills:
+        comp_color = (
+            "red" if s.complexity == "High" else "yellow" if s.complexity == "Medium" else "green"
+        )
+        table.add_row(
+            s.name, s.capability_type, f"[{comp_color}]{s.complexity}[/{comp_color}]", s.description
+        )
+    console.print(table)
+
+
+def cmd_notifications(args: List[str], registry: Any = None) -> None:
+    """Lists alerts from Notification Center."""
+    from aios.local.core_intelligence import NotificationCenter
+
+    center = registry.get(NotificationCenter) if registry else NotificationCenter()
+
+    if args and args[0] == "create":
+        if len(args) < 4:
+            console.print(
+                "[yellow]Usage: aios notifications create <title> <message> <severity>[/yellow]"
+            )
+            return
+        center.create_notification(args[1], args[2], args[3])
+        console.print("[green]✓ Notification created successfully.[/green]")
+    else:
+        notifications = center.list_notifications()
+        if not notifications:
+            console.print("[yellow]No notifications recorded.[/yellow]")
+            return
+        table = Table(title="AI OS Notifications", show_header=True)
+        table.add_column("Severity", justify="center")
+        table.add_column("Title", style="bold white")
+        table.add_column("Message", style="white")
+        table.add_column("Timestamp", style="dim")
+
+        for n in notifications:
+            sev_color = (
+                "red"
+                if n.severity in ("Error", "Critical")
+                else "yellow"
+                if n.severity == "Warning"
+                else "green"
+            )
+            table.add_row(
+                f"[{sev_color}]{n.severity}[/{sev_color}]",
+                n.title,
+                n.message,
+                datetime.fromtimestamp(n.timestamp).strftime("%Y-%m-%d %H:%M:%S"),
+            )
+        console.print(table)
+
+
+def cmd_events(args: List[str], registry: Any = None) -> None:
+    """Simulates/lists EventBus events."""
+    from aios.local.core_intelligence import Event
+    from aios.services.event_bus import EventBusService
+
+    event_bus = registry.get(EventBusService) if registry else None
+
+    if args and args[0] == "publish":
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios events publish <type> [key=value ...][/yellow]")
+            return
+        event_type = args[1]
+        data = {}
+        for pair in args[2:]:
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                data[k] = v
+        if event_bus:
+            try:
+                event_bus.publish(Event(event_type, data))
+                console.print(f"[green]✓ Published event '{event_type}' to EventBus.[/green]")
+            except Exception as e:
+                console.print(f"[red]✗ Event publication error: {e}[/red]")
+        else:
+            console.print("[yellow]EventBusService not registered.[/yellow]")
+    else:
+        console.print()
+        table = Table(title="Supported Core Events", show_header=True)
+        table.add_column("Event Type", style="bold white")
+        table.add_column("Description", style="dim")
+        table.add_row("TaskCreated", "Fires when a new operational task starts")
+        table.add_row("TaskCompleted", "Fires when a task finishes successfully")
+        table.add_row("ModelLoaded", "Fires when local Ollama model mounts to VRAM")
+        table.add_row("ModelUnloaded", "Fires when a model is released from RAM")
+        table.add_row("NotionUpdated", "Fires when Notion daily page syncs")
+        table.add_row("GitHubPush", "Fires when commits are pushed upstream")
+        console.print(table)
+        console.print()
+
+
+def cmd_context(args: List[str], registry: Any = None) -> None:
+    """Displays/updates Context Engine parameters."""
+    from aios.local.core_intelligence import ContextEngine
+
+    engine = registry.get(ContextEngine) if registry else ContextEngine()
+
+    if args and args[0] == "update":
+        updates = {}
+        for pair in args[1:]:
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                updates[k] = v
+        engine.update_context(updates)
+        console.print("[green]✓ Context updated successfully.[/green]")
+
+    ctx = engine.get_current()
+    table = Table(title="AI OS Context Engine", show_header=True)
+    table.add_column("Key", style="bold cyan")
+    table.add_column("Current Active Value", style="white")
+    table.add_row("Current Project", ctx.current_project)
+    table.add_row("Current Sprint", ctx.current_sprint)
+    table.add_row("Current Branch", ctx.current_branch)
+    table.add_row("Current Workspace", ctx.current_workspace)
+    table.add_row("Current Client", ctx.current_client)
+    table.add_row("Current Hackathon", ctx.current_hackathon)
+    table.add_row(
+        "Current Active Models", ", ".join(ctx.current_active_models) or "deepseek-r1, gemma3:4b"
+    )
+    console.print(table)
+
+
+def cmd_scheduler(args: List[str], registry: Any = None) -> None:
+    """Lists/manages Scheduler background jobs."""
+    from aios.local.core_intelligence import Scheduler
+
+    sch = registry.get(Scheduler) if registry else Scheduler()
+
+    # Register default jobs on check
+    sch.register_job("daily_sync", 86400.0)
+    sch.register_job("benchmark_runs", 3600.0)
+    sch.register_job("health_checks", 60.0)
+
+    if args and args[0] == "trigger":
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios scheduler trigger <job_id>[/yellow]")
+            return
+        job_id = args[1]
+        sch.trigger_job(job_id)
+        console.print(f"[green]✓ Triggered job '{job_id}' successfully.[/green]")
+    else:
+        jobs = sch.list_jobs()
+        table = Table(title="AI OS Scheduler Jobs", show_header=True)
+        table.add_column("Job ID", style="bold white")
+        table.add_column("Interval (s)", justify="right", style="cyan")
+        table.add_column("Last Run", style="white")
+
+        for jid, jdata in jobs.items():
+            last_run = (
+                datetime.fromtimestamp(jdata["last_run"]).strftime("%Y-%m-%d %H:%M:%S")
+                if jdata["last_run"] > 0
+                else "Never"
+            )
+            table.add_row(jid, f"{jdata['interval']:.0f}", last_run)
+
+        console.print(table)
 
 
 def cmd_status(args: List[str], registry: Any = None) -> None:
@@ -1616,6 +2035,15 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
         "github": cmd_github,
         "notion": cmd_notion,
         "resume": cmd_resume,
+        "tasks": cmd_tasks,
+        "goals": cmd_goals,
+        "planner": cmd_planner,
+        "plugins": cmd_plugins,
+        "skills": cmd_skills,
+        "notifications": cmd_notifications,
+        "events": cmd_events,
+        "context": cmd_context,
+        "scheduler": cmd_scheduler,
     }
 
     handler = handlers.get(subcommand)
@@ -1628,6 +2056,15 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
                 "  [cyan]aios dashboard[/cyan]      — Render systems dashboard\n"
                 "  [cyan]aios today[/cyan]          — Show daily review, planner brief\n"
                 "  [cyan]aios work[/cyan]           — Show workspace engineering context\n"
+                "  [cyan]aios tasks[/cyan]          — Show active tasks list\n"
+                "  [cyan]aios goals[/cyan]          — Show personal/roadmap targets\n"
+                "  [cyan]aios planner[/cyan]        — Plan objectives breakdown\n"
+                "  [cyan]aios plugins[/cyan]        — Show registered plugins list\n"
+                "  [cyan]aios skills[/cyan]         — Show registered AI capabilities\n"
+                "  [cyan]aios notifications[/cyan]  — Show Notification Center alerts\n"
+                "  [cyan]aios events[/cyan]         — Simulate/list event-bus types\n"
+                "  [cyan]aios context[/cyan]        — View/update active context\n"
+                "  [cyan]aios scheduler[/cyan]      — Show background scheduler jobs\n"
                 "  [cyan]aios agenda[/cyan]         — Show calendar schedule & deadlines\n"
                 "  [cyan]aios projects[/cyan]       — Show active projects list\n"
                 "  [cyan]aios agency[/cyan]         — Show CRM leads database\n"
