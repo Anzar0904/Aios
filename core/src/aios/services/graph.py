@@ -71,6 +71,16 @@ class EntityType(Enum):
     COURSE = "course"
     NOTE = "note"
     LIFE_AREA = "life_area"
+    # Phase 11.5 Natural Language OS Entities
+    INTENT = "intent"
+    CONVERSATION = "conversation"
+    ACTION = "action"
+    PLAN = "plan"
+    SKILL = "skill"
+    # Phase 12 Multi-Agent Entities
+    AGENT = "agent"
+    RESULT = "result"
+    CAPABILITY = "capability"
 
 
 class RelationshipType(Enum):
@@ -82,6 +92,18 @@ class RelationshipType(Enum):
     REFERENCES = "REFERENCES"
     CONTAINS = "CONTAINS"
     RELATED_TO = "RELATED_TO"
+    # Phase 11.5 Natural Language OS Relationships
+    REQUESTED = "REQUESTED"
+    EXECUTED = "EXECUTED"
+    REFERENCED = "REFERENCED"
+    GENERATED = "GENERATED"
+    PLANNED = "PLANNED"
+    # Phase 12 Multi-Agent Relationships
+    ASSIGNED_TO = "ASSIGNED_TO"
+    COMPLETED_BY = "COMPLETED_BY"
+    REQUESTED_BY = "REQUESTED_BY"
+    COLLABORATES_WITH = "COLLABORATES_WITH"
+    REPORTS_TO = "REPORTS_TO"
     # Phase 6 CRM Relationships
     WORKS_FOR = "WORKS_FOR"
     OWNS = "OWNS"

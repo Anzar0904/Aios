@@ -177,7 +177,9 @@ def cmd_agency_leads(args: List[str]) -> None:
         except Exception:
             pass
 
-        console.print(f"[green]✓ Lead created successfully for [bold]{company_name}[/bold].[/green]")
+        console.print(
+            f"[green]✓ Lead created successfully for [bold]{company_name}[/bold].[/green]"
+        )
         return
 
     # Default: List leads

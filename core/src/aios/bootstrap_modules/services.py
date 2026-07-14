@@ -31,6 +31,7 @@ from aios.n8n import (
     N8NWorkflowManager,
     N8NWorkspaceManager,
 )
+from aios.services.agent_platform import AutonomousAgentPlatform
 from aios.services.api_documentation import APIDocumentationService
 from aios.services.api_documentation_impl import LocalAPIDocumentationService
 
@@ -89,6 +90,8 @@ from aios.services.n8n_integration import N8NIntegrationService
 from aios.services.n8n_integration_impl import LocalN8NIntegrationService
 from aios.services.n8n_translation import WorkflowTranslator
 from aios.services.n8n_translation_impl import LocalWorkflowTranslator
+from aios.services.nl_os import NLOSService
+from aios.services.nl_os_impl import NLOSServiceImpl
 from aios.services.notion import NotionService
 from aios.services.notion_impl import LocalNotionService
 from aios.services.orchestrator import OrchestratorService
@@ -197,6 +200,10 @@ def bootstrap_services(
     context_service = LocalContextService(event_bus)
     tool_service = LocalToolManager(event_bus)
     intent_resolver = LocalIntentResolver()
+    nl_os_service = NLOSServiceImpl()
+    nl_os_service.initialize()
+    agent_platform = AutonomousAgentPlatform()
+    agent_platform.initialize()
     orchestrator_service = LocalOrchestratorService(command_registry)
     orchestrator_service.initialize()
 
@@ -642,6 +649,8 @@ def bootstrap_services(
     registry.register(SessionService, session_service)
     registry.register(ContextService, context_service)
     registry.register(IntentResolverService, intent_resolver)
+    registry.register(NLOSService, nl_os_service)
+    registry.register(AutonomousAgentPlatform, agent_platform)
     registry.register(ModelService, model_service)
     registry.register(Phase1LocalModelService, phase1_local_model_service)
     registry.register(ToolService, tool_service)
@@ -806,6 +815,8 @@ def bootstrap_services(
         "context_service": context_service,
         "tool_service": tool_service,
         "intent_resolver": intent_resolver,
+        "nl_os_service": nl_os_service,
+        "agent_platform": agent_platform,
         "model_service": model_service,
         "project_intelligence": project_intelligence,
         "research_service": research_service,

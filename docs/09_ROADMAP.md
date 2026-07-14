@@ -17,12 +17,23 @@
 
 ## 1. Executive Summary & Current Status
 The **Personal AI OS** is transitioning from a local command-line MVP to a highly structured mind extension. 
-* **Current Status**: **Core Intelligence Layer (v2.0)**.
-  * Phase 1 ✅ Local Model Intelligence: discovery, routing, and loading mechanisms.
-  * Phase 2 ✅ Workspace & Unified CLI: workspace loader, git context, boot sequence.
-  * Phase 3 ✅ Daily Intelligence & Autonomous Workspace: Morning briefing, Notion sync, GitHub sync.
-  * Phase 4 ✅ Core Intelligence Layer: Task, Decision, Context, Event Bus, Notification, Goal, Priority, Scheduler, Plugins, Skills, Action Engine, Memory Index, Planner, Supervisor.
-* **Remaining Horizions**: Multi-Agent Collaborative Task Executors, Agency Intelligence, Project Intelligence, Vite/NextJS Renderer.
+* **Current Status**: **Natural Language Operating System (v10.0)**.
+  * Phase 1 ✅ Local Model Intelligence
+  * Phase 2 ✅ Workspace & Unified CLI
+  * Phase 3 ✅ Daily Intelligence & Autonomous Workspace
+  * Phase 4 ✅ Core Intelligence Layer
+  * Phase 4.5 ✅ Universal Knowledge Graph
+  * Phase 5 ✅ Project Intelligence
+  * Phase 6 ✅ Agency Intelligence
+  * Phase 7 ✅ n8n Automation Intelligence
+  * Phase 7.5 ✅ Universal Integration Layer
+  * Phase 8 ✅ Documentation Intelligence
+  * Phase 9 ✅ GitHub Intelligence
+  * Phase 10 ✅ Research Intelligence
+  * Phase 11 ✅ Personal Intelligence
+  * Phase 11.5 ✅ Natural Language Operating System
+  * Phase 12 ✅ Autonomous Multi-Agent Platform
+* **Remaining Horizons**: Vite/NextJS Desktop Renderer.
 
 ---
 
@@ -356,7 +367,64 @@ gantt
 
 ---
 
-## 13. Test Verification Summary
-* **Total Tests Count**: 1,920 Passed (1,896 previous + 24 new personal intelligence tests).
+## 13. Phase 11.5 ✅ Natural Language Operating System (July 2026)
+
+### New in v10.0
+
+> **Phase 11.5** establishes a Natural Language Operating System within AI OS, enabling full system control using plain English. It includes intent engines, context tracking, pronoun resolution, action planning/execution pipelines, learning systems, and interactive CLI dashboards.
+
+**Subsystems Added:**
+- **Universal Intent Engine**: Rule heuristics and LLM router classification
+- **Context Engine**: Tracks active variables in `.agent/context.json`
+- **Conversational Memory**: Resolves pronouns ("it", "them") based on active state
+- **Entity Extractor**: Parsers projects, workflows, clients, topics, and goals
+- **Action Planner**: Generates multi-step execution plans with dependencies
+- **Action Executor**: Sequentially runs planned CLI commands in-process
+- **Explanation Engine**: Provides detailed reasoning summaries ("what are you doing?")
+- **Learning Engine**: Keeps history and preferences patterns in `.agent/` JSON
+- **Knowledge Graph Bridge**: Logs intents, plans, actions, and executions to SQLite Graph
+
+**Test Coverage:** 9 new tests (100% pass)
+
+### New CLI Commands
+- `aios chat` — enters the interactive conversational command center
+- `aios ask <query>` — executes a single natural language query or question
+- `aios intent <query>` — inspects resolved intent types and confidence scores
+- `aios plan <query>` — views a generated multi-step action plan
+- `aios execute <query>` — generates and executes a plan for a user request
+- `aios context` — views or manually updates active context items
+
+---
+
+## 14. Phase 12 ✅ Autonomous Multi-Agent Platform (July 2026)
+
+### New in v11.0
+
+> **Phase 12** transforms AI OS into a coordinated team of autonomous agents that plan, delegate, collaborate, execute, review, learn, and report on complex software and operations tasks.
+
+**Subsystems Added:**
+- **Agent Registry**: Persistent metadata cataloging roles, capabilities, and performance metrics.
+- **7 Core Specialized Agents**: Declares Software, Test, Doc, Research, Agency, Automation, and Integration core agents.
+- **Agent Communication Bus**: Secure message passing, task routing, and escalation logs.
+- **Task Delegation Engine**: Supports assigning, reassigning, splitting, and merging task lists.
+- **Planning Engine**: Converts plain English goals into detailed task trees and dependencies.
+- **Execution Engine**: Topological sort execution sequence resolver.
+- **Agent Memory**: Persists logs, results, and lessons learned to `.agent/agent_memory.json`.
+- **Knowledge Graph Sync**: Maps tasks, agents, and execution nodes dynamically to SQLite.
+
+**Test Coverage:** 6 new tests (100% pass)
+
+### New CLI Commands
+- `aios agents` — launches the live core agent dashboard panel
+- `aios agent list` — lists all registered agents and their capability mappings
+- `aios agent status [agent_id]` — displays agent run status and current tasks
+- `aios agent assign <task_id> <agent_id>` — manual routing and delegation tool
+- `aios agent execute <NL_objective>` — triggers autonomous multi-agent execution pipeline
+- `aios agent memory <agent_id>` — displays the historical memory and lessons ledger
+
+---
+
+## 15. Test Verification Summary
+* **Total Tests Count**: 1,935 Passed (1,929 previous + 6 new Multi-Agent tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.

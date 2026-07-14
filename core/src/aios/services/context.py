@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from aios.services.base import ServiceLifecycle
 from aios.services.event_bus import Event
@@ -51,4 +51,19 @@ class ContextService(ServiceLifecycle, abc.ABC):
 
         engineering, research, documentation memories, and recent retrievals.
         """
+        pass
+
+    @abc.abstractmethod
+    def get_context_item(self, key: str) -> Optional[str]:
+        """Gets a dynamic context item (e.g. project, workflow, client, topic, goal, conversation)."""
+        pass
+
+    @abc.abstractmethod
+    def set_context_item(self, key: str, value: str) -> None:
+        """Sets a dynamic context item."""
+        pass
+
+    @abc.abstractmethod
+    def clear_context(self) -> None:
+        """Clears all dynamic context items."""
         pass

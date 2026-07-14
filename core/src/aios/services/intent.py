@@ -14,6 +14,12 @@ class IntentType(Enum):
     DEVELOPER = auto()
     CAREER = auto()
     UNKNOWN = auto()
+    PROJECT = auto()
+    AGENCY = auto()
+    WORKFLOW = auto()
+    GITHUB = auto()
+    RESEARCH = auto()
+    PERSONAL = auto()
 
 
 @dataclass

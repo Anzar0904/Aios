@@ -55,6 +55,12 @@ def bootstrap_agents(
     agent_registry.register(developer_agent)
     agent_registry.register(mock_agent)
 
+    from aios.services.agent_platform import AutonomousAgentPlatform
+
+    agent_platform = registry.get(AutonomousAgentPlatform)
+    for agent in agent_platform._agents.values():
+        agent_registry.register(agent)
+
     # Instantiate Agent Runtime
     agent_runtime = LocalAgentRuntime(
         event_bus=event_bus,
@@ -71,6 +77,8 @@ def bootstrap_agents(
     agent_runtime.register_agent(mock_agent)
     agent_runtime.register_agent(developer_agent)
     agent_runtime.register_agent(career_agent)
+    for agent in agent_platform._agents.values():
+        agent_runtime.register_agent(agent)
 
     # Register in registry
     registry.register(AgentRuntimeService, agent_runtime)

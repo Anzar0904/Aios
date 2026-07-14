@@ -68,7 +68,7 @@ DEFAULT_COMPANIES = [
         "location": "Los Angeles, CA",
         "services": ["AI Consulting"],
         "client_status": "none",
-    }
+    },
 ]
 
 DEFAULT_CONTACTS = [
@@ -104,7 +104,7 @@ DEFAULT_CONTACTS = [
         "source": "Cold Outreach",
         "notes": "Inquiry about high-end reasoning model routing capabilities.",
         "tags": ["enterprise", "replicant"],
-    }
+    },
 ]
 
 
@@ -540,9 +540,7 @@ class AgencyCRMServiceImpl(AgencyCRMService):
     def get_lead(self, lead_id: str) -> Optional[Lead]:
         assert self._conn is not None
         with self._lock:
-            row = self._conn.execute(
-                "SELECT * FROM leads WHERE lead_id = ?", (lead_id,)
-            ).fetchone()
+            row = self._conn.execute("SELECT * FROM leads WHERE lead_id = ?", (lead_id,)).fetchone()
         return Lead.from_dict(dict(row)) if row else None
 
     def list_leads(self) -> List[Lead]:

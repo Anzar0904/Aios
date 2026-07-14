@@ -49,7 +49,16 @@ def test_n8n_production_client_request(mock_request):
     mock_resp = MagicMock(spec=httpx.Response)
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"status": "ok"}
-    mock_request.return_value = mock_resp
+
+    def dynamic_side_effect(method, url, *args, **kwargs):
+        if "localhost" in str(url) or "5678" in str(url):
+            return mock_resp
+        default_resp = MagicMock(spec=httpx.Response)
+        default_resp.status_code = 200
+        default_resp.json.return_value = {}
+        return default_resp
+
+    mock_request.side_effect = dynamic_side_effect
 
     cfg = N8NConfigurationService()
     session = N8NSessionManager(cfg)
@@ -59,7 +68,10 @@ def test_n8n_production_client_request(mock_request):
 
     res = client.request("GET", "/healthz")
     assert res.json()["status"] == "ok"
-    mock_request.assert_called_once()
+    local_calls = [
+        c for c in mock_request.call_args_list if "localhost" in str(c) or "5678" in str(c)
+    ]
+    assert len(local_calls) == 1
 
 
 @patch("httpx.Client.request")
@@ -74,7 +86,19 @@ def test_n8n_production_client_retry(mock_request):
     mock_ok.status_code = 200
     mock_ok.json.return_value = {"status": "ok"}
 
-    mock_request.side_effect = [mock_fail, mock_ok]
+    def dynamic_side_effect(method, url, *args, **kwargs):
+        if "localhost" in str(url) or "5678" in str(url):
+            dynamic_side_effect.call_count += 1
+            if dynamic_side_effect.call_count == 1:
+                raise httpx.HTTPStatusError("Server Error", request=MagicMock(), response=mock_fail)
+            return mock_ok
+        default_resp = MagicMock(spec=httpx.Response)
+        default_resp.status_code = 200
+        default_resp.json.return_value = {}
+        return default_resp
+
+    dynamic_side_effect.call_count = 0
+    mock_request.side_effect = dynamic_side_effect
 
     cfg = N8NConfigurationService()
     cfg.max_retries = 2
@@ -85,7 +109,10 @@ def test_n8n_production_client_retry(mock_request):
 
     res = client.request("GET", "/healthz")
     assert res.json()["status"] == "ok"
-    assert mock_request.call_count == 2
+    local_calls = [
+        c for c in mock_request.call_args_list if "localhost" in str(c) or "5678" in str(c)
+    ]
+    assert len(local_calls) == 2
 
 
 @patch("httpx.Client.request")

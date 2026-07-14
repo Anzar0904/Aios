@@ -1,7 +1,7 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from aios.services.context import (
     ContextChangedEvent,
@@ -23,6 +23,8 @@ class LocalContextService(ContextService):
     def __init__(self, event_bus: EventBusService) -> None:
         self._event_bus = event_bus
         self._context: WorkspaceContext | None = None
+        self._context_path = Path(".agent/context.json")
+        self._context_items = self._load_context_items()
 
     def initialize(self) -> None:
         logger.info("Initializing LocalContextService")
@@ -166,3 +168,35 @@ class LocalContextService(ContextService):
             "documentation_memories": documentation_mems,
             "recent_retrievals": recent_retrievals,
         }
+
+    def _load_context_items(self) -> Dict[str, str]:
+        if self._context_path.is_file():
+            try:
+                import json
+
+                with open(self._context_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def _save_context_items(self) -> None:
+        try:
+            self._context_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+
+            with open(self._context_path, "w", encoding="utf-8") as f:
+                json.dump(self._context_items, f, indent=4)
+        except Exception:
+            pass
+
+    def get_context_item(self, key: str) -> Optional[str]:
+        return self._context_items.get(key.lower())
+
+    def set_context_item(self, key: str, value: str) -> None:
+        self._context_items[key.lower()] = value
+        self._save_context_items()
+
+    def clear_context(self) -> None:
+        self._context_items.clear()
+        self._save_context_items()

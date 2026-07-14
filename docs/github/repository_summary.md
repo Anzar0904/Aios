@@ -1,15 +1,15 @@
-# Repository Summary — Anzar0904/aios
+# Repository Summary — Anzar0904/Aios
 
-- **Description**: AI OS
-- **URL**: https://github.com/Anzar0904/aios
-- **Stars**: 42
-- **Forks**: 7
-- **Open Issues**: 3
+- **Description**: personal ai assistant 
+- **URL**: https://github.com/Anzar0904/Aios
+- **Stars**: 1
+- **Forks**: 0
+- **Open Issues**: 0
 - **Languages**: Python
-- **Private**: True
+- **Private**: False
 
 ## AI Summary
 
-Excellent repo.
+[AI summary unavailable: 'NoneType' object has no attribute 'execute_request']
 
-_Generated at Tue Jul 14 18:49:40 2026_
+_Generated at Tue Jul 14 23:21:08 2026_

@@ -50,6 +50,7 @@ def tmp_db(tmp_path):
 @pytest.fixture
 def crm(tmp_db):
     from aios.local import agency_commands
+
     agency_commands._DB_PATH = tmp_db
     svc = AgencyCRMServiceImpl(db_path=tmp_db)
     svc.initialize()

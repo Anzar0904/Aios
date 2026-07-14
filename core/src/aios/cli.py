@@ -4304,6 +4304,477 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    # -----------------------------------------------------------------------
+    # Phase 11.5: Natural Language OS — `chat`, `ask`, `intent`, `plan`, `execute`, `context`
+    # -----------------------------------------------------------------------
+    elif args and args[0] == "chat":
+        from aios.registry import ServiceRegistry
+        from aios.services.nl_os import NLOSService
+
+        nl_os = ServiceRegistry._global_registry.get(NLOSService)
+        if len(args) > 1:
+            query = " ".join(args[1:])
+            tokens = nl_os.route_query(query)
+            if tokens:
+                console.print(f"[bold cyan]Routing to: aios {' '.join(tokens)}[/bold cyan]")
+                execute_builtin_cli_command(tokens, exit_on_complete=False)
+            else:
+                from aios.services.context import ContextService
+                from aios.services.conversation.manager import ConversationManager
+                from aios.services.conversation.store import ConversationStore
+                from aios.services.model import ModelService
+
+                ctx_svc = ServiceRegistry._global_registry.get(ContextService)
+                context = ctx_svc.get_current_context()
+                workspace_root = context.project_root if context else str(Path.cwd().resolve())
+
+                conv_store = ConversationStore(Path(workspace_root) / ".aios_conversations")
+                conv_manager = ConversationManager(conv_store)
+                model_service = ServiceRegistry._global_registry.get(ModelService)
+
+                handle_general_chat(query, conv_manager, model_service)
+        else:
+            console.print(
+                "[bold cyan]Entering AI OS Natural Language Chat Command Center...[/bold cyan]"
+            )
+            console.print("Type your plain English commands or queries. Type /exit to quit.")
+            from aios.services.context import ContextService
+            from aios.services.conversation.manager import ConversationManager
+            from aios.services.conversation.store import ConversationStore
+            from aios.services.model import ModelService
+
+            ctx_svc = ServiceRegistry._global_registry.get(ContextService)
+            context = ctx_svc.get_current_context()
+            workspace_root = context.project_root if context else str(Path.cwd().resolve())
+
+            conv_store = ConversationStore(Path(workspace_root) / ".aios_conversations")
+            conv_manager = ConversationManager(conv_store)
+            model_service = ServiceRegistry._global_registry.get(ModelService)
+
+            while True:
+                try:
+                    print_status_line(model_service, conv_manager)
+                    user_input = read_input().strip()
+                    if not user_input:
+                        continue
+                    if user_input in ("/exit", "/quit", "exit", "quit"):
+                        break
+
+                    tokens = nl_os.route_query(user_input)
+                    if tokens:
+                        console.print(f"[bold cyan]Routing to: aios {' '.join(tokens)}[/bold cyan]")
+                        execute_builtin_cli_command(tokens, exit_on_complete=False)
+                    else:
+                        handle_general_chat(user_input, conv_manager, model_service)
+                except KeyboardInterrupt:
+                    print()
+                    break
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "ask":
+        from aios.registry import ServiceRegistry
+        from aios.services.nl_os import NLOSService
+
+        nl_os = ServiceRegistry._global_registry.get(NLOSService)
+
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios ask <question>[/yellow]")
+        else:
+            query = " ".join(args[1:])
+            if query.lower().strip() in (
+                "what are you doing?",
+                "why did you choose this?",
+                "explain the plan.",
+                "what are you doing",
+                "why did you choose this",
+                "explain the plan",
+            ):
+                explanation = nl_os.get_last_explanation()
+                obj = explanation.get("objective", "None")
+                plan = explanation.get("plan")
+                reasoning = explanation.get("reasoning", "No explanation available.")
+
+                text_lines = [
+                    f"[bold]Objective:[/bold] {obj}",
+                    f"[bold]Reasoning/Routing Decision:[/bold] {reasoning}",
+                ]
+                if plan:
+                    text_lines.append("\n[bold]Execution Plan Steps:[/bold]")
+                    for s in plan.steps:
+                        text_lines.append(f"- Step {s.step_id}: {s.description} ({s.status})")
+
+                console.print(
+                    Panel(
+                        "\n".join(text_lines),
+                        title="[bold cyan]Explanation Engine[/bold cyan]",
+                        border_style="cyan",
+                    )
+                )
+            else:
+                tokens = nl_os.route_query(query)
+                if tokens:
+                    console.print(
+                        f"[bold cyan]Routing command: aios {' '.join(tokens)}[/bold cyan]"
+                    )
+                    execute_builtin_cli_command(tokens, exit_on_complete=False)
+                else:
+                    from aios.services.model import LLMRequest, ModelService
+
+                    model_service = ServiceRegistry._global_registry.get(ModelService)
+                    res = model_service.execute_request(
+                        LLMRequest(
+                            prompt=f'Please answer this question context-awarely:\n"{query}"',
+                            system_instruction="Provide a concise, direct answer to the user's question.",
+                        )
+                    )
+                    console.print(Panel(res.content, border_style="blue", title="AI OS Answer"))
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "intent":
+        from aios.registry import ServiceRegistry
+        from aios.services.intent import IntentResolverService
+        from aios.services.nl_os import NLOSService
+
+        nl_os = ServiceRegistry._global_registry.get(NLOSService)
+        resolver = ServiceRegistry._global_registry.get(IntentResolverService)
+
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios intent <query>[/yellow]")
+        else:
+            query = " ".join(args[1:])
+            intent = resolver.resolve(query)
+            classified_type = resolver.classify(query)
+
+            table = Table(show_header=False, border_style="cyan")
+            table.add_row("Raw Query", query)
+            table.add_row("Intent Type", intent.intent_type.name)
+            table.add_row("Classified Group", classified_type.name)
+            table.add_row("Target Service", intent.target_service)
+            table.add_row("Resolved Action", intent.action)
+            table.add_row("Confidence Score", f"{intent.confidence:.2f}")
+            table.add_row("Parameters", json.dumps(intent.parameters))
+
+            console.print(
+                Panel(
+                    table,
+                    title="[bold cyan]Intent Engine Analysis[/bold cyan]",
+                    border_style="cyan",
+                )
+            )
+            nl_os.record_intent_history(query, intent, success=True)
+
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "plan":
+        from aios.registry import ServiceRegistry
+        from aios.services.nl_os import NLOSService
+
+        nl_os = ServiceRegistry._global_registry.get(NLOSService)
+
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios plan <query>[/yellow]")
+        else:
+            query = " ".join(args[1:])
+            plan = nl_os.generate_plan(query)
+
+            table = Table(title=f"Plan {plan.plan_id}: {plan.objective}", border_style="magenta")
+            table.add_column("Step ID", style="bold magenta")
+            table.add_column("Description")
+            table.add_column("Target Command", style="cyan")
+            table.add_column("Status", style="yellow")
+            table.add_column("Dependencies")
+
+            for s in plan.steps:
+                table.add_row(
+                    s.step_id, s.description, s.target, s.status, ", ".join(s.dependencies)
+                )
+
+            console.print(table)
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "execute":
+        from aios.registry import ServiceRegistry
+        from aios.services.nl_os import NLOSService
+
+        nl_os = ServiceRegistry._global_registry.get(NLOSService)
+
+        if len(args) < 2:
+            console.print("[yellow]Usage: aios execute <query>[/yellow]")
+        else:
+            query = " ".join(args[1:])
+            plan = nl_os.generate_plan(query)
+
+            console.print(f"[bold green]Starting Execution of Plan {plan.plan_id}...[/bold green]")
+            success = nl_os.execute_plan(plan)
+            if success:
+                console.print("[bold green]✓ Execution finished successfully![/bold green]")
+            else:
+                console.print("[bold red]✗ Plan execution encountered errors.[/bold red]")
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
+    elif args and args[0] == "context":
+        from aios.registry import ServiceRegistry
+        from aios.services.context import ContextService
+
+        ctx_svc = ServiceRegistry._global_registry.get(ContextService)
+
+        if len(args) > 1 and args[1] == "set":
+            if len(args) < 4:
+                console.print("[yellow]Usage: aios context set <key> <value>[/yellow]")
+            else:
+                key = args[2]
+                val = " ".join(args[3:])
+                ctx_svc.set_context_item(key, val)
+                console.print(f"[green]✓ Set context [bold]{key}[/bold] = {val}[/green]")
+        elif len(args) > 1 and args[1] == "clear":
+            ctx_svc.clear_context()
+            console.print("[green]✓ Context cleared.[/green]")
+        else:
+            table = Table(
+                title="[bold cyan]AI OS Context Control Panel[/bold cyan]", border_style="cyan"
+            )
+            table.add_column("Context Item", style="bold cyan")
+            table.add_column("Value", style="white")
+
+            items = ["project", "workflow", "client", "topic", "goal", "conversation"]
+            for item in items:
+                table.add_row(item.capitalize(), ctx_svc.get_context_item(item) or "None")
+
+            console.print(table)
+    elif args and args[0] in ("agents", "agent"):
+        from aios.registry import ServiceRegistry
+        from aios.services.agent_platform import AutonomousAgentPlatform
+
+        platform = ServiceRegistry._global_registry.get(AutonomousAgentPlatform)
+
+        # Subcommands: list, status, assign, execute, memory, dashboard
+        subcmd = args[1] if len(args) > 1 else "dashboard"
+
+        if args[0] == "agents":
+            subcmd = "dashboard"
+
+        if subcmd == "dashboard":
+            # Render Agents Dashboard
+
+            # Agents Table
+            agents_table = Table(
+                title="[bold green]Active Core Agents[/bold green]", border_style="green"
+            )
+            agents_table.add_column("Agent ID", style="bold cyan")
+            agents_table.add_column("Name", style="white")
+            agents_table.add_column("Role", style="magenta")
+            agents_table.add_column("Status", style="yellow")
+            agents_table.add_column("Tasks Run", style="cyan")
+            agents_table.add_column("Success Rate", style="green")
+
+            for agent in platform.list_agents():
+                metrics = agent.performance_metrics
+                success_rate = f"{metrics.get('success_rate', 1.0) * 100:.1f}%"
+                tasks_completed = str(metrics.get("tasks_completed", 0))
+
+                status_style = "bold green" if agent.status == "idle" else "bold yellow"
+                agents_table.add_row(
+                    agent.agent_id,
+                    agent.name,
+                    agent.role,
+                    f"[{status_style}]{agent.status}[/{status_style}]",
+                    tasks_completed,
+                    success_rate,
+                )
+
+            # Tasks Table
+            tasks_table = Table(
+                title="[bold yellow]Agent Task queue & Pipelines[/bold yellow]",
+                border_style="yellow",
+            )
+            tasks_table.add_column("Task ID", style="bold magenta")
+            tasks_table.add_column("Title", style="white")
+            tasks_table.add_column("Assigned Agent", style="cyan")
+            tasks_table.add_column("Status", style="yellow")
+            tasks_table.add_column("Dependencies", style="white")
+
+            tasks = platform.list_tasks()
+            if not tasks:
+                tasks_table.add_row("None", "No active tasks in queue.", "N/A", "idle", "None")
+            else:
+                for t in tasks:
+                    status_style = (
+                        "bold yellow"
+                        if t.status == "running"
+                        else ("bold green" if t.status == "completed" else "bold red")
+                    )
+                    tasks_table.add_row(
+                        t.task_id,
+                        t.title,
+                        t.assigned_agent or "Unassigned",
+                        f"[{status_style}]{t.status}[/{status_style}]",
+                        ", ".join(t.dependencies) if t.dependencies else "None",
+                    )
+
+            console.print(agents_table)
+            console.print(tasks_table)
+
+        elif subcmd == "list":
+            # Simple list of agents
+            table = Table(
+                title="[bold cyan]AI OS Registered Agents[/bold cyan]", border_style="cyan"
+            )
+            table.add_column("Agent ID", style="bold cyan")
+            table.add_column("Name")
+            table.add_column("Role", style="magenta")
+            table.add_column("Capabilities")
+
+            for agent in platform.list_agents():
+                table.add_row(agent.agent_id, agent.name, agent.role, ", ".join(agent.capabilities))
+            console.print(table)
+
+        elif subcmd == "status":
+            if len(args) < 3:
+                # Show all statuses
+                table = Table(
+                    title="[bold yellow]Agent Runtime Status[/bold yellow]", border_style="yellow"
+                )
+                table.add_column("Agent Name", style="bold cyan")
+                table.add_column("Status", style="white")
+                table.add_column("Assigned Tasks", style="magenta")
+
+                for agent in platform.list_agents():
+                    table.add_row(
+                        agent.name, agent.status, ", ".join(agent.assigned_tasks) or "None"
+                    )
+                console.print(table)
+            else:
+                # Specific agent details
+                name = args[2]
+                desc = platform.get_agent_descriptor(name)
+                if not desc:
+                    console.print(f"[red]✗ Agent '{name}' is not registered.[/red]")
+                else:
+                    table = Table(show_header=False, border_style="magenta")
+                    table.add_row("Agent ID", desc.agent_id)
+                    table.add_row("Name", desc.name)
+                    table.add_row("Role", desc.role)
+                    table.add_row("Capabilities", ", ".join(desc.capabilities))
+                    table.add_row("Status", desc.status)
+                    table.add_row("Assigned Tasks", ", ".join(desc.assigned_tasks) or "None")
+                    table.add_row(
+                        "Tasks Run", str(desc.performance_metrics.get("tasks_completed", 0))
+                    )
+                    table.add_row("Failures", str(desc.performance_metrics.get("failures", 0)))
+                    table.add_row(
+                        "Success Rate",
+                        f"{desc.performance_metrics.get('success_rate', 1.0) * 100:.1f}%",
+                    )
+                    console.print(
+                        Panel(
+                            table,
+                            title=f"[bold magenta]Agent Profile: {desc.name}[/bold magenta]",
+                            border_style="magenta",
+                        )
+                    )
+
+        elif subcmd == "assign":
+            if len(args) < 4:
+                console.print("[yellow]Usage: aios agent assign <task_id> <agent_id>[/yellow]")
+            else:
+                task_id = args[2]
+                agent_id = args[3]
+                try:
+                    platform.assign_task(task_id, agent_id)
+                    console.print(
+                        f"[green]✓ Assigned task '{task_id}' to agent '{agent_id}'[/green]"
+                    )
+                except Exception as e:
+                    console.print(f"[red]✗ Assignment failed: {e}[/red]")
+
+        elif subcmd == "execute":
+            if len(args) < 3:
+                console.print("[yellow]Usage: aios agent execute <query>[/yellow]")
+            else:
+                query = " ".join(args[2:])
+                console.print(
+                    f'[bold green]Starting Autonomous Agent Pipeline for: "{query}"[/bold green]'
+                )
+
+                # 1. Plan tasks
+                with console.status("[bold blue]Planning tasks & dependencies...", spinner="dots"):
+                    tasks = platform.generate_plan(query)
+
+                table = Table(title="Generated Multi-Agent Execution Plan", border_style="magenta")
+                table.add_column("Task ID", style="bold magenta")
+                table.add_column("Title")
+                table.add_column("Agent", style="cyan")
+                table.add_column("Dependencies")
+                for t in tasks:
+                    table.add_row(
+                        t.task_id,
+                        t.title,
+                        t.assigned_agent or "Unassigned",
+                        ", ".join(t.dependencies) if t.dependencies else "None",
+                    )
+                console.print(table)
+
+                # 2. Execute plan
+                console.print("\n[bold yellow]Executing Plan...[/bold yellow]")
+                success = platform.execute_plan(tasks)
+
+                if success:
+                    console.print(
+                        "\n[bold green]✓ Multi-Agent Pipeline Completed Successfully![/bold green]"
+                    )
+                else:
+                    console.print("\n[bold red]✗ Multi-Agent Pipeline Execution Failed.[/bold red]")
+
+                # Print results summary
+                for t in tasks:
+                    status_symbol = (
+                        "[green]✓[/green]" if t.status == "completed" else "[red]✗[/red]"
+                    )
+                    console.print(f"{status_symbol} [bold]{t.title}[/bold] ({t.assigned_agent})")
+                    if t.results:
+                        console.print(
+                            Panel(t.results, title=f"Results of {t.title}", border_style="cyan")
+                        )
+
+        elif subcmd == "memory":
+            if len(args) < 3:
+                console.print("[yellow]Usage: aios agent memory <agent_id>[/yellow]")
+            else:
+                agent_id = args[2]
+                memories = platform.get_agent_memory(agent_id)
+                if not memories:
+                    console.print(f"[yellow]No memory logs found for agent '{agent_id}'.[/yellow]")
+                else:
+                    table = Table(
+                        title=f"[bold green]Agent Memory Ledger: {agent_id}[/bold green]",
+                        border_style="green",
+                    )
+                    table.add_column("Task ID", style="bold magenta")
+                    table.add_column("Task Title")
+                    table.add_column("Status", style="white")
+                    table.add_column("Lesson Learned", style="yellow")
+
+                    for m in memories:
+                        status = "Success" if m["success"] else "Failure"
+                        table.add_row(m["task_id"], m["title"], status, m["lesson_learned"])
+                    console.print(table)
+        else:
+            console.print(f"[red]✗ Unknown agent subcommand: {subcmd}[/red]")
+
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
     return False
 
 
@@ -4582,6 +5053,52 @@ def main() -> None:
                         f"[bold green]Executing command '{cmd_metadata.name}'...", spinner="dots"
                     ):
                         handler(args)
+                    continue
+
+                # Handle Explanation Engine queries
+                if user_input.lower().strip() in (
+                    "what are you doing?",
+                    "why did you choose this?",
+                    "explain the plan.",
+                    "what are you doing",
+                    "why did you choose this",
+                    "explain the plan",
+                ):
+                    from aios.services.nl_os import NLOSService
+
+                    nl_os = kernel.registry.get(NLOSService)
+                    explanation = nl_os.get_last_explanation()
+
+                    obj = explanation.get("objective", "None")
+                    plan = explanation.get("plan")
+                    reasoning = explanation.get("reasoning", "No explanation available.")
+
+                    text_lines = [
+                        f"[bold]Objective:[/bold] {obj}",
+                        f"[bold]Reasoning/Routing Decision:[/bold] {reasoning}",
+                    ]
+                    if plan:
+                        text_lines.append("\n[bold]Execution Plan Steps:[/bold]")
+                        for s in plan.steps:
+                            text_lines.append(f"- Step {s.step_id}: {s.description} ({s.status})")
+
+                    console.print(
+                        Panel(
+                            "\n".join(text_lines),
+                            title="[bold cyan]Explanation Engine[/bold cyan]",
+                            border_style="cyan",
+                        )
+                    )
+                    continue
+
+                # Route Natural Language Queries
+                from aios.services.nl_os import NLOSService
+
+                nl_os = kernel.registry.get(NLOSService)
+                tokens = nl_os.route_query(user_input)
+                if tokens:
+                    console.print(f"[bold cyan]Routing to: aios {' '.join(tokens)}[/bold cyan]")
+                    execute_builtin_cli_command(tokens, exit_on_complete=False)
                     continue
 
                 # Handle General Intent or Direct Chat Routing

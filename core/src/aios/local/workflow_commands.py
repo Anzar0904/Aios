@@ -74,7 +74,11 @@ def cmd_workflow_dashboard(args: List[str]) -> None:
 
     for w in workflows:
         sc = _status_color(w.status)
-        last_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(w.last_execution)) if w.last_execution else "Never"
+        last_str = (
+            time.strftime("%Y-%m-%d %H:%M", time.localtime(w.last_execution))
+            if w.last_execution
+            else "Never"
+        )
         table.add_row(
             w.workflow_id[:8] + "...",
             w.name,
@@ -288,8 +292,14 @@ def cmd_workflow_versions(args: List[str]) -> None:
 
     for d in deployments:
         dt_str = time.strftime("%Y-%m-%d %H:%M", time.localtime(d.timestamp))
-        status_str = "[green]Success[/green]" if d.status == DeploymentStatus.SUCCESS else (
-            "[yellow]Rollback[/yellow]" if d.status == DeploymentStatus.ROLLBACK else "[red]Failed[/red]"
+        status_str = (
+            "[green]Success[/green]"
+            if d.status == DeploymentStatus.SUCCESS
+            else (
+                "[yellow]Rollback[/yellow]"
+                if d.status == DeploymentStatus.ROLLBACK
+                else "[red]Failed[/red]"
+            )
         )
         table.add_row(
             f"v{d.version}",
@@ -317,9 +327,13 @@ def cmd_workflow_rollback(args: List[str]) -> None:
 
     success = reg.rollback_workflow(wid, ver)
     if success:
-        console.print(f"[green]✓ Workflow configuration successfully rolled back to v{ver}.[/green]")
+        console.print(
+            f"[green]✓ Workflow configuration successfully rolled back to v{ver}.[/green]"
+        )
     else:
-        console.print(f"[red]✗ Failed to rollback workflow '{wid}' to version v{ver}. Check version exists.[/red]")
+        console.print(
+            f"[red]✗ Failed to rollback workflow '{wid}' to version v{ver}. Check version exists.[/red]"
+        )
 
 
 # ── Main Dispatcher ──────────────────────────────────────────────────────────

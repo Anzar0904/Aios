@@ -38,6 +38,7 @@ def tmp_db(tmp_path):
 @pytest.fixture
 def reg(tmp_db):
     from aios.local import workflow_commands
+
     workflow_commands._DB_PATH = tmp_db
     svc = WorkflowRegistryServiceImpl(db_path=tmp_db)
     svc.initialize()

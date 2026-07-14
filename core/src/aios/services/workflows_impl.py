@@ -39,15 +39,31 @@ DEFAULT_TEMPLATES = [
         "category": "Lead Gen",
         "raw_json": {
             "nodes": [
-                {"name": "Schedule Trigger", "type": "n8n-nodes-base.cron", "parameters": {"rule": "0 9 * * *"}},
-                {"name": "Scraper API", "type": "n8n-nodes-base.httpRequest", "parameters": {"url": "https://api.scraper.com"}},
-                {"name": "Notion Database", "type": "n8n-nodes-base.notion", "parameters": {"operation": "create", "databaseId": "db-123"}}
+                {
+                    "name": "Schedule Trigger",
+                    "type": "n8n-nodes-base.cron",
+                    "parameters": {"rule": "0 9 * * *"},
+                },
+                {
+                    "name": "Scraper API",
+                    "type": "n8n-nodes-base.httpRequest",
+                    "parameters": {"url": "https://api.scraper.com"},
+                },
+                {
+                    "name": "Notion Database",
+                    "type": "n8n-nodes-base.notion",
+                    "parameters": {"operation": "create", "databaseId": "db-123"},
+                },
             ],
             "connections": {
-                "Schedule Trigger": {"main": [[{"node": "Scraper API", "type": "main", "index": 0}]]},
-                "Scraper API": {"main": [[{"node": "Notion Database", "type": "main", "index": 0}]]}
-            }
-        }
+                "Schedule Trigger": {
+                    "main": [[{"node": "Scraper API", "type": "main", "index": 0}]]
+                },
+                "Scraper API": {
+                    "main": [[{"node": "Notion Database", "type": "main", "index": 0}]]
+                },
+            },
+        },
     },
     {
         "name": "Cold Outreach Flow",
@@ -55,15 +71,29 @@ DEFAULT_TEMPLATES = [
         "category": "Outreach",
         "raw_json": {
             "nodes": [
-                {"name": "Webhook Trigger", "type": "n8n-nodes-base.webhook", "parameters": {"path": "qualified-lead"}},
-                {"name": "Model Router", "type": "n8n-nodes-base.httpRequest", "parameters": {"url": "http://localhost:8000/route"}},
-                {"name": "Gmail Node", "type": "n8n-nodes-base.gmail", "parameters": {"operation": "send"}}
+                {
+                    "name": "Webhook Trigger",
+                    "type": "n8n-nodes-base.webhook",
+                    "parameters": {"path": "qualified-lead"},
+                },
+                {
+                    "name": "Model Router",
+                    "type": "n8n-nodes-base.httpRequest",
+                    "parameters": {"url": "http://localhost:8000/route"},
+                },
+                {
+                    "name": "Gmail Node",
+                    "type": "n8n-nodes-base.gmail",
+                    "parameters": {"operation": "send"},
+                },
             ],
             "connections": {
-                "Webhook Trigger": {"main": [[{"node": "Model Router", "type": "main", "index": 0}]]},
-                "Model Router": {"main": [[{"node": "Gmail Node", "type": "main", "index": 0}]]}
-            }
-        }
+                "Webhook Trigger": {
+                    "main": [[{"node": "Model Router", "type": "main", "index": 0}]]
+                },
+                "Model Router": {"main": [[{"node": "Gmail Node", "type": "main", "index": 0}]]},
+            },
+        },
     },
     {
         "name": "CRM Sync Pipeline",
@@ -71,13 +101,21 @@ DEFAULT_TEMPLATES = [
         "category": "CRM Sync",
         "raw_json": {
             "nodes": [
-                {"name": "Sheets Trigger", "type": "n8n-nodes-base.googleSheetsTrigger", "parameters": {"sheetId": "sheet-abc"}},
-                {"name": "Notion Sync", "type": "n8n-nodes-base.notion", "parameters": {"operation": "update"}}
+                {
+                    "name": "Sheets Trigger",
+                    "type": "n8n-nodes-base.googleSheetsTrigger",
+                    "parameters": {"sheetId": "sheet-abc"},
+                },
+                {
+                    "name": "Notion Sync",
+                    "type": "n8n-nodes-base.notion",
+                    "parameters": {"operation": "update"},
+                },
             ],
             "connections": {
                 "Sheets Trigger": {"main": [[{"node": "Notion Sync", "type": "main", "index": 0}]]}
-            }
-        }
+            },
+        },
     },
     {
         "name": "GitHub Automation",
@@ -85,14 +123,22 @@ DEFAULT_TEMPLATES = [
         "category": "DevOps",
         "raw_json": {
             "nodes": [
-                {"name": "GitHub Webhook", "type": "n8n-nodes-base.githubTrigger", "parameters": {"events": ["workflow_job"]}},
-                {"name": "Slack Alert", "type": "n8n-nodes-base.slack", "parameters": {"channel": "ci-alerts"}}
+                {
+                    "name": "GitHub Webhook",
+                    "type": "n8n-nodes-base.githubTrigger",
+                    "parameters": {"events": ["workflow_job"]},
+                },
+                {
+                    "name": "Slack Alert",
+                    "type": "n8n-nodes-base.slack",
+                    "parameters": {"channel": "ci-alerts"},
+                },
             ],
             "connections": {
                 "GitHub Webhook": {"main": [[{"node": "Slack Alert", "type": "main", "index": 0}]]}
-            }
-        }
-    }
+            },
+        },
+    },
 ]
 
 
@@ -416,7 +462,9 @@ class WorkflowRegistryServiceImpl(WorkflowRegistryService):
 
         # 2. Credential checks (simulate credential validation)
         cred_nodes = [
-            n for n in workflow.nodes if any(k in n.get("type", "").lower() for k in ("notion", "github", "gmail", "slack"))
+            n
+            for n in workflow.nodes
+            if any(k in n.get("type", "").lower() for k in ("notion", "github", "gmail", "slack"))
         ]
         for c in cred_nodes:
             # check if credentials parameter exists
@@ -453,9 +501,7 @@ class WorkflowRegistryServiceImpl(WorkflowRegistryService):
             if issue["code"] == "MISSING_WEBHOOK_URL":
                 # Auto-assign local webhook endpoint
                 workflow.webhook_url = f"http://localhost:5678/webhook/{workflow_id}"
-                repairs.append(
-                    f"Assigned default local n8n webhook URL to node '{issue['node']}'."
-                )
+                repairs.append(f"Assigned default local n8n webhook URL to node '{issue['node']}'.")
 
             elif issue["code"] == "EMPTY_CREDENTIALS":
                 # Inject mock development credential key
@@ -463,7 +509,9 @@ class WorkflowRegistryServiceImpl(WorkflowRegistryService):
                     if node["name"] == issue["node"]:
                         node.setdefault("parameters", {})
                         node["parameters"]["credentials"] = "dev-key-temp-aios"
-                        repairs.append(f"Injected development credentials key to '{issue['node']}'.")
+                        repairs.append(
+                            f"Injected development credentials key to '{issue['node']}'."
+                        )
 
         if repairs:
             self.register_workflow(workflow)
@@ -567,7 +615,13 @@ class WorkflowRegistryServiceImpl(WorkflowRegistryService):
             raise ValueError("Workflow must contain at least 1 node.")
 
         # Triggers count
-        triggers = sum(1 for n in nodes if "trigger" in n.get("type", "").lower() or "cron" in n.get("type", "").lower() or "webhook" in n.get("type", "").lower())
+        triggers = sum(
+            1
+            for n in nodes
+            if "trigger" in n.get("type", "").lower()
+            or "cron" in n.get("type", "").lower()
+            or "webhook" in n.get("type", "").lower()
+        )
 
         workflow_id = new_id()
         wf = Workflow(

@@ -32,9 +32,7 @@ class WorkflowsGraphBridge:
                 "health_score": workflow.health_score,
                 "nodes_count": len(workflow.nodes),
             }
-            entity = self._engine.ensure_entity(
-                EntityType.WORKFLOW, workflow.name, props
-            )
+            entity = self._engine.ensure_entity(EntityType.WORKFLOW, workflow.name, props)
 
             # Link to project if available
             if workflow.project_id:
@@ -58,7 +56,9 @@ class WorkflowsGraphBridge:
                 "changelog": deployment.changelog,
             }
             entity = self._engine.ensure_entity(
-                EntityType.DEPLOYMENT, f"Deployment v{deployment.version} — {deployment.workflow_id[:8]}", props
+                EntityType.DEPLOYMENT,
+                f"Deployment v{deployment.version} — {deployment.workflow_id[:8]}",
+                props,
             )
 
             # Link deployment to workflow via DEPLOYED_BY or USES
