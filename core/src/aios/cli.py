@@ -3985,6 +3985,217 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    # -----------------------------------------------------------------------
+    # Phase 4.5: Universal Knowledge Graph — `aios graph` command group
+    # -----------------------------------------------------------------------
+    elif args and args[0] == "graph":
+        from aios.services.graph_impl import GraphServiceImpl
+        from aios.services.graph_query import GraphQueryEngine
+
+        _graph_svc = GraphServiceImpl()
+        _graph_svc.initialize()
+        _graph_svc.start()
+        _engine = GraphQueryEngine(_graph_svc)
+
+        subcommand = args[1] if len(args) > 1 else ""
+
+        if not subcommand or subcommand == "stats":
+            # aios graph  → show graph statistics
+            stats = _engine.get_stats_summary()
+            table = Table(title="📊 Knowledge Graph Statistics", border_style="cyan")
+            table.add_column("Metric", style="bold cyan")
+            table.add_column("Value", style="white")
+            table.add_row("Total Entities", str(stats["total_entities"]))
+            table.add_row("Total Relationships", str(stats["total_relationships"]))
+            table.add_row("Total Events", str(stats["total_events"]))
+            table.add_section()
+            for etype, count in stats["entities_by_type"].items():
+                table.add_row(f"  {etype}", str(count))
+            table.add_section()
+            for rtype, count in stats["relationships_by_type"].items():
+                table.add_row(f"  {rtype}", str(count))
+            console.print(table)
+
+        elif subcommand == "search":
+            # aios graph search <query>
+            query = " ".join(args[2:]) if len(args) > 2 else ""
+            if not query:
+                console.print("[yellow]Usage: aios graph search <query>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            result = _engine.search_graph(query)
+            table = Table(
+                title=f"🔍 Graph Search: '{query}' ({result['total']} results)",
+                border_style="magenta",
+            )
+            table.add_column("Entity ID", style="dim", max_width=36)
+            table.add_column("Type", style="bold magenta")
+            table.add_column("Name", style="white")
+            table.add_column("Updated", style="dim")
+            for e in result["entities"]:
+                import time as _time
+
+                updated = _time.strftime("%Y-%m-%d %H:%M", _time.localtime(e.get("updated_at", 0)))
+                table.add_row(
+                    e["entity_id"][:12] + "...",
+                    e["entity_type"],
+                    e["name"],
+                    updated,
+                )
+            console.print(table)
+            console.print(f"[dim]Query time: {result['query_time_ms']:.1f}ms[/dim]")
+
+        elif subcommand == "relations":
+            # aios graph relations <entity_name> [direction]
+            if len(args) < 3:
+                console.print(
+                    "[yellow]Usage: aios graph relations <entity_name> [inbound|outbound|both][/yellow]"
+                )
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            entity_name = args[2]
+            direction = args[3] if len(args) > 3 else "both"
+            result = _engine.get_relations(entity_name, direction=direction)
+
+            if "error" in result:
+                console.print(f"[red]✗ {result['error']}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            entity = result["entity"]
+            console.print(
+                Panel(
+                    f"[bold white]{entity['name']}[/bold white]\n"
+                    f"Type: [cyan]{entity['entity_type']}[/cyan]  |  "
+                    f"ID: [dim]{entity['entity_id'][:16]}...[/dim]",
+                    title="🔗 Entity Relations",
+                    border_style="cyan",
+                )
+            )
+
+            table = Table(border_style="blue", title=f"Relationships ({direction})")
+            table.add_column("Direction", style="bold")
+            table.add_column("Relationship", style="bold cyan")
+            table.add_column("Neighbor Name", style="white")
+            table.add_column("Neighbor Type", style="magenta")
+
+            neighbor_map = {n["entity_id"]: n for n in result["neighbors"]}
+            for rel in result["relationships"]:
+                if rel["source_id"] == entity["entity_id"]:
+                    direction_label = "→ outbound"
+                    nid = rel["target_id"]
+                else:
+                    direction_label = "← inbound"
+                    nid = rel["source_id"]
+                neighbor = neighbor_map.get(nid, {})
+                table.add_row(
+                    direction_label,
+                    rel["relationship_type"],
+                    neighbor.get("name", nid[:12] + "..."),
+                    neighbor.get("entity_type", "?"),
+                )
+            console.print(table)
+
+        elif subcommand == "project":
+            # aios graph project <project_name>
+            if len(args) < 3:
+                console.print("[yellow]Usage: aios graph project <project_name>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            project_name = " ".join(args[2:])
+            result = _engine.get_project_overview(project_name)
+
+            if "error" in result:
+                console.print(f"[red]✗ {result['error']}[/red]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+
+            project = result["project"]
+            subgraph = result["subgraph"]
+
+            console.print(
+                Panel(
+                    f"[bold white]{project['name']}[/bold white]\n"
+                    f"ID: [dim]{project['entity_id'][:24]}...[/dim]\n"
+                    f"Total graph nodes: [cyan]{subgraph['total_nodes']}[/cyan]  |  "
+                    f"Relationships: [magenta]{len(subgraph['relationships'])}[/magenta]",
+                    title="🗂️  Project Knowledge Graph",
+                    border_style="green",
+                )
+            )
+
+            for etype, entities in subgraph["by_type"].items():
+                if etype == "project":
+                    continue
+                t = Table(title=f"{etype.upper()} ({len(entities)})", border_style="dim")
+                t.add_column("Name", style="white")
+                t.add_column("Entity ID", style="dim", max_width=16)
+                for ent in entities:
+                    t.add_row(ent["name"], ent["entity_id"][:12] + "...")
+                console.print(t)
+
+        elif subcommand == "path":
+            # aios graph path <source_name> <target_name>
+            if len(args) < 4:
+                console.print("[yellow]Usage: aios graph path <source_name> <target_name>[/yellow]")
+                if exit_on_complete:
+                    sys.exit(1)
+                return True
+            source_name = args[2]
+            target_name = args[3]
+            result = _engine.find_path(source_name, target_name)
+
+            if "error" in result:
+                console.print(f"[red]✗ {result['error']}[/red]")
+            elif not result.get("path_found"):
+                console.print(
+                    f"[yellow]No path found between '{source_name}' and '{target_name}'[/yellow]"
+                )
+            else:
+                console.print(
+                    Panel(
+                        f"Path: [cyan]{' → '.join(e['name'] for e in result['entities'])}[/cyan]\n"
+                        f"Length: [white]{result['path_length']} hop(s)[/white]  |  "
+                        f"Time: [dim]{result['query_time_ms']:.1f}ms[/dim]",
+                        title="🛤️  Shortest Path",
+                        border_style="yellow",
+                    )
+                )
+
+        elif subcommand == "health":
+            healthy = _graph_svc.health_check()
+            status_text = (
+                "[bold green]✓ Healthy[/bold green]"
+                if healthy
+                else "[bold red]✗ Degraded[/bold red]"
+            )
+            console.print(
+                Panel(
+                    status_text,
+                    title="Knowledge Graph Health",
+                    border_style="green" if healthy else "red",
+                )
+            )
+
+        else:
+            console.print(
+                "[yellow]Usage: aios graph [stats|search <q>|relations <name>|"
+                "project <name>|path <src> <tgt>|health][/yellow]"
+            )
+            if exit_on_complete:
+                sys.exit(1)
+            return True
+
+        _graph_svc.shutdown()
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
     return False
 
 

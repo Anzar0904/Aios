@@ -78,7 +78,38 @@ gantt
 
 ---
 
-## 4. Test Verification Summary
-* **Total Tests Count**: 1,612 Passed.
+## 4. Phase 4.5 ✅ Universal Knowledge Graph (July 2026)
+
+### New in v2.5
+
+> **Phase 4.5** adds a SQLite-backed Universal Knowledge Graph that weaves every domain object in the OS into a queryable semantic web.
+
+**Subsystems Added:**
+- **Graph Engine**: SQLite WAL graph store with typed entities, relationships, and events
+- **Graph Query Engine**: Domain-aware analytical layer (path-finding, subgraph, search)
+- **Graph Integration Hooks**: Auto-links tasks, projects, documents, workflows, decisions, memory
+- **Graph CLI**: `aios graph`, `aios graph search`, `aios graph relations`, `aios graph project`
+
+**Entity Types:** project, task, document, repository, workflow, model, decision, client, research, notion_page
+
+**Relationship Types:** BELONGS_TO, USES, CREATED_BY, DEPENDS_ON, SUPPORTS, REFERENCES, CONTAINS, RELATED_TO
+
+**Integration with:** Memory Service, Task Engine, Goal Engine, Context Engine, Notification Center, n8n Workflow Engine, Notion Knowledge Hub
+
+**Test Coverage:** 82 new tests (100% pass), 0 regressions
+
+### Updated CLI Commands
+
+- `aios graph` — knowledge graph statistics dashboard
+- `aios graph search <query>` — full-text entity search
+- `aios graph relations <entity>` — relationship explorer
+- `aios graph project <name>` — project subgraph view
+- `aios graph path <src> <tgt>` — shortest path between entities
+- `aios graph health` — graph engine health check
+
+---
+
+## 5. Test Verification Summary
+* **Total Tests Count**: 1,694 Passed (1,612 previous + 82 new graph tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.
