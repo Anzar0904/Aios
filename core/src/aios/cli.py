@@ -3954,6 +3954,13 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         "restart",
         "doctor",
         "shutdown",
+        "agenda",
+        "projects",
+        "agency",
+        "hackathons",
+        "github",
+        "notion",
+        "resume",
     ):
         from aios.local.cli_workspace_commands import cmd_workspace_main
         from aios.registry import ServiceRegistry
@@ -4051,34 +4058,10 @@ def main() -> None:
         banner_text.append("██║  ██║██║╚██████╔╝███████║\n", style="bold purple")
         banner_text.append("╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝\n", style="bold purple")
 
-        from aios.ux import StartupHealthChecks
-
-        health_results = StartupHealthChecks.run_checks()
-
-        status_table = Table.grid(padding=1)
-        status_table.add_column(style="bold white", justify="right")
-        status_table.add_column(style="green")
-        status_table.add_row("Version:", "1.0.0")
-        status_table.add_row("Build:", "production-2026.07.11")
-        status_table.add_row("Environment:", sys.platform)
-        status_table.add_row(
-            "Active Provider:", getattr(model_service, "_default_provider", "openrouter")
-        )
-        status_table.add_row("Connected Services:", "GitHub, Supabase, Vercel, n8n")
-        status_table.add_row("Memory Status:", "Qdrant Vector DB Online")
-        status_table.add_row("Workspace Status:", "Clean (0 modifications)")
-        status_table.add_row("Current Project:", "Aios")
-        status_table.add_row("Health Status:", health_results.get("Internet Connection", "Healthy"))
-        status_table.add_row("Startup Time:", "0.38s")
-
-        panel = Panel(
-            status_table,
-            title="[bold white]Personal AI OS CLI Terminal[/bold white]",
-            subtitle="[italic gray]Type /help or /? for options[/italic gray]",
-            border_style="cyan",
-        )
         console.print(banner_text)
-        console.print(panel)
+        from aios.local.cli_workspace_commands import run_startup_automation
+
+        run_startup_automation(kernel.registry)
 
         multiline_mode = False
 
@@ -4123,6 +4106,13 @@ def main() -> None:
                     or user_input.startswith("restart")
                     or user_input.startswith("doctor")
                     or user_input.startswith("shutdown")
+                    or user_input.startswith("agenda")
+                    or user_input.startswith("projects")
+                    or user_input.startswith("agency")
+                    or user_input.startswith("hackathons")
+                    or user_input.startswith("github")
+                    or user_input.startswith("notion")
+                    or user_input.startswith("resume")
                 ):
                     cmd_str = user_input
 
