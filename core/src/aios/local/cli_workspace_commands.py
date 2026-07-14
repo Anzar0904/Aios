@@ -2125,6 +2125,26 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
             console.print(f"[red]✗ research command error: {exc}[/red]")
         return
 
+    # Phase 11: delegate personal intelligence subcommands
+    if subcommand in (
+        "personal",
+        "calendar",
+        "habits",
+        "reminders",
+        "morning",
+        "weekly",
+        "notes",
+        "learning",
+        "coach",
+    ):
+        try:
+            from aios.local.personal_commands import cmd_personal_main
+
+            cmd_personal_main([subcommand] + list(subargs), registry)
+        except Exception as exc:
+            console.print(f"[red]✗ personal command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)

@@ -3976,6 +3976,15 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         "integrations",
         "doc",
         "docs",
+        "personal",
+        "calendar",
+        "habits",
+        "reminders",
+        "morning",
+        "weekly",
+        "notes",
+        "learning",
+        "coach",
     ):
         from aios.local.cli_workspace_commands import cmd_workspace_main
         from aios.registry import ServiceRegistry

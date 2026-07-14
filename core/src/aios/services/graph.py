@@ -63,6 +63,14 @@ class EntityType(Enum):
     HYPOTHESIS = "hypothesis"
     CITATION = "citation"
     SOURCE = "source"
+    # Phase 11 Personal Entities
+    GOAL = "goal"
+    HABIT = "habit"
+    REMINDER = "reminder"
+    LEARNING_TOPIC = "learning_topic"
+    COURSE = "course"
+    NOTE = "note"
+    LIFE_AREA = "life_area"
 
 
 class RelationshipType(Enum):
@@ -104,6 +112,10 @@ class RelationshipType(Enum):
     DERIVED_FROM = "DERIVED_FROM"
     VALIDATES = "VALIDATES"
     EXPANDS = "EXPANDS"
+    # Phase 11 Personal Relationships
+    BLOCKS = "BLOCKS"
+    PART_OF = "PART_OF"
+    TRACKS = "TRACKS"
 
 
 class GraphEventType(Enum):
