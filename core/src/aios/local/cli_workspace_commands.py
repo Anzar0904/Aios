@@ -2115,6 +2115,16 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
             console.print(f"[red]✗ github command error: {exc}[/red]")
         return
 
+    # Phase 10: delegate `aios research`
+    if subcommand == "research":
+        try:
+            from aios.local.research_commands import cmd_research_main
+
+            cmd_research_main(subargs, registry)
+        except Exception as exc:
+            console.print(f"[red]✗ research command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)

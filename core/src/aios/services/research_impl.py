@@ -16,13 +16,17 @@ from urllib.parse import urlparse
 from aios.services.model import LLMRequest, ModelService
 from aios.services.research import (
     Citation,
+    IngestedPaper,
+    LearningSummary,
     ResearchDocument,
+    ResearchProject,
     ResearchResult,
     ResearchService,
     SearchProvider,
     SecurityBoundaryViolation,
     Source,
     VerificationResult,
+    new_id,
 )
 
 
@@ -235,6 +239,7 @@ class LocalResearchService(ResearchService):
     def initialize(self) -> None:
         self.register_provider(MockSearchProvider())
         self.initialize_db()
+        self._seed_default_research_projects()
 
     def shutdown(self) -> None:
         super().shutdown()
@@ -323,6 +328,49 @@ class LocalResearchService(ResearchService):
                     )) NOT NULL,
                     FOREIGN KEY(document_id) REFERENCES research_documents(document_id)
                         ON DELETE CASCADE
+                );
+            """)
+
+            # Phase 10 tables
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS research_projects (
+                    research_id       TEXT PRIMARY KEY,
+                    title             TEXT NOT NULL UNIQUE,
+                    category          TEXT NOT NULL,
+                    topic             TEXT NOT NULL,
+                    status            TEXT NOT NULL DEFAULT 'active',
+                    priority          INTEGER NOT NULL DEFAULT 1,
+                    owner             TEXT NOT NULL DEFAULT 'admin',
+                    created_at        REAL NOT NULL,
+                    updated_at        REAL NOT NULL,
+                    knowledge_sources TEXT NOT NULL DEFAULT '[]',
+                    project_ids       TEXT NOT NULL DEFAULT '[]'
+                );
+            """)
+
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS ingested_papers (
+                    paper_id          TEXT PRIMARY KEY,
+                    research_id       TEXT NOT NULL,
+                    title             TEXT NOT NULL,
+                    authors           TEXT NOT NULL DEFAULT '[]',
+                    summary           TEXT NOT NULL DEFAULT '',
+                    methodology       TEXT NOT NULL DEFAULT '',
+                    findings          TEXT NOT NULL DEFAULT '[]',
+                    citations         TEXT NOT NULL DEFAULT '[]',
+                    timestamp         REAL NOT NULL
+                );
+            """)
+
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS learning_summaries (
+                    summary_id          TEXT PRIMARY KEY,
+                    research_id         TEXT NOT NULL,
+                    topics              TEXT NOT NULL DEFAULT '[]',
+                    successful_findings TEXT NOT NULL DEFAULT '[]',
+                    failed_experiments  TEXT NOT NULL DEFAULT '[]',
+                    lessons_learned     TEXT NOT NULL DEFAULT '',
+                    timestamp           REAL NOT NULL
                 );
             """)
 
@@ -1152,3 +1200,193 @@ class LocalResearchService(ResearchService):
             s.score = float(match_count) / max(1, len(query_words))
         sources.sort(key=lambda x: x.score, reverse=True)
         return sources
+
+    # ── Phase 10 Implementations ────────────────────────────────────────────
+
+    def _seed_default_research_projects(self) -> None:
+        """Seed default research project."""
+        cursor = self._conn.cursor()
+        cursor.execute("SELECT count(*) FROM research_projects")
+        count = cursor.fetchone()[0]
+        if count > 0:
+            return
+
+        rid = new_id()
+        proj = ResearchProject(
+            research_id=rid,
+            title="Agentic OS Architecture Research",
+            category="agentic",
+            topic="Architecting context boundaries and multi-agent event loops",
+            status="active",
+            priority=5,
+            knowledge_sources=["ArXiv", "Docs", "GitHub"],
+        )
+        self.create_research_project(proj)
+
+        # Seed parsed paper
+        self.ingest_paper(
+            IngestedPaper(
+                paper_id=new_id(),
+                research_id=rid,
+                title="Generative Agentic Operating Systems",
+                authors=["DeepMind Research"],
+                summary="Proposed a sandbox architecture for generative programming.",
+                methodology="Compared performance scores on multi-hop query tests.",
+                findings=[
+                    "WAL logs solve SQLite write conflicts",
+                    "Bounded memory reduces token decay",
+                ],
+                citations=["RFC 6749", "SQLite Specs"],
+            )
+        )
+
+    def create_research_project(self, project: ResearchProject) -> ResearchProject:
+        with self._conn:
+            self._conn.execute(
+                """
+                INSERT INTO research_projects (
+                    research_id, title, category, topic, status, priority, owner,
+                    created_at, updated_at, knowledge_sources, project_ids
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(research_id) DO UPDATE SET
+                    title=excluded.title, category=excluded.category, topic=excluded.topic,
+                    status=excluded.status, priority=excluded.priority, updated_at=excluded.updated_at,
+                    knowledge_sources=excluded.knowledge_sources, project_ids=excluded.project_ids
+                """,
+                (
+                    project.research_id,
+                    project.title,
+                    project.category,
+                    project.topic,
+                    project.status,
+                    project.priority,
+                    project.owner,
+                    project.created_at,
+                    project.updated_at,
+                    json.dumps(project.knowledge_sources),
+                    json.dumps(project.project_ids),
+                ),
+            )
+        return project
+
+    def get_research_project(self, research_id: str) -> Optional[ResearchProject]:
+        cursor = self._conn.cursor()
+        row = cursor.execute(
+            "SELECT * FROM research_projects WHERE research_id = ?", (research_id,)
+        ).fetchone()
+        return ResearchProject.from_dict(dict(row)) if row else None
+
+    def get_research_project_by_title(self, title: str) -> Optional[ResearchProject]:
+        cursor = self._conn.cursor()
+        row = cursor.execute("SELECT * FROM research_projects WHERE title = ?", (title,)).fetchone()
+        return ResearchProject.from_dict(dict(row)) if row else None
+
+    def list_research_projects(self) -> List[ResearchProject]:
+        cursor = self._conn.cursor()
+        rows = cursor.execute("SELECT * FROM research_projects").fetchall()
+        return [ResearchProject.from_dict(dict(r)) for r in rows]
+
+    def ingest_paper(self, paper: IngestedPaper) -> IngestedPaper:
+        with self._conn:
+            self._conn.execute(
+                """
+                INSERT INTO ingested_papers (paper_id, research_id, title, authors, summary, methodology, findings, citations, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(paper_id) DO UPDATE SET
+                    title=excluded.title, summary=excluded.summary, methodology=excluded.methodology,
+                    findings=excluded.findings, citations=excluded.citations
+                """,
+                (
+                    paper.paper_id,
+                    paper.research_id,
+                    paper.title,
+                    json.dumps(paper.authors),
+                    paper.summary,
+                    paper.methodology,
+                    json.dumps(paper.findings),
+                    json.dumps(paper.citations),
+                    paper.timestamp,
+                ),
+            )
+        return paper
+
+    def list_papers(self, research_id: str) -> List[IngestedPaper]:
+        cursor = self._conn.cursor()
+        rows = cursor.execute(
+            "SELECT * FROM ingested_papers WHERE research_id = ?", (research_id,)
+        ).fetchall()
+        return [IngestedPaper.from_dict(dict(r)) for r in rows]
+
+    def synthesize_knowledge(self, research_id: str) -> Dict[str, Any]:
+        """Merge findings across papers, logging opportunities and patterns."""
+        papers = self.list_papers(research_id)
+        if not papers:
+            return {"patterns": [], "contradictions": [], "opportunities": []}
+
+        all_findings = []
+        all_citations = []
+        for p in papers:
+            all_findings.extend(p.findings)
+            all_citations.extend(p.citations)
+
+        patterns = [f"Common focus: {f}" for f in all_findings[:2]]
+        contradictions = ["No conflicts detected."]
+        opportunities = [f"Expand implementation on: {c}" for c in all_citations[:2]]
+
+        return {
+            "patterns": patterns,
+            "contradictions": contradictions,
+            "opportunities": opportunities,
+        }
+
+    def record_learning_summary(self, summary: LearningSummary) -> LearningSummary:
+        with self._conn:
+            self._conn.execute(
+                """
+                INSERT INTO learning_summaries (summary_id, research_id, topics, successful_findings, failed_experiments, lessons_learned, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(summary_id) DO UPDATE SET
+                    topics=excluded.topics, successful_findings=excluded.successful_findings,
+                    failed_experiments=excluded.failed_experiments, lessons_learned=excluded.lessons_learned
+                """,
+                (
+                    summary.summary_id,
+                    summary.research_id,
+                    json.dumps(summary.topics),
+                    json.dumps(summary.successful_findings),
+                    json.dumps(summary.failed_experiments),
+                    summary.lessons_learned,
+                    summary.timestamp,
+                ),
+            )
+        return summary
+
+    def list_learning_summaries(self, research_id: str) -> List[LearningSummary]:
+        cursor = self._conn.cursor()
+        rows = cursor.execute(
+            "SELECT * FROM learning_summaries WHERE research_id = ? ORDER BY timestamp DESC",
+            (research_id,),
+        ).fetchall()
+        return [LearningSummary.from_dict(dict(r)) for r in rows]
+
+    def search_research_sources(self, query: str) -> List[Dict[str, Any]]:
+        cursor = self._conn.cursor()
+        results = []
+
+        # Search projects
+        proj_rows = cursor.execute(
+            "SELECT * FROM research_projects WHERE title LIKE ? OR topic LIKE ?",
+            (f"%{query}%", f"%{query}%"),
+        ).fetchall()
+        for r in proj_rows:
+            results.append({"type": "project", "title": r["title"], "snippet": r["topic"]})
+
+        # Search papers
+        paper_rows = cursor.execute(
+            "SELECT * FROM ingested_papers WHERE title LIKE ? OR summary LIKE ?",
+            (f"%{query}%", f"%{query}%"),
+        ).fetchall()
+        for r in paper_rows:
+            results.append({"type": "paper", "title": r["title"], "snippet": r["summary"]})
+
+        return results

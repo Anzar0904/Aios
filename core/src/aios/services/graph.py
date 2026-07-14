@@ -55,6 +55,14 @@ class EntityType(Enum):
     COMMIT = "commit"
     PULL_REQUEST = "pull_request"
     ISSUE = "issue"
+    # Phase 10 Research Entities
+    PAPER = "paper"
+    FINDING = "finding"
+    INSIGHT = "insight"
+    EXPERIMENT = "experiment"
+    HYPOTHESIS = "hypothesis"
+    CITATION = "citation"
+    SOURCE = "source"
 
 
 class RelationshipType(Enum):
@@ -90,6 +98,12 @@ class RelationshipType(Enum):
     GENERATED_FROM = "GENERATED_FROM"
     # Phase 9 GitHub Relationships
     MERGES = "MERGES"
+    # Phase 10 Research Relationships
+    CONTRADICTS = "CONTRADICTS"
+    CITES = "CITES"
+    DERIVED_FROM = "DERIVED_FROM"
+    VALIDATES = "VALIDATES"
+    EXPANDS = "EXPANDS"
 
 
 class GraphEventType(Enum):

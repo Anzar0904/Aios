@@ -4263,6 +4263,9 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             cmd_docs_main(subargs, registry=None)
         except Exception as exc:
             console.print(f"[red]✗ documentation command error: {exc}[/red]")
+        if exit_on_complete:
+            sys.exit(0)
+        return True
     # -----------------------------------------------------------------------
     # Phase 9: GitHub Intelligence — `aios github`
     # -----------------------------------------------------------------------
@@ -4274,6 +4277,20 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             cmd_github_main(args[1:], registry=None)
         except Exception as exc:
             console.print(f"[red]✗ github command error: {exc}[/red]")
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+    # -----------------------------------------------------------------------
+    # Phase 10: Research Intelligence — `aios research`
+    # -----------------------------------------------------------------------
+    elif args and args[0] == "research":
+        try:
+            from aios.local.research_commands import cmd_research_main
+
+            # Delegate subcommands starting after aios research
+            cmd_research_main(args[1:], registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ research command error: {exc}[/red]")
         if exit_on_complete:
             sys.exit(0)
         return True
