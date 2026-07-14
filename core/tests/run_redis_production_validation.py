@@ -675,7 +675,10 @@ def main():
 
     # 12. Write Validation Reports
     print("\n--- 11. GENERATING VALIDATION REPORTS ---")
-    docs_dir = "/Users/anzarakhtar/aios/docs/persistence"
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    docs_dir = str(project_root / "docs" / "persistence")
     os.makedirs(docs_dir, exist_ok=True)
 
     # 12.1 REDIS_PRODUCTION_VALIDATION_REPORT.md
@@ -858,8 +861,14 @@ This baseline records operation durations gathered over 100 benchmark iterations
 """)
 
     # Copy files to artifacts directory
-    artifacts_dir = (
-        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    from pathlib import Path
+
+    artifacts_dir = str(
+        Path.home()
+        / ".gemini"
+        / "antigravity-cli"
+        / "brain"
+        / "defbb901-521f-431a-9352-ba0dc6a0d516"
     )
     os.makedirs(artifacts_dir, exist_ok=True)
     for report_file in os.listdir(docs_dir):
@@ -878,7 +887,10 @@ This baseline records operation durations gathered over 100 benchmark iterations
 
 
 def update_project_status(overall_avg, throughput):
-    status_file = "/Users/anzarakhtar/aios/docs/PROJECT_STATUS.md"
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    status_file = str(project_root / "docs" / "PROJECT_STATUS.md")
     if not os.path.exists(status_file):
         print("Warning: PROJECT_STATUS.md not found.")
         return
@@ -901,15 +913,24 @@ def update_project_status(overall_avg, throughput):
         f.write(content)
 
     # Copy to artifacts
-    artifacts_dir = (
-        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    from pathlib import Path
+
+    artifacts_dir = str(
+        Path.home()
+        / ".gemini"
+        / "antigravity-cli"
+        / "brain"
+        / "defbb901-521f-431a-9352-ba0dc6a0d516"
     )
     shutil.copy(status_file, f"{artifacts_dir}/PROJECT_STATUS.md")
     print("Updated PROJECT_STATUS.md")
 
 
 def update_knowledge_base():
-    kb_file = "/Users/anzarakhtar/aios/docs/17_KNOWLEDGE_BASE.md"
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[2]
+    kb_file = str(project_root / "docs" / "17_KNOWLEDGE_BASE.md")
     if not os.path.exists(kb_file):
         print("Warning: 17_KNOWLEDGE_BASE.md not found.")
         return
@@ -944,8 +965,14 @@ def update_knowledge_base():
         f.write(content)
 
     # Copy to artifacts
-    artifacts_dir = (
-        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/defbb901-521f-431a-9352-ba0dc6a0d516"
+    from pathlib import Path
+
+    artifacts_dir = str(
+        Path.home()
+        / ".gemini"
+        / "antigravity-cli"
+        / "brain"
+        / "defbb901-521f-431a-9352-ba0dc6a0d516"
     )
     shutil.copy(kb_file, f"{artifacts_dir}/17_KNOWLEDGE_BASE.md")
     print("Updated 17_KNOWLEDGE_BASE.md")

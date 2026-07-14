@@ -530,7 +530,8 @@ All 9 default vector collections have been verified for creation, schema mapping
 
 
 def update_project_status(latency: float, throughput: float):
-    path = "/Users/anzarakhtar/aios/docs/PROJECT_STATUS.md"
+    project_root = Path(__file__).resolve().parents[2]
+    path = str(project_root / "docs" / "PROJECT_STATUS.md")
     if not os.path.exists(path):
         return
     with open(path, "r") as f:
@@ -557,7 +558,8 @@ def update_project_status(latency: float, throughput: float):
 
 
 def update_knowledge_base():
-    path = "/Users/anzarakhtar/aios/docs/17_KNOWLEDGE_BASE.md"
+    project_root = Path(__file__).resolve().parents[2]
+    path = str(project_root / "docs" / "17_KNOWLEDGE_BASE.md")
     if not os.path.exists(path):
         return
     with open(path, "r") as f:
@@ -589,8 +591,13 @@ def update_knowledge_base():
 
 
 def copy_reports_to_artifacts(docs_dir: str):
-    artifacts_dir = (
-        "/Users/anzarakhtar/.gemini/antigravity-cli/brain/f5711c42-1ead-4c1a-8a46-d875135ee895"
+    project_root = Path(__file__).resolve().parents[2]
+    artifacts_dir = str(
+        Path.home()
+        / ".gemini"
+        / "antigravity-cli"
+        / "brain"
+        / "f5711c42-1ead-4c1a-8a46-d875135ee895"
     )
     os.makedirs(artifacts_dir, exist_ok=True)
     for f in os.listdir(docs_dir):
@@ -600,11 +607,11 @@ def copy_reports_to_artifacts(docs_dir: str):
 
     # Copy PROJECT_STATUS.md and 17_KNOWLEDGE_BASE.md as well
     shutil.copy(
-        "/Users/anzarakhtar/aios/docs/PROJECT_STATUS.md",
+        str(project_root / "docs" / "PROJECT_STATUS.md"),
         os.path.join(artifacts_dir, "PROJECT_STATUS.md"),
     )
     shutil.copy(
-        "/Users/anzarakhtar/aios/docs/17_KNOWLEDGE_BASE.md",
+        str(project_root / "docs" / "17_KNOWLEDGE_BASE.md"),
         os.path.join(artifacts_dir, "17_KNOWLEDGE_BASE.md"),
     )
     print("Copied PROJECT_STATUS.md and 17_KNOWLEDGE_BASE.md to artifacts directory")
@@ -655,7 +662,8 @@ def main():
     perf_res = run_performance_benchmarks(sem_mgr, emb_engine, hybrid_svc)
 
     # 4. Compile documentation & reports
-    docs_dir = "/Users/anzarakhtar/aios/docs/persistence"
+    project_root = Path(__file__).resolve().parents[2]
+    docs_dir = str(project_root / "docs" / "persistence")
     compile_reports(
         docs_dir, conn_res, col_res, crud_res, search_res, embed_res, fail_res, ri_res, perf_res
     )

@@ -521,50 +521,72 @@ def test_repository_registry():
 
 
 def test_diagnostics():
-    config = PersistenceConfigurationService()
-    registry = PersistenceRegistry()
-    p_repos = RepositoryRegistry()
-    registry.register_provider("postgresql", PostgreSQLProvider)
+    import os
+    from unittest.mock import patch
 
-    service = PersistenceServiceImpl(config, registry, p_repos)
-    diagnostics = PersistenceDiagnostics(config, service)
+    env_mock = {
+        "POSTGRES_HOST": "",
+        "POSTGRES_PORT": "",
+        "POSTGRES_DATABASE": "",
+        "POSTGRES_USER": "",
+        "POSTGRES_PASSWORD": "",
+    }
+    with patch.dict(os.environ, env_mock):
+        config = PersistenceConfigurationService()
+        registry = PersistenceRegistry()
+        p_repos = RepositoryRegistry()
+        registry.register_provider("postgresql", PostgreSQLProvider)
 
-    # 1. Awaiting Configuration before real credentials
-    service.initialize()
-    diag = diagnostics.run_diagnostics()
-    assert diag["status"] == "error"
-    assert "Awaiting Runtime Configuration" in diag["issues"][0]["message"]
+        service = PersistenceServiceImpl(config, registry, p_repos)
+        diagnostics = PersistenceDiagnostics(config, service)
 
-    # 2. Inject Mock Transport for Healthy Validation
-    mock_transport = MockDatabaseTransport(config)
-    service.active_provider.transport = mock_transport
-    service.active_provider.connect()
+        # 1. Awaiting Configuration before real credentials
+        service.initialize()
+        diag = diagnostics.run_diagnostics()
+        assert diag["status"] == "error"
+        assert "Awaiting Runtime Configuration" in diag["issues"][0]["message"]
 
-    diag2 = diagnostics.run_diagnostics()
-    assert diag2["status"] == "ok"
-    assert len(diag2["issues"]) == 0
+        # 2. Inject Mock Transport for Healthy Validation
+        mock_transport = MockDatabaseTransport(config)
+        service.active_provider.transport = mock_transport
+        service.active_provider.connect()
 
-    # 3. Connection Failure warning mapping
-    mock_transport.is_alive = False
-    diag3 = diagnostics.run_diagnostics()
-    assert diag3["status"] == "error"
-    assert "Connection Failure" in diag3["issues"][0]["type"]
+        diag2 = diagnostics.run_diagnostics()
+        assert diag2["status"] == "ok"
+        assert len(diag2["issues"]) == 0
+
+        # 3. Connection Failure warning mapping
+        mock_transport.is_alive = False
+        diag3 = diagnostics.run_diagnostics()
+        assert diag3["status"] == "error"
+        assert "Connection Failure" in diag3["issues"][0]["type"]
 
 
 def test_health_monitor():
-    config = PersistenceConfigurationService()
-    registry = PersistenceRegistry()
-    p_repos = RepositoryRegistry()
-    registry.register_provider("postgresql", PostgreSQLProvider)
+    import os
+    from unittest.mock import patch
 
-    service = PersistenceServiceImpl(config, registry, p_repos)
-    health_monitor = PersistenceHealthMonitor(service)
+    env_mock = {
+        "POSTGRES_HOST": "",
+        "POSTGRES_PORT": "",
+        "POSTGRES_DATABASE": "",
+        "POSTGRES_USER": "",
+        "POSTGRES_PASSWORD": "",
+    }
+    with patch.dict(os.environ, env_mock):
+        config = PersistenceConfigurationService()
+        registry = PersistenceRegistry()
+        p_repos = RepositoryRegistry()
+        registry.register_provider("postgresql", PostgreSQLProvider)
 
-    service.initialize()
-    # Awaiting config health check
-    h = health_monitor.check_health()
-    assert h["status"] == "offline"
-    assert "Awaiting Runtime Configuration" in h["issues"][0]
+        service = PersistenceServiceImpl(config, registry, p_repos)
+        health_monitor = PersistenceHealthMonitor(service)
+
+        service.initialize()
+        # Awaiting config health check
+        h = health_monitor.check_health()
+        assert h["status"] == "offline"
+        assert "Awaiting Runtime Configuration" in h["issues"][0]
 
     # Inject SQLite test transport
     transport = SQLiteTransportForTests(config)
