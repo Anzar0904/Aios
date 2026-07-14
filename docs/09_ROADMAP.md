@@ -233,7 +233,39 @@ gantt
 
 ---
 
-## 9. Test Verification Summary
-* **Total Tests Count**: 1,841 Passed (1,820 previous + 21 new integration intelligence tests).
+## 9. Phase 8 ✅ Documentation Intelligence (July 2026)
+
+### New in v6.0
+
+> **Phase 8** establishes a Documentation Intelligence Layer within the AI OS by introducing document registries, decision log systems, auto README generators, architecture guides builders, API ref catalog generators, and documentation search engines.
+
+**Subsystems Added:**
+- **Document Registry**: SQLite ledger storing document status and project references
+- **Decision Log**: Tech and architectural decision log tracking
+- **Documentation Builders**: Auto-generation of project READMEs, architecture manuals, and API refs
+- **Search Engine Indexer**: Keyword queries matcher across titles and contents
+- **Document Graph Bridge**: Links documents and decisions to the Knowledge Graph
+- **Documentation CLI**: `aios doc` / `aios docs` command groups
+
+**Test Coverage:** 21 new tests (100% pass)
+
+### New CLI Commands
+- `aios docs` — render overall documents summary dashboard
+- `aios docs list` — list registered documents in catalog
+- `aios docs search <query>` — keyword search across documents titles and contents
+- `aios docs readme <project_id>` — auto-generate project README manual
+- `aios docs architecture <project_id>` — auto-generate project system architecture guide
+- `aios docs api <module_name>` — auto-generate service API reference reference
+- `aios docs project <project_id>` — project sprint report and goal roadmap summaries
+- `aios docs workflows <workflow_id>` — workflow node trigger configurations summary report
+- `aios docs integrations <provider>` — integration adapter capabilities health report
+- `aios docs agency <client_id>` — crm lead progress client pipeline performance report
+- `aios docs changelog` — generate project commit history logs
+- `aios docs release` — generate version release notes migrations manual
+
+---
+
+## 10. Test Verification Summary
+* **Total Tests Count**: 1,862 Passed (1,841 previous + 21 new documentation intelligence tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.

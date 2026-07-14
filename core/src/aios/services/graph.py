@@ -46,6 +46,10 @@ class EntityType(Enum):
     INTEGRATION = "integration"
     CONNECTOR = "connector"
     EVENT_SOURCE = "event_source"
+    # Phase 8 Documentation Entities
+    SECTION = "section"
+    RELEASE = "release"
+    REPORT = "report"
 
 
 class RelationshipType(Enum):
@@ -75,6 +79,10 @@ class RelationshipType(Enum):
     EMITS = "EMITS"
     AUTHENTICATES = "AUTHENTICATES"
     SYNCS = "SYNCS"
+    # Phase 8 Documentation Relationships
+    DOCUMENTS = "DOCUMENTS"
+    DESCRIBES = "DESCRIBES"
+    GENERATED_FROM = "GENERATED_FROM"
 
 
 class GraphEventType(Enum):

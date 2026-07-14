@@ -2092,6 +2092,19 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
             console.print(f"[red]✗ integrations command error: {exc}[/red]")
         return
 
+    # Phase 8: delegate `aios doc` / `aios docs`
+    if subcommand in ("doc", "docs"):
+        try:
+            from aios.local.documentation_commands import cmd_docs_main
+
+            subargs_pass = subargs if subcommand == "doc" else [subcommand] + list(subargs)
+            if subcommand == "docs":
+                subargs_pass = ["list"] + list(subargs)
+            cmd_docs_main(subargs_pass, registry)
+        except Exception as exc:
+            console.print(f"[red]✗ documentation command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)

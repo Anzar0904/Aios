@@ -3974,6 +3974,8 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         "workflows",
         "integration",
         "integrations",
+        "doc",
+        "docs",
     ):
         from aios.local.cli_workspace_commands import cmd_workspace_main
         from aios.registry import ServiceRegistry
@@ -4248,6 +4250,19 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             cmd_integrations_main(subargs, registry=None)
         except Exception as exc:
             console.print(f"[red]✗ integrations command error: {exc}[/red]")
+    # -----------------------------------------------------------------------
+    # Phase 8: Documentation Intelligence — `aios doc` / `aios docs`
+    # -----------------------------------------------------------------------
+    elif args and args[0] in ("doc", "docs"):
+        try:
+            from aios.local.documentation_commands import cmd_docs_main
+
+            subargs = args[1:] if args[0] == "doc" else args
+            if args[0] == "docs":
+                subargs = ["list"] + list(args[1:])
+            cmd_docs_main(subargs, registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ documentation command error: {exc}[/red]")
         if exit_on_complete:
             sys.exit(0)
         return True

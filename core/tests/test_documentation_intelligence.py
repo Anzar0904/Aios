@@ -1,146 +1,270 @@
+"""Phase 8: Documentation Intelligence — Production Test Suite.
+
+Tests cover:
+- Document Registry CRUD
+- Documentation Engine auto README, Architecture, and API builders
+- Search Engine queries matching titles/contents
+- Decisions Log system registry
+- Knowledge Graph bridging integration assertions
+- CLI command dispatcher smoke runs
+"""
+
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
 import pytest
-from aios.services.documentation_intelligence import (
-    DocumentArtifact,
-    DocumentationProfileAdapter,
-    DocumentationRegistry,
-    DocumentationResult,
-    DocumentationWorkspace,
-    DocumentCategory,
-    DocumentMetadata,
-    DocumentSource,
-    DocumentTemplate,
-)
-from aios.services.documentation_intelligence_impl import (
-    LocalDocumentationPlanner,
-    LocalDocumentationService,
-)
-from aios.services.engineering_profile import (
-    DocumentationProfile,
-    EngineeringProfile,
-    EngineeringProfileService,
-)
-from aios.services.knowledge_hub import KnowledgeHubService
-from aios.services.memory import MemoryService
+from aios.services.documentation import DecisionRecord, DocStatus, DocType, DocumentRecord, new_id
+from aios.services.documentation_impl import DocumentationServiceImpl
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def mock_profile_service():
-    service = MagicMock(spec=EngineeringProfileService)
-
-    doc_prof = DocumentationProfile(format="markdown", generate_api_docs=True)
-    eng_prof = MagicMock(spec=EngineeringProfile)
-    eng_prof.documentation = doc_prof
-
-    service.get_profile.return_value = eng_prof
-    return service
+def tmp_db(tmp_path):
+    return str(tmp_path / "test_documentation.db")
 
 
-def test_registry_creation():
-    registry = DocumentationRegistry()
-    template = DocumentTemplate("t1", "README layout", ["Title", "Overview"])
+@pytest.fixture
+def eng(tmp_db):
+    from aios.local import documentation_commands
 
-    registry.register_template(template)
-    assert registry.get_template("t1") == template
-
-
-def test_metadata_validation():
-    metadata = DocumentMetadata(
-        doc_id="d1",
-        category=DocumentCategory.README,
-        source=DocumentSource.SOFTWARE_ENG,
-        title="Project README",
-        version="1.0.0",
-        author="Antigravity",
-        timestamp=0.0,
-    )
-
-    assert metadata.category == DocumentCategory.README
-    assert metadata.source == DocumentSource.SOFTWARE_ENG
-    assert metadata.title == "Project README"
+    documentation_commands._DB_PATH = tmp_db
+    svc = DocumentationServiceImpl(db_path=tmp_db)
+    svc.initialize()
+    svc.start()
+    yield svc
+    svc.shutdown()
+    documentation_commands._DB_PATH = None
 
 
-def test_profile_integration():
-    doc_prof = DocumentationProfile(format="rst", generate_api_docs=False)
-    adapter = DocumentationProfileAdapter(doc_prof)
-
-    assert adapter.get_format() == "rst"
-    assert adapter.should_generate_api() is False
-    assert "language" in adapter.get_style_rules()
+# ---------------------------------------------------------------------------
+# Document Registry & Seeding
+# ---------------------------------------------------------------------------
 
 
-def test_document_registration():
-    registry = DocumentationRegistry()
-    metadata = DocumentMetadata(
-        doc_id="d1",
-        category=DocumentCategory.CHANGELOG,
-        source=DocumentSource.PATCH_GEN,
-        title="Changelog",
-        version="0.2.0",
-        author="Antigravity",
-        timestamp=0.0,
-    )
-    artifact = DocumentArtifact("art_1", metadata, "Content summary.")
+class TestDocumentRegistry:
+    def test_register_and_get_document(self, eng):
+        did = new_id()
+        doc = DocumentRecord(
+            document_id=did,
+            title="Overview Doc",
+            doc_type=DocType.README,
+            content="This is overview.",
+            project_id="aios",
+            owner="admin",
+            status=DocStatus.PUBLISHED,
+        )
+        eng.register_document(doc)
+        fetched = eng.get_document(did)
+        assert fetched is not None
+        assert fetched.title == "Overview Doc"
+        assert fetched.status == DocStatus.PUBLISHED
+        assert fetched.version == 1
 
-    registry.register_artifact(artifact)
-    assert registry.get_artifact("art_1") == artifact
+        # Check duplicate update increments version
+        updated = eng.register_document(fetched)
+        assert updated.version == 2
 
+    def test_delete_document(self, eng):
+        did = new_id()
+        doc = DocumentRecord(
+            document_id=did,
+            title="To Delete",
+            doc_type=DocType.README,
+            content="Temp",
+        )
+        eng.register_document(doc)
+        assert eng.get_document(did) is not None
 
-def test_service_evaluation_flow(mock_profile_service):
-    mock_memory = MagicMock(spec=MemoryService)
-    mock_kh = MagicMock(spec=KnowledgeHubService)
-
-    service = LocalDocumentationService(
-        memory_service=mock_memory,
-        engineering_profile_service=mock_profile_service,
-        knowledge_hub=mock_kh,
-    )
-    service.initialize()
-
-    workspace = DocumentationWorkspace("ws_1", "/tmp/path")
-    session = service.create_session(workspace)
-
-    assert session.status == "initialized"
-
-    # Plan
-    templates = service.plan_session(session)
-    assert len(templates) > 0
-    assert session.status == "planning"
-    mock_profile_service.get_profile.assert_called_with("default")
-
-    # Register artifact
-    metadata = DocumentMetadata(
-        doc_id="d1",
-        category=DocumentCategory.API_DOC,
-        source=DocumentSource.WORKSPACE_INTEL,
-        title="API Doc",
-        version="1.0.0",
-        author="Antigravity",
-        timestamp=0.0,
-    )
-    art = DocumentArtifact("art_1", metadata, "API classes documentation.")
-    service.register_artifact(art)
-    assert service.get_artifact("art_1") == art
-
-    # Store
-    result = DocumentationResult("res_1", session.session_id, [art], True)
-    service.store_documentation_summary(result)
-    mock_memory.add_memory.assert_called_once()
-
-    # Publish
-    service.publish_documentation_summary(result)
-    mock_kh.sync_document.assert_called_once()
+        success = eng.delete_document(did)
+        assert success is True
+        assert eng.get_document(did) is None
 
 
-def test_backward_compatibility():
-    class CustomPlanner(LocalDocumentationPlanner):
-        def plan_documentation(self, session, profile_adapter):
-            templates = super().plan_documentation(session, profile_adapter)
-            templates.append(DocumentTemplate("tmpl_custom", "Custom Layout", ["Custom"]))
-            return templates
+# ---------------------------------------------------------------------------
+# Documentation Engine Builders
+# ---------------------------------------------------------------------------
 
-    planner = CustomPlanner()
-    templates = planner.plan_documentation(MagicMock(), MagicMock())
-    template_ids = [t.template_id for t in templates]
-    assert "tmpl_custom" in template_ids
+
+class TestDocumentationBuilders:
+    def test_generate_readme(self, eng):
+        doc = eng.generate_readme("core")
+        assert doc.doc_type == DocType.README
+        assert "Project README: Core" in doc.content
+
+    def test_generate_architecture_doc(self, eng):
+        doc = eng.generate_architecture_doc("core")
+        assert doc.doc_type == DocType.ARCHITECTURE
+        assert "System Architecture: Core" in doc.content
+
+    def test_generate_api_doc(self, eng):
+        doc = eng.generate_api_doc("workflow")
+        assert doc.doc_type == DocType.API_DOCS
+        assert "API Documentation: workflow" in doc.content
+
+
+# ---------------------------------------------------------------------------
+# Decision Log Registry
+# ---------------------------------------------------------------------------
+
+
+class TestDecisionLogs:
+    def test_record_and_list_decisions(self, eng):
+        dec_id = new_id()
+        dec = DecisionRecord(
+            decision_id=dec_id,
+            title="Use SQLite WAL Mode",
+            category="architectural",
+            status="accepted",
+            context="High concurrency is needed.",
+            consequences="Better throughput.",
+        )
+        eng.record_decision(dec)
+        decisions = eng.list_decisions()
+        assert len(decisions) >= 1
+        assert decisions[0].title == "Use SQLite WAL Mode"
+        assert decisions[0].category == "architectural"
+
+
+# ---------------------------------------------------------------------------
+# Search Engine
+# ---------------------------------------------------------------------------
+
+
+class TestSearchEngine:
+    def test_search_by_keywords(self, eng):
+        d1 = DocumentRecord(
+            document_id=new_id(),
+            title="Secrets Management",
+            doc_type=DocType.DEV_GUIDE,
+            content="Do not store keys in git.",
+        )
+        d2 = DocumentRecord(
+            document_id=new_id(),
+            title="Code Guidelines",
+            doc_type=DocType.DEV_GUIDE,
+            content="Keep classes short.",
+        )
+        eng.register_document(d1)
+        eng.register_document(d2)
+
+        # Query secrets
+        res = eng.search_documents("Secrets")
+        assert len(res) == 1
+        assert res[0].title == "Secrets Management"
+
+        # Query code
+        res_code = eng.search_documents("Guidelines")
+        assert len(res_code) == 1
+        assert res_code[0].title == "Code Guidelines"
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Graph Integration
+# ---------------------------------------------------------------------------
+
+
+class TestDocumentationGraphBridge:
+    def test_sync_document_node(self):
+        from aios.services.documentation_graph_bridge import DocumentationGraphBridge
+
+        mock_engine = MagicMock()
+        mock_entity = MagicMock()
+        mock_entity.entity_id = "mock-doc-id"
+        mock_engine.ensure_entity.return_value = mock_entity
+
+        bridge = DocumentationGraphBridge(mock_engine)
+        doc = DocumentRecord(
+            document_id="doc-123",
+            title="Developer Guide",
+            doc_type=DocType.DEV_GUIDE,
+            project_id="aios",
+        )
+        entity_id = bridge.sync_document(doc)
+        assert entity_id == "mock-doc-id"
+        assert mock_engine.ensure_relationship.call_count == 1
+
+    def test_sync_decision(self):
+        from aios.services.documentation_graph_bridge import DocumentationGraphBridge
+
+        mock_engine = MagicMock()
+        mock_entity = MagicMock()
+        mock_entity.entity_id = "mock-dec-id"
+        mock_engine.ensure_entity.return_value = mock_entity
+
+        bridge = DocumentationGraphBridge(mock_engine)
+        dec = DecisionRecord(
+            "dec-123", "Use SQLite", "architectural", "accepted", "context", "conseq"
+        )
+        entity_id = bridge.sync_decision(dec)
+        assert entity_id == "mock-dec-id"
+
+
+# ---------------------------------------------------------------------------
+# CLI Command Dispatcher Smoke Tests
+# ---------------------------------------------------------------------------
+
+
+class TestDocumentationCLIDispatch:
+    def test_cli_dashboard_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_dashboard
+
+        cmd_docs_dashboard([])
+
+    def test_cli_list_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_list
+
+        cmd_docs_list([])
+
+    def test_cli_search_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_search
+
+        cmd_docs_search(["Secrets"])
+
+    def test_cli_readme_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_readme
+
+        cmd_docs_readme(["core"])
+
+    def test_cli_architecture_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_architecture
+
+        cmd_docs_architecture(["core"])
+
+    def test_cli_api_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_api
+
+        cmd_docs_api(["workflow"])
+
+    def test_cli_project_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_project
+
+        cmd_docs_project(["agency"])
+
+    def test_cli_workflows_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_workflows
+
+        cmd_docs_workflows(["lead_gen"])
+
+    def test_cli_integrations_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_integrations
+
+        cmd_docs_integrations(["github"])
+
+    def test_cli_agency_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_agency
+
+        cmd_docs_agency(["abc_client"])
+
+    def test_cli_changelog_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_changelog
+
+        cmd_docs_changelog([])
+
+    def test_cli_release_smoke(self, eng):
+        from aios.local.documentation_commands import cmd_docs_release
+
+        cmd_docs_release([])
