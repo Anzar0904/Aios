@@ -204,10 +204,8 @@ def bootstrap_services(
     memory_service.set_model_service(model_service)
 
     from aios.local.service import LocalModelService as Phase1LocalModelService
-    phase1_local_model_service = Phase1LocalModelService(
-        ollama_base_url="http://localhost:11434"
-    )
 
+    phase1_local_model_service = Phase1LocalModelService(ollama_base_url="http://localhost:11434")
 
     # Register NVIDIA provider foundation
     from aios.providers.nvidia import register_nvidia_provider
@@ -648,7 +646,6 @@ def bootstrap_services(
     registry.register(Phase1LocalModelService, phase1_local_model_service)
     registry.register(ToolService, tool_service)
     registry.register(GitHubService, github_service)
-
 
     notion_service = LocalNotionService(
         model_service=model_service,
