@@ -2056,6 +2056,16 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
             console.print(f"[red]✗ project command error: {exc}[/red]")
         return
 
+    # Phase 6: delegate `aios agency <subcommand>` to agency intelligence
+    if subcommand == "agency":
+        try:
+            from aios.local.agency_commands import cmd_agency_main
+
+            cmd_agency_main(subargs, registry)
+        except Exception as exc:
+            console.print(f"[red]✗ agency command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)

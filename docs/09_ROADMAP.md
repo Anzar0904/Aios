@@ -141,7 +141,39 @@ gantt
 
 ---
 
-## 6. Test Verification Summary
-* **Total Tests Count**: 1,775 Passed (1,694 previous + 81 new project intelligence tests).
+## 6. Phase 6 ✅ Agency Intelligence (July 2026)
+
+### New in v4.0
+
+> **Phase 6** transforms AI OS into an Agency Operating System by establishing CRM registries, lead stage progression pipelines, outreach drafting engines, meeting notes syncs, and revenue pipeline projections.
+
+**Subsystems Added:**
+- **Contact Registry**: SQLite catalog of person contacts and company directories
+- **Lead Pipeline**: Stage progression engine with score tracking and follow-up alerts
+- **Client Portfolio**: Tracks invoices, contracts, and relationship histories
+- **Outreach & Proposal Engine**: Procedural generation of pitches and correspondence drafts
+- **Meeting Intelligence**: Capture agendas, participants, decisions, and action items
+- **Revenue Pipeline**: Calculations of closed, expected, and total pipeline values
+- **Agency Graph Bridge**: Bridges CRM records to Universal Knowledge Graph entities and links
+- **Agency CLI**: `aios agency` command groups
+
+**Test Coverage:** 27 new tests (100% pass)
+
+### New CLI Commands
+- `aios agency` — render main CRM analytics dashboard
+- `aios agency dashboard` — render CRM analytics dashboard (alias)
+- `aios agency leads` — list lead progression or create new prospects
+- `aios agency clients` — list client portfolio logs
+- `aios agency companies` — browse registered company profiles
+- `aios agency meetings` — view meeting intelligence items and action lists
+- `aios agency proposals` — display proposal index or generate drafts
+- `aios agency pipeline` — display weighted revenue projections
+- `aios agency outreach` — generate outreach drafts or follow-up campaigns
+- `aios agency followups` — schedule checklist, alerts for overdue items
+
+---
+
+## 7. Test Verification Summary
+* **Total Tests Count**: 1,802 Passed (1,775 previous + 27 new agency intelligence tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.

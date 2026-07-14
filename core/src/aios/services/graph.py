@@ -29,6 +29,13 @@ class EntityType(Enum):
     CLIENT = "client"
     RESEARCH = "research"
     NOTION_PAGE = "notion_page"
+    # Phase 6 CRM Entities
+    PERSON = "person"
+    COMPANY = "company"
+    LEAD = "lead"
+    MEETING = "meeting"
+    PROPOSAL = "proposal"
+    CONTRACT = "contract"
 
 
 class RelationshipType(Enum):
@@ -40,6 +47,14 @@ class RelationshipType(Enum):
     REFERENCES = "REFERENCES"
     CONTAINS = "CONTAINS"
     RELATED_TO = "RELATED_TO"
+    # Phase 6 CRM Relationships
+    WORKS_FOR = "WORKS_FOR"
+    OWNS = "OWNS"
+    ATTENDED = "ATTENDED"
+    CREATED = "CREATED"
+    SENT_TO = "SENT_TO"
+    CONVERTED_TO = "CONVERTED_TO"
+    MANAGES = "MANAGES"
 
 
 class GraphEventType(Enum):
