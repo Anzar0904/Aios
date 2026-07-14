@@ -1,7 +1,11 @@
+import logging
+import os
 import sys
 import time
 from enum import Enum, auto
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from aios.config import OSConfig, load_config
 from aios.registry import ServiceRegistry

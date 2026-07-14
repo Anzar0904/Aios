@@ -1,5 +1,5 @@
 # Installed Providers
-Generated at: 2026-07-13 20:11:44
+Generated at: 2026-07-14 18:49:54
 
 | Provider Name | Type | Status |
 | --- | --- | --- |
@@ -8,4 +8,4 @@ Generated at: 2026-07-13 20:11:44
 | openai | OpenAIProvider | Healthy |
 | claude | ClaudeProvider | Healthy |
 | ollama | OllamaProvider | Healthy |
-| ninerouter | NineRouterProvider | Healthy |
+| ninerouter | NineRouterProvider | Unavailable |
