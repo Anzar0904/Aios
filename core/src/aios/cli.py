@@ -3929,12 +3929,40 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
     # -----------------------------------------------------------------------
     elif args and args[0] == "models":
         from aios.local.cli_commands import cmd_models_main
+        from aios.registry import ServiceRegistry
 
+        reg = ServiceRegistry._global_registry
         subargs = args[1:]
         try:
-            cmd_models_main(subargs, registry=None)
+            cmd_models_main(subargs, registry=reg)
         except Exception as exc:
             console.print(f"[red]✗ models command error: {exc}[/red]")
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
+    # -----------------------------------------------------------------------
+    # Phase 2: AI Workspace & Unified CLI — Workspace Subcommands
+    # -----------------------------------------------------------------------
+    elif args and args[0] in (
+        "dashboard",
+        "work",
+        "today",
+        "status",
+        "restart",
+        "doctor",
+        "shutdown",
+    ):
+        from aios.local.cli_workspace_commands import cmd_workspace_main
+        from aios.registry import ServiceRegistry
+
+        reg = ServiceRegistry._global_registry
+        try:
+            cmd_workspace_main(args, registry=reg)
+        except Exception as exc:
+            console.print(f"[red]✗ workspace command error: {exc}[/red]")
         if exit_on_complete:
             import sys
 
@@ -4088,6 +4116,13 @@ def main() -> None:
                     or user_input.startswith("workspace ")
                     or user_input.startswith("providers")
                     or user_input.startswith("models")
+                    or user_input.startswith("dashboard")
+                    or user_input.startswith("work")
+                    or user_input.startswith("today")
+                    or user_input.startswith("status")
+                    or user_input.startswith("restart")
+                    or user_input.startswith("doctor")
+                    or user_input.startswith("shutdown")
                 ):
                     cmd_str = user_input
 

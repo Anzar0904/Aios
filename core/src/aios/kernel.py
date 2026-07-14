@@ -154,16 +154,69 @@ class Kernel:
             event_bus.subscribe(AgentCompletedEvent, log_agent_completed)
             event_bus.subscribe(AgentFailedEvent, log_agent_failed)
 
+            # Automatically restore the previous workspace, sprint, and memory context
+            from aios.local.cli_workspace_commands import (
+                load_workspace_session,
+                save_workspace_session,
+            )
+
+            sess_data = load_workspace_session()
+
             # Automatically detect workspace context
             context_service = self.registry.get(ContextService)
             context = context_service.detect_context()
 
-            # Start a new session
+            # Restore project name and root
+            proj_root = sess_data.get("previous_workspace_root") or context.project_root
+            if not os.path.exists(proj_root):
+                proj_root = context.project_root
+
+            # Start a new session in the restored workspace
             session_service = self.registry.get(SessionService)
-            session = session_service.start_session(context.project_root)
+            session = session_service.start_session(proj_root)
             self._active_session_id = session.session_id
 
+            # Update session details
+            sess_data["previous_workspace_root"] = proj_root
+            sess_data["current_project"] = Path(proj_root).name
+            save_workspace_session(sess_data)
+
+            # Start background services
             self._transition_to_ready()
+
+            # Submit Notion daily work background synchronization task
+            try:
+                from aios.services.notion import NotionService
+                from aios.services.runtime import BackgroundTask, RuntimeService
+
+                runtime_svc = self.registry.get(RuntimeService)
+                notion_svc = self.registry.get(NotionService)
+
+                def notion_sync_job():
+                    try:
+                        notion_svc.sync()
+                        logger.info("Daily work automatically synced with Notion in background.")
+                    except Exception as exc:
+                        logger.error("Notion background sync failed: %s", exc)
+
+                notion_task = BackgroundTask(
+                    task_id="notion_sync_hourly",
+                    name="Notion Sync",
+                    func=notion_sync_job,
+                    interval=3600.0,
+                )
+                runtime_svc.submit_task(notion_task)
+                # Run one immediate initial sync in background
+                runtime_svc.task_manager.submit(
+                    BackgroundTask(
+                        task_id="notion_sync_initial",
+                        name="Initial Notion Sync",
+                        func=notion_sync_job,
+                        interval=0.0,
+                    )
+                )
+            except Exception as exc:
+                logger.warning("Failed to start background Notion sync: %s", exc)
 
             self._state = RuntimeState.READY
         except Exception as e:

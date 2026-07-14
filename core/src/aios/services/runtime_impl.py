@@ -166,7 +166,8 @@ class LocalRuntime(RuntimeService):
         return self._state
 
     def initialize(self) -> None:
-        pass
+        self._ticking_thread = None
+        self._ticking = False
 
     def start(self) -> None:
         self._state = RuntimeState.BOOTING
@@ -185,12 +186,33 @@ class LocalRuntime(RuntimeService):
         self.register_watcher(ProviderWatcher())
         self.register_watcher(MemoryWatcher())
 
+        # Start background ticking thread
+        import threading
+
+        self._ticking = True
+
+        def tick_loop():
+            while self._ticking:
+                try:
+                    self.task_manager.tick()
+                except Exception as exc:
+                    logger.error("Error in background task tick: %s", exc)
+                time.sleep(1.0)
+
+        self._ticking_thread = threading.Thread(target=tick_loop, daemon=True)
+        self._ticking_thread.start()
+
         self._state = RuntimeState.READY
         logger.info("AI OS Runtime READY.")
 
     def stop(self) -> None:
         self._state = RuntimeState.SHUTTING_DOWN
         logger.info("Shutting down AI OS Runtime...")
+
+        # Stop ticking loop
+        self._ticking = False
+        if self._ticking_thread:
+            self._ticking_thread.join(timeout=2.0)
 
         # Stop watchers
         self.watcher_manager.stop_all()
