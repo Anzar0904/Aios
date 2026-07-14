@@ -109,7 +109,39 @@ gantt
 
 ---
 
-## 5. Test Verification Summary
-* **Total Tests Count**: 1,694 Passed (1,612 previous + 82 new graph tests).
+## 5. Phase 5 ✅ Project Intelligence (July 2026)
+
+### New in v3.0
+
+> **Phase 5** transitions AI OS to a Multi-Project Operating System by introducing project profiles, isolated runtime contexts, per-project memory partitions, and custom model routing preferences.
+
+**Subsystems Added:**
+- **Project Registry**: SQLite catalog of workspaces and project profiles
+- **Project Context Service**: Workspace context boundaries and switching mechanisms
+- **Project Memory Service**: Isolated SQLite workspace memory lanes
+- **Model Router Integration**: Auto-selection of project-preferred model profiles
+- **Knowledge Graph Bridge**: Auto-registers projects and cross-project relationships
+- **Project CLI**: `aios project` / `aios projects` command groups
+
+**Projects Seeded:** AI OS, Agency, CampusConnect, College, Research, Hackathons, Portfolio
+
+**Test Coverage:** 81 new tests (100% pass)
+
+### New CLI Commands
+- `aios projects` — list all project profiles
+- `aios project list` — list all project profiles (alias)
+- `aios project create <name>` — register a new project workspace
+- `aios project switch <name>` — switch to a project context and load model routes
+- `aios project status` — check currently active project status
+- `aios project dashboard` — view rich health, tasks, and memory dashboard
+- `aios project graph` — view project subgraph nodes
+- `aios project memory` — browse and append project memory records
+- `aios project models` — inspect project preferred model mappings
+- `aios project cross` — search and queries across projects
+
+---
+
+## 6. Test Verification Summary
+* **Total Tests Count**: 1,775 Passed (1,694 previous + 81 new project intelligence tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.

@@ -2046,6 +2046,16 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
         "scheduler": cmd_scheduler,
     }
 
+    # Phase 5: delegate `aios project <subcommand>` to project intelligence
+    if subcommand == "project":
+        try:
+            from aios.local.project_commands import cmd_project_main
+
+            cmd_project_main(subargs, registry)
+        except Exception as exc:
+            console.print(f"[red]✗ project command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)
@@ -2066,7 +2076,8 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
                 "  [cyan]aios context[/cyan]        — View/update active context\n"
                 "  [cyan]aios scheduler[/cyan]      — Show background scheduler jobs\n"
                 "  [cyan]aios agenda[/cyan]         — Show calendar schedule & deadlines\n"
-                "  [cyan]aios projects[/cyan]       — Show active projects list\n"
+                "  [cyan]aios projects[/cyan]       — List all projects (Phase 5)\n"
+                "  [cyan]aios project[/cyan]        — Project Intelligence commands\n"
                 "  [cyan]aios agency[/cyan]         — Show CRM leads database\n"
                 "  [cyan]aios hackathons[/cyan]     — Show active hackathon checklist\n"
                 "  [cyan]aios github[/cyan]         — Show repository workflows & issues\n"

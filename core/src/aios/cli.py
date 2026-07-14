@@ -4196,6 +4196,24 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    # -----------------------------------------------------------------------
+    # Phase 5: Project Intelligence — `aios project` / `aios projects`
+    # -----------------------------------------------------------------------
+    elif args and args[0] in ("project", "projects"):
+        try:
+            from aios.local.project_commands import cmd_project_main
+
+            subargs = args[1:] if args[0] == "project" else args
+            # `aios projects` is a shortcut for `aios project list`
+            if args[0] == "projects":
+                subargs = ["list"] + list(args[1:])
+            cmd_project_main(subargs, registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ project command error: {exc}[/red]")
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
     return False
 
 
