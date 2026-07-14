@@ -42,6 +42,10 @@ class EntityType(Enum):
     EXECUTION = "execution"
     CREDENTIAL = "credential"
     WORKFLOW_TEMPLATE = "workflow_template"
+    # Phase 7.5 Integration Entities
+    INTEGRATION = "integration"
+    CONNECTOR = "connector"
+    EVENT_SOURCE = "event_source"
 
 
 class RelationshipType(Enum):
@@ -66,6 +70,11 @@ class RelationshipType(Enum):
     DEPLOYED_BY = "DEPLOYED_BY"
     EXECUTES = "EXECUTES"
     CALLS = "CALLS"
+    # Phase 7.5 Integration Relationships
+    CONNECTED_TO = "CONNECTED_TO"
+    EMITS = "EMITS"
+    AUTHENTICATES = "AUTHENTICATES"
+    SYNCS = "SYNCS"
 
 
 class GraphEventType(Enum):

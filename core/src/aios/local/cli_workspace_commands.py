@@ -2079,6 +2079,19 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
             console.print(f"[red]✗ workflow command error: {exc}[/red]")
         return
 
+    # Phase 7.5: delegate `aios integration` / `aios integrations`
+    if subcommand in ("integration", "integrations"):
+        try:
+            from aios.local.integration_commands import cmd_integrations_main
+
+            subargs_pass = subargs if subcommand == "integration" else [subcommand] + list(subargs)
+            if subcommand == "integrations":
+                subargs_pass = ["list"] + list(subargs)
+            cmd_integrations_main(subargs_pass, registry)
+        except Exception as exc:
+            console.print(f"[red]✗ integrations command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)

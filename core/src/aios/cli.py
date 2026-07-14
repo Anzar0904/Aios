@@ -3970,6 +3970,10 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
         "events",
         "context",
         "scheduler",
+        "workflow",
+        "workflows",
+        "integration",
+        "integrations",
     ):
         from aios.local.cli_workspace_commands import cmd_workspace_main
         from aios.registry import ServiceRegistry
@@ -4227,6 +4231,23 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             cmd_workflow_main(subargs, registry=None)
         except Exception as exc:
             console.print(f"[red]✗ workflow command error: {exc}[/red]")
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
+    # -----------------------------------------------------------------------
+    # Phase 7.5: Universal Integration Layer — `aios integration` / `aios integrations`
+    # -----------------------------------------------------------------------
+    elif args and args[0] in ("integration", "integrations"):
+        try:
+            from aios.local.integration_commands import cmd_integrations_main
+
+            subargs = args[1:] if args[0] == "integration" else args
+            if args[0] == "integrations":
+                subargs = ["list"] + list(args[1:])
+            cmd_integrations_main(subargs, registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ integrations command error: {exc}[/red]")
         if exit_on_complete:
             sys.exit(0)
         return True
