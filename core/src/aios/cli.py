@@ -4214,6 +4214,23 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    # -----------------------------------------------------------------------
+    # Phase 7: Automation Intelligence — `aios workflow` / `aios workflows`
+    # -----------------------------------------------------------------------
+    elif args and args[0] in ("workflow", "workflows"):
+        try:
+            from aios.local.workflow_commands import cmd_workflow_main
+
+            subargs = args[1:] if args[0] == "workflow" else args
+            if args[0] == "workflows":
+                subargs = ["list"] + list(args[1:])
+            cmd_workflow_main(subargs, registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ workflow command error: {exc}[/red]")
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
     return False
 
 

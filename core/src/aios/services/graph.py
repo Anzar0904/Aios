@@ -36,6 +36,12 @@ class EntityType(Enum):
     MEETING = "meeting"
     PROPOSAL = "proposal"
     CONTRACT = "contract"
+    # Phase 7 Automation Entities
+    DEPLOYMENT = "deployment"
+    WEBHOOK = "webhook"
+    EXECUTION = "execution"
+    CREDENTIAL = "credential"
+    WORKFLOW_TEMPLATE = "workflow_template"
 
 
 class RelationshipType(Enum):
@@ -55,6 +61,11 @@ class RelationshipType(Enum):
     SENT_TO = "SENT_TO"
     CONVERTED_TO = "CONVERTED_TO"
     MANAGES = "MANAGES"
+    # Phase 7 Automation Relationships
+    SERVES = "SERVES"
+    DEPLOYED_BY = "DEPLOYED_BY"
+    EXECUTES = "EXECUTES"
+    CALLS = "CALLS"
 
 
 class GraphEventType(Enum):

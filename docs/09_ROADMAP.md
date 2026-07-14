@@ -173,7 +173,40 @@ gantt
 
 ---
 
-## 7. Test Verification Summary
-* **Total Tests Count**: 1,802 Passed (1,775 previous + 27 new agency intelligence tests).
+## 7. Phase 7 ✅ n8n Automation Intelligence (July 2026)
+
+### New in v5.0
+
+> **Phase 7** establishes n8n Automation Intelligence within the AI OS by introducing workflow registries, live JSON deployment validators, live terminal deployment alerts, execution monitors, node-specific diagnostics debuggers, version change histories, rollbacks, and knowledge graph mappings.
+
+**Subsystems Added:**
+- **Workflow Registry**: SQLite database of workflow nodes and connections
+- **n8n Service Layer**: Integration simulation for deployments, triggers, webhooks, and executions
+- **Workflow Generator**: Automated generator creating pipelines from templates
+- **Live Notifications**: Terminal alerts immediately printing deployment details
+- **Workflow Monitor**: Auditing latency, node errors, and health scores
+- **Workflow Debugger**: Node-specific diagnostics, empty credentials, and webhook repairs
+- **Workflow Versioning**: Rolling back configurations to target revision histories
+- **Automation Graph Bridge**: Links workflows to Knowledge Graph elements and links
+- **Workflow CLI**: `aios workflow` / `aios workflows` command groups
+
+**Test Coverage:** 18 new tests (100% pass)
+
+### New CLI Commands
+- `aios workflows` — render registered workflows and status list
+- `aios workflow dashboard` — render registered workflows (alias)
+- `aios workflow generate <name> <tpl>` — customized workflow templates generator
+- `aios workflow deploy <name> <json>` — validate and deploy raw JSON configuration
+- `aios workflow activate <id>` — activate trigger events execution
+- `aios workflow deactivate <id>` — deactivate workflow triggers
+- `aios workflow diagnose <id>` — scan log issues and credential checks
+- `aios workflow repair <id>` — auto-repair credentials and default webhooks
+- `aios workflow versions <id>` — view deployments changelogs history
+- `aios workflow rollback <id> <ver>` — revert config back to target version
+
+---
+
+## 8. Test Verification Summary
+* **Total Tests Count**: 1,820 Passed (1,802 previous + 18 new workflow intelligence tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.

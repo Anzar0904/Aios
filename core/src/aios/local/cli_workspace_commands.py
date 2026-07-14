@@ -2066,6 +2066,19 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
             console.print(f"[red]✗ agency command error: {exc}[/red]")
         return
 
+    # Phase 7: delegate `aios workflow` / `aios workflows`
+    if subcommand in ("workflow", "workflows"):
+        try:
+            from aios.local.workflow_commands import cmd_workflow_main
+
+            subargs_pass = subargs if subcommand == "workflow" else [subcommand] + list(subargs)
+            if subcommand == "workflows":
+                subargs_pass = ["list"] + list(subargs)
+            cmd_workflow_main(subargs_pass, registry)
+        except Exception as exc:
+            console.print(f"[red]✗ workflow command error: {exc}[/red]")
+        return
+
     handler = handlers.get(subcommand)
     if handler:
         handler(subargs, registry)
@@ -2089,6 +2102,8 @@ def cmd_workspace_main(args: List[str], registry: Any = None) -> None:
                 "  [cyan]aios projects[/cyan]       — List all projects (Phase 5)\n"
                 "  [cyan]aios project[/cyan]        — Project Intelligence commands\n"
                 "  [cyan]aios agency[/cyan]         — Show CRM leads database\n"
+                "  [cyan]aios workflows[/cyan]      — List all n8n workflows (Phase 7)\n"
+                "  [cyan]aios workflow[/cyan]       — n8n Automation workflow commands\n"
                 "  [cyan]aios hackathons[/cyan]     — Show active hackathon checklist\n"
                 "  [cyan]aios github[/cyan]         — Show repository workflows & issues\n"
                 "  [cyan]aios notion[/cyan]         — Trigger Notion daily page synchronization\n"
