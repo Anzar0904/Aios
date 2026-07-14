@@ -138,6 +138,7 @@ from aios.services.test_validation import ValidationService
 from aios.services.test_validation_impl import LocalValidationService
 from aios.services.tool import ToolService
 from aios.services.tool_impl import LocalToolManager
+from aios.services.ux_platform import UXPlatform
 from aios.services.vercel import VercelService
 from aios.services.vercel_impl import LocalVercelIntelligenceService
 
@@ -204,6 +205,8 @@ def bootstrap_services(
     nl_os_service.initialize()
     agent_platform = AutonomousAgentPlatform()
     agent_platform.initialize()
+    ux_platform = UXPlatform()
+    ux_platform.initialize()
     orchestrator_service = LocalOrchestratorService(command_registry)
     orchestrator_service.initialize()
 
@@ -651,6 +654,7 @@ def bootstrap_services(
     registry.register(IntentResolverService, intent_resolver)
     registry.register(NLOSService, nl_os_service)
     registry.register(AutonomousAgentPlatform, agent_platform)
+    registry.register(UXPlatform, ux_platform)
     registry.register(ModelService, model_service)
     registry.register(Phase1LocalModelService, phase1_local_model_service)
     registry.register(ToolService, tool_service)
@@ -817,6 +821,7 @@ def bootstrap_services(
         "intent_resolver": intent_resolver,
         "nl_os_service": nl_os_service,
         "agent_platform": agent_platform,
+        "ux_platform": ux_platform,
         "model_service": model_service,
         "project_intelligence": project_intelligence,
         "research_service": research_service,

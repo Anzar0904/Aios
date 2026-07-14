@@ -1,6 +1,3 @@
-import atexit
-import readline
-import signal
 import sys
 import time
 from pathlib import Path
@@ -10,20 +7,13 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 from aios.bootstrap import bootstrap_kernel
 from aios.services.command import (
     CommandRegistry,
-    DocumentationGenerator,
-    match_command,
-    register_default_commands,
 )
 from aios.services.conversation.manager import ConversationManager
-from aios.services.conversation.store import ConversationStore
-from aios.services.intent import IntentResolverService, IntentType
 from aios.services.model import LLMRequest, ModelService
-from aios.skills.manager import SkillManager
 from aios.skills.registry import SkillRegistry
 
 # Global Console instance for Terminal UX styling
@@ -4775,6 +4765,65 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    elif args and args[0] in ("dashboard", "search", "notifications", "workspace", "status"):
+        from aios.registry import ServiceRegistry
+        from aios.services.ux_platform import UXPlatform
+
+        ux = ServiceRegistry._global_registry.get(UXPlatform)
+
+        cmd = args[0]
+        if cmd == "dashboard":
+            ux.interactive_loop()
+
+        elif cmd == "search":
+            if len(args) < 2:
+                console.print("[yellow]Usage: aios search <query>[/yellow]")
+            else:
+                term = " ".join(args[1:])
+                results = ux.universal_search(term)
+                if not results:
+                    console.print("[yellow]No matching items found across OS database.[/yellow]")
+                else:
+                    table = Table(
+                        title=f"Universal Search Results for: {term}", border_style="cyan"
+                    )
+                    table.add_column("Type", style="bold cyan")
+                    table.add_column("Name", style="magenta")
+                    table.add_column("Description", style="white")
+                    for r in results:
+                        table.add_row(r["type"], r["name"], r["desc"])
+                    console.print(table)
+
+        elif cmd == "notifications":
+            ux._render_notifications_workspace(ux.get_theme_colors())
+
+        elif cmd == "workspace":
+            if len(args) < 2:
+                console.print(
+                    "[yellow]Usage: aios workspace <project|agency|research|github|workflow|agent>[/yellow]"
+                )
+            else:
+                workspace_name = args[1].lower()
+                if workspace_name in (
+                    "project",
+                    "agency",
+                    "research",
+                    "github",
+                    "workflow",
+                    "agent",
+                ):
+                    ux.current_workspace = workspace_name
+                    ux.interactive_loop()
+                else:
+                    console.print(f"[red]✗ Unknown workspace: {workspace_name}[/red]")
+
+        elif cmd == "status":
+            console.print(ux.render_status_bar())
+
+        if exit_on_complete:
+            sys.exit(0)
+        return True
+
     return False
 
 
@@ -4813,333 +4862,22 @@ def main() -> None:
 
     try:
         kernel.boot()
+        from aios.services.ux_platform import UXPlatform
 
-        from aios.services.context import ContextService
+        ux = kernel.registry.get(UXPlatform)
+        ux.interactive_loop()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Input cancelled. Press Ctrl+D or type /exit to quit.[/yellow]\n")
+    except EOFError:
+        pass
+    except Exception as e:
+        from aios.ux import ErrorReporter
 
-        context_service = kernel.registry.get(ContextService)
-        context = context_service.get_current_context()
-        workspace_root = context.project_root if context else str(Path.cwd().resolve())
-
-        conv_store = ConversationStore(Path(workspace_root) / ".aios_conversations")
-        conv_manager = ConversationManager(conv_store)
-
-        registry = kernel.registry.get(CommandRegistry)
-        register_default_commands(registry, kernel, conv_manager)
-
-        # Generate documentation automatically
-        doc_gen = DocumentationGenerator(registry)
-        doc_gen.generate_markdown(Path(workspace_root) / "COMMANDS.md")
-
-        # Set up readline command history file
-        history_file = Path(workspace_root) / ".aios_history"
-        if history_file.exists():
-            try:
-                readline.read_history_file(str(history_file))
-            except Exception:
-                pass
-        readline.set_history_length(1000)
-        atexit.register(lambda: readline.write_history_file(str(history_file)))
-
-        # Initialize local SkillRegistry for command/capability tables
-        skills_dir = Path(workspace_root) / "skills"
-        skill_registry = SkillRegistry()
-        skill_manager = SkillManager(skills_dir, skill_registry)
-        skill_manager.load_all_skills()
-
-        model_service = kernel.registry.get(ModelService)
-
-        # Dynamic Startup Banner
-        banner_text = Text()
-        banner_text.append("\n █████╗ ██╗ ██████╗ ███████╗\n", style="bold cyan")
-        banner_text.append("██╔══██╗██║██╔═══██╗██╔════╝\n", style="bold cyan")
-        banner_text.append("███████║██║██║   ██║███████╗\n", style="bold blue")
-        banner_text.append("██╔══██║██║██║   ██║╚════██║\n", style="bold blue")
-        banner_text.append("██║  ██║██║╚██████╔╝███████║\n", style="bold purple")
-        banner_text.append("╚═╝  ╚═╝╚═╝ ╚═════╝ ╚══════╝\n", style="bold purple")
-
-        console.print(banner_text)
-        from aios.local.cli_workspace_commands import run_startup_automation
-
-        run_startup_automation(kernel.registry)
-
-        multiline_mode = False
-
-        # Global Signal handler for SIGINT/SIGTERM
-        def handle_shutdown(signum, frame):
-            console.print("\n[yellow]Shutting down gracefully...[/yellow]")
-            kernel.shutdown()
-            sys.exit(0)
-
-        signal.signal(signal.SIGINT, handle_shutdown)
-        signal.signal(signal.SIGTERM, handle_shutdown)
-
-        # Readline bindings for shortcuts (Ctrl+K -> Palette, Ctrl+L -> Clear)
-        try:
-            readline.parse_and_bind(r'"\C-k": " /palette\n"')
-            readline.parse_and_bind(r'"\C-l": " /clear\n"')
-        except Exception:
-            pass
-
-        while True:
-            try:
-                print_status_line(model_service, conv_manager)
-                user_input = read_input(multiline_mode).strip()
-                if not user_input:
-                    continue
-
-                # Intercept Built-in CLI commands in Interactive Mode
-                cmd_str = None
-                if user_input.startswith("aios "):
-                    cmd_str = user_input[5:].strip()
-                elif (
-                    user_input in ("help", "health", "provider list", "model list")
-                    or user_input.startswith("route ")
-                    or user_input.startswith("chat ")
-                    or user_input.startswith("workspace ")
-                    or user_input.startswith("providers")
-                    or user_input.startswith("models")
-                    or user_input.startswith("dashboard")
-                    or user_input.startswith("work")
-                    or user_input.startswith("today")
-                    or user_input.startswith("status")
-                    or user_input.startswith("restart")
-                    or user_input.startswith("doctor")
-                    or user_input.startswith("shutdown")
-                    or user_input.startswith("agenda")
-                    or user_input.startswith("projects")
-                    or user_input.startswith("agency")
-                    or user_input.startswith("hackathons")
-                    or user_input.startswith("github")
-                    or user_input.startswith("notion")
-                    or user_input.startswith("resume")
-                    or user_input.startswith("tasks")
-                    or user_input.startswith("goals")
-                    or user_input.startswith("planner")
-                    or user_input.startswith("plugins")
-                    or user_input.startswith("skills")
-                    or user_input.startswith("notifications")
-                    or user_input.startswith("events")
-                    or user_input.startswith("context")
-                    or user_input.startswith("scheduler")
-                ):
-                    cmd_str = user_input
-
-                if cmd_str:
-                    if execute_builtin_cli_command(cmd_str.split(), exit_on_complete=False):
-                        continue
-
-                # Handle Slash Commands
-                if user_input.startswith("/"):
-                    parts = user_input.split(maxsplit=1)
-                    slash_cmd = parts[0].lower()
-                    slash_args = parts[1] if len(parts) > 1 else ""
-
-                    if slash_cmd in ("/help", "/?"):
-                        print_help_table(registry)
-                    elif slash_cmd == "/conversation":
-                        subcmd = slash_args.strip().lower()
-                        if subcmd in ("list", "ls"):
-                            handle_conversation_command("list conversations", conv_manager)
-                        elif subcmd.startswith("new"):
-                            handle_conversation_command("new conversation", conv_manager)
-                        elif subcmd.startswith("resume"):
-                            target = slash_args[6:].strip()
-                            handle_conversation_command(f"resume {target}", conv_manager)
-                        elif subcmd == "delete":
-                            handle_conversation_command("delete conversation", conv_manager)
-                        elif subcmd == "rename":
-                            handle_conversation_command("rename conversation", conv_manager)
-                        elif subcmd == "active":
-                            handle_conversation_command("current conversation", conv_manager)
-                        else:
-                            console.print(
-                                "[yellow]Subcommands: list, new, resume, "
-                                "delete, rename, active[/yellow]"
-                            )
-                    elif slash_cmd == "/skills":
-                        print_skills_table(skill_registry)
-                    elif slash_cmd == "/providers":
-                        print_providers_table(model_service)
-                    elif slash_cmd == "/model":
-                        handle_model_switch(model_service, slash_args)
-                    elif slash_cmd == "/history":
-                        print_conversation_history(conv_manager)
-                    elif slash_cmd == "/clear":
-                        console.clear()
-                    elif slash_cmd == "/multiline":
-                        multiline_mode = not multiline_mode
-                        mode_status = "ENABLED" if multiline_mode else "DISABLED"
-                        console.print(f"[green]✓ Multiline mode: {mode_status}[/green]")
-                    elif slash_cmd == "/status":
-                        from aios.ux import StartupHealthChecks
-
-                        h = StartupHealthChecks.run_checks()
-                        t = Table(title="System Health Status", border_style="cyan")
-                        t.add_column("Component", style="bold cyan")
-                        t.add_column("Status", style="green")
-                        for k, v in h.items():
-                            t.add_row(k, v)
-                        console.print(t)
-                    elif slash_cmd == "/models":
-                        t = Table(title="LLM Model Configuration", border_style="cyan")
-                        t.add_column("Property", style="bold cyan")
-                        t.add_column("Value", style="white")
-                        t.add_row(
-                            "Provider", getattr(model_service, "_default_provider", "openrouter")
-                        )
-                        t.add_row(
-                            "Model", getattr(model_service, "_default_model", "qwen/qwen3-coder")
-                        )
-                        console.print(t)
-                    elif slash_cmd == "/project":
-                        execute_builtin_cli_command(["project", "list"], exit_on_complete=False)
-                    elif slash_cmd == "/workspace":
-                        execute_builtin_cli_command(["workspace", "status"], exit_on_complete=False)
-                    elif slash_cmd == "/research":
-                        console.print("[cyan]No research queries cached currently.[/cyan]")
-                    elif slash_cmd == "/github":
-                        console.print("[cyan]GitHub status: Connected.[/cyan]")
-                    elif slash_cmd == "/supabase":
-                        execute_builtin_cli_command(["supabase", "summary"], exit_on_complete=False)
-                    elif slash_cmd == "/vercel":
-                        execute_builtin_cli_command(["vercel", "summary"], exit_on_complete=False)
-                    elif slash_cmd == "/business":
-                        execute_builtin_cli_command(
-                            ["business", "analytics"], exit_on_complete=False
-                        )
-                    elif slash_cmd == "/approval":
-                        execute_builtin_cli_command(["approval", "pending"], exit_on_complete=False)
-                    elif slash_cmd == "/workflow":
-                        console.print("[cyan]n8n Engine active. 1 workflow online.[/cyan]")
-                    elif slash_cmd == "/memory":
-                        console.print("[cyan]Semantic Memory online. collections ready.[/cyan]")
-                    elif slash_cmd == "/settings":
-                        execute_builtin_cli_command(["session"], exit_on_complete=False)
-                    elif slash_cmd == "/palette":
-                        query = input("Search Command Palette: ").strip().lower()
-                        cmds = [c.name for c in registry.commands.values()]
-                        matches = [c for c in cmds if query in c.lower()]
-                        if not matches:
-                            console.print("[yellow]No matching commands found.[/yellow]")
-                        else:
-                            t = Table(title="Command Palette", border_style="cyan")
-                            t.add_column("Matching Commands", style="bold cyan")
-                            for m in matches:
-                                t.add_row(m)
-                            console.print(t)
-                    elif slash_cmd in ("/exit", "/quit"):
-                        from aios.ux import SessionManager
-
-                        mgr = SessionManager()
-                        mgr.save_session({"last_active": time.time(), "current_project": "Aios"})
-                        console.print("[cyan]Saving session state... OK[/cyan]")
-                        console.print("[cyan]Flushing memory buffers... OK[/cyan]")
-                        msg = "Thank you for using AI OS. Goodbye!"
-                        console.print(f"[bold green]{msg}[/bold green]")
-                        break
-                    else:
-                        console.print(
-                            f"[red]✗ Unknown slash command: {slash_cmd}. "
-                            "Type /help for options.[/red]"
-                        )
-                    continue
-
-                # Handle Skill Commands
-                matched = match_command(user_input, registry)
-                if matched:
-                    cmd_metadata, args = matched
-                    handler = registry.get_handler(cmd_metadata.name)
-                    with console.status(
-                        f"[bold green]Executing command '{cmd_metadata.name}'...", spinner="dots"
-                    ):
-                        handler(args)
-                    continue
-
-                # Handle Explanation Engine queries
-                if user_input.lower().strip() in (
-                    "what are you doing?",
-                    "why did you choose this?",
-                    "explain the plan.",
-                    "what are you doing",
-                    "why did you choose this",
-                    "explain the plan",
-                ):
-                    from aios.services.nl_os import NLOSService
-
-                    nl_os = kernel.registry.get(NLOSService)
-                    explanation = nl_os.get_last_explanation()
-
-                    obj = explanation.get("objective", "None")
-                    plan = explanation.get("plan")
-                    reasoning = explanation.get("reasoning", "No explanation available.")
-
-                    text_lines = [
-                        f"[bold]Objective:[/bold] {obj}",
-                        f"[bold]Reasoning/Routing Decision:[/bold] {reasoning}",
-                    ]
-                    if plan:
-                        text_lines.append("\n[bold]Execution Plan Steps:[/bold]")
-                        for s in plan.steps:
-                            text_lines.append(f"- Step {s.step_id}: {s.description} ({s.status})")
-
-                    console.print(
-                        Panel(
-                            "\n".join(text_lines),
-                            title="[bold cyan]Explanation Engine[/bold cyan]",
-                            border_style="cyan",
-                        )
-                    )
-                    continue
-
-                # Route Natural Language Queries
-                from aios.services.nl_os import NLOSService
-
-                nl_os = kernel.registry.get(NLOSService)
-                tokens = nl_os.route_query(user_input)
-                if tokens:
-                    console.print(f"[bold cyan]Routing to: aios {' '.join(tokens)}[/bold cyan]")
-                    execute_builtin_cli_command(tokens, exit_on_complete=False)
-                    continue
-
-                # Handle General Intent or Direct Chat Routing
-                intent_resolver = kernel.registry.get(IntentResolverService)
-                with console.status("[bold blue]Resolving Intent...", spinner="dots"):
-                    intent = intent_resolver.resolve(user_input)
-                    intent.parameters["raw_query"] = user_input
-
-                if intent.intent_type == IntentType.UNKNOWN:
-                    # Fallback to direct model conversation with streaming
-                    handle_general_chat(user_input, conv_manager, model_service)
-                else:
-                    console.print(
-                        f"[dim]Resolved Intent: {intent.intent_type.name}.{intent.action} "
-                        f"(Confidence: {intent.confidence:.2f})[/dim]"
-                    )
-                    with console.status("[bold blue]Running reasoning pipeline...", spinner="dots"):
-                        result = kernel.execute_intent(intent)
-                    console.print(
-                        Panel(
-                            Markdown(result.message), border_style="blue", title="System Response"
-                        )
-                    )
-
-            except KeyboardInterrupt:
-                console.print(
-                    "\n[yellow]Input cancelled. Press Ctrl+D or type /exit to quit.[/yellow]\n"
-                )
-            except EOFError:
-                break
-            except Exception as e:
-                from aios.ux import ErrorReporter
-
-                ErrorReporter.report(
-                    e,
-                    cause=("Command parameter syntax error or runtime subsystem exception."),
-                    fix=(
-                        "Verify command arguments and run 'aios diagnostics' "
-                        "to check health status."
-                    ),
-                )
+        ErrorReporter.report(
+            e,
+            cause=("Command parameter syntax error or runtime subsystem exception."),
+            fix=("Verify command arguments and run 'aios diagnostics' to check health status."),
+        )
 
     finally:
         console.print("[yellow]Shutting down AI OS Core...[/yellow]")

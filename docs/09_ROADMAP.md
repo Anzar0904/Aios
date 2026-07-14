@@ -33,6 +33,7 @@ The **Personal AI OS** is transitioning from a local command-line MVP to a highl
   * Phase 11 ✅ Personal Intelligence
   * Phase 11.5 ✅ Natural Language Operating System
   * Phase 12 ✅ Autonomous Multi-Agent Platform
+  * Phase 12B ✅ Command Center & UX
 * **Remaining Horizons**: Vite/NextJS Desktop Renderer.
 
 ---
@@ -424,7 +425,35 @@ gantt
 
 ---
 
-## 15. Test Verification Summary
-* **Total Tests Count**: 1,935 Passed (1,929 previous + 6 new Multi-Agent tests).
+## 15. Phase 12B ✅ Command Center & UX (July 2026)
+
+### New in v12.0
+
+> **Phase 12B** establishes a unified keyboard-driven Operating System console for AI OS, enabling navigation, search, agent tracking, automation control, and natural language chat from a single terminal interface.
+
+**Subsystems Added:**
+- **Boot Experience**: Simulates a visual startup sequence (Memory, Projects, Agency, Research, GitHub, Workflows, Integrations, Agents, Services, Ready) and logs boot duration.
+- **Central Command Center**: Pinned live dashboard aggregating context parameters, active sprint states, open tasks, sales stats, and agent metrics.
+- **6 Pinned Workspaces**: Dedicated panels for Projects, Agency CRM, Research Synthesis, GitHub Source Control, n8n Automation, and Multi-Agent status.
+- **Notification Center**: Track alerts from workflows, agent completions, pull requests, and meetings with priority filtering and read tracking.
+- **Universal Search**: Integrated tool searching across projects, tasks, workflows, documents, clients, meetings, and agents.
+- **Command Palette**: Searchable palette (`Ctrl+K`) for indexing and executing registered commands.
+- **Theme System**: Custom visual styles (`default`, `minimal`, `professional`, `compact`).
+- **Status Bar**: Pinned bar showing active project, current agent activity, selected model, memory, alerts, and system health.
+
+**Test Coverage:** 8 new tests (100% pass)
+
+### New CLI Commands
+- `aios` — boots directly into the Command Center interactive loop
+- `aios dashboard` — boots directly into the Command Center interactive loop
+- `aios search <query>` — scans across all OS modules and displays matching results
+- `aios notifications` — displays the list of alerts and unread counts
+- `aios workspace <name>` — boots directly into the specified workspace
+- `aios status` — prints the active OS status bar metrics
+
+---
+
+## 16. Test Verification Summary
+* **Total Tests Count**: 1,943 Passed (1,935 previous + 8 new UX tests).
 * **Test Coverage**: 85%+.
 * **CI Build Pipeline**: GitHub Actions Green.

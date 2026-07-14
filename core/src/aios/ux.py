@@ -58,15 +58,16 @@ class BootExperience:
 
         console.print("[cyan]BOOTING PERSONAL AI OS...[/cyan]")
         steps = [
-            ("Loading AI OS Kernel Core...", 0.05),
-            ("Initializing OmniRoute Gateway...", 0.03),
-            ("Initializing Workspace Intelligence...", 0.04),
-            ("Loading Supabase Credentials...", 0.02),
-            ("Connecting Vercel Engine...", 0.03),
-            ("Loading Project Intelligence Registry...", 0.04),
-            ("Connecting Business Intelligence Services...", 0.03),
-            ("Starting Approval Engine & Governance Gating...", 0.05),
-            ("Loading Qdrant Semantic Memory Collections...", 0.06),
+            ("Loading Memory...", 0.05),
+            ("Loading Projects...", 0.04),
+            ("Loading Agency...", 0.03),
+            ("Loading Research...", 0.04),
+            ("Loading GitHub...", 0.05),
+            ("Loading Workflows...", 0.03),
+            ("Loading Integrations...", 0.04),
+            ("Loading Agents...", 0.05),
+            ("Starting Services...", 0.06),
+            ("Ready.", 0.02),
         ]
 
         with Progress(
