@@ -50,6 +50,11 @@ class EntityType(Enum):
     SECTION = "section"
     RELEASE = "release"
     REPORT = "report"
+    # Phase 9 GitHub Entities
+    BRANCH = "branch"
+    COMMIT = "commit"
+    PULL_REQUEST = "pull_request"
+    ISSUE = "issue"
 
 
 class RelationshipType(Enum):
@@ -83,6 +88,8 @@ class RelationshipType(Enum):
     DOCUMENTS = "DOCUMENTS"
     DESCRIBES = "DESCRIBES"
     GENERATED_FROM = "GENERATED_FROM"
+    # Phase 9 GitHub Relationships
+    MERGES = "MERGES"
 
 
 class GraphEventType(Enum):

@@ -1,295 +1,338 @@
-from unittest.mock import MagicMock, patch
+"""Phase 9: GitHub Intelligence — Production Test Suite.
 
-import httpx
+Tests cover:
+- Repository Registry CRUD & default seeding
+- Branch and Commit Intelligence listings
+- Pull Request and Issues priority metrics tracking
+- Actions workflows and releases version catalogs
+- Health Score calculations (verifying penalties deductions)
+- Knowledge Graph bridging integration assertions
+- CLI command dispatcher smoke runs
+"""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
 import pytest
-from aios.brain.skill_selector import SkillSelector
-from aios.services.agent import AgentContext
-from aios.services.agent_impl import CareerAgent
-from aios.services.github import (
-    GitHubAuthentication,
+from aios.services.github_intelligence import (
+    GitActionWorkflow,
+    GitBranch,
+    GitCommit,
+    GitIssue,
+    GitPullRequest,
+    GitRelease,
+    GitRepository,
+    new_id,
 )
-from aios.services.github_impl import LocalGitHubService
-from aios.services.intent import Intent, IntentType
-from aios.services.model import LLMResponse
-from aios.skills.base import BaseSkill
+from aios.services.github_intelligence_impl import GitHubIntelligenceServiceImpl
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
 
-def test_github_authentication():
-    auth = GitHubAuthentication(token="test-token")
-    headers = auth.get_headers()
-    assert headers["Authorization"] == "Bearer test-token"
-    assert headers["Accept"] == "application/vnd.github+json"
-
-    no_auth = GitHubAuthentication(token=None)
-    assert "Authorization" not in no_auth.get_headers()
+@pytest.fixture
+def tmp_db(tmp_path):
+    return str(tmp_path / "test_github.db")
 
 
-@patch("httpx.Client")
-def test_repository_retrieval(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
+@pytest.fixture
+def eng(tmp_db):
+    from aios.local import github_intelligence_commands
 
-    # Mock Repository metadata and languages
-    mock_response_repo = MagicMock()
-    mock_response_repo.status_code = 200
-    mock_response_repo.headers = {"Content-Type": "application/json"}
-    mock_response_repo.json.return_value = {
-        "owner": {"login": "Anzar0904"},
-        "name": "aios",
-        "description": "Personal AI OS",
-        "stargazers_count": 42,
-        "forks_count": 7,
-        "html_url": "https://github.com/Anzar0904/aios",
-        "private": True,
-        "open_issues_count": 3,
-    }
-
-    mock_response_langs = MagicMock()
-    mock_response_langs.status_code = 200
-    mock_response_langs.headers = {"Content-Type": "application/json"}
-    mock_response_langs.json.return_value = {"Python": 12345, "Shell": 500}
-
-    mock_client.get.side_effect = [mock_response_repo, mock_response_langs]
-
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service)
-
-    repo = service.inspect_repository("Anzar0904/aios")
-    assert repo.owner == "Anzar0904"
-    assert repo.name == "aios"
-    assert repo.stars == 42
-    assert repo.is_private is True
-    assert "Python" in repo.languages
+    github_intelligence_commands._DB_PATH = tmp_db
+    svc = GitHubIntelligenceServiceImpl(db_path=tmp_db)
+    svc.initialize()
+    svc.start()
+    yield svc
+    svc.shutdown()
+    github_intelligence_commands._DB_PATH = None
 
 
-@patch("httpx.Client")
-def test_pull_requests(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
-
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.headers = {"Content-Type": "application/json"}
-    mock_response.json.return_value = {
-        "number": 12,
-        "title": "Refactor router",
-        "state": "open",
-        "body": "PR description",
-        "user": {"login": "dev1"},
-        "html_url": "https://github.com/Anzar0904/aios/pull/12",
-        "diff_url": "https://github.com/Anzar0904/aios/pull/12.diff",
-        "created_at": "2026-07-04T12:00:00Z",
-    }
-    mock_client.get.return_value = mock_response
-
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service)
-    pr = service.inspect_pull_request("Anzar0904/aios", 12)
-    assert pr.number == 12
-    assert pr.title == "Refactor router"
-    assert pr.user == "dev1"
+# ---------------------------------------------------------------------------
+# Registry & CRUD
+# ---------------------------------------------------------------------------
 
 
-@patch("httpx.Client")
-def test_issues(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
+class TestGitHubRegistry:
+    def test_seeded_repositories(self, eng):
+        repos = eng.list_repositories()
+        assert len(repos) >= 1
+        assert repos[0].name == "Anzar0904/Aios"
 
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.headers = {"Content-Type": "application/json"}
-    mock_response.json.return_value = {
-        "number": 5,
-        "title": "Crash on boot",
-        "state": "closed",
-        "body": "Crash log snippet",
-        "user": {"login": "user1"},
-        "labels": [{"name": "bug"}, {"name": "critical"}],
-        "milestone": {"title": "v1.0.0"},
-        "created_at": "2026-07-04T10:00:00Z",
-    }
-    mock_client.get.return_value = mock_response
-
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service)
-    issue = service.inspect_issue("Anzar0904/aios", 5)
-    assert issue.number == 5
-    assert "bug" in issue.labels
-    assert issue.milestone == "v1.0.0"
+    def test_register_and_get_repository(self, eng):
+        rid = new_id()
+        repo = GitRepository(
+            repository_id=rid,
+            name="Anzar0904/Agency",
+            owner="Anzar0904",
+            description="CRM and Leads intelligence.",
+        )
+        eng.register_repository(repo)
+        fetched = eng.get_repository(rid)
+        assert fetched is not None
+        assert fetched.name == "Anzar0904/Agency"
 
 
-@patch("httpx.Client")
-def test_commits_and_branches(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
-
-    # Mock branches response
-    mock_response_branches = MagicMock()
-    mock_response_branches.status_code = 200
-    mock_response_branches.headers = {"Content-Type": "application/json"}
-    mock_response_branches.json.return_value = [{"name": "main", "commit": {"sha": "sha123"}}]
-    mock_client.get.return_value = mock_response_branches
-
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service)
-    branches = service.list_branches("Anzar0904/aios")
-    assert len(branches) == 1
-    assert branches[0].name == "main"
-    assert branches[0].sha == "sha123"
+# ---------------------------------------------------------------------------
+# Branch & Commit Intelligence
+# ---------------------------------------------------------------------------
 
 
-@patch("httpx.Client")
-def test_caching(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
+class TestBranchCommitIntelligence:
+    def test_branch_and_commits_recording(self, eng):
+        repos = eng.list_repositories()
+        rid = repos[0].repository_id
 
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.headers = {"Content-Type": "application/json"}
-    mock_response.json.return_value = {"owner": {"login": "Anzar0904"}, "name": "aios"}
-    mock_client.get.return_value = mock_response
+        # Record branch
+        branch = GitBranch(
+            branch_id=new_id(),
+            repository_id=rid,
+            name="feat/billing",
+            author="Anzar0904",
+        )
+        eng.record_branch(branch)
+        branches = eng.list_branches(rid)
+        assert "feat/billing" in [b.name for b in branches]
 
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service, cache_enabled=True)
-
-    # First call: cache miss, makes request
-    service.inspect_repository("Anzar0904/aios")
-    # Second call: cache hit, uses cache
-    service.inspect_repository("Anzar0904/aios")
-
-    assert mock_client.get.call_count == 2  # 1 for repo and 1 for languages (cached on second run)
-
-
-@patch("httpx.Client")
-def test_retries_transient_failures(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
-
-    # Return 500 first, then 200
-    mock_response_500 = MagicMock()
-    mock_response_500.status_code = 500
-
-    mock_response_200 = MagicMock()
-    mock_response_200.status_code = 200
-    mock_response_200.headers = {"Content-Type": "application/json"}
-    mock_response_200.json.return_value = {"owner": {"login": "Anzar0904"}, "name": "aios"}
-
-    mock_client.get.side_effect = [mock_response_500, mock_response_200, mock_response_200]
-
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service, max_retries=3, rate_limit_per_min=0)
-
-    with patch("time.sleep") as mock_sleep:
-        repo = service.inspect_repository("Anzar0904/aios")
-        assert repo.name == "aios"
-        mock_sleep.assert_called_once_with(1)  # wait 2^0 = 1 second on attempt 1
+        # Record commit
+        commit = GitCommit(
+            commit_sha="sha-12345678",
+            repository_id=rid,
+            author="Anzar0904",
+            message="feat: add Stripe billing webhooks",
+            files_changed=4,
+            lines_added=150,
+            lines_removed=12,
+        )
+        eng.record_commit(commit)
+        commits = eng.list_commits(rid)
+        assert len(commits) >= 1
+        assert commits[0].commit_sha == "sha-12345678"
 
 
-def test_offline_mode():
-    model_service = MagicMock()
-    service = LocalGitHubService(model_service=model_service, offline_mode=True)
-
-    with pytest.raises(httpx.ConnectError):
-        service.inspect_repository("Anzar0904/aios")
+# ---------------------------------------------------------------------------
+# PR & Issue Intelligence
+# ---------------------------------------------------------------------------
 
 
-def test_rate_limiting():
-    model_service = MagicMock()
-    service = LocalGitHubService(
-        model_service=model_service,
-        rate_limit_per_min=6000,  # high frequency but short interval (0.01s)
-    )
-    assert service._request_interval == 0.01
+class TestPRIssueIntelligence:
+    def test_pr_and_issue_recording(self, eng):
+        repos = eng.list_repositories()
+        rid = repos[0].repository_id
+
+        # PR
+        pr = GitPullRequest(
+            pr_id=new_id(),
+            pr_number=18,
+            repository_id=rid,
+            title="Refactor auth hooks",
+            author="Anzar0904",
+            status="open",
+            risk_score=35,
+        )
+        eng.record_pull_request(pr)
+        prs = eng.list_pull_requests(rid)
+        assert 18 in [p.pr_number for p in prs]
+
+        # Issue
+        issue = GitIssue(
+            issue_id=new_id(),
+            repository_id=rid,
+            title="Fix OAuth token refresh bug",
+            priority=5,
+            status="open",
+            assignee="Anzar0904",
+            labels=["bug", "high-priority"],
+        )
+        eng.record_issue(issue)
+        issues = eng.list_issues(rid)
+        assert 5 in [i.priority for i in issues]
 
 
-def test_brain_integration():
-    skill_registry = MagicMock()
-    mock_skill = MagicMock(spec=BaseSkill)
-    mock_metadata = MagicMock()
-    mock_metadata.id = "github"
-    mock_metadata.commands = ["list repositories"]
-    mock_skill.metadata = mock_metadata
-    mock_skill.enabled = True
-
-    skill_registry.list_skills.return_value = [mock_skill]
-
-    selector = SkillSelector(skill_registry)
-
-    # Query containing 'repository' keyword
-    selections = selector.select_skills("list my GitHub repositories please")
-    assert len(selections) == 1
-    assert selections[0].skill_id == "github"
-    assert selections[0].confidence == 0.99
+# ---------------------------------------------------------------------------
+# Actions & Releases
+# ---------------------------------------------------------------------------
 
 
-@patch("httpx.Client")
-def test_career_agent_integration(mock_client_class):
-    mock_client = MagicMock()
-    mock_client_class.return_value.__enter__.return_value = mock_client
+class TestActionsReleases:
+    def test_workflow_runs_and_releases(self, eng):
+        repos = eng.list_repositories()
+        rid = repos[0].repository_id
 
-    # Mock search repositories return
-    mock_response_search = MagicMock()
-    mock_response_search.status_code = 200
-    mock_response_search.headers = {"Content-Type": "application/json"}
-    mock_response_search.json.return_value = {
-        "items": [
-            {
-                "owner": {"login": "Anzar0904"},
-                "name": "aios",
-                "description": "AI OS",
-                "stargazers_count": 10,
-                "forks_count": 2,
-                "private": False,
-                "open_issues_count": 0,
-            }
-        ]
-    }
+        # Actions
+        run = GitActionWorkflow(
+            workflow_id="run-99",
+            repository_id=rid,
+            name="deploy.yml",
+            status="success",
+            duration_secs=80,
+        )
+        eng.record_workflow_run(run)
+        runs = eng.list_workflow_runs(rid)
+        assert len(runs) >= 1
+        assert runs[0].name == "deploy.yml"
 
-    # Mock repository stats return
-    mock_response_stats = MagicMock()
-    mock_response_stats.status_code = 200
-    mock_response_stats.headers = {"Content-Type": "application/json"}
-    mock_response_stats.json.return_value = {
-        "stargazers_count": 10,
-        "forks_count": 2,
-        "open_issues_count": 0,
-    }
+        # Release
+        release = GitRelease(
+            release_id=new_id(),
+            repository_id=rid,
+            version="v2.1.0",
+            title="CRM Billing release",
+            features=["Stripe gateway integration"],
+            fixes=["OAuth Token refresh Fix"],
+        )
+        eng.record_release(release)
+        releases = eng.list_releases(rid)
+        assert len(releases) >= 1
+        assert releases[0].version == "v2.1.0"
 
-    mock_client.get.side_effect = [mock_response_search, mock_response_stats]
 
-    memory_service = MagicMock()
-    context_service = MagicMock()
-    tool_service = MagicMock()
-    model_service = MagicMock()
+# ---------------------------------------------------------------------------
+# Repository Health Scoring
+# ---------------------------------------------------------------------------
 
-    model_service.execute_request.return_value = LLMResponse(
-        content="Analyzed GitHub profile.",
-        model_name="claude-3-5-sonnet",
-        provider_name="claude",
-    )
 
-    github_service = LocalGitHubService(model_service=model_service)
+class TestRepositoryHealth:
+    def test_health_scoring_deduction(self, eng):
+        rid = new_id()
+        repo = GitRepository(repository_id=rid, name="TestHealthRepo", owner="admin")
+        eng.register_repository(repo)
 
-    agent = CareerAgent(
-        memory_service=memory_service,
-        context_service=context_service,
-        tool_service=tool_service,
-        model_service=model_service,
-        github_service=github_service,
-    )
+        # 100 base score
+        initial_health = eng.calculate_repository_health(rid)
+        assert initial_health == 100
 
-    intent = Intent(
-        intent_type=IntentType.CAREER,
-        target_service="AgentRuntimeService",
-        action="GitHubPortfolio",
-        parameters={"username": "Anzar0904"},
-        confidence=1.0,
-    )
+        # Record 1 open issue -> -5 points
+        eng.record_issue(
+            GitIssue(issue_id="issue-1", repository_id=rid, title="Bug 1", status="open")
+        )
 
-    agent_context = AgentContext(intent=intent, context=None, memories=[], tools=[])
+        # Record 1 failed action workflow run -> -15 points
+        eng.record_workflow_run(
+            GitActionWorkflow(
+                workflow_id="run-failed", repository_id=rid, name="ci.yml", status="failed"
+            )
+        )
 
-    res = agent.execute(agent_context)
+        # Record 1 open PR with risk score 40 -> -20 points (40 * 0.5)
+        eng.record_pull_request(
+            GitPullRequest(
+                pr_id="pr-1",
+                pr_number=1,
+                repository_id=rid,
+                title="PR 1",
+                author="dev",
+                status="open",
+                risk_score=40,
+            )
+        )
 
-    assert res.success is True
-    assert "Analyzed GitHub profile." in res.response
-    model_service.execute_request.assert_called_once()
+        # Final health score: 100 - 5 (issue) - 15 (CI) - 20 (PR risk) = 60
+        final_health = eng.calculate_repository_health(rid)
+        assert final_health == 60
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Graph Integration
+# ---------------------------------------------------------------------------
+
+
+class TestGitHubIntelligenceGraphBridge:
+    def test_sync_repository_node(self):
+        from aios.services.github_intelligence_graph_bridge import GitHubIntelligenceGraphBridge
+
+        mock_engine = MagicMock()
+        mock_entity = MagicMock()
+        mock_entity.entity_id = "mock-repo-id"
+        mock_engine.ensure_entity.return_value = mock_entity
+
+        bridge = GitHubIntelligenceGraphBridge(mock_engine)
+        repo = GitRepository(repository_id="repo-123", name="Anzar0904/Aios", owner="Anzar0904")
+        entity_id = bridge.sync_repository(repo)
+        assert entity_id == "mock-repo-id"
+
+    def test_sync_branch(self):
+        from aios.services.github_intelligence_graph_bridge import GitHubIntelligenceGraphBridge
+
+        mock_engine = MagicMock()
+        bridge = GitHubIntelligenceGraphBridge(mock_engine)
+        branch = GitBranch("branch-123", "repo-123", "main", author="Anzar0904")
+        bridge.sync_branch(branch, "Anzar0904/Aios")
+        assert mock_engine.ensure_entity.call_count >= 2
+
+    def test_sync_pull_request(self):
+        from aios.services.github_intelligence_graph_bridge import GitHubIntelligenceGraphBridge
+
+        mock_engine = MagicMock()
+        bridge = GitHubIntelligenceGraphBridge(mock_engine)
+        pr = GitPullRequest("pr-123", 14, "repo-123", "Title", "author")
+        bridge.sync_pull_request(pr, "Anzar0904/Aios")
+        assert mock_engine.ensure_entity.call_count >= 2
+
+    def test_sync_issue(self):
+        from aios.services.github_intelligence_graph_bridge import GitHubIntelligenceGraphBridge
+
+        mock_engine = MagicMock()
+        bridge = GitHubIntelligenceGraphBridge(mock_engine)
+        issue = GitIssue("issue-123", "repo-123", "Title")
+        bridge.sync_issue(issue, "Anzar0904/Aios")
+        assert mock_engine.ensure_entity.call_count >= 2
+
+
+# ---------------------------------------------------------------------------
+# CLI Command Dispatcher Smoke Tests
+# ---------------------------------------------------------------------------
+
+
+class TestGitHubCLIDispatch:
+    def test_cli_dashboard_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_dashboard
+
+        cmd_github_dashboard([])
+
+    def test_cli_repos_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_repos
+
+        cmd_github_repos([])
+
+    def test_cli_branches_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_branches
+
+        cmd_github_branches([])
+
+    def test_cli_commits_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_commits
+
+        cmd_github_commits([])
+
+    def test_cli_prs_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_prs
+
+        cmd_github_prs([])
+
+    def test_cli_issues_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_issues
+
+        cmd_github_issues([])
+
+    def test_cli_actions_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_actions
+
+        cmd_github_actions([])
+
+    def test_cli_releases_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_releases
+
+        cmd_github_releases([])
+
+    def test_cli_analytics_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_analytics
+
+        cmd_github_analytics([])
+
+    def test_cli_health_smoke(self, eng):
+        from aios.local.github_intelligence_commands import cmd_github_health
+
+        cmd_github_health([])

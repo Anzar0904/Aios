@@ -4263,6 +4263,17 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             cmd_docs_main(subargs, registry=None)
         except Exception as exc:
             console.print(f"[red]✗ documentation command error: {exc}[/red]")
+    # -----------------------------------------------------------------------
+    # Phase 9: GitHub Intelligence — `aios github`
+    # -----------------------------------------------------------------------
+    elif args and args[0] == "github":
+        try:
+            from aios.local.github_intelligence_commands import cmd_github_main
+
+            # Delegate subcommands starting after aios github
+            cmd_github_main(args[1:], registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ github command error: {exc}[/red]")
         if exit_on_complete:
             sys.exit(0)
         return True
