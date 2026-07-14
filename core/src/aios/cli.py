@@ -3924,6 +3924,23 @@ def execute_builtin_cli_command(args: list[str], exit_on_complete: bool = True) 
             sys.exit(0)
         return True
 
+    # -----------------------------------------------------------------------
+    # Phase 1: Local Model Intelligence Layer — `aios models` command group
+    # -----------------------------------------------------------------------
+    elif args and args[0] == "models":
+        from aios.local.cli_commands import cmd_models_main
+
+        subargs = args[1:]
+        try:
+            cmd_models_main(subargs, registry=None)
+        except Exception as exc:
+            console.print(f"[red]✗ models command error: {exc}[/red]")
+        if exit_on_complete:
+            import sys
+
+            sys.exit(0)
+        return True
+
     return False
 
 
@@ -4070,6 +4087,7 @@ def main() -> None:
                     or user_input.startswith("chat ")
                     or user_input.startswith("workspace ")
                     or user_input.startswith("providers")
+                    or user_input.startswith("models")
                 ):
                     cmd_str = user_input
 
