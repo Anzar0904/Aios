@@ -74,3 +74,22 @@ temp/
 tmp/
 *.log
 qdrant/
+
+# AIOS local runtime data — never commit personal conversations, service state,
+# database contents, embeddings, object storage, or generated diagnostics.
+.aios_runtime/
+.aios_conversations/
+.aios_*.json
+aios.db
+storage/
+minio_data/
+dump.rdb
+scratch/
+
+# Generated audits and ad-hoc reports belong in local runtime storage, not Git.
+/*_audit.md
+/*_report.md
+/*_validation.md
+/*_certification.md
+/*_model.md
+/*_design.md
