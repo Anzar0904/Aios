@@ -591,30 +591,14 @@ def update_knowledge_base():
 
 
 def copy_reports_to_artifacts(docs_dir: str):
-    project_root = Path(__file__).resolve().parents[2]
-    artifacts_dir = str(
-        Path.home()
-        / ".gemini"
-        / "antigravity-cli"
-        / "brain"
-        / "f5711c42-1ead-4c1a-8a46-d875135ee895"
-    )
+    artifacts_dir = os.environ.get("AIOS_QDRANT_ARTIFACT_DIR")
+    if not artifacts_dir:
+        return
     os.makedirs(artifacts_dir, exist_ok=True)
     for f in os.listdir(docs_dir):
         if f.startswith("QDRANT_"):
             shutil.copy(os.path.join(docs_dir, f), os.path.join(artifacts_dir, f))
             print(f"Copied {f} to artifacts directory")
-
-    # Copy PROJECT_STATUS.md and 17_KNOWLEDGE_BASE.md as well
-    shutil.copy(
-        str(project_root / "docs" / "PROJECT_STATUS.md"),
-        os.path.join(artifacts_dir, "PROJECT_STATUS.md"),
-    )
-    shutil.copy(
-        str(project_root / "docs" / "17_KNOWLEDGE_BASE.md"),
-        os.path.join(artifacts_dir, "17_KNOWLEDGE_BASE.md"),
-    )
-    print("Copied PROJECT_STATUS.md and 17_KNOWLEDGE_BASE.md to artifacts directory")
 
 
 def main():
