@@ -1,2 +1,0 @@
-# Deployment Version Registry
-

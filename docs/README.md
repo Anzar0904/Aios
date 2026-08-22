@@ -1,20 +1,11 @@
-# AI OS Codebase Index
+# AIOS documentation
 
-Welcome to the automatically generated documentation directory for Personal AI OS.
+The repository intentionally keeps documentation small and durable.
 
-## Repository Structure Overview
-- **Packages Detected**: 18
-- **Modules Scanned**: 398
-- **Core Services**: 169
-- **Active Providers**: 12
-- **Test Suites**: 132
-- **Configuration Files**: 351
-- **Documentation Files**: 767
+- [README](../README.md) — product scope, local startup, and development checks.
+- [CONTRIBUTING](../CONTRIBUTING.md) — repository and safety boundaries.
+- [SECURITY](../SECURITY.md) — security reporting policy.
+- [CHANGELOG](../CHANGELOG.md) — released changes.
 
-## Documentation Pages Map
-- [Architecture.md](Architecture.md): Package and service relation diagrams.
-- [Services.md](Services.md): Scanned core services list.
-- [Providers.md](Providers.md): Active AI integration providers.
-- [API.md](API.md): Class, method, and function specifications.
-- [DependencyGraph.md](DependencyGraph.md): Comprehensive module imports flowchart.
-- [Reports/Code_Completeness_Report.md](Reports/Code_Completeness_Report.md): Documentation completeness metrics.
+Detailed operational state, local diagnostics, generated reports, and private
+work artifacts stay out of Git.
