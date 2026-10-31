@@ -1,5 +1,7 @@
 # AIOS
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 AIOS is a local-first personal AI operating system. Python owns the runtime;
 Studio is a localhost-only web client for the same typed APIs.
 
@@ -34,3 +36,7 @@ belong in Git. Local databases, conversations, service storage, embeddings,
 credentials, runtime state, and generated reports are ignored.
 
 See [docs/README.md](docs/README.md) for the compact documentation map.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
